@@ -262,18 +262,27 @@ const copyToClipboard = async (text) => {
 
   .card-actions {
     padding: 12px 16px;
-    flex-direction: column;
+    flex-direction: row; /* keep buttons side-by-side */
   }
 
+  /* force info rows to stay inline and truncate long text */
   .id-info {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 4px;
+    flex-wrap: nowrap;
   }
 
   .id-label {
     min-width: auto;
-    margin-right: 0;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  .id-value {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 </style>

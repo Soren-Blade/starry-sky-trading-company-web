@@ -675,6 +675,23 @@ onUnmounted(() => {
     display: flex;
   }
 
+  .menu-toggle {
+    order: -1;
+  }
+
+  .navbar-logo {
+    order: 0;
+  }
+
+  .navbar-actions,
+  .auth-btn {
+    order: 1;
+  }
+
+  .navbar-menu {
+    order: 2;
+  }
+
   /**
    * 移动端菜单：
    * - 全屏宽度

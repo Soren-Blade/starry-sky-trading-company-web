@@ -10,8 +10,7 @@
             <span class="logo-text">星辰商行</span>
           </div>
           <p class="about-text">
-            星辰商行致力于为用户带来精选商品和优质服务。<br />
-            每一件商品都经过严格筛选，确保品质与美学的完美结合。
+            星辰商行致力于为用户带来精选商品和优质服务。每一件商品都经过严格筛选，确保品质与美学的完美结合。
           </p>
           <div class="social-links">
             <a href="#" class="social-link wechat" aria-label="WeChat" title="微信">📱</a>
@@ -19,50 +18,6 @@
             <a href="#" class="social-link weibo" aria-label="Weibo" title="微博">🌍</a>
             <a href="#" class="social-link douyin" aria-label="Douyin" title="抖音">🎵</a>
           </div>
-        </div>
-
-        <!-- Help Section -->
-        <div class="footer-section links">
-          <h4 class="section-title">帮助中心</h4>
-          <ul class="link-list">
-            <li><a href="#">常见问题</a></li>
-            <li><a href="#">联系我们</a></li>
-            <li><a href="#">在线客服</a></li>
-            <li><a href="#">反馈建议</a></li>
-          </ul>
-        </div>
-
-        <!-- Service Section -->
-        <div class="footer-section links">
-          <h4 class="section-title">服务</h4>
-          <ul class="link-list">
-            <li><a href="#">关于我们</a></li>
-            <li><a href="#">配送说明</a></li>
-            <li><a href="#">退货政策</a></li>
-            <li><a href="#">售后服务</a></li>
-          </ul>
-        </div>
-
-        <!-- Community Section -->
-        <div class="footer-section links">
-          <h4 class="section-title">社区</h4>
-          <ul class="link-list">
-            <li><a href="#">用户协议</a></li>
-            <li><a href="#">隐私政策</a></li>
-            <li><a href="#">商务合作</a></li>
-            <li><a href="#">加入我们</a></li>
-          </ul>
-        </div>
-
-        <!-- Contact Section -->
-        <div class="footer-section contact">
-          <h4 class="section-title">联系我们</h4>
-          <p class="contact-info">
-            📍 地址：中国 北京市 朝阳区<br />
-            📞 电话：400-800-8888<br />
-            ✉️ 邮箱：service@starrysky.com<br />
-            🕐 服务时间：9:00 - 22:00
-          </p>
         </div>
       </div>
 
@@ -145,15 +100,16 @@
 
 /* Footer Content */
 .footer-content {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
-  gap: 40px;
+  display: flex;
+  justify-content: center;
   margin-bottom: 40px;
 }
 
 .footer-section {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  /* max-width: 400px; */
 }
 
 .footer-logo {
@@ -208,56 +164,6 @@
   background: var(--gradient-primary);
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(138, 109, 255, 0.3);
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 16px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.link-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  list-style: none;
-}
-
-.link-list a {
-  font-size: 13px;
-  color: #aaa;
-  text-decoration: none;
-  transition: all 0.3s ease-in-out;
-  position: relative;
-}
-
-.link-list a::before {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--gradient-primary);
-  transition: width 0.3s ease-in-out;
-}
-
-.link-list a:hover {
-  color: var(--color-primary);
-}
-
-.link-list a:hover::before {
-  width: 100%;
-}
-
-.contact-info {
-  font-size: 12px;
-  line-height: 1.8;
-  color: #aaa;
-  margin: 0;
 }
 
 /* Divider */
@@ -338,32 +244,20 @@
 
 /* 响应式设计 */
 @media (max-width: 1199px) {
-  .footer-content {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 30px;
-  }
-
   .footer-container {
     padding: 50px 20px;
   }
 }
 
+@media (max-width: 1024px) {
+  .footer-bottom-container {
+    gap: 15px;
+  }
+}
+
 @media (max-width: 991px) {
-  .footer-content {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 30px;
-  }
-
-  .section-title {
-    font-size: 13px;
-  }
-
-  .link-list a {
-    font-size: 12px;
-  }
-
-  .contact-info {
-    font-size: 11px;
+  .footer-section {
+    max-width: 100%;
   }
 }
 
@@ -373,21 +267,26 @@
   }
 
   .footer-content {
-    grid-template-columns: 1fr;
-    gap: 30px;
     margin-bottom: 30px;
   }
 
   .footer-bottom-container {
     flex-direction: column;
     gap: 16px;
+    align-items: flex-start;
   }
 
   .copyright {
     text-align: left;
+    order: 1;
+  }
+
+  .payment-methods {
+    order: 2;
   }
 
   .footer-bottom-links {
+    order: 3;
     width: 100%;
     justify-content: flex-start;
   }
@@ -412,10 +311,6 @@
     gap: 20px;
   }
 
-  .section-title {
-    font-size: 12px;
-  }
-
   .logo-text {
     font-size: 16px;
   }
@@ -424,32 +319,27 @@
     font-size: 12px;
   }
 
-  .link-list a {
-    font-size: 11px;
-  }
-
-  .contact-info {
-    font-size: 10px;
-  }
-
   .payment-methods {
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
+    flex-direction: row;
+    gap: 8px;
+    width: auto;
+    justify-content: flex-start;
   }
 
   .method-label {
-    width: 100%;
+    margin-right: 8px;
   }
 
   .footer-bottom-links {
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
+    flex-direction: row;
+    gap: 12px;
+    width: auto;
+    flex-wrap: wrap;
   }
 
   .copyright {
     font-size: 11px;
+    text-align: left;
   }
 }
 </style>

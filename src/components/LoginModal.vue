@@ -597,28 +597,42 @@ const resetForms = () => {
 /* 响应式 */
 @media (max-width: 575px) {
   .modal-content {
-    width: 95%;
-    padding: 24px 20px;
+    width: 90%;
+    max-width: 320px;
+    padding: 20px 16px;
   }
 
   .modal-tabs {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .tab-btn {
-    font-size: 14px;
+    font-size: 13px;
+    padding: 10px 8px;
   }
 
   .form-group input {
-    font-size: 16px;
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 
   .social-login {
-    gap: 10px;
+    gap: 8px;
   }
 
   .social-btn {
     font-size: 12px;
+    padding: 8px;
+  }
+
+  .submit-btn {
+    font-size: 14px;
     padding: 10px;
   }
 }

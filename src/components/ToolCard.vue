@@ -1,5 +1,5 @@
 <template>
-  <div class="tool-card" @click="onOpenTool" role="button" tabindex="0">
+  <div class="tool-card">
     <div class="tool-media">
       <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
       <div v-else class="tool-icon">{{ tool.icon }}</div>
@@ -52,8 +52,16 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  cursor: pointer;
   transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+/* prevent unwanted link clicks on card itself */
+.tool-card {
+  cursor: default;
+}
+
+.tool-card .tool-btn {
+  cursor: pointer;
 }
 
 .tool-media {

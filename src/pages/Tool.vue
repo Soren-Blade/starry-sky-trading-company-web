@@ -111,10 +111,26 @@ const toggleFavorites = () => {
   }
 };
 
+// keep references to opened tool windows by path
+const openedWindows = new Map();
+
 const handleOpenTool = (tool) => {
-  // 示例：可以跳转到工具详情页或打开模态框
-  console.log("打开工具详情:", tool.tool_path);
-  window.open(tool.tool_path, '_blank');
+  const url = tool.tool_path;
+  console.log("打开工具详情:", url);
+
+  // check if we already have an open window for this path
+  const existing = openedWindows.get(url);
+  if (existing && !existing.closed) {
+    // focus the existing window instead of opening new one
+    existing.focus();
+    return;
+  }
+
+  // otherwise open a new window and store reference
+  const win = window.open(url, '_blank');
+  if (win) {
+    openedWindows.set(url, win);
+  }
 };
 
 const handleToggleFavorite = (tool) => {
@@ -374,7 +390,8 @@ onMounted(() => {
   }
 
   .tools-grid {
-    grid-template-columns: 1fr;
+    /* keep at least two cards per row on small screens */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 16px;
   }
 }
