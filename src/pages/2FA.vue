@@ -1,0 +1,422 @@
+<template>
+  <div class="fp-page-2fa">
+    <div class="fp-container">
+      <h1>2FA验证码工具（实时更新）</h1>
+
+      <div class="field">
+        <label class="fp-label" for="secret">请输入双重密钥 (2FA Secret Key, Base32格式)：</label>
+        <input id="secret" v-model="secret" placeholder="例如：JBSWY3DPEHPK3PXP" aria-label="2FA 密钥（Base32）" />
+        <div class="helper">示例密钥为演示用，点击下方"演示密钥"可复制。</div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" @click="generateNow" :disabled="!hasSecret" aria-disabled="!hasSecret">获取并复制验证码</button>
+        <button @click="copyCode" :disabled="!code" aria-disabled="!code">复制当前验证码</button>
+      </div>
+
+      <div class="fp-code-area" v-if="hasSecret">
+        <div class="fp-card">
+          <div class="fp-meta">
+            <div class="meta-row">
+              <div class="meta-label">当前密钥：</div>
+              <div class="meta-value">{{ secret || '未设置' }}</div>
+            </div>
+            <div class="meta-row">
+              <div class="meta-label">当前验证码：</div>
+              <div class="meta-value meta-code" aria-live="polite">{{ code || '—' }}</div>
+              <div class="meta-remaining">剩余 {{ countdown }}s</div>
+            </div>
+          </div>
+
+          <div class="fp-progress">
+            <div class="fp-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
+          </div>
+
+          <div class="fp-note" v-if="error">{{ error }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="fp-tutorial">
+      <h1>2FA工具说明</h1>
+      <div class="fp-tutorial-body">
+        <p>
+          <span>演示密钥：</span>
+          <button class="key-inline" @click="copyDemoKey" aria-label="复制演示密钥">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
+          （点击此密钥可复制）
+        </p>
+        <p>
+          <span>新手提示：</span>必须在倒计时结束前输入验证码登录或验证，否则会失效显示错误。测试功能时必须输入正确编码的密钥，不要随便输入1串字符测试获取功能。目前点击获取验证码的按钮后会自动复制验证码到剪切板，直接去粘贴即可。如果想要验证生成的验证码是否正确，点击生成二维码的按钮，使用谷歌验证器APP扫描添加检查。
+        </p>
+        <!-- <p>
+          <span>更多方式：</span>还可以将密钥加在网址（https://2fa.run/2fa/）后面，示例：
+          <a class="demo-link" href="https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL" target="_blank" rel="noreferrer">https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</a>，这样访问也可查询验证码。这样的格式发给新手使用，最合适不过。
+        </p> -->
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { message } from 'ant-design-vue'
+const secret = ref("");
+const code = ref("");
+const countdown = ref(30);
+const error = ref("");
+
+let keyCache = null;
+let intervalId = null;
+
+const hasSecret = computed(() => secret.value.trim().length > 0);
+
+function base32ToBytes(input) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = input.replace(/=+$/g, "").replace(/\s+/g, "").toUpperCase();
+  const bytes = [];
+  let bits = 0;
+  let value = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const idx = alphabet.indexOf(clean[i]);
+    if (idx === -1) throw new Error("无效的 Base32 字符");
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((value >> bits) & 0xff);
+    }
+  }
+  return new Uint8Array(bytes);
+}
+
+function intToBytes(num) {
+  const bytes = new Uint8Array(8);
+  for (let i = 7; i >= 0; i--) {
+    bytes[i] = num & 0xff;
+    num = num >> 8;
+  }
+  return bytes;
+}
+
+async function importKey(raw) {
+  return await crypto.subtle.importKey(
+    "raw",
+    raw,
+    { name: "HMAC", hash: { name: "SHA-1" } },
+    false,
+    ["sign"]
+  );
+}
+
+async function hmacSha1(key, data) {
+  const sig = await crypto.subtle.sign("HMAC", key, data);
+  return new Uint8Array(sig);
+}
+
+function truncate(hmac) {
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const binary =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return binary;
+}
+
+async function computeTOTP(secretBase32, digits = 6, step = 30) {
+  try {
+    const secretBytes = base32ToBytes(secretBase32);
+    if (!keyCache || keyCache.rawSecret !== secretBase32) {
+      const cryptoKey = await importKey(secretBytes);
+      keyCache = { cryptoKey, rawSecret: secretBase32 };
+    }
+
+    const counter = Math.floor(Date.now() / 1000 / step);
+    const counterBytes = intToBytes(counter);
+    const hmac = await hmacSha1(keyCache.cryptoKey, counterBytes);
+    const bin = truncate(hmac);
+    const otp = (bin % Math.pow(10, digits)).toString().padStart(digits, "0");
+    return { otp, counter };
+  } catch (e) {
+    throw e;
+  }
+}
+
+async function updateCode() {
+  if (!hasSecret.value) {
+    code.value = "";
+    return;
+  }
+  try {
+    error.value = "";
+    const { otp } = await computeTOTP(secret.value);
+    code.value = otp;
+  } catch (e) {
+    error.value = "无法解析密钥：" + (e.message || e);
+    code.value = "";
+  }
+}
+
+function updateCountdown() {
+  const step = 30;
+  const now = Math.floor(Date.now() / 1000);
+  countdown.value = step - (now % step);
+}
+
+function startInterval() {
+  stopInterval();
+  updateCountdown();
+  intervalId = setInterval(async () => {
+    updateCountdown();
+    if (countdown.value === 30 || countdown.value === 0) {
+      await updateCode();
+    }
+  }, 1000);
+}
+
+function stopInterval() {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+}
+
+async function generateNow() {
+  await updateCode()
+  // 自动复制最新验证码到剪贴板（若生成成功）
+  await copyCode()
+}
+
+async function copyDemoKey() {
+  const demo = '7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL'
+  try {
+    await navigator.clipboard.writeText(demo)
+    message.success('密钥已复制到剪贴板');
+  } catch (e) {
+    const ta = document.createElement('textarea')
+    ta.value = demo
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+  }
+}
+
+
+async function copyCode() {
+  if (!code.value) return;
+  try {
+    await navigator.clipboard.writeText(code.value);
+    message.success('验证码已复制到剪贴板');
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = code.value;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+}
+
+watch(secret, async () => {
+  keyCache = null;
+  await updateCode();
+});
+
+onMounted(() => {
+  startInterval();
+});
+
+onBeforeUnmount(() => {
+  stopInterval();
+});
+</script>
+
+<style scoped>
+.fp-page-2fa {
+  padding-top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 18px;
+  background: transparent;
+}
+.fp-container {
+  max-width: 640px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 6px 18px rgba(23, 23, 23, 0.06);
+}
+h1 {
+  margin: 0 0 18px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #222;
+  text-align: center;
+}
+.fp-row {
+  margin: 12px 0;
+  display: flex;
+  gap: 12px;  
+}
+.fp-row.actions {
+  justify-content: flex-start;
+}
+.fp-label {
+  min-width: 160px;
+  color: #444;
+  font-weight: 600;
+}
+input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  outline: none;
+}
+input:focus {
+  box-shadow: 0 0 0 4px rgba(138, 109, 255, 0.06);
+  border-color: #8a6dff;
+}
+button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.primary {
+  background: linear-gradient(90deg,#8a6dff,#6f54ff);
+  color: white;
+}
+.fp-tutorial {
+  margin-top: 0;
+  padding: 16px;
+  max-width: 640px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(23, 23, 23, 0.04);
+}
+.fp-tutorial h2 { margin: 8px 0; font-size:16px }
+.fp-tutorial-body p { white-space:pre-line; color:#444; line-height:1.6; margin:8px 0 }
+.fp-tutorial-body p span { font-weight:600; color:#222 }
+.fp-demo-key { margin-top:10px; display:flex; gap:8px; align-items:center }
+.link-like { background:transparent; border:none; color:#6f54ff; cursor:pointer; padding:6px 8px; border-radius:6px }
+.link-like:hover { background:rgba(111,84,255,0.06) }
+.key-inline { background: linear-gradient(90deg,#fff,#fff); border:1px solid #ededff; color:#6f54ff; padding:4px 8px; border-radius:6px; cursor:pointer }
+.key-inline:hover { background:rgba(111,84,255,0.04) }
+.demo-link { color:#6f54ff }
+
+/* layout improvements */
+.field { display:block; margin-bottom:12px; width: 100%; }
+.field .fp-label { display:block; margin-bottom:8px; font-size:14px }
+.field input { width:100%; font-size:14px }
+.field .helper { margin-top:6px; color:#777; font-size:13px; }
+.actions { display:flex; gap:10px; margin-top:10px; justify-content: center;}
+.actions button { min-width:160px }
+.fp-code-area {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.fp-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border: 1px solid #eef3ff;
+  box-shadow: 0 6px 18px rgba(18, 38, 63, 0.06);
+}
+
+.fp-code-value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: #0b1a2b;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Noto Mono', monospace;
+}
+
+.fp-countdown {
+  font-size: 13px;
+  color: #6b7280;
+  background: #f5f7fb;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.fp-note {
+  margin-top: 8px;
+  color: #b00020;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Card-style container inside the main container */
+.fp-card {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e6eef9;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 6px rgba(11, 26, 43, 0.04);
+}
+
+.fp-meta { display: flex; flex-direction: column; gap: 10px }
+.meta-row { display:flex; align-items:center; gap:12px }
+.meta-label { min-width:90px; color:#344054; font-weight:600 }
+.meta-value { color:#0b1a2b; font-weight:700 }
+.meta-code { color:#0b8a3a; font-size:20px; letter-spacing:2px }
+.meta-remaining { margin-left: auto; color:#6b7280; font-size:13px }
+
+.fp-progress { margin-top:10px; height:8px; background:#f1f5f9; border-radius:8px; overflow:hidden }
+.fp-progress-bar { height:100%; background: linear-gradient(90deg,#20c997,#12b886); width:50%; transition:width 0.3s linear }
+
+@media (max-width: 560px) {
+  .meta-row { flex-direction:column; align-items:flex-start }
+  .meta-remaining { margin-left:0 }
+  .fp-card { padding:12px }
+}
+
+@media (max-width: 560px) {
+  .actions { flex-direction:column }
+  .actions button { width:100% }
+  .fp-container { padding:16px }
+  .fp-code-value { font-size:24px }
+}
+
+/* Responsive: stack label and input on small screens */
+@media (max-width: 560px) {
+  .fp-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fp-label {
+    min-width: auto;
+    margin-bottom: 6px;
+  }
+  .fp-row.actions {
+    display: flex;
+    gap: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+</style>

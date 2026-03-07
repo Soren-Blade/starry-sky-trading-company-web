@@ -1,0 +1,44 @@
+:root {
+  /* 色彩方案 */
+  --color-primary: #8A6DFF;
+  --color-primary-dark: #6C5CE7;
+  --color-secondary: #FD79A8;
+  --color-accent: #FFEAA7;
+  --color-light: #F8F9FA;
+  --color-dark: #2D3436;
+  
+  /* 渐变色 */
+  --gradient-primary: linear-gradient(135deg, #8A6DFF 0%, #6C5CE7 100%);
+  --gradient-light: linear-gradient(135deg, #B4A7FF 0%, #9B8DD9 100%);
+  --gradient-warm: linear-gradient(135deg, #FD79A8 0%, #FFEAA7 100%);
+  
+  /* 阴影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.2);
+  --shadow-glass: 0 8px 32px rgba(31, 38, 135, 0.17);
+  
+  /* 毛玻璃效果 */
+  --glass-effect: rgba(255, 255, 255, 0.7);
+  --glass-backdrop: backdrop-filter: blur(10px);
+  
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* 过渡时间 */
+  --transition-fast: 0.2s ease-in-out;
+  --transition-base: 0.3s ease-in-out;
+  --transition-slow: 0.4s ease-in-out;
+  
+  /* 响应式断点 */
+  --breakpoint-xs: 0;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1400px;
+}
