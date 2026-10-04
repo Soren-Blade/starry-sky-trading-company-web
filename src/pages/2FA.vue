@@ -10,8 +10,13 @@
       </div>
 
       <div class="actions">
-        <button class="primary" @click="generateNow" :disabled="!hasSecret" aria-disabled="!hasSecret">获取并复制验证码</button>
-        <button @click="copyCode" :disabled="!code" aria-disabled="!code">复制当前验证码</button>
+        <!--
+          这里原先写的是 aria-disabled="!hasSecret" —— 那是**字面量字符串**，
+          浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
+          :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
+        -->
+        <button class="primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
+        <button @click="copyCode" :disabled="!code">复制当前验证码</button>
       </div>
 
       <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
@@ -27,12 +32,24 @@
             </div>
             <div class="meta-row">
               <div class="meta-label">当前验证码：</div>
-              <div class="meta-value meta-code" aria-live="polite">{{ code || '—' }}</div>
+              <!--
+                这里原先带 aria-live="polite"，但验证码每 30 秒换一次、倒计时每秒都在变，
+                会把整个区域变成高频播报源，对屏幕阅读器用户是干扰而非帮助。
+                需要播报验证码时由 copyCode() 的 message 提示承担。
+              -->
+              <div class="meta-value meta-code">{{ code || '—' }}</div>
               <div class="meta-remaining">剩余 {{ countdown }}s</div>
             </div>
           </div>
 
-          <div class="fp-progress">
+          <div
+            class="fp-progress"
+            role="progressbar"
+            aria-label="验证码有效期剩余时间"
+            :aria-valuenow="countdown"
+            aria-valuemin="0"
+            aria-valuemax="30"
+          >
             <div class="fp-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
           </div>
 
@@ -42,7 +59,8 @@
     </div>
     
     <div class="fp-tutorial">
-      <h1>2FA工具说明</h1>
+      <!-- 一个页面只应有一个 h1；这里是次级说明区块，用 h2 -->
+      <h2>2FA工具说明</h2>
       <div class="fp-tutorial-body">
         <p>
           <span>演示密钥：</span>
