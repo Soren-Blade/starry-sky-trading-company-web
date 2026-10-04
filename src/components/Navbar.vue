@@ -22,10 +22,14 @@
       <div class="navbar-actions">
         <!--
           搜索收成一个图标：悬停展开、点击展开并把光标落进输入框。
-          放在操作区里与其它图标按钮同一组 —— 间距、尺寸、悬停态都由
-          .navbar-actions 统一给，不再单独占一段排版。
 
-          展开/收缩由 JS 的 searchOpen 驱动（而不是 :hover / :focus-within 伪类），
+          展开后放大镜**内嵌在搜索框左侧** —— 它是同一个按钮，只是从
+          「独立的图标按钮」变成「输入框的左前缀」：外层 .search-field 负责
+          输入框的底、描边、圆角与聚焦态，按钮自身的按钮外观在展开时被抹掉。
+          因此视觉上始终只有一个放大镜，也没有单独的「搜索」提交按钮
+          （回车 / 手机键盘的搜索键都能提交）。
+
+          展开状态由 JS 的 searchOpen 驱动（而不是 :hover / :focus-within 伪类），
           因为图标按钮需要 aria-expanded 如实反映状态 —— 伪类做不到。
 
           「鼠标移开就收起」有个必须处理的组合：用户点开输入框、打了字、
@@ -41,23 +45,28 @@
           @focusout="handleSearchFocusOut"
           @keydown.esc="closeSearch"
         >
-          <button
-            type="button"
-            class="u-icon-btn search-toggle"
-            :aria-label="PRODUCT_GRID.searchLabel"
-            :aria-expanded="searchOpen"
-            @click="openSearchAndFocus"
-          >
-            <span aria-hidden="true">🔍</span>
-          </button>
+          <!-- 这一格始终占住图标宽度：展开的浮层是绝对定位的，
+               没有它的话展开瞬间后面几个图标会整体跳一下 -->
+          <span class="search-slot" aria-hidden="true"></span>
 
-          <div class="search-pop">
+          <div class="search-field">
+            <button
+              type="button"
+              class="u-icon-btn search-toggle"
+              :aria-label="PRODUCT_GRID.searchLabel"
+              :aria-expanded="searchOpen"
+              @click="openSearchAndFocus"
+            >
+              <span aria-hidden="true">🔍</span>
+            </button>
+
             <SearchBar
               ref="searchBarRef"
               v-model="keyword"
               :label="PRODUCT_GRID.searchLabel"
               :placeholder="PRODUCT_GRID.searchPlaceholder"
-              submit-label="搜索"
+              :show-icon="false"
+              :show-submit="false"
               @submit="handleSearchSubmit"
             />
           </div>
@@ -561,17 +570,20 @@ onUnmounted(() => {
   transform: scaleX(1);
 }
 
-/* ── 搜索：收起是一个图标，展开是一段浮在顶栏上的输入框 ──────────
+/* ── 搜索：收起是一个图标，展开后图标内嵌进搜索框 ──────────────
  *
- * 展开的输入框是**绝对定位的浮层**，不占据文档流。
+ * 结构：.navbar-search（定位锚点）
+ *         ├─ .search-slot   占位格，始终占住图标宽度
+ *         └─ .search-field  绝对定位的「框」，内部是 [放大镜按钮][输入框]
  *
- * 为什么不做成撑开布局的普通元素：顶栏一行里已经有 Logo、主导航、
- * 主题 / 搜索 / 购物车 / 账号 / 汉堡五组图标。展开 320px 的输入框若参与布局，
- * 1024px 与手机宽度下总宽直接超出视口，菜单会被挤变形甚至溢出。
- * 浮层则完全不影响相邻元素，展开与收起都只有淡入淡出。
- *
- * 输入框留在 DOM 里（不是 v-if）：一来键盘用户 Tab 过来就能展开，
- * 二来避免每次收展都重建输入框、丢掉已输入的内容。
+ * 为什么这样搭：
+ *   - 展开的框是**绝对定位**的，不参与文档流。否则 1024px 与手机宽度下
+ *     Logo + 菜单 + 五组图标的总宽会超视口，把主导航挤变形。
+ *     它 `right: 0` 与占位格右缘对齐、向左生长，因此永远不会顶出屏幕右边。
+ *   - 收起时 .search-field 只有图标那么宽、且底与描边透明 ——
+ *     看上去就是操作区里一个普通的图标按钮。
+ *   - 展开时同一个盒子长出输入框的底、描边、圆角与聚焦态，
+ *     里面的放大镜原位不动，于是「按钮内嵌进了搜索框」。
  */
 .navbar-search {
   position: relative;
@@ -580,38 +592,88 @@ onUnmounted(() => {
   flex: none;
 }
 
+.search-slot {
+  display: block;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+}
+
+.search-field {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--input-icon-gap);
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  overflow: hidden;
+  background: transparent;
+  border: var(--stroke-width) solid transparent;
+  border-radius: var(--radius-input);
+  transform: translateY(-50%);
+  transition:
+    width var(--transition-surface),
+    height var(--transition-surface),
+    background-color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    box-shadow var(--transition-interactive);
+}
+
+.navbar-search.search-open .search-field {
+  /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
+   * 同时不超过视口 —— 窄屏上也不会把框顶出屏幕。 */
+  width: min(calc(var(--input-height) * 9), calc(100vw - var(--space-unit) * 6));
+  height: var(--input-height);
+  background: var(--bg-surface-2);
+  border-color: var(--stroke-color);
+}
+
+/* 聚焦态画在**外框**上：输入框自己的描边已经抹掉，
+ * 否则聚焦高亮只会出现在内层那个没有边框的输入框上、看不出来 */
+.navbar-search.search-open .search-field:focus-within {
+  border-color: var(--input-focus-border);
+  box-shadow: var(--input-focus-shadow);
+}
+
 .search-toggle {
   flex-shrink: 0;
 }
 
-/* 收起态宽度为 0。刻意**不用** visibility: hidden —— 那样键盘 Tab 到
- * 输入框时无法聚焦，也就展不开。 */
-.search-pop {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  z-index: 1;
-  width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(-50%);
-  transition:
-    width var(--transition-surface),
-    opacity var(--transition-interactive);
+/* 展开后按钮外观让位给外框：它此时是输入框的左前缀，不是一个独立按钮。
+ * 选择器比 .u-icon-btn / .u-icon-btn:hover 都更具体，因此能盖住。 */
+.navbar-search.search-open .search-toggle,
+.navbar-search.search-open .search-toggle:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  cursor: text;
+  transform: none;
 }
 
-.navbar-search.search-open .search-pop {
-  /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
-   * 同时不超过视口 —— 手机上窄屏也不会把浮层顶出屏幕。
-   * 收窄时用 --space-unit 让两侧各留一点边距。 */
-  width: min(calc(var(--input-height) * 8), calc(100vw - var(--space-unit) * 6));
-  opacity: 1;
+/* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
+ * 图标也让位（放大镜就是外面那个按钮） */
+.search-field :deep(.u-search) {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
-/* 内层表单保持展开宽度：浮层宽度收到 0 时靠 overflow 裁掉，
- * 而不是把输入框压扁（压扁会看到文字被挤成一团，不像「收起来了」） */
-.search-pop :deep(.u-search) {
-  min-width: calc(var(--input-height) * 8);
+.search-field :deep(.u-input) {
+  height: 100%;
+  padding-left: var(--input-padding-x);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 输入框自己的聚焦态也抹掉 —— 高亮统一由 .search-field:focus-within 表达 */
+.search-field :deep(.u-input:focus) {
+  border-color: transparent;
+  box-shadow: none;
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */

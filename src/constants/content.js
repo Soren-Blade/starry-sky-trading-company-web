@@ -300,6 +300,11 @@ export const TRADE = {
 export const CATEGORY_PAGE = {
   notFound: '分类不存在或已停用',
   empty: '该分类下暂无商品',
+  /**
+   * 本分类为空、展示的是子分类商品时的说明。
+   * 必须说清商品来自子分类，否则用户会以为商品挂错了分类。
+   */
+  emptyFallback: '该分类下暂无直接上架的商品，以下为它各个子分类的商品。',
   subCategories: '子分类',
   backToIndex: '返回分类索引',
   countLabel: (n) => `${n} 件商品`,

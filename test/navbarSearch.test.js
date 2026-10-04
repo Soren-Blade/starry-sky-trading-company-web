@@ -77,11 +77,13 @@ test('移动端抽屉里不再有搜索框（搜索已统一到顶栏图标）',
   assert.equal(drawer.includes('drawer-search'), false)
 })
 
-test('收起态用宽度 0 而不是 visibility: hidden（否则键盘聚焦不了、也就展不开）', () => {
-  const popRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-pop {'))
-  const body = popRule.slice(0, popRule.indexOf('}'))
+test('收起态是「只有图标那么大、且底与描边透明」，不是 visibility: hidden', () => {
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
 
-  assert.match(body, /width: 0/)
+  assert.match(body, /width: var\(--icon-btn-size\)/, '收起时宽度应正好是一个图标格')
+  assert.match(body, /background: transparent/)
+  assert.match(body, /border: var\(--stroke-width\) solid transparent/)
   assert.equal(
     /visibility:\s*hidden/.test(body),
     false,
@@ -91,7 +93,7 @@ test('收起态用宽度 0 而不是 visibility: hidden（否则键盘聚焦不�
 
 test('展开宽度按主题的输入框高度换算，且不超过视口', () => {
   const openRule = NAVBAR_SOURCE.slice(
-    NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-pop {')
+    NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
   )
   const body = openRule.slice(0, openRule.indexOf('}'))
 
@@ -99,20 +101,71 @@ test('展开宽度按主题的输入框高度换算，且不超过视口', () =>
   assert.match(
     body,
     /100vw - var\(--space-unit\)/,
-    '必须有视口上限：320px 的浮层在手机上会把顶栏顶出屏幕'
+    '必须有视口上限：展开的框在手机上会把顶栏顶出屏幕'
   )
 })
 
-test('展开的输入框是浮层，不参与文档流（否则 1024px 与手机上总宽会溢出）', () => {
-  const popRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-pop {'))
-  const body = popRule.slice(0, popRule.indexOf('}'))
+test('展开的框是绝对定位，不参与文档流（否则 1024px 与手机上总宽会溢出）', () => {
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
 
   assert.match(body, /position: absolute/)
-  assert.equal(
-    /flex: 1 1 auto/.test(body),
-    false,
-    '参与布局的展开区会把主导航挤变形'
+  assert.match(body, /right: 0/, '右边与图标格对齐并向左生长，才不会顶出屏幕右边')
+})
+
+test('占位格始终占住图标宽度，展开瞬间后面的图标不会跳', () => {
+  assert.match(NAVBAR_SOURCE, /\.search-slot \{[\s\S]*?width: var\(--icon-btn-size\)/)
+  // 占位格在模板里必须真的渲染出来（没有被 v-if 之类条件化）
+  assert.match(NAVBAR_SOURCE, /<span class="search-slot" aria-hidden="true"><\/span>/)
+})
+
+test('放大镜内嵌进搜索框：同一个按钮，展开后落在输入框左侧', () => {
+  // 按钮与输入框必须在同一个 .search-field 里 —— 分开就变成
+  // 「按钮 + 旁边另一个框」，而不是「内嵌」
+  const fieldAt = NAVBAR_SOURCE.indexOf('<div class="search-field">')
+  const fieldEnd = NAVBAR_SOURCE.indexOf('</div>', NAVBAR_SOURCE.indexOf('<SearchBar', fieldAt))
+  const inner = NAVBAR_SOURCE.slice(fieldAt, fieldEnd)
+
+  assert.ok(fieldAt > -1)
+  assert.match(inner, /class="u-icon-btn search-toggle"/, '放大镜按钮应在 .search-field 内')
+  assert.match(inner, /<SearchBar/, '输入框也应在同一个 .search-field 内')
+  assert.ok(
+    inner.indexOf('search-toggle') < inner.indexOf('<SearchBar'),
+    '放大镜要排输入框之前 —— 它在左侧当前缀'
   )
+})
+
+test('展开后按钮自身的外观让位给外框（否则框里还有一个方按钮）', () => {
+  assert.match(
+    NAVBAR_SOURCE,
+    /\.navbar-search\.search-open \.search-toggle,\s*\n\s*\.navbar-search\.search-open \.search-toggle:hover \{[\s\S]*?background: transparent/,
+    '展开态必须连 :hover 一起盖住，否则鼠标在按钮上时又会画出一个方底'
+  )
+})
+
+test('聚焦高亮画在外框上（内层输入框的描边已抹掉，否则看不见聚焦态）', () => {
+  assert.match(
+    NAVBAR_SOURCE,
+    /\.navbar-search\.search-open \.search-field:focus-within \{[\s\S]*?border-color: var\(--input-focus-border\)/
+  )
+})
+
+test('不要「搜索」提交按钮：图标已内嵌，框里再塞按钮会挤掉输入区', async () => {
+  const html = await render('/components/Navbar.vue')
+
+  assert.equal(/class="[^"]*search-submit/.test(html), false, '顶栏的搜索不应渲染提交按钮')
+  assert.match(NAVBAR_SOURCE, /:show-submit="false"/)
+  // 但 SearchBar 默认仍然带提交按钮，其它地方不受影响
+  const searchBarSource = readFileSync(join(WEB_ROOT, 'src', 'components', 'SearchBar.vue'), 'utf8')
+  assert.match(searchBarSource, /showSubmit: \{ type: Boolean, default: true \}/)
+})
+
+test('顶栏只画一个放大镜（SearchBar 自带的那个要让位）', async () => {
+  const html = await render('/components/Navbar.vue')
+
+  assert.match(NAVBAR_SOURCE, /:show-icon="false"/)
+  const magnifiers = countMatches(html, /🔍/g)
+  assert.equal(magnifiers, 1, `放大镜应只有一个，实际 ${magnifiers} 个`)
 })
 
 test('提交与 Escape 之后收起：closeSearch 同时释放状态与焦点', () => {

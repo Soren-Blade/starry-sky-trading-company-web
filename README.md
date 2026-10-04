@@ -1,4 +1,4 @@
-# starry-sky-trading-company-web
+﻿# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -270,7 +270,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Categories.vue` | 页头 + `CategoriesSection` |
 | `Hot.vue` | 页头 + `HotProductsSection` |
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
-| `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格 |
+| `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
 | `Tool.vue` | 工具页：左侧分类轨（**≤991 单栏时分类换行，不做隐藏滚动条的横滚条**）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
@@ -900,7 +900,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 647 个用例）
+npm test             # 单元测试（node:test，共 660 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -994,7 +994,8 @@ test/
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
 ├── hoverDisclosure.test.js           # 「悬停或聚焦即展开」的两条易错分支：移开鼠标但仍有焦点、触屏补发的 mouseenter
-├── navbarSearch.test.js              # 顶栏搜索收成图标后的接线（只有一个输入框、可访问名、浮层不参与布局）+ 工具页计数去重
+├── navbarSearch.test.js              # 顶栏搜索收成图标后的接线（只有一个输入框/一个放大镜、图标内嵌进框、不参与布局）+ 工具页计数去重
+├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
 ├── render.mjs                        # 渲染辅助：编译 .vue + SSR 渲染 + 环境桩
@@ -1018,7 +1019,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 647 个用例。
+共 660 个用例。
 
 ### 主题契约测试
 
@@ -1207,7 +1208,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（647 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（660 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

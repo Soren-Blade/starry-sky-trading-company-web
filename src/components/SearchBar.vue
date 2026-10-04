@@ -1,7 +1,7 @@
 <template>
   <form class="u-search" role="search" @submit.prevent="$emit('submit', modelValue)">
     <label class="visually-hidden" :for="inputId">{{ label }}</label>
-    <span class="u-search-icon" aria-hidden="true">🔍</span>
+    <span v-if="showIcon" class="u-search-icon" aria-hidden="true">🔍</span>
     <input
       :id="inputId"
       ref="inputRef"
@@ -12,7 +12,9 @@
       :placeholder="placeholder"
       @input="$emit('update:modelValue', $event.target.value)"
     />
-    <button type="submit" class="u-btn-primary search-submit">{{ submitLabel }}</button>
+    <button v-if="showSubmit" type="submit" class="u-btn-primary search-submit">
+      {{ submitLabel }}
+    </button>
   </form>
 </template>
 
@@ -35,6 +37,20 @@ defineProps({
   label: { type: String, default: '搜索商品' },
   placeholder: { type: String, default: '搜索商品或分类' },
   submitLabel: { type: String, default: '搜索' },
+  /**
+   * 是否自带放大镜。
+   *
+   * 顶栏把它设为 false：那里的放大镜是外层那个可点击的展开按钮，
+   * 展开后它正好落在输入框左侧 —— 若这里再画一个，展开后会出现两个放大镜。
+   */
+  showIcon: { type: Boolean, default: true },
+  /**
+   * 是否自带提交按钮。
+   *
+   * 顶栏设为 false：搜索框收成一个图标后宽度只有两百多像素，
+   * 再塞一个「搜索」按钮会把输入区压得很窄；回车与手机键盘的搜索键都能提交。
+   */
+  showSubmit: { type: Boolean, default: true },
 })
 
 defineEmits(['update:modelValue', 'submit'])

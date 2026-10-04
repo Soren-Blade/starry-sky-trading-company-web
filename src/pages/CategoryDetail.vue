@@ -35,7 +35,9 @@
       </ul>
     </section>
 
-    <!-- 商品网格：加载 / 错误 / 空三态 -->
+    <!-- 商品网格：加载 / 错误 / （说明 + 网格 或 空态）
+         说明刻意**不放进** if/else 链里 —— 它要跟网格同时出现，
+         链式分支会让「有子分类商品」时把网格本身顶掉。 -->
     <div v-if="loading" class="u-loading-block" role="status">
       <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
       <span>{{ PRODUCT_GRID.loading }}</span>
@@ -45,18 +47,24 @@
       {{ PRODUCT_GRID.errorPrefix }}{{ error }}
     </p>
 
-    <ul v-else-if="products.length" class="category-grid">
-      <li v-for="(product, index) in products" :key="product.id" class="category-cell">
-        <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" />
-      </li>
-    </ul>
+    <template v-else>
+      <p v-if="fallbackFromChildren" class="page-note category-fallback-note" role="status">
+        {{ CATEGORY_PAGE.emptyFallback }}
+      </p>
 
-    <div v-else class="page-empty">
-      <p class="page-empty-title">{{ CATEGORY_PAGE.empty }}</p>
-      <div class="page-actions category-fallback">
-        <router-link to="/hot" class="u-btn-primary">去看热门推荐</router-link>
+      <ul v-if="products.length" class="category-grid">
+        <li v-for="(product, index) in products" :key="product.id" class="category-cell">
+          <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" />
+        </li>
+      </ul>
+
+      <div v-else class="page-empty">
+        <p class="page-empty-title">{{ CATEGORY_PAGE.empty }}</p>
+        <div class="page-actions category-fallback">
+          <router-link to="/hot" class="u-btn-primary">去看热门推荐</router-link>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -78,6 +86,7 @@ import api from '@/api/index'
 import ProductCard from '@/components/ProductCard.vue'
 import { useShopStore } from '@/stores/shop'
 import { useProductActions } from '@/hooks/useProductActions'
+import { resolveCategoryProducts } from '@/utils/categoryProducts.js'
 import { CATEGORY_PAGE, PAGES, PRODUCT_GRID } from '@/constants/index.js'
 
 const route = useRoute()
@@ -90,6 +99,14 @@ const loading = ref(true)
 const error = ref('')
 /** 兜底取得的分类（分类树里找不到时用） */
 const fallbackCategory = ref(null)
+/**
+ * 展示的是否是**子分类**的商品。
+ *
+ * 本分类下一件商品都没有、但还有子分类时，会把子分类的商品并起来展示 ——
+ * 否则用户点进来只看到「该分类下暂无商品」，而实际上子分类里是有货的。
+ * 这个标记只用于在网格上方说明一句，避免用户以为商品挂错了分类。
+ */
+const fallbackFromChildren = ref(false)
 
 const categoryId = computed(() => Number(route.params.id))
 
@@ -117,24 +134,54 @@ const children = computed(() => {
   return flatCategories.value.filter((item) => Number(item.parent_id) === categoryId.value)
 })
 
+/**
+ * 取某个分类自己的商品。
+ *
+ * `status: 'all'` + `in_stock: 'all'`：分类页要的是「这一类里有什么」，
+ * 缺货的商品也应出现（卡片自己会打「缺货」标记），否则用户会以为该分类是空的。
+ */
+const fetchCategoryProducts = async (id) => {
+  const result = await api.getProducts({
+    category_id: id,
+    status: 'all',
+    in_stock: 'all',
+    limit: 100,
+    sort_by: 'created_at',
+    sort_order: 'desc',
+  })
+  if (!result?.success) throw new Error(result?.message || '加载失败')
+  return result.data?.products || []
+}
+
 const loadProducts = async () => {
   loading.value = true
   error.value = ''
+  fallbackFromChildren.value = false
   try {
-    const result = await api.getProducts({
-      category_id: categoryId.value,
-      status: 'all',
-      in_stock: 'all',
-      limit: 100,
-      sort_by: 'created_at',
-      sort_order: 'desc',
-    })
-    if (!result?.success) {
-      error.value = result?.message || '加载失败'
-      products.value = []
+    const own = await fetchCategoryProducts(categoryId.value)
+
+    if (own.length || children.value.length === 0) {
+      const resolved = resolveCategoryProducts(own, [])
+      products.value = resolved.products
+      fallbackFromChildren.value = false
       return
     }
-    products.value = result.data?.products || []
+
+    // 本分类下一件商品都没有，但还有子分类：并起子分类的商品一起展示。
+    //
+    // 用 allSettled 而不是 all：个别子分类请求失败时，其余子分类的商品
+    // 照样显示出来，比整页变成错误页有用得多（服务端整体不可用时，
+    // 上面那次直接请求早就先失败了）。
+    const settled = await Promise.allSettled(
+      children.value.map((child) => fetchCategoryProducts(Number(child.id)))
+    )
+    const childGroups = settled
+      .filter((item) => item.status === 'fulfilled')
+      .map((item) => item.value)
+
+    const resolved = resolveCategoryProducts(own, childGroups)
+    products.value = resolved.products
+    fallbackFromChildren.value = resolved.fromChildren
   } catch (err) {
     error.value = err?.message || '加载失败'
     products.value = []
@@ -162,7 +209,11 @@ const load = async () => {
     products.value = []
     return
   }
-  await Promise.all([loadProducts(), ensureCategory()])
+  // 必须先确保分类与子分类就绪，再取商品：本分类为空时要拿子分类的 id 去取货。
+  // 此前两者是并行的，回退逻辑加上后就有了次序依赖。
+  // 分类树通常已经加载好，ensureCategory 会直接返回，不产生额外请求。
+  await ensureCategory()
+  await loadProducts()
 }
 
 onMounted(async () => {
@@ -283,6 +334,11 @@ watch(categoryId, () => {
 .category-fallback {
   justify-content: center;
   margin-top: calc(var(--space-unit) * 2.5);
+}
+
+/* 子分类商品的说明：与网格之间留一点间距，别贴着第一行卡片 */
+.category-fallback-note {
+  margin-bottom: calc(var(--space-unit) * 2);
 }
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
