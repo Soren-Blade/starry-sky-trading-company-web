@@ -211,7 +211,7 @@ app.mount('#app')
 | --- | --- |
 | `Navbar.vue` | 固定顶栏。Logo、`NAV_MENU` 渲染的导航、移动端汉堡菜单、登录/注册按钮（游客与未登录都显示）、用户头像下拉（个人中心 / 我的收藏 / 订单管理 / 卡密管理 / 退出登录，前三项为 TODO）。身份初始化由 `App.vue` 统一负责，此处不再重复请求 |
 | `Footer.vue` | 页脚：站点信息、链接分组、版权 |
-| `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签 |
+| `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。模态约定见下 |
 | `SectionHeader.vue` | **区块头**（icon + title + description）。样式定义在 `global.css` 的 `.section-header` 系列，供各 Section 组件复用 |
 | `PageHeader.vue` | **页面头**（title + subtitle）。渐变通过 CSS 变量 `--page-header-gradient` 在页面上覆写 |
 
@@ -230,6 +230,16 @@ app.mount('#app')
 所有卡片共用 `global.css` 里的 `.ui-card` 外壳（背景 / 圆角 / 阴影 / hover 位移），
 以及 `.ui-card-media`（媒体区固定比例 + 图片裁切 + hover 放大）。
 卡片组件本身只保留各自特有的内部布局。
+
+### 弹窗（模态）约定
+
+`LoginModal.vue` 是唯一模态组件，新增弹窗需照做：
+
+- `role="dialog"` + `aria-modal="true"` + `aria-labelledby` 指向一个 `.visually-hidden` 标题
+- **Escape 关闭**：在 `document` 上监听 `keydown`（只挂在容器上不可靠，焦点可能不在其中）
+- **焦点陷阱**：`Tab` / `Shift+Tab` 在弹窗内循环
+- **焦点归还**：打开前记录 `document.activeElement`，卸载时归还
+- **滚动锁定**：`useBodyScroll`，卸载时自动恢复
 
 | 组件 | 说明 |
 | --- | --- |
