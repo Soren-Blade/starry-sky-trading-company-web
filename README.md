@@ -447,10 +447,12 @@ test/
 ├── useToken.test.js                  # token 双存储读写与响应头提取
 ├── stores.user.test.js               # 用户 store：getters / init / login / register / logout
 ├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
+├── stores.tool.test.js               # 工具 store：toolData 形状、分类产出、Apple ID 双来源
+├── stores.kami.test.js               # 卡密 store：用户切换重置、筛选拼装、分页合并
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 121 个用例。
+共 159 个用例。
 
 ### 测试基础设施（无新增依赖）
 
@@ -500,11 +502,13 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 | 未覆盖 | 原因与说明 |
 | --- | --- |
 | 组件渲染 | 需要 jsdom（或在 CI 里用真实浏览器）；当前加载器不渲染 SFC |
-| `stores/tool.js`、`stores/kami.js` | 依赖的接口形状更多，值得下一步补 |
 | `hooks/useBodyScroll` | 依赖 DOM 尺寸测量 |
 
 已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、
-`stores/user`、`stores/shop`，以及跨仓库的接口契约。
+四个 store（`user` / `shop` / `tool` / `kami`），以及跨仓库的接口契约。
+
+> 测试基础设施（`test/loaders/alias.mjs`、`test/setup.js`）模拟了 Vite 的解析规则；
+> 若 `vite.config.js` 的 `resolve.alias` 有变动，这里需要同步。
 
 ---
 
