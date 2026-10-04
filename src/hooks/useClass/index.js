@@ -145,14 +145,16 @@ function classifyToolsByClass(tools, options = {}) {
       count: stats.classCounts[toolClass],
       icon: stats.classIcons[toolClass] || getDefaultIcon(toolClass),
       sort_order: categoryTools[0]?.sort_order || 999,
-      popular_tool: mostPopularTool ? {
-        name: mostPopularTool.tool_name,
-        collection_count: mostPopularTool.collection_count
-      } : null,
-      has_new_tools: categoryTools.some(tool => tool.is_new),
-      tools: categoryTools
-    };
-  });
+      popular_tool: mostPopularTool
+        ? {
+            name: mostPopularTool.tool_name,
+            collection_count: mostPopularTool.collection_count,
+          }
+        : null,
+      has_new_tools: categoryTools.some((tool) => tool.is_new),
+      tools: categoryTools,
+    }
+  })
 
   // 构建完整的classes数组（包含all分类）
   const classes = [];
@@ -212,7 +214,7 @@ function classifyToolsByClass(tools, options = {}) {
     result.stats = {
       ...stats,
       totalClasses: sortedClasses.length + (includeAllCategory ? 1 : 0),
-      averageToolsPerClass: stats.totalTools / sortedClasses.length,
+      averageToolsPerClass: sortedClasses.length > 0 ? stats.totalTools / sortedClasses.length : 0,
       mostPopularCategory: getMostPopularCategory(stats.classCounts),
       categoriesWithNewTools: classes.filter(c => c.has_new_tools).map(c => c.class),
       totalCollectionCount: processedTools.reduce((sum, tool) => sum + (tool.collection_count || 0), 0)
@@ -223,3 +225,32 @@ function classifyToolsByClass(tools, options = {}) {
 }
 
 export { classifyToolsByClass };
+
+/**
+ * 分类缺少 icon 时的默认图标
+ * @param {string} toolClass
+ * @returns {string}
+ */
+function getDefaultIcon(toolClass) {
+  const iconMap = {
+    video: '🎬',
+    image: '🖼️',
+    dev: '💻',
+    text: '📝',
+    audio: '🎵',
+    pdf: '📄',
+    code: '⌨️',
+  };
+  return iconMap[toolClass] || '🔧';
+}
+
+/**
+ * 取工具数量最多的分类
+ * @param {Record<string, number>} classCounts
+ * @returns {string|null}
+ */
+function getMostPopularCategory(classCounts) {
+  const entries = Object.entries(classCounts || {});
+  if (entries.length === 0) return null;
+  return entries.sort((a, b) => b[1] - a[1])[0][0];
+}

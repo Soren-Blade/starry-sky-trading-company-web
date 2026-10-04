@@ -1,53 +1,20 @@
 <template>
   <div class="hot-page">
-    <div class="page-header">
-      <h1>热门推荐</h1>
-      <p>精选热销商品，享受优质生活</p>
-    </div>
+    <PageHeader title="热门推荐" subtitle="精选热销商品，享受优质生活" />
     <HotProductsSection />
   </div>
 </template>
 
 <script setup>
+import PageHeader from '@/components/PageHeader.vue'
 import HotProductsSection from '@/components/HotProductsSection.vue'
 </script>
 
 <style scoped>
 .hot-page {
   width: 100%;
-  padding-top: 70px;
-}
-
-.page-header {
-  text-align: center;
-  padding: 60px 20px;
-  background: linear-gradient(135deg, #FD79A8 0%, #FF7675 100%);
-  color: white;
-}
-
-.page-header h1 {
-  font-size: 48px;
-  margin: 0 0 16px 0;
-  font-weight: 800;
-}
-
-.page-header p {
-  font-size: 18px;
-  margin: 0;
-  opacity: 0.9;
-}
-
-@media (max-width: 767px) {
-  .page-header {
-    padding: 40px 16px;
-  }
-
-  .page-header h1 {
-    font-size: 32px;
-  }
-
-  .page-header p {
-    font-size: 14px;
-  }
+  padding-top: var(--navbar-height);
+  /* 通过变量给共享的 .page-header 换主题色 */
+  --page-header-gradient: var(--gradient-hot);
 }
 </style>

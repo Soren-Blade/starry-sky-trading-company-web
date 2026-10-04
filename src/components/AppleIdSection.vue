@@ -24,15 +24,15 @@
             <ul class="guide-tips-list">
               <li>
                 <strong>密码更新：</strong
-                >密码近30分钟更新一次，中间后请自行来官网获取最新密码，请勿使用旧密码登入
+                >密码30分钟更新一次，过期后请自行来官网获取最新密码，请勿使用旧密码登入
               </li>
               <li>
                 <strong>下载软件：</strong
-                >下载软件必须退出共享AppID完成回自己的AppID
+                >下载软件后必须退出共享AppID，重新登陆自己的AppID
               </li>
               <li>
                 <strong>安装说明：</strong
-                >如果已经安装过需要先卸载旧版本重新安装，否则全部账号提示锁定
+                >如果已经安装过需要先卸载旧版本重新安装，否则账号会提示锁定
               </li>
               <li>
                 <strong>账号锁定：</strong>如果账号锁定等待40分钟然后来获取
@@ -95,7 +95,7 @@
       <div v-else class="apple-ids-grid">
         <!-- NanoCloud 数据源 -->
         <div v-if="nanoCloudIds.length > 0" class="data-source-section">
-          <h3 class="source-title">NanoCloud 账号</h3>
+          <h3 class="source-title">主线路</h3>
           <div class="ids-grid">
             <AppleIdCard
               v-for="(id, index) in nanoCloudIds"
@@ -108,7 +108,7 @@
 
         <!-- FangQiangNan 数据源 -->
         <div v-if="fangQiangNanIds.length > 0" class="data-source-section">
-          <h3 class="source-title">FangQiangNan 账号</h3>
+          <h3 class="source-title">副线路</h3>
           <div class="ids-grid">
             <AppleIdCard
               v-for="(id, index) in fangQiangNanIds"
@@ -133,48 +133,37 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { storeToRefs } from "pinia";
-import { useToolStore } from "@/stores/tool";
-import AppleIdCard from "@/components/AppleIdCard.vue";
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useToolStore } from '@/stores/tool'
+import AppleIdCard from '@/components/AppleIdCard.vue'
 
-const toolStore = useToolStore();
-const { appleIds } = storeToRefs(toolStore);
+const toolStore = useToolStore()
+// loading / error 统一由 store 提供：原先组件内的 error 永远不会被赋值
+// （store 的 fetchAppleIds 吞掉异常并返回 false，组件的 catch 收不到），
+// 导致失败时只显示空态、重试按钮不可达。
+const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs(toolStore)
 
-const loading = ref(false);
-const error = ref("");
-const showGuide = ref(false);
+const showGuide = ref(false)
 
 // 计算不同数据源的ID
-const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || []);
-const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || []);
+const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || [])
+const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || [])
 
-// 获取苹果ID列表
-const fetchAppleIds = async () => {
-  loading.value = true;
-  error.value = "";
-
-  try {
-    await toolStore.fetchAppleIds();
-  } catch (err) {
-    error.value = "获取苹果ID列表失败，请稍后重试";
-    console.error("获取苹果ID失败:", err);
-  } finally {
-    loading.value = false;
-  }
-};
+// 获取苹果ID列表（重试按钮复用同一入口）
+const fetchAppleIds = () => toolStore.fetchAppleIds()
 
 // 组件挂载时获取数据
 onMounted(() => {
-  fetchAppleIds();
-});
+  fetchAppleIds()
+})
 </script>
 
 <style scoped>
 .apple-id-section {
   position: relative;
   width: 100%;
-  padding: 56px 0;
+  padding: 48px 0 0 0;
   background: linear-gradient(180deg, #f8f9fa 0%, #f1f2f4 100%);
 }
 

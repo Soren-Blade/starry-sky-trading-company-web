@@ -118,15 +118,27 @@ const handleOpenTool = (tool) => {
   const url = tool.tool_path;
   console.log("打开工具详情:", url);
 
+  // normalize URL to absolute for comparison
+  const absoluteUrl = new URL(url, window.location.origin).href;
+
   // check if we already have an open window for this path
   const existing = openedWindows.get(url);
   if (existing && !existing.closed) {
-    // focus the existing window instead of opening new one
-    existing.focus();
-    return;
+    try {
+      // check if the window is still on the original URL
+      if (existing.location.href === absoluteUrl) {
+        // focus the existing window
+        existing.focus();
+        return;
+      }
+    } catch (e) {
+      // cross-origin error, assume page changed, reopen
+    }
+    // if URL changed or error, remove old reference
+    openedWindows.delete(url);
   }
 
-  // otherwise open a new window and store reference
+  // open a new window and store reference
   const win = window.open(url, '_blank');
   if (win) {
     openedWindows.set(url, win);

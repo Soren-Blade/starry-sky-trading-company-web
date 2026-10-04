@@ -1,14 +1,12 @@
 <template>
   <section class="categories-section" id="categories-section">
     <div class="section-container">
-      <!-- Section Header -->
-      <div class="section-header">
-        <h2 class="section-title">
-          <span class="title-icon">🛍️</span>
-          商品分类
-        </h2>
-        <p class="section-description">探索丰富多彩的商品世界，发现适合你的完美选择</p>
-      </div>
+      <!-- Section Header（共享组件，样式在 global.css） -->
+      <SectionHeader
+        icon="🛍️"
+        title="商品分类"
+        description="探索丰富多彩的商品世界，发现适合你的完美选择"
+      />
 
       <!-- Categories Grid -->
       <div class="categories-grid">
@@ -51,8 +49,10 @@
 import { storeToRefs } from 'pinia'
 // 商品状态管理存储
 import { useShopStore } from "@/stores/shop";
-// 导入 Emoji 渐变颜色钩子
+/* 导入 Emoji 渐变颜色钩子 */
 import { getEmojiGradient } from '@/hooks/useEmoji'
+// 共享区块头
+import SectionHeader from '@/components/SectionHeader.vue'
 // 商品存储实例
 const shopStore = useShopStore();
 const { shopClass } = storeToRefs(shopStore);
@@ -82,35 +82,7 @@ const handleCategoryClick = (category) => {
   padding: 0 20px;
 }
 
-/* 章节头部 */
-.section-header {
-  text-align: center;
-  margin-bottom: 80px;
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 48px;
-  font-weight: 800;
-  margin-bottom: 16px;
-  letter-spacing: -1px;
-}
-
-.title-icon {
-  display: inline-block;
-  font-size: 48px;
-  animation: float 3s ease-in-out infinite;
-}
-
-.section-description {
-  font-size: 18px;
-  color: #666;
-  margin: 0;
-}
+/* 章节头部样式已抽到 global.css（.section-header 系列） */
 
 /* 分类网格 */
 .categories-grid {
@@ -247,14 +219,6 @@ const handleCategoryClick = (category) => {
     gap: 20px;
   }
 
-  .section-title {
-    font-size: 40px;
-  }
-
-  .section-description {
-    font-size: 16px;
-  }
-
   .category-card {
     height: 260px;
   }
@@ -272,18 +236,6 @@ const handleCategoryClick = (category) => {
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
-  }
-
-  .section-header {
-    margin-bottom: 60px;
-  }
-
-  .section-title {
-    font-size: 32px;
-  }
-
-  .section-description {
-    font-size: 15px;
   }
 
   .category-card {
@@ -315,23 +267,6 @@ const handleCategoryClick = (category) => {
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-  }
-
-  .section-header {
-    margin-bottom: 40px;
-  }
-
-  .section-title {
-    font-size: 24px;
-    gap: 8px;
-  }
-
-  .title-icon {
-    font-size: 28px;
-  }
-
-  .section-description {
-    font-size: 14px;
   }
 
   .category-card {
@@ -378,18 +313,6 @@ const handleCategoryClick = (category) => {
 
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .section-title {
-    font-size: 20px;
-  }
-
-  .title-icon {
-    font-size: 24px;
-  }
-
-  .section-description {
-    font-size: 13px;
   }
 
   .category-card {

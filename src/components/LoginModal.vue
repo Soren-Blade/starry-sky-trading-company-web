@@ -10,14 +10,14 @@
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'login' }"
-          @click="activeTab = 'login'"
+          @click="switchTab('login')"
         >
           登录
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'register' }"
-          @click="activeTab = 'register'"
+          @click="switchTab('register')"
         >
           注册
         </button>
@@ -145,8 +145,13 @@
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMessage" class="error-message">
+      <div v-if="errorMessage" class="error-message" role="alert">
         {{ errorMessage }}
+      </div>
+
+      <!-- Success Message -->
+      <div v-if="successMessage" class="success-message" role="status">
+        {{ successMessage }}
       </div>
     </div>
   </div>
@@ -163,6 +168,7 @@ const { disableScroll, enableScroll } = useBodyScroll();
 
 const activeTab = ref('login');
 const errorMessage = ref('');
+const successMessage = ref('');
 const loading = ref(false);
 
 // 模态框打开时禁用滚动
@@ -200,23 +206,30 @@ const handleLogin = async () => {
   loading.value = true;
 
   try {
-    // 模拟API调用延迟
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // 输入既可能是用户名，也可能是邮箱或手机号，交给后端按 login_type 判定
+    const identifier = loginForm.value.username.trim();
+    const loginType = identifier.includes('@')
+      ? 'email'
+      : /^1[3-9]\d{9}$/.test(identifier)
+        ? 'phone'
+        : 'username';
 
-    const success = userStore.login(
-      loginForm.value.username,
-      loginForm.value.password,
-      loginForm.value.rememberMe
-    );
+    const result = await userStore.login({
+      login_type: loginType,
+      username: loginType === 'username' ? identifier : undefined,
+      email: loginType === 'email' ? identifier : undefined,
+      phone: loginType === 'phone' ? identifier : undefined,
+      password: loginForm.value.password,
+    });
 
-    if (success) {
-      emit('login-success', loginForm.value.username);
+    if (result.success) {
+      emit('login-success', identifier);
       resetForms();
     } else {
-      errorMessage.value = '用户名或密码错误';
+      errorMessage.value = result.message || '用户名或密码错误';
     }
   } catch (error) {
-    errorMessage.value = '登录失败，请稍后重试';
+    errorMessage.value = error.message || '登录失败，请稍后重试';
   } finally {
     loading.value = false;
   }
@@ -248,9 +261,22 @@ const handleRegister = async () => {
   loading.value = true;
 
   try {
+    const result = await userStore.register({
+      username: registerForm.value.username.trim(),
+      email: registerForm.value.email.trim(),
+      password: registerForm.value.password,
+    });
 
+    if (result.success) {
+      successMessage.value = result.message || '注册成功，请使用该账号登录';
+      resetForms();
+      // 注册成功后切回登录页签，降低用户操作成本
+      activeTab.value = 'login';
+    } else {
+      errorMessage.value = result.message || '注册失败';
+    }
   } catch (error) {
-    errorMessage.value = '注册失败，请稍后重试';
+    errorMessage.value = error.message || '注册失败，请稍后重试';
   } finally {
     loading.value = false;
   }
@@ -269,6 +295,12 @@ const resetForms = () => {
     confirmPassword: '',
     agreeTerms: false,
   };
+};
+
+const switchTab = (tab) => {
+  activeTab.value = tab;
+  errorMessage.value = '';
+  successMessage.value = '';
 };
 </script>
 
@@ -580,6 +612,17 @@ const resetForms = () => {
   font-size: 14px;
   text-align: center;
   animation: shake 0.3s ease-in-out;
+}
+
+.success-message {
+  margin-top: 16px;
+  padding: 12px;
+  background: #F0FDF4;
+  color: #15803D;
+  border: 1px solid #BBF7D0;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
 }
 
 @keyframes shake {

@@ -1,50 +1,60 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
-import Components from 'unplugin-vue-components/vite';
-import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers';
+import { defineConfig, loadEnv } from 'vite'
+import Components from 'unplugin-vue-components/vite'
+import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-    Components({
-      resolvers: [
-        AntDesignVueResolver({
-          importStyle: false, // css in js
-        }),
-      ],
-    }),
-  ],
-  server: {
-    // https:true,
-    hmr: true, //启动热更新，就是更改了代码自动刷新页面
-    port: 5173, //自定义启动时的端口
-    // open: true, //代表vite项目在启动时自动打开浏览器
-    proxy: {
-      // 简易Node服务
-      // '/test': {
-      //   target: 'https://www.staruniverse.top',
-      //   // target: 'http://localhost:8080',
-      //   //你的需要请求的服务器地址
-      //   changeOrigin: true, // 允许跨域
-      //   secure: true, //忽略安全证书
-      //   // rewrite: (path) => path.replace(/^\/api/,''), // 重写路径把路径变成空字符,
-      //   configure: (proxy, options) => {
-      //     // proxy 是 'http-proxy' 的实例
-      //     proxy.on('proxyReq',(proxyReq)=>{
-      //       console.log(`代理请求：${proxyReq.method} ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`)
-      //     })
-      //   }
-      // }
-    }
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  // 后端地址：优先取显式配置的 VITE_API_TARGET，否则回退到 VITE_API_BASE_URL / 本地 8080
+  const apiTarget = env.VITE_API_TARGET || env.VITE_API_BASE_URL || 'http://localhost:8080'
+
+  return {
+    plugins: [
+      vue(),
+      Components({
+        resolvers: [
+          AntDesignVueResolver({
+            importStyle: false, // css in js
+          }),
+        ],
+      }),
+    ],
+
+    server: {
+      hmr: true,
+      port: 5173,
+      strictPort: false,
+      // 联调代理：把 VITE_API_BASE_URL 留空（或代码里走相对路径）时，
+      // 前端请求会经由这里转发到后端，规避跨域并让 Cookie 落在同一 origin。
+      proxy: {
+        '/user/login': { target: apiTarget, changeOrigin: true },
+        '/user/register': { target: apiTarget, changeOrigin: true },
+        '/user/visitorLogin': { target: apiTarget, changeOrigin: true },
+        '/user/refreshToken': { target: apiTarget, changeOrigin: true },
+        '/userApi': { target: apiTarget, changeOrigin: true },
+        '/shop': { target: apiTarget, changeOrigin: true },
+        '/class': { target: apiTarget, changeOrigin: true },
+        '/toolApi': { target: apiTarget, changeOrigin: true },
+        '/kamiApi': { target: apiTarget, changeOrigin: true },
+        '/userBackend': { target: apiTarget, changeOrigin: true },
+        '/health': { target: apiTarget, changeOrigin: true },
+      },
     },
-  },
+
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
+
+    build: {
+      // 生产产物目录（Vercel 侧需与此一致）
+      outDir: 'dist',
+      sourcemap: false,
+      chunkSizeWarningLimit: 900,
+    },
+  }
 })

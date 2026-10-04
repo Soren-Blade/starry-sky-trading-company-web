@@ -44,6 +44,12 @@ const routes = [
     meta: { title: 'appleId - 星辰商行' }
   },
   {
+    path: '/user/kami',
+    name: 'kami',
+    component: () => import('@/pages/Kami.vue'),
+    meta: { title: '卡密管理 - 星辰商行' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/pages/NotFound.vue'),

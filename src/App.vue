@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="app-container">
     <!-- Navigation -->
     <Navbar />
@@ -25,13 +25,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { throttle } from '@/utils/index.js'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
-// 商品状态管理存储
-import { useShopStore } from "@/stores/shop";
-// 商品存储实例
-const shopStore = useShopStore();
+// 全局状态
+import { useShopStore } from '@/stores/shop'
+import { useUserStore } from '@/stores/user'
+
+const shopStore = useShopStore()
+const userStore = useUserStore()
 
 const showScrollTop = ref(false)
 
@@ -45,8 +48,11 @@ const scrollToTop = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
-  // 商品初始化
-  // shopStore.init()
+
+  // 身份初始化（游客登录或复用本地 token）与商品数据初始化。
+  // 两者互不依赖，并行执行；失败不阻塞页面渲染。
+  userStore.init()
+  shopStore.init()
 })
 
 onUnmounted(() => {
