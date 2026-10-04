@@ -306,6 +306,13 @@ watch(
 }
 
 .theme-trigger-icon {
+  /* 用 inline-flex 而不是让 SVG 以 inline 参与排版：
+   * 图标本身带 vertical-align: -0.125em（与文字并排时的常规做法），
+   * 但这里外层是 line-height: 1 的行内 span，那个偏移会让图标看着偏下。
+   * 变成 flex 之后图标是 flex item，vertical-align 不参与，必然居中。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   animation: var(--decor-animation);
 }

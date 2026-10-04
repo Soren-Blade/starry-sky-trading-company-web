@@ -649,6 +649,18 @@ onUnmounted(() => {
   width: min(calc(var(--icon-btn-size) * 8), calc(100vw - var(--space-unit) * 6));
 }
 
+/* ⚠ 收起态必须把 gap 归零，否则字形不居中。
+ *
+ * 收起时框的**内容盒**宽 = 图标格 − 2×描边（38/42/38/40/30），
+ * 而子元素占宽 = 输入框(收缩到 0) + gap + 按钮(图标格 − 2×描边)。
+ * 按钮是 flex-shrink: 0 压不动，于是**每个主题都整整溢出「一个 gap」**
+ * （极简 10 / 玻璃 12 / 便当 10 / 粗野 12 / 单色 8 px），
+ * 被 overflow: hidden 从右边裁掉 —— 字形看起来就往右偏了 gap/2。
+ * 展开态需要这个 gap（输入框与放大镜之间要留白），收起态不需要。 */
+.navbar-search:not(.search-open) .search-field {
+  gap: 0;
+}
+
 /* 悬停反馈照搬 .u-icon-btn:hover:not(:disabled)（只变字色与描边色）——
  * 盒子已经移到外框上，这套反馈也要跟着上来，否则鼠标移上去毫无反应。
  * 字形靠按钮的 color: inherit 跟着变色。 */
@@ -709,6 +721,10 @@ onUnmounted(() => {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  /* 收起时输入框会和放大镜重叠：input 的 min-width: auto 会把它撑到
+   * 浏览器默认宽度（约 170px），而按钮压在它右边。置 0 让它真正收缩掉，
+   * 避免一个看不见的输入框盖在按钮上。 */
+  min-width: 0;
 }
 
 /* 输入框自己的聚焦态也抹掉 —— 高亮统一由 .search-field:focus-within 表达 */

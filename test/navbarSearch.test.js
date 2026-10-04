@@ -141,7 +141,31 @@ test('展开宽度按图标格换算，不掺 --input-height / --space-unit 的�
   )
 })
 
-test('按钮从不画自己的盒子（收起时两层描边会错位，展开时框里多一个方按钮）', () => {
+test('收起态的 gap 必须归零，否则字形不居中（每个主题都整整溢出一个 gap）', () => {
+  // 收起时框的内容盒 = 图标格 − 2×描边（38/42/38/40/30），
+  // 而子元素占宽 = 输入框(收缩到 0) + gap + 按钮(图标格 − 2×描边)。
+  // 按钮 flex-shrink: 0 压不动，于是整整溢出一个 gap（10/12/10/12/8 px），
+  // 被 overflow: hidden 从右边裁掉 —— 字形看起来就偏右 gap/2。
+  assert.match(
+    NAVBAR_SOURCE,
+    /\.navbar-search:not\(\.search-open\) \.search-field \{[\s\S]*?gap: 0;/,
+    '收起态必须把 gap 归零'
+  )
+
+  // 展开态仍要保留 gap（输入框与放大镜之间需要留白）
+  const openAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
+  const openBody = NAVBAR_SOURCE.slice(openAt, NAVBAR_SOURCE.indexOf('}', openAt))
+  assert.equal(/gap: 0/.test(openBody), false, '展开态不应把 gap 也归零')
+})
+
+test('输入框 min-width 归零：否则它会撑到浏览器默认宽度、盖在放大镜上', () => {
+  const at = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-input) {')
+  assert.ok(at > -1)
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('}', at))
+  assert.match(body, /min-width: 0/)
+})
+
+test('展开后按钮自身的外观让位给外框（否则框里还有一个方按钮）', () => {
   const at = NAVBAR_SOURCE.indexOf('.navbar-search .search-field .search-toggle {')
   assert.ok(at > -1, '应有按钮的中性化规则')
   const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('}', at))
@@ -149,17 +173,8 @@ test('按钮从不画自己的盒子（收起时两层描边会错位，展开�
   assert.match(body, /background: transparent/)
   assert.match(body, /border-color: transparent/)
   assert.match(body, /color: inherit/, '字形颜色要跟着外框走，悬停才会一起变色')
-  // 尺寸缩到内容盒：否则字形在图标格里偏 1~2px（粗野主题描边 2px 更明显）
   assert.match(body, /width: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2\)/)
-
-  // 这条规则**不能**挂在 .search-open 上 —— 收起时同样需要它
-  const ruleSelector = NAVBAR_SOURCE.slice(0, at).split('\n').filter((l) => l.includes('{')).pop()
-  assert.equal(
-    /search-open/.test(NAVBAR_SOURCE.slice(at - 120, at)),
-    false,
-    '按钮的中性化在收起态也要生效'
-  )
-  assert.ok(ruleSelector !== undefined)
+  assert.match(body, /height: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2\)/)
 })
 
 test('展开的框是绝对定位，不参与文档流（否则 1024px 与手机上总宽会溢出）', () => {

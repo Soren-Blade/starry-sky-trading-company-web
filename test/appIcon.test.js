@@ -55,8 +55,23 @@ test('图标数据里不含任何颜色（颜色必须来自 currentColor）', (
   assert.equal(/["']#|rgb\(|hsl\(|fill=|stroke=/.test(dump), false, '图标几何里不该出现颜色或填充声明')
 })
 
-test('线宽是 24 网格上的合理值', () => {
-  assert.ok(ICON_STROKE_WIDTH > 0 && ICON_STROKE_WIDTH <= 3)
+test('线宽够粗（本站图标落在 16–20px，2 会显得纤细发虚）', () => {
+  assert.ok(
+    ICON_STROKE_WIDTH >= 2.4 && ICON_STROKE_WIDTH <= 3,
+    `线宽应在 2.4~3 之间，实际 ${ICON_STROKE_WIDTH}`
+  )
+})
+
+test('描边两端与折角都是圆的（「圆滑」靠这两条，不靠线宽）', async () => {
+  const [pinia, env] = await Promise.all([createPiniaWithState({}), createRenderEnv()])
+  const html = await renderComponent('/components/AppIcon.vue', {
+    props: { name: 'shopping-cart' },
+    plugins: [pinia, env.router],
+    globalComponents: env.globalComponents,
+  })
+
+  assert.match(html, /stroke-linecap="round"/, '线端要圆')
+  assert.match(html, /stroke-linejoin="round"/, '折角要圆')
 })
 
 // ── 组件渲染 ───────────────────────────────────────────────

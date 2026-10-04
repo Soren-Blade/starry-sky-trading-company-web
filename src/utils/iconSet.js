@@ -9,13 +9,23 @@
  *   - 一律 24×24 viewBox、`fill: none`、`stroke: currentColor`
  *   - **不写任何颜色**：颜色由 currentColor 决定，因此天然跟随主题的
  *     --text-secondary / --accent 等令牌变化（这是「颜色随主题变化」的实现方式）
- *   - 只用最基本的 path / circle，保持线性描边风格统一
+ *   - **只用圆头圆角的线性描边**：AppIcon 里 stroke-linecap / linejoin 都是 round，
+ *     折角与外端都是圆的，不出现尖角
+ *   - 只用最基本的 path / circle / rect，保持风格统一
  *
  * 几何数据取自通用线性图标（Feather 风格）的公开形状。
  */
 
-/** 线宽：24 网格上的 2 是线性图标的常规值，缩放后各字号下都清晰 */
-export const ICON_STROKE_WIDTH = 2
+/**
+ * 线宽：24 网格上的值。
+ *
+ * 取 2.5 而不是 Feather 默认的 2 —— 本站的图标大多落在 16–20px
+ * （--icon-btn-icon-size 五套主题是 16/20/18/20/16），缩到这个尺寸后
+ * 2 会显得纤细发虚；2.5 缩下来约 1.7–2px，与项目里 1–2px 的描边体系同量级。
+ *
+ * 「圆滑」由 AppIcon 的 stroke-linecap / stroke-linejoin 都用 round 保证，
+ * 不在这里体现。 */
+export const ICON_STROKE_WIDTH = 2.5
 
 /**
  * name → { paths?: string[], circles?: [cx, cy, r][] }
