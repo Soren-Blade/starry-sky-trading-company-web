@@ -415,7 +415,7 @@ npm run dev        # http://localhost:5173
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 362 个用例）
+npm test             # 单元测试（node:test，共 378 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
 npm run verify       # lint + test + build + verify:dev
@@ -508,10 +508,11 @@ test/
 ├── constSafety.test.js               # 静态检查「对 const 绑定赋值」
 ├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
 ├── renderComponents.test.js          # 组件渲染（SSR）：23 个 .vue 全部渲染、无警告/插值事故
+├── renderKamiData.test.js            # 注入真实 store 数据渲染：逐格断言 8 列内容与状态分支
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 362 个用例。
+共 378 个用例。
 
 ### 测试基础设施（无新增依赖）
 
@@ -582,6 +583,17 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 >
 > **抓不到**：CSS 布局与响应式、真实点击/键盘事件、无障碍树、
 > `onMounted` 里的数据加载（SSR 不执行 `onMounted`）。
+
+`renderKamiData.test.js` 在此基础上**注入真实 store 数据**再渲染
+（`createPiniaWithState({ user, kami, tool })` —— store 是选项式写法，无需 mock api），
+逐格断言卡密表格的 8 列内容与状态分支。它抓到过一个**纯空态渲染发现不了的缺陷**：
+`#bodyCell` 插槽缺少 `card_name` 分支，导致「卡密名称」**整列为空**
+（表头还在、其它 7 列都有值，只有这一列空着 —— 人工检查时很容易漏）。
+
+> 关键语义：`a-table` **一旦提供 `#bodyCell`，所有单元格都由该插槽决定**，
+> 未命中的列**不会**回落到 `dataIndex` 默认渲染 —— 因此每列都必须有分支。
+> `render.mjs` 里的 `a-table` 桩也按这个语义真正渲染 `data-source` 并调用插槽，
+> 否则单元格模板根本不会执行（这一点是能发现上述缺陷的前提）。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。**代价是所有测试文件共享进程，因此新测试不得依赖执行顺序** ——

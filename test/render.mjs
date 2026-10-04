@@ -129,6 +129,47 @@ export async function createPiniaPlugin() {
 }
 
 /**
+ * 建一个 pinia 实例并写入 store 初值。
+ *
+ * 为什么需要：项目的 store 都是 `defineStore('name', { state, actions })` 的选项式写法，
+ * 因此拿到 store 实例后可直接改它的状态 —— **无需 mock api**。
+ * 这样才能渲染「已登录 + 有卡密列表」这类真实状态，而不只是空态。
+ *
+ * @param {Record<string, object>} stateByStoreName key 为 store id（'user' / 'kami' / 'tool' / 'shop'）
+ */
+export async function createPiniaWithState(stateByStoreName = {}) {
+  const pinia = await createPiniaPlugin()
+
+  /** 按 store id 懒加载对应的 useXxxStore */
+  const loaders = {
+    user: async () => (await import('@/stores/user')).useUserStore,
+    kami: async () => (await import('@/stores/kami')).useKamiStore,
+    tool: async () => (await import('@/stores/tool')).useToolStore,
+    shop: async () => (await import('@/stores/shop')).useShopStore,
+  }
+
+  for (const [storeName, partial] of Object.entries(stateByStoreName)) {
+    const loader = loaders[storeName]
+    if (!loader) throw new Error(`未知 store：${storeName}`)
+
+    // 取一次 store 只是为了让 pinia 注册它的 state 槽位；
+    // 之后直接写 pinia.state.value 即可 —— 组件通过 useXxxStore() 拿到的就是同一份响应式对象。
+    const { setActivePinia } = await import('pinia')
+    setActivePinia(pinia)
+    const useStore = await loader()
+    useStore()
+
+    const bucket = pinia.state.value[storeName]
+    if (!bucket) throw new Error(`store ${storeName} 未在 pinia 中注册 state`)
+    for (const [key, value] of Object.entries(partial)) {
+      bucket[key] = value
+    }
+  }
+
+  return pinia
+}
+
+/**
  * 建一套**渲染环境桩**，让组件能在 Node 里被渲染而不产生噪音警告。
  *
  * 包含三类：
@@ -203,7 +244,6 @@ export async function createRenderEnv() {
     // ant-design-vue 的常用组件：渲染成带 class 的容器，保留插槽内容
     'a-button': passThrough('AButton'),
     'a-tag': passThrough('ATag'),
-    'a-table': passThrough('ATable'),
     'a-input': passThrough('AInput'),
     'a-select': passThrough('ASelect'),
     'a-option': passThrough('AOption'),
@@ -211,6 +251,63 @@ export async function createRenderEnv() {
     'a-modal': passThrough('AModal'),
     'a-empty': passThrough('AEmpty'),
     'a-pagination': passThrough('APagination'),
+    // a-table 必须**真正渲染行**并调用 bodyCell 插槽，否则所有单元格模板都不会被执行，
+    // 渲染测试就看不到「表格里的绑定是否正确」。
+    'a-table': defineComponent({
+      name: 'ATable',
+      inheritAttrs: false,
+      props: {
+        columns: { type: Array, default: () => [] },
+        dataSource: { type: Array, default: () => [] },
+        rowKey: { type: [String, Function], default: 'id' },
+        locale: { type: Object, default: () => ({}) },
+        loading: { type: [Boolean, Object], default: false },
+        pagination: { type: [Object, Boolean], default: false },
+        scroll: { type: Object, default: () => ({}) },
+      },
+      setup(props, { slots, attrs }) {
+        return () =>
+          h('table', { class: 'stub-a-table', ...attrs }, [
+            h(
+              'thead',
+              {},
+              h(
+                'tr',
+                {},
+                props.columns.map((col) =>
+                  h('th', { key: col.key || col.dataIndex }, col.title)
+                )
+              )
+            ),
+            h(
+              'tbody',
+              {},
+              props.dataSource.length === 0
+                ? h('tr', {}, h('td', { colspan: String(props.columns.length || 1) }, slots.emptyText ? slots.emptyText() : (props.locale && props.locale.emptyText) || '暂无数据'))
+                : props.dataSource.map((record, index) => {
+                    const key =
+                      typeof props.rowKey === 'function'
+                        ? props.rowKey(record)
+                        : record[props.rowKey] ?? index
+                    return h(
+                      'tr',
+                      { key: String(key) },
+                      props.columns.map((col) =>
+                        h(
+                          'td',
+                          { key: col.key || col.dataIndex },
+                          // 与 antd 一致：bodyCell 插槽决定单元格内容
+                          slots.bodyCell
+                            ? slots.bodyCell({ column: col, record, index, text: record[col.dataIndex] })
+                            : String(record[col.dataIndex] ?? '')
+                        )
+                      )
+                    )
+                  })
+            ),
+          ])
+      },
+    }),
   }
 
   // 子组件必需 props：渲染父组件时注入，否则会报 Missing required prop

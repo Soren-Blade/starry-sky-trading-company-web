@@ -121,7 +121,17 @@
             row-key="id"
           >
             <template #bodyCell="{ column, record }">
-              <span v-if="column.key === 'card_value'" class="card-value">
+              <!--
+                注意：一旦提供 #bodyCell，**所有**单元格都由这个插槽决定内容
+                （antd 不会对未命中的列回落到 dataIndex 默认渲染）。
+                因此每一列都必须有分支 —— 原先缺少 card_name 分支，
+                导致「卡密名称」整列为空。
+              -->
+              <span v-if="column.key === 'card_name'" class="card-name">
+                {{ record.card_name || '—' }}
+              </span>
+
+              <span v-else-if="column.key === 'card_value'" class="card-value">
                 {{ record.card_value }}
               </span>
 
@@ -555,6 +565,11 @@ watch(
 :deep(.kami-ant-table .ant-pagination) {
   margin-top: 16px;
   padding: 0 16px 16px;
+}
+
+.card-name {
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
 .card-value {
