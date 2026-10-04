@@ -383,7 +383,9 @@ npm run dev        # http://localhost:5173
 ```bash
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
-npm test           # 单元测试（node:test，13 个用例）
+npm run lint       # ESLint 检查
+npm test           # 单元测试（node:test，74 个用例）
+npm run check      # lint + test
 ```
 
 **路径别名**：`@` → `./src`，在 `vite.config.js` 的 `resolve.alias` 生效；`jsconfig.json` 里有一份对应配置供编辑器解析。
@@ -406,7 +408,26 @@ Vercel 静态站点，构建命令为 Vite 默认流程，产物目录 `dist`（
 
 ---
 
-## 13. 测试
+## 13. 代码检查与测试
+
+### 代码检查
+
+```bash
+npm run lint        # 或 npm run check（lint + test）
+```
+
+ESLint 9 扁平配置，文件为 **`eslint.config.cjs`** —— 因 `package.json` 声明了
+`"type": "module"`，`.js` 会被当作 ESM 加载，而配置里用的是 `require`。
+
+**只启用能抓真实缺陷的规则**（`no-undef`、`no-unused-vars`、`no-unreachable`、
+`no-unsafe-optional-chaining`、`no-self-assign` 等），加上 `eslint-plugin-vue` 的
+`flat/essential`。风格规则（缩进/引号/分号/`vue/html-indent` 等）全部关闭 ——
+历史代码风格不统一，开启它们只会淹没真正的问题。
+
+`vue/no-undef-components` 也已关闭：本项目用 `unplugin-vue-components` 自动导入
+`a-*` 组件，开启该规则会大面积误报。
+
+### 测试
 
 使用 **Node 内置 `node:test`**，无新增依赖：
 
