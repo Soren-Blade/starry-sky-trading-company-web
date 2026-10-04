@@ -860,6 +860,17 @@ watch(
    * 改成按视口收口后，面板稳定拿到规范的 280px（列宽 35.4px），
    * 只有在视口本身就窄（< 312px）时才继续收缩。
    */
+  /*
+   * 下限同样按视口：套件里写的是 `min(…, 100%)`，那个 100% 指**字段** ——
+   * 对「内联只读日历」是对的，但浮层不该被字段宽度限制。真实的 Profile 字段
+   * 只有 263px，套件的 min-width 会被夹到 263，neo 主题下格子就从规范的 44px
+   * 掉回 40px（用户看到的就是「格子变小了」）。
+   * 公式与套件保持一致，只是把上限换成了视口。
+   */
+  min-width: min(
+    calc(7 * var(--datepicker-cell-size) + var(--datepicker-padding) * 2 + var(--stroke-width) * 2),
+    calc(100vw - var(--space-unit) * 4)
+  );
   max-width: calc(100vw - var(--space-unit) * 4);
   /*
    * 高度上限同样按视口收口：面板 6×7 网格 + 头部 + 星期行 + 底部约 340px，

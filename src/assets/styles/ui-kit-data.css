@@ -216,6 +216,22 @@
 
 .u-datepicker {
   width: var(--datepicker-width);
+  /*
+   * 面板要**装得下 7 个规范尺寸的单元格**，否则格子会被挤小：
+   *
+   * §11 与 §20 都逐套给了单元格尺寸（36 / 40 / 38 / 44 / 32），而 --datepicker-width
+   * 与它并不自洽 —— 按「7 × 单元格 + 2 × 内边距」算，tech 需要 284（给了 280）、
+   * bento 需要 302（给了 300）、**neo 需要 348（只给了 320）**。
+   * 只看 width 的话，neo 的格子会从规范的 44px 掉到 40px、tech 从 36 掉到 35.4，
+   * 表现就是「格子看着变小了」。
+   *
+   * 所以这里把 width 当作**下限基准**，再用 min-width 按单元格尺寸把面板撑到够用；
+   * min() 里的 100% 保证容器本身更窄时仍然收得住（此时才允许格子等比缩小）。
+   */
+  min-width: min(
+    calc(7 * var(--datepicker-cell-size) + var(--datepicker-padding) * 2 + var(--stroke-width) * 2),
+    100%
+  );
   /* 兜底：容器比设计宽窄时按容器收缩，单元格随列宽等比缩小 */
   max-width: 100%;
   padding: var(--datepicker-padding);
@@ -326,8 +342,10 @@
   gap: 0;
 }
 
-/* 日期单元格：正方形。宽度取「列宽」与 --datepicker-cell-size 的较小值 ——
- * 规范里 36px × 7 列比面板内宽略宽，作为上限才不会撑破面板 */
+/* 日期单元格：正方形。宽度取「列宽」与 --datepicker-cell-size 的较小值。
+ * 面板已由 .u-datepicker 的 min-width 撑到装得下 7 个规范尺寸的格子，
+ * 所以正常情况下这里取到的就是 --datepicker-cell-size 本身；
+ * 只有容器（视口 / 字段）比设计还窄时才由列宽决定，格子等比缩小。 */
 .u-datepicker-cell {
   display: inline-flex;
   align-items: center;

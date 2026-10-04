@@ -767,6 +767,50 @@ test('浮层面板必须带毛玻璃：只有 liquid-glass 的半透明底色会
   assert.deepEqual(missing, [], `以下浮层缺毛玻璃，glass 下会透出背后的文字：\n  ${missing.join('\n  ')}`)
 })
 
+test('日历面板必须装得下 7 个规范尺寸的格子（否则格子会被挤小）', () => {
+  /*
+   * §11 与 §20 都逐套给了单元格尺寸（36 / 40 / 38 / 44 / 32），而 --datepicker-width
+   * 与它**并不自洽**：按「7 × 单元格 + 2 × 内边距」算，tech 需要 284（给了 280）、
+   * bento 需要 302（给了 300）、neo 需要 348（只给了 320）。
+   *
+   * 只写 `width: var(--datepicker-width)` 时，neo 的格子会从规范的 44px 掉到 40px、
+   * tech 从 36 掉到 35.4 —— 用户看到的就是「日历格子变小了」。
+   * 修法是让 width 只当基准，再用 min-width 按单元格尺寸把面板撑到够用。
+   *
+   * 这条断言是**源码契约**：浏览器里的实际格子尺寸由真机探针逐个主题量过
+   * （五套分别为 36 / 40 / 38 / 44 / 32，与规范逐值相同）。
+   */
+  const css = fs.readFileSync(
+    path.join(WEB_ROOT, 'src', 'assets', 'styles', 'ui-kit-data.css'),
+    'utf8'
+  )
+  const block = ruleBlock(css, '.u-datepicker')
+  assert.ok(block, '应能找到 .u-datepicker 规则')
+  const decls = block.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  assert.match(decls, /width:\s*var\(--datepicker-width\)/, '基准宽度仍取令牌')
+  assert.match(
+    decls,
+    /min-width:\s*min\(\s*calc\(7 \* var\(--datepicker-cell-size\)/,
+    'min-width 必须按「7 × 单元格尺寸 + 内边距 + 描边」推导，格子才够得到规范值'
+  )
+  assert.match(decls, /max-width:\s*100%/, '容器更窄时仍要收得住（内联只读日历用法）')
+
+  // 浮层（组件侧）要把那个 100% 换成视口：真实字段只有 263px，跟着字段走会把格子压小
+  const component = fs.readFileSync(
+    path.join(WEB_ROOT, 'src', 'components', 'DatePickerField.vue'),
+    'utf8'
+  )
+  const panel = ruleBlock(component, '.datepicker-panel')
+  assert.ok(panel, '应能找到 .datepicker-panel 规则')
+  const panelDecls = panel.replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.match(
+    panelDecls,
+    /min-width:\s*min\(\s*calc\(7 \* var\(--datepicker-cell-size\)[\s\S]*?100vw/,
+    '浮层的下限要按视口收口，不能跟着字段变窄'
+  )
+})
+
 test('浮层面板的宽度上限取视口而不是字段（字段常比设计宽度窄）', () => {
   /*
    * 真机实测：Profile 的生日字段是两列栅格里的一格，1440px 下只有 263px 宽。
