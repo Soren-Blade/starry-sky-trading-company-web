@@ -415,7 +415,7 @@ npm run dev        # http://localhost:5173
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 350 个用例）
+npm test             # 单元测试（node:test，共 362 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
 npm run verify       # lint + test + build + verify:dev
@@ -497,6 +497,7 @@ test/
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
+├── render.mjs                        # 渲染辅助：编译 .vue + SSR 渲染 + 环境桩
 ├── stores.user.test.js               # 用户 store：getters / init / login / register / logout
 ├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
 ├── stores.tool.test.js               # 工具 store：toolData 形状、分类产出、Apple ID 双来源
@@ -506,10 +507,11 @@ test/
 ├── designTokens.test.js              # 设计令牌卫生（无死令牌、断点白名单、无重复媒体查询）
 ├── constSafety.test.js               # 静态检查「对 const 绑定赋值」
 ├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
+├── renderComponents.test.js          # 组件渲染（SSR）：23 个 .vue 全部渲染、无警告/插值事故
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 350 个用例。
+共 362 个用例。
 
 ### 测试基础设施（无新增依赖）
 
@@ -561,6 +563,25 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 
 > 它能抓「代码没进产物 / 令牌没进 CSS / 哈希不匹配」，**抓不到「模板绑错了变量」**——
 > 渲染与交互仍需 jsdom 或真实浏览器。
+
+### 组件渲染测试（基于 SSR，不需要 jsdom）
+
+`renderComponents.test.js` 用 `@vue/server-renderer` **在 Node 里真正执行**组件的 setup 与
+render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` 是 `vue` 自身的依赖。
+
+- 组件清单**自动发现**（遍历 `src/**/*.vue`），当前 23 个组件全部纳入
+- `test/render.mjs` 提供 `renderComponent()` 与 `createRenderEnv()`：
+  后者注册 `router-link`/`router-view` 桩、11 个 `a-*` antd 组件桩、
+  以及 5 个带必需 props 的子组件包装 —— 目的是**去掉噪音**，
+  让「渲染期间无 Vue 警告」这条断言有信号
+- `.vue` 的编译在 `test/loaders/alias.mjs` 的 `load` 钩子里完成
+  （`@vue/compiler-sfc`，`inlineTemplate: true`）
+
+> **能抓**：模板引用了不存在的变量、computed 抛错、把 `undefined`/`NaN` 插值到页面、
+> 组件缺必需 prop 直接崩、渲染期间的 Vue 警告。
+>
+> **抓不到**：CSS 布局与响应式、真实点击/键盘事件、无障碍树、
+> `onMounted` 里的数据加载（SSR 不执行 `onMounted`）。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。**代价是所有测试文件共享进程，因此新测试不得依赖执行顺序** ——

@@ -23,11 +23,36 @@
  * 用法见 test/setup.js。
  */
 import { registerHooks } from 'node:module'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, statSync, readFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, resolve as resolvePath } from 'node:path'
+import { createRequire } from 'node:module'
 
 const SRC_DIR = resolvePath(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src')
+
+/**
+ * 把 .vue 单文件组件编译成 ESM（供 SSR 渲染测试使用）。
+ *
+ * 用 createRequire 同步加载 @vue/compiler-sfc：load 钩子必须是同步的，
+ * 无法 await 动态 import。
+ */
+const requireCjs = createRequire(import.meta.url)
+let sfcCompiler = null
+function compileVueSfc(filename) {
+  if (!sfcCompiler) {
+    const { parse, compileScript } = requireCjs('@vue/compiler-sfc')
+    sfcCompiler = { parse, compileScript }
+  }
+  const { parse, compileScript } = sfcCompiler
+  const source = readFileSync(filename, 'utf8')
+  const { descriptor, errors } = parse(source, { filename })
+  if (errors && errors.length) throw new Error(`SFC 解析失败（${filename}）：${errors[0].message}`)
+
+  const id = Buffer.from(filename).toString('hex').slice(0, 12)
+  // inlineTemplate：把模板内联进 render，避免生成对 ?vue&type=template 的二次请求
+  const compiled = compileScript(descriptor, { id, inlineTemplate: true })
+  return compiled.content
+}
 
 /** ant-design-vue 替身的调用记录，供用例断言（见 setup.js 的 messageCalls） */
 const messageCalls = []
@@ -129,6 +154,22 @@ registerHooks({
   load(url, context, nextLoad) {
     if (url === ANTD_STUB_URL) {
       return { format: 'module', source: ANTD_STUB_SOURCE, shortCircuit: true }
+    }
+    // 4) .vue 单文件组件：编译成 ESM。
+    //    必须在**本文件**注册（而不是在某个测试文件里再 registerHooks）——
+    //    本文件是最早被 import 的钩子模块，而后续的 registerHooks 会晚于
+    //    静态 import 的解析，导致 "Unknown file extension .vue"。
+    //
+    //    注意 URL 可能带查询串（强制重新加载用的缓存破坏标记），
+    //    因此不能只判断 endsWith('.vue')。
+    if (url.startsWith('file:')) {
+      const withoutQuery = url.split('?')[0]
+      if (withoutQuery.endsWith('.vue')) {
+        const filename = fileURLToPath(withoutQuery)
+        if (existsSync(filename)) {
+          return { format: 'module', source: compileVueSfc(filename), shortCircuit: true }
+        }
+      }
     }
     return nextLoad(url, context)
   },
