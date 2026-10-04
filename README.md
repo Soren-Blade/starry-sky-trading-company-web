@@ -413,7 +413,7 @@ npm run dev        # http://localhost:5173
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
 npm run lint       # ESLint 检查
-npm test           # 单元测试（node:test，共 341 个用例）
+npm test           # 单元测试（node:test，共 350 个用例）
 npm run check      # lint + test
 ```
 
@@ -481,7 +481,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 341 个用例。
+共 350 个用例。
 
 ### 测试基础设施（无新增依赖）
 
@@ -514,6 +514,25 @@ test/
 server 源码缺失时断言会直接失败，不会静默跳过。
 
 > 注意：它只校验「路径与方法」，**不校验请求体/响应字段的形状**。
+
+### 构建产物契约测试
+
+`distContract.test.js` 在「源码测试」与「渲染测试」之间补一层：源码测试直接加载 `src/`，
+而生产用的是 Vite 打包产物 —— 若模块被 tree-shaking 掉、导出名丢失、或样式令牌没进 CSS，
+**源码测试不会发现**。它断言：
+
+1. 已修缺陷的**行为标识**仍在产物中（`__isRetry`、`__isRefreshToken`、`登录状态已失效` 等）
+2. 抽取出的 composable 文案确实被打包（`请选择工具`、`请输入卡密` 等）
+3. 设计令牌完整进入 CSS，且**已删除的死令牌无残留**
+4. `:root` 只输出一次（防止 `@import` 重复引入回归）
+5. `index.html` 引用的产物文件都存在（哈希不匹配会导致白屏）
+6. 无异常空的 JS chunk；解析器自检（防止空产物造成假通过）
+
+> **`dist/` 不存在时该组整体跳过**（`{ skip: true }`），因此 `npm test` 无需先构建。
+> CI 若要覆盖这组，需在 `npm test` 前先 `npm run build`。
+
+> 它能抓「代码没进产物 / 令牌没进 CSS / 哈希不匹配」，**抓不到「模板绑错了变量」**——
+> 渲染与交互仍需 jsdom 或真实浏览器。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。**代价是所有测试文件共享进程，因此新测试不得依赖执行顺序** ——
