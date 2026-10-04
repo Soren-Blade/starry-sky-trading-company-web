@@ -279,6 +279,98 @@ test('组件尺寸速查总表：每格都必须与规范一致', () => {
   assert.deepEqual(problems, [], `组件尺寸与规范不符：\n  ${problems.join('\n  ')}`)
 })
 
+/**
+ * 组件套件速查总表（规范第三批 第二十节）逐格断言。
+ *
+ * 与上面的 COMPONENT_TABLE 同构，只是换成第三批那 25 行。
+ * 这两张表加起来覆盖了规范里所有「逐格给值」的尺寸，改错一个数字就会失败。
+ */
+const KIT_TABLE = {
+  // 组件             TechMin  LiquidGlass  Bento     NeoBrutal  TechMono
+  '--input-height': ['40px', '48px', '44px', '48px', '36px'], // 下拉触发器高（复用输入框令牌）
+  '--dropdown-radius': ['12px', '16px', '12px', '0px', '4px'], // 下拉面板圆角
+  '--dropdown-item-height': ['36px', '40px', '38px', '44px', '32px'],
+  '--checkbox-size': ['18px', '20px', '18px', '22px', '16px'],
+  '--checkbox-radius': ['4px', '6px', '4px', '0px', '2px'],
+  '--radio-size': ['18px', '20px', '18px', '22px', '16px'],
+  '--switch-track-w': ['40px', '44px', '42px', '48px', '36px'],
+  '--switch-track-h': ['22px', '24px', '24px', '26px', '20px'],
+  '--switch-thumb-size': ['18px', '20px', '20px', '22px', '16px'],
+  '--slider-track-h': ['4px', '6px', '6px', '8px', '4px'],
+  '--slider-thumb-size': ['18px', '20px', '20px', '24px', '16px'],
+  '--step-dot-size': ['28px', '32px', '30px', '36px', '24px'],
+  '--accordion-item-height': ['56px', '64px', '60px', '64px', '48px'],
+  '--tab-height': ['40px', '44px', '42px', '48px', '36px'],
+  '--breadcrumb-height': ['24px', '28px', '26px', '28px', '22px'],
+  '--table-row-height': ['48px', '56px', '52px', '56px', '40px'],
+  '--datepicker-width': ['280px', '320px', '300px', '320px', '260px'],
+  '--datepicker-cell-size': ['36px', '40px', '38px', '44px', '32px'],
+  '--upload-height': ['160px', '180px', '160px', '180px', '140px'],
+  '--rating-star-size': ['16px', '18px', '16px', '20px', '14px'],
+  '--tooltip-padding-y': ['6px', '8px', '8px', '8px', '6px'],
+  '--tooltip-padding-x': ['10px', '14px', '12px', '12px', '10px'],
+  '--tooltip-radius': ['6px', '10px', '8px', '0px', '4px'],
+  '--drawer-width': ['400px', '440px', '420px', '440px', '380px'],
+  '--badge-height': ['18px', '20px', '18px', '22px', '16px'],
+  '--scrollbar-width': ['8px', '10px', '8px', '12px', '6px'],
+  // 骨架圆角规范写「同组件」，因此不登记令牌 —— 由使用点 inherit / --radius-card 决定
+}
+
+test('组件套件速查总表（第三批 §20）：每格都必须与规范一致', () => {
+  const problems = []
+  for (const [token, column] of Object.entries(KIT_TABLE)) {
+    THEMES.forEach((theme, index) => {
+      const actual = theme.tokens[token]
+      if (actual !== column[index]) {
+        problems.push(`${theme.id} / ${token}：期望 ${column[index]}，实际 ${actual}`)
+      }
+    })
+  }
+  assert.deepEqual(problems, [], `组件套件尺寸与规范不符：\n  ${problems.join('\n  ')}`)
+})
+
+test('第三批 §16：骨架屏在 neo 用脉冲、其余用 shimmer（动画名逐风格不同）', () => {
+  assert.equal(getTheme('tech-minimal').tokens['--skeleton-animation-name'], 'skeleton-shimmer')
+  assert.equal(getTheme('liquid-glass').tokens['--skeleton-animation-name'], 'skeleton-shimmer')
+  assert.equal(getTheme('bento-editorial').tokens['--skeleton-animation-name'], 'skeleton-shimmer')
+  assert.equal(getTheme('neo-brutalism').tokens['--skeleton-animation-name'], 'skeleton-pulse')
+  assert.equal(getTheme('technical-monochrome').tokens['--skeleton-animation-name'], 'skeleton-shimmer')
+  // 时长逐风格：1.5 / 1.8 / 1.5 / 1 / 1.2
+  assert.deepEqual(
+    THEMES.map((t) => t.tokens['--skeleton-duration']),
+    ['1.5s', '1.8s', '1.5s', '1s', '1.2s']
+  )
+})
+
+test('第三批 §1：下拉面板阴影与 --shadow-float 逐套同值（因此不另立令牌）', () => {
+  // §1 面板阴影列 = tech 0 8px 24px rgba(0,0,0,.4) / glass 0 8px 32px rgba(99,102,241,.12)
+  //                  / bento 0 4px 16px rgba(0,0,0,.08) / neo 6px 6px 0 #000000 / mono 无
+  // 与第二批为提示框登记的 --shadow-float 五套逐值相同 —— 于是共用同一个令牌，
+  // 不新增 --dropdown-shadow（这条断言就是防止有人日后又把它拆成两个）。
+  assert.deepEqual(
+    THEMES.map((t) => t.tokens['--shadow-float']),
+    [
+      '0 8px 24px rgba(0, 0, 0, 0.4)',
+      '0 8px 32px rgba(99, 102, 241, 0.12)',
+      '0 4px 16px rgba(0, 0, 0, 0.08)',
+      '6px 6px 0 #000000',
+      'none',
+    ]
+  )
+  assert.equal(
+    THEMES.some((t) => '--dropdown-shadow' in t.tokens),
+    false,
+    '下拉面板阴影必须复用 --shadow-float，不得另立 --dropdown-shadow'
+  )
+})
+
+test('第三批 §15/§19：抽屉遮罩模糊与滚动条只在 glass 有模糊、neo 无圆角', () => {
+  assert.equal(getTheme('liquid-glass').tokens['--drawer-scrim-backdrop'], 'blur(8px)')
+  assert.equal(getTheme('tech-minimal').tokens['--drawer-scrim-backdrop'], 'none')
+  assert.equal(getTheme('neo-brutalism').tokens['--scrollbar-thumb-radius'], '0px')
+  assert.equal(getTheme('technical-monochrome').tokens['--scrollbar-width'], '6px')
+})
+
 test('聚焦态：五套风格各自的做法必须原样落地', () => {
   const t = (id) => getTheme(id).tokens
 
@@ -366,7 +458,9 @@ test('语义色与提示框位置：规范标注的「5 套通用」部分必须
     assert.equal(t['--modal-title-gap'], '16px')
     assert.equal(t['--modal-body-gap'], '24px')
     assert.equal(t['--modal-footer-gap'], '12px')
-    assert.equal(t['--dropdown-item-padding-x'], '16px')
+    // 注意：--dropdown-item-padding-x 与 --skeleton-duration 原本在「5 套通用」清单里，
+    // 第三批规范（§1 选项内边距 14/18/16/18/12、§16 骨架屏时长 1.5/1.8/1.5/1/1.2 且 neo 用脉冲）
+    // 把它们改成了逐风格取值 —— 于是从本清单移出，改由「组件尺寸速查总表」逐格断言。
     assert.equal(t['--dropdown-active-bar'], '2px')
     assert.equal(t['--micro-badge-radius'], '4px')
     assert.equal(t['--mobile-nav-scale'], '0.85')

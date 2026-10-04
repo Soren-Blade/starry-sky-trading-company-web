@@ -1,5 +1,17 @@
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
+/*
+ * 组件套件（第三批规范 §1–§21）分四个分片，按族划分而不是按页面。
+ * 必须排在 global.css 之后：骨架屏的动画名、滚动条的令牌化版本都在这里覆盖基础层的旧实现。
+ *   form     §1 下拉/选择器 §2 复选框 §3 单选框 §4 开关 §5 滑块
+ *   nav      §6 步骤条 §7 手风琴 §8 选项卡 §9 面包屑
+ *   data     §10 表格 §11 日期选择器 §12 文件上传 §13 评分
+ *   feedback §14 气泡提示 §15 抽屉 §16 骨架屏 §17 空状态 §18 通知徽标 §19 滚动条 §21 通用状态
+ */
+import './assets/styles/ui-kit-form.css'
+import './assets/styles/ui-kit-nav.css'
+import './assets/styles/ui-kit-data.css'
+import './assets/styles/ui-kit-feedback.css'
 import 'ant-design-vue/dist/reset.css'
 
 import { createApp } from 'vue'

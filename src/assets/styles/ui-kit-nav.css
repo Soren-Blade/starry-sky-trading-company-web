@@ -1,0 +1,865 @@
+/*
+ * 组件套件（第三批规范）· 分片三：导航与结构类
+ * ============================================================================
+ *
+ * 负责四节，都是「引导用户在一组位置之间移动」的组件，故合为一片：
+ *   §6 步骤条 .u-steps         §7 手风琴 .u-accordion
+ *   §8 选项卡 .u-tabs          §9 面包屑 .u-breadcrumb
+ *
+ * 与 global.css 的分工：
+ *   - global.css 是**层** —— 元素级重置、按钮/输入框/卡片等共享外壳、
+ *     区块头，以及末尾统一的移动端缩放。它不认识这四族的类名；
+ *   - 本文件是**族** —— 只写这四族的类名、几何与状态。需要按下反馈时消费
+ *     --active-scale，需要焦点环时消费 --focus-ring，不另画一套；
+ *     也不重新实现按钮/卡片外壳（头部与选项卡项本身是 <button>，
+ *     底色、字号、描边仍由这里的令牌决定，但不要把它们当 .u-btn-* 用）。
+ *
+ * 硬约束：
+ *   1. 只消费令牌。本文件不出现色值、裸像素、em/rem 字号；
+ *      结构性描边宽度一律 --stroke-width，尺寸一律令牌或
+ *      calc(var(--space-unit) * n)。
+ *   2. 移动端缩放**在使用点乘系数**（--mobile-control-scale 控件高 ×0.9 /
+ *      --mobile-padding-scale 内边距 ×0.8 / --mobile-body-scale 正文 ×0.95）。
+ *      令牌是主题 store 写在 <html> 上的行内样式，在 @media 里重新定义 :root
+ *      令牌会被行内样式盖掉，所以只能在使用点算。
+ *   3. 状态四件套齐全：默认 / :hover / :focus-visible（--focus-ring +
+ *      --focus-ring-offset）/ :active（--active-scale）；
+ *      当前项与禁用（--state-disabled-opacity + cursor: not-allowed）另有规则。
+ *   4. 断点只用 575 / 767 / 991 / 1199，同条件不重复。
+ *
+ * 无障碍契约（模板必须照做，样式只提供挂钩）：
+ *   - .u-steps 用 <ol>，一步一个 <li class="u-step">；当前项用 aria-current="step"；
+ *   - .u-tab 与 .u-accordion-head 必须是 <button>，选中项用 aria-selected="true"，
+ *     展开用 aria-expanded="true"；
+ *   - 类名写法（.u-step--current / .u-tab--active / .u-accordion-item--open）与
+ *     ARIA 写法**同时命中样式**，键盘与读屏用户看到的与视觉一致；
+ *   - 分隔符、连接线、图标元素都应是 aria-hidden="true" 的装饰节点。
+ *
+ * 预期结构（契约写法，README 的组件套件章节按此登记）：
+ *
+ *   <ol class="u-steps">
+ *     <li class="u-step u-step--done">
+ *       <span class="u-step-dot">1</span><span class="u-step-label">购物车</span>
+ *       <span class="u-step-line" aria-hidden="true"></span>
+ *     </li>
+ *     <li class="u-step u-step--current" aria-current="step">…</li>
+ *   </ol>
+ *
+ *   <div class="u-accordion">
+ *     <div class="u-accordion-item" data-open="true">
+ *       <button class="u-accordion-head" aria-expanded="true">
+ *         <span class="u-accordion-title">标题</span>
+ *         <span class="u-accordion-icon" aria-hidden="true">⌄</span>
+ *       </button>
+ *       <div class="u-accordion-body">内容</div>
+ *     </div>
+ *   </div>
+ *
+ *   <div class="u-tabs">
+ *     <button class="u-tab u-tab--active" aria-selected="true">全部</button>
+ *     <button class="u-tab" aria-selected="false">卡密</button>
+ *     <span class="u-tab-indicator" aria-hidden="true"></span>
+ *   </div>
+ *   <div class="u-tabs-content">…</div>
+ *
+ *   <nav class="u-breadcrumb" aria-label="面包屑">
+ *     <span class="u-breadcrumb-item">
+ *       <a class="u-breadcrumb-link u-breadcrumb-home" href="/">
+ *         <span aria-hidden="true">⌂</span>首页
+ *       </a>
+ *     </span>
+ *     <span class="u-breadcrumb-sep" aria-hidden="true"></span>
+ *     <span class="u-breadcrumb-item">
+ *       <span class="u-breadcrumb-current" aria-current="page">分类</span>
+ *     </span>
+ *   </nav>
+ */
+
+/* ────────────────────────────────────────────────────────────
+ * 1. §6 步骤条 Steps
+ *
+ * 横向：圆点 + 标签排成一行，连接线吸收剩余宽度；
+ * 纵向（.u-steps--vertical）：一行一步，连接线竖着落在圆点正下方。
+ * 连接线写在哪里都行 —— 跟在标签后面（.u-step 的子元素），
+ * 或作为 .u-steps 的直接子元素独占一段（<li class="u-step-line">），
+ * 同一条规则都能撑开；纵向变体只认后一种，写在项内会与标签并排，故隐藏。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--step-gap-x);
+  list-style: none;
+}
+
+.u-step {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
+  color: var(--text-muted);
+  transition: color var(--transition-interactive);
+}
+
+.u-step-dot {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--step-dot-size);
+  height: var(--step-dot-size);
+  font-family: var(--font-mono);
+  font-size: var(--step-num-size);
+  font-weight: var(--step-num-weight);
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--step-todo-color);
+  border-radius: var(--step-dot-radius);
+  transition:
+    background-color var(--transition-interactive),
+    color var(--transition-interactive);
+}
+
+.u-step-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--step-label-size);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--transition-interactive);
+}
+
+/* 横向：每一步等分整行宽度，连接线吃掉步内剩余宽度（标签短时线就长） */
+.u-steps:not(.u-steps--vertical) .u-step {
+  flex: 1 1 auto;
+}
+
+/* 连接线：横向按剩余宽度拉伸，圆头与圆点同源。
+ * margin-right 取负是**故意的** —— 线要比步内剩余宽度再长出一个 --step-gap-x，
+ * 才能跨过 .u-steps 的 gap 正好顶到下一个圆点；否则连接线会在间距处断成两截。
+ * 间距在断点里缩小了，这里的负边距必须按同一个表达式跟着缩（见文件末尾）。 */
+.u-step-line {
+  flex: 1 1 auto;
+  align-self: center;
+  min-width: calc(var(--space-unit) * 2);
+  margin-right: calc(var(--step-gap-x) * -1);
+  height: var(--step-line-h);
+  background: var(--step-line-color);
+  border-radius: var(--step-dot-radius);
+  transition: background-color var(--transition-interactive);
+}
+
+/* 连接线写成 .u-steps 的直接子元素时（<li class="u-step-line">），左侧的间距也要吃掉 */
+.u-steps:not(.u-steps--vertical) > .u-step-line {
+  margin-left: calc(var(--step-gap-x) * -1);
+}
+
+/* 最后一个圆点之后不再拖线：模板给每一项都写了连接线也不会在末尾留半截 */
+.u-step:last-child .u-step-line,
+.u-steps:not(.u-steps--vertical) > .u-step-line:last-child {
+  display: none;
+}
+
+/* 走完的那一段用当前色；未走到的保持线色（当前项之后的线属于未完成） */
+.u-step--done .u-step-line,
+.u-step--done + .u-step-line {
+  background: var(--step-current-color);
+}
+
+/* 未完成态：默认值就是它；显式写 .u-step--todo 时把颜色钉回未完成色，
+ * 这样模板用条件类名切换三态时不会残留上一态的颜色。
+ * 放在 --current / --done 之前：三种类名同时出现时由更靠后的状态胜出。 */
+.u-step--todo .u-step-dot {
+  color: var(--text-muted);
+  background: var(--step-todo-color);
+}
+
+.u-step--todo .u-step-label {
+  color: var(--text-muted);
+}
+
+.u-step--todo .u-step-line {
+  background: var(--step-line-color);
+}
+
+/* 当前 / 完成：圆点填当前色。规范里「完成色」五套与当前色同值，
+ * 因此只有一个 --step-current-color，不再造完成色令牌。 */
+.u-step--current .u-step-dot,
+.u-step--done .u-step-dot,
+.u-step[aria-current='step'] .u-step-dot,
+.u-step[aria-current='true'] .u-step-dot {
+  color: var(--text-on-accent);
+  background: var(--step-current-color);
+}
+
+.u-step--current .u-step-label,
+.u-step[aria-current='step'] .u-step-label,
+.u-step[aria-current='true'] .u-step-label {
+  color: var(--text-primary);
+}
+
+/* 步骤条本身是进度指示，默认不可点。某项要可点就在内部放 <a>/<button>
+ * （不要把点击事件挂到 <li> 上），此时按通用控件规则补齐四种状态。 */
+.u-step a,
+.u-step button {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--step-dot-radius);
+  transition:
+    color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+.u-step a:hover,
+.u-step button:hover {
+  color: var(--text-primary);
+}
+
+.u-step a:active,
+.u-step button:active {
+  transform: scale(var(--active-scale));
+}
+
+.u-step a:focus-visible,
+.u-step button:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+/* 禁用：整项变淡；内嵌控件与 <li> 两种写法都要拿到 not-allowed 光标 */
+.u-step[aria-disabled='true'],
+.u-step:disabled,
+.u-step[aria-disabled='true'] a,
+.u-step[aria-disabled='true'] button,
+.u-step[aria-disabled='true'] .u-step-label {
+  cursor: not-allowed;
+}
+
+.u-step[aria-disabled='true'],
+.u-step:disabled {
+  opacity: var(--state-disabled-opacity);
+}
+
+.u-step[aria-disabled='true'] a,
+.u-step[aria-disabled='true'] button {
+  color: var(--text-muted);
+  transform: none;
+}
+
+/* ── 纵向变体：一行一步，连接线竖着落在圆点正下方 ── */
+
+.u-steps--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--step-gap-y);
+}
+
+.u-steps--vertical > .u-step-line {
+  align-self: flex-start;
+  width: var(--step-line-h);
+  min-width: 0;
+  min-height: calc(var(--space-unit) * 2);
+  height: auto;
+  /* 关掉横向那份负边距，并把线对齐到圆点中心而不是容器左边缘 */
+  margin: 0 0 0 calc((var(--step-dot-size) - var(--step-line-h)) / 2);
+}
+
+.u-steps--vertical .u-step .u-step-line {
+  display: none;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 2. §7 手风琴 Accordion
+ *
+ * 展开态两种写法并存：.u-accordion-item--open 与 [data-open='true']。
+ * 图标旋转 180°、头部颜色、内容高度由同一个 --accordion-transition 驱动，
+ * 因此展开时图标与标题是同步的，不会一个先到一个后到。
+ *
+ * 内容区收起靠单项的 grid-template-rows：auto 0fr ↔ auto 1fr。
+ * 详见 .u-accordion-item 上方的注释：grid 必须在单项上、overflow: hidden
+ * 必须在内容区上，否则 0fr 塌不到 0（裸文本尤其明显）。
+ * 收起时连内边距一起收掉，所以 --accordion-body-padding 只在展开态出现。
+ * 收起态再加 visibility: hidden，避免折叠内容里的链接仍被 Tab 键聚焦。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-unit);
+  /* 整组作为容器时的外圆角（与单项圆角同源，五项以内不必另设值） */
+  border-radius: var(--radius-panel);
+}
+
+.u-accordion-item {
+  /* 单项自己是 grid：第一行永远是头部（auto），第二行是内容区（0fr ↔ 1fr）。
+   * 「grid 在单项上 + overflow: hidden 在内容区上」两件事缺一不可：
+   *   · grid 若放在内容区上，内容区里的裸文本会变成匿名 grid 项目，
+   *     它的自动最小尺寸是 min-content，行高根本塌不到 0（实测仍占一行高）；
+   *   · 内容区若不加 overflow: hidden，它作为 grid 项目的自动最小尺寸同样是
+   *     min-content，0fr 一样塌不下去。
+   * 这样写还是纯 CSS 里唯一能对「内容自然高度」做过渡的写法 ——
+   * max-height 需要一个猜出来的上限，内容一超就被裁掉。
+   *
+   * 单项本身不裁圆角（overflow: visible），否则头部的焦点环会被一起裁掉；
+   * 头部用 border-radius: inherit 跟随单项圆角即可。 */
+  display: grid;
+  grid-template-rows: auto 0fr;
+  overflow: visible;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--accordion-radius);
+  transition: grid-template-rows var(--accordion-transition);
+}
+
+.u-accordion-item[data-open='true'],
+.u-accordion-item--open {
+  grid-template-rows: auto 1fr;
+}
+
+.u-accordion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  width: 100%;
+  min-height: var(--accordion-item-height);
+  padding: var(--accordion-padding-y) var(--accordion-padding-x);
+  font-size: var(--accordion-title-size);
+  font-weight: var(--accordion-title-weight);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  border-radius: inherit;
+  /* 头与内容之间的分隔线：收起时透明，展开时上色。
+   * 一直占位（而不是展开时才加边框），避免展开瞬间高度跳一格。 */
+  border-bottom: var(--stroke-width) solid transparent;
+  transition:
+    background-color var(--accordion-transition),
+    border-color var(--accordion-transition),
+    color var(--accordion-transition);
+}
+
+.u-accordion-title {
+  display: block;
+  min-width: 0;
+  transform-origin: left center;
+  transition: transform var(--accordion-transition);
+}
+
+.u-accordion-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--accordion-icon-size);
+  height: var(--accordion-icon-size);
+  font-size: var(--accordion-icon-size);
+  line-height: 1;
+  color: var(--text-muted);
+  transition:
+    color var(--accordion-transition),
+    transform var(--accordion-transition);
+}
+
+.u-accordion-head:hover {
+  background: var(--divider);
+}
+
+.u-accordion-item[data-open='true'] .u-accordion-head,
+.u-accordion-item--open .u-accordion-head {
+  border-bottom-color: var(--stroke-color);
+}
+
+.u-accordion-item[data-open='true'] .u-accordion-icon,
+.u-accordion-item--open .u-accordion-icon {
+  color: var(--text-primary);
+  transform: rotate(180deg);
+}
+
+.u-accordion-head:active .u-accordion-title {
+  transform: scale(var(--active-scale));
+}
+
+.u-accordion-head:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+.u-accordion-head:disabled,
+.u-accordion-head[aria-disabled='true'] {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.u-accordion-head:disabled:hover,
+.u-accordion-head[aria-disabled='true']:hover {
+  background: none;
+}
+
+.u-accordion-head:disabled:active .u-accordion-title,
+.u-accordion-head[aria-disabled='true']:active .u-accordion-title {
+  transform: none;
+}
+
+.u-accordion-body {
+  /* 收起靠**单项**的行高（0fr），这里只负责裁切与内边距 */
+  overflow: hidden;
+  padding: 0;
+  font-size: var(--accordion-body-size);
+  line-height: var(--accordion-body-leading);
+  color: var(--text-muted);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    padding var(--accordion-transition),
+    opacity var(--accordion-transition),
+    visibility var(--accordion-transition);
+}
+
+.u-accordion-item[data-open='true'] .u-accordion-body,
+.u-accordion-item--open .u-accordion-body {
+  padding: var(--accordion-body-padding);
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 3. §8 选项卡 Tabs
+ *
+ * 默认是下划线式（.u-tabs）：选中项文字用 --tab-active-color，
+ * 底部一条 --tab-indicator-color 的指示条。
+ * --pill 变体是胶囊式：整条容器有底色与胶囊圆角，选中项用 --accent 填充。
+ *
+ * 指示条三种写法都命中，且几何完全一致：
+ *   1) <span class="u-tab-indicator"> 写在 .u-tab 内；
+ *   2) 由 .u-tab--active::after / [aria-selected='true']::after 自动补上；
+ *   3) 作为 .u-tabs 的直接子元素，交给 JS 用行内 left / width 定位。
+ *   1 与 2 同时存在时会重合，不会画成两条。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-tabs {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tab-gap);
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.u-tab {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.75);
+  height: var(--tab-height);
+  padding: var(--tab-padding-y) var(--tab-padding-x);
+  font-size: var(--tab-font-size);
+  font-weight: var(--tab-font-weight);
+  line-height: 1;
+  color: var(--tab-color);
+  white-space: nowrap;
+  cursor: pointer;
+  background: none;
+  border-radius: var(--radius-pill);
+  transition:
+    background-color var(--transition-interactive),
+    color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+.u-tab:hover {
+  color: var(--tab-active-color);
+  background: var(--divider);
+}
+
+.u-tab:active {
+  transform: scale(var(--active-scale));
+}
+
+.u-tab:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+/* 选中态：类名与 ARIA 两种写法同时命中；放在 :hover 之后，
+ * 让「悬停在选中项上」不会把文字色退回去 */
+.u-tab--active,
+.u-tab[aria-selected='true'] {
+  color: var(--tab-active-color);
+}
+
+/* 指示条写法一：元素贴在 .u-tab 底部 */
+.u-tab > .u-tab-indicator {
+  position: absolute;
+  right: var(--tab-padding-x);
+  bottom: 0;
+  left: var(--tab-padding-x);
+  height: var(--tab-indicator-height);
+  background: var(--tab-indicator-color);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+
+/* 指示条写法三：作为 .u-tabs 的直接子元素，压住容器底线，由行内 left / width 定位 */
+.u-tabs > .u-tab-indicator {
+  position: absolute;
+  bottom: calc(var(--stroke-width) * -1);
+  height: var(--tab-indicator-height);
+  background: var(--tab-indicator-color);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+  transition:
+    left var(--transition-interactive),
+    width var(--transition-interactive);
+}
+
+/* 指示条写法二：选中态由伪元素补上同一条线 */
+.u-tab--active::after,
+.u-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: var(--tab-padding-x);
+  bottom: 0;
+  left: var(--tab-padding-x);
+  height: var(--tab-indicator-height);
+  background: var(--tab-indicator-color);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+
+.u-tab:disabled,
+.u-tab[aria-disabled='true'] {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.u-tab:disabled:hover,
+.u-tab[aria-disabled='true']:hover {
+  color: var(--tab-color);
+  background: none;
+}
+
+/* ── 胶囊变体 ── */
+
+.u-tabs--pill {
+  padding: calc(var(--space-unit) * 0.5);
+  background: var(--bg-surface);
+  border-bottom: none;
+  border-radius: var(--radius-pill);
+}
+
+.u-tabs--pill .u-tab--active,
+.u-tabs--pill .u-tab[aria-selected='true'] {
+  color: var(--text-on-accent);
+  background: var(--accent);
+}
+
+.u-tabs--pill .u-tab--active:hover,
+.u-tabs--pill .u-tab[aria-selected='true']:hover {
+  color: var(--text-on-accent);
+  background: var(--accent);
+}
+
+/* 胶囊变体不画下划线：填充本身就是选中标识 */
+.u-tabs--pill .u-tab--active::after,
+.u-tabs--pill .u-tab[aria-selected='true']::after,
+.u-tabs--pill .u-tab-indicator {
+  display: none;
+}
+
+.u-tabs-content {
+  margin-top: var(--tab-content-gap);
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 4. §9 面包屑 Breadcrumb
+ *
+ * --breadcrumb-separator 的值自带引号（"/"、"›"、"→"），
+ * 因此只能用在 content: 上，不能当 color / background 用。
+ * 分隔符两种写法：
+ *   1) 显式元素 <span class="u-breadcrumb-sep" aria-hidden="true"></span>，
+ *      留空即可 —— 字形由令牌给出（写成文本也行，此时 ::before 不参与）；
+ *   2) 完全省略分隔元素，由相邻项之间的 ::before 补一个。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--breadcrumb-gap);
+  min-height: var(--breadcrumb-height);
+  font-size: var(--breadcrumb-font-size);
+  color: var(--breadcrumb-link-color);
+}
+
+.u-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--breadcrumb-gap);
+  font-size: var(--breadcrumb-font-size);
+  color: inherit;
+}
+
+.u-breadcrumb-sep {
+  flex-shrink: 0;
+  font-size: var(--breadcrumb-font-size);
+  line-height: 1;
+  color: var(--breadcrumb-separator-color);
+  user-select: none;
+}
+
+.u-breadcrumb-sep:empty::before {
+  content: var(--breadcrumb-separator);
+}
+
+/* 没有分隔元素时的兜底（此时相邻项直接相邻） */
+.u-breadcrumb-item + .u-breadcrumb-item::before {
+  content: var(--breadcrumb-separator);
+  color: var(--breadcrumb-separator-color);
+}
+
+.u-breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--breadcrumb-icon-gap);
+  color: var(--breadcrumb-link-color);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+.u-breadcrumb-link:hover {
+  color: var(--accent);
+}
+
+.u-breadcrumb-link:active {
+  transform: scale(var(--active-scale));
+}
+
+.u-breadcrumb-link:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+.u-breadcrumb-link[aria-disabled='true'],
+.u-breadcrumb-link:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.u-breadcrumb-link[aria-disabled='true']:hover,
+.u-breadcrumb-link:disabled:hover {
+  color: var(--breadcrumb-link-color);
+}
+
+/* 首页图标：SVG / 图片 / 图标字三种写法共用一档尺寸 */
+.u-breadcrumb-home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--breadcrumb-icon-gap);
+  color: inherit;
+}
+
+.u-breadcrumb-home > svg,
+.u-breadcrumb-home > img {
+  flex-shrink: 0;
+  width: var(--breadcrumb-icon-size);
+  height: var(--breadcrumb-icon-size);
+}
+
+.u-breadcrumb-home > [aria-hidden='true'] {
+  font-size: var(--breadcrumb-icon-size);
+  line-height: 1;
+}
+
+/* 当前页：不可点，用当前页色与链接区分 */
+.u-breadcrumb-current,
+.u-breadcrumb-item[aria-current='page'] {
+  font-size: var(--breadcrumb-font-size);
+  color: var(--breadcrumb-current-color);
+  cursor: default;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 5. 响应式
+ *
+ * 统一断点：1199 / 991 / 767 / 575。
+ * 缩放必须在**使用点**乘系数（见文件头第 2 条），所以下面每一行都是
+ * calc(令牌 * 系数) 而不是重定义令牌。
+ * ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1199px) {
+  /* 中间屏：横向步骤与选项卡的间距各收一档，省下的宽度留给标签文字。
+   * 连接线的负边距按同一系数跟着缩，否则线会戳进下一个圆点；
+   * 纵向变体的间距是另一条令牌，这里用 :not() 排除，避免把竖轨道改坏。 */
+  .u-steps:not(.u-steps--vertical) {
+    gap: calc(var(--step-gap-x) * 0.75);
+  }
+
+  .u-step-line {
+    margin-right: calc(var(--step-gap-x) * -0.75);
+  }
+
+  .u-steps:not(.u-steps--vertical) > .u-step-line {
+    margin-left: calc(var(--step-gap-x) * -0.75);
+  }
+
+  .u-tabs {
+    gap: calc(var(--tab-gap) * 0.75);
+  }
+}
+
+@media (max-width: 767px) {
+  /* 步骤条：圆点按控件 ×0.9；标签允许换行，窄屏上宁可两行也不截断 */
+  .u-steps:not(.u-steps--vertical) {
+    gap: calc(var(--step-gap-x) * var(--mobile-padding-scale));
+  }
+
+  .u-steps--vertical {
+    gap: calc(var(--step-gap-y) * var(--mobile-padding-scale));
+  }
+
+  .u-step-line {
+    margin-right: calc(var(--step-gap-x) * var(--mobile-padding-scale) * -1);
+  }
+
+  .u-steps:not(.u-steps--vertical) > .u-step-line {
+    margin-left: calc(var(--step-gap-x) * var(--mobile-padding-scale) * -1);
+  }
+
+  /* 圆点按 ×0.9 缩小后，竖轨道的对中量也要按同一系数缩，否则会偏出圆点中心 */
+  .u-steps--vertical > .u-step-line {
+    margin-left: calc(
+      (var(--step-dot-size) * var(--mobile-control-scale) - var(--step-line-h)) / 2
+    );
+  }
+
+  .u-step {
+    gap: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
+  }
+
+  .u-step-dot {
+    width: calc(var(--step-dot-size) * var(--mobile-control-scale));
+    height: calc(var(--step-dot-size) * var(--mobile-control-scale));
+    font-size: calc(var(--step-num-size) * var(--mobile-body-scale));
+  }
+
+  .u-step-label {
+    overflow: visible;
+    font-size: calc(var(--step-label-size) * var(--mobile-body-scale));
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  /* 手风琴：头部高度 ×0.9、内边距 ×0.8、标题 ×0.95；
+   * --accordion-body-padding 是组合值（上下 / 左右 / 下 三段），
+   * calc 无法整体乘系数，故保持令牌原值不缩放。 */
+  .u-accordion {
+    gap: calc(var(--space-unit) * var(--mobile-padding-scale));
+  }
+
+  .u-accordion-head {
+    min-height: calc(var(--accordion-item-height) * var(--mobile-control-scale));
+    padding: calc(var(--accordion-padding-y) * var(--mobile-padding-scale))
+      calc(var(--accordion-padding-x) * var(--mobile-padding-scale));
+    font-size: calc(var(--accordion-title-size) * var(--mobile-body-scale));
+  }
+
+  .u-accordion-icon {
+    width: calc(var(--accordion-icon-size) * var(--mobile-control-scale));
+    height: calc(var(--accordion-icon-size) * var(--mobile-control-scale));
+    font-size: calc(var(--accordion-icon-size) * var(--mobile-control-scale));
+  }
+
+  .u-accordion-body {
+    font-size: calc(var(--accordion-body-size) * var(--mobile-body-scale));
+  }
+
+  /* 选项卡：高 ×0.9、内边距 ×0.8、字号 ×0.95；指示条的内缩量随之收 */
+  .u-tabs {
+    gap: calc(var(--tab-gap) * var(--mobile-padding-scale));
+  }
+
+  .u-tab {
+    height: calc(var(--tab-height) * var(--mobile-control-scale));
+    padding: calc(var(--tab-padding-y) * var(--mobile-padding-scale))
+      calc(var(--tab-padding-x) * var(--mobile-padding-scale));
+    font-size: calc(var(--tab-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-tab > .u-tab-indicator,
+  .u-tab--active::after,
+  .u-tab[aria-selected='true']::after {
+    right: calc(var(--tab-padding-x) * var(--mobile-padding-scale));
+    left: calc(var(--tab-padding-x) * var(--mobile-padding-scale));
+  }
+
+  .u-tabs-content {
+    margin-top: calc(var(--tab-content-gap) * var(--mobile-padding-scale));
+  }
+
+  /* 面包屑：整条高 ×0.9、项间距 ×0.8、字号 ×0.95、图标 ×0.9 */
+  .u-breadcrumb {
+    min-height: calc(var(--breadcrumb-height) * var(--mobile-control-scale));
+    gap: calc(var(--breadcrumb-gap) * var(--mobile-padding-scale));
+    font-size: calc(var(--breadcrumb-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-breadcrumb-item,
+  .u-breadcrumb-sep,
+  .u-breadcrumb-current {
+    font-size: calc(var(--breadcrumb-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-breadcrumb-item {
+    gap: calc(var(--breadcrumb-gap) * var(--mobile-padding-scale));
+  }
+
+  .u-breadcrumb-link {
+    gap: calc(var(--breadcrumb-icon-gap) * var(--mobile-padding-scale));
+  }
+
+  .u-breadcrumb-home > svg,
+  .u-breadcrumb-home > img {
+    width: calc(var(--breadcrumb-icon-size) * var(--mobile-control-scale));
+    height: calc(var(--breadcrumb-icon-size) * var(--mobile-control-scale));
+  }
+
+  .u-breadcrumb-home > [aria-hidden='true'] {
+    font-size: calc(var(--breadcrumb-icon-size) * var(--mobile-control-scale));
+  }
+}
+
+@media (max-width: 575px) {
+  /* 极窄屏：横向步骤条改「圆点在上、标签在下」，避免两三个步骤就把宽度吃光；
+   * 横着的连接线此时无处可放，一并隐藏（纵向变体的竖轨道不受影响）。 */
+  .u-steps:not(.u-steps--vertical) .u-step {
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--space-unit) * var(--mobile-padding-scale));
+  }
+
+  .u-steps:not(.u-steps--vertical) .u-step .u-step-line,
+  .u-steps:not(.u-steps--vertical) > .u-step-line {
+    display: none;
+  }
+
+  .u-steps:not(.u-steps--vertical) .u-step-label {
+    text-align: center;
+  }
+
+  /* 胶囊容器再不收一档内边距，药丸会被挤出圆角 */
+  .u-tabs--pill {
+    padding: calc(var(--space-unit) * 0.25);
+  }
+}

@@ -81,8 +81,7 @@ const SHARED = {
   '--modal-body-gap': '24px',
   '--modal-footer-gap': '12px',
 
-  /* 下拉选项左右内边距与选中态左侧竖条 */
-  '--dropdown-item-padding-x': '16px',
+  /* 下拉选中态左侧竖条宽度（选项内边距已改为逐风格，见下） */
   '--dropdown-active-bar': '2px',
 
   /* 折扣标签等微型徽标：内边距 2px 6px、圆角 4px */
@@ -96,8 +95,6 @@ const SHARED = {
   '--spinner-border': '2px',
   '--spinner-border-lg': '3px',
   '--spinner-duration': '0.8s',
-  /* 骨架屏 shimmer 循环时长 */
-  '--skeleton-duration': '1.5s',
 
   /* 移动端缩放系数 */
   '--mobile-nav-scale': '0.85',
@@ -117,6 +114,159 @@ const SHARED = {
 
   /* 背景层默认值：不覆盖主题自带背景，也不留空转的网格动画 */
   '--bg-media': 'none',
+
+  /* ── B14. 下拉 / 选择器（§1） ─────────────────────────────── */
+  /* 搜索型下拉：搜索框与列表的间距 */
+  '--dropdown-search-gap': '8px',
+  /* 无结果提示的上下内边距 */
+  '--dropdown-empty-padding': '24px',
+  /* 无结果提示字号 */
+  '--dropdown-empty-font-size': '13px',
+
+  /* ── B15. 复选框（§2） ─────────────────────────────── */
+  /* 整行可点击，最小高度 */
+  '--checkbox-row-min-height': '32px',
+
+  /* ── B16. 单选框（§3） ─────────────────────────────── */
+  /* 选中态边框宽度（5 套通用） */
+  '--radio-checked-border-width': '2px',
+  /* 单选组垂直排列间距 */
+  '--radio-group-gap-y': '12px',
+  /* 单选组水平排列间距 */
+  '--radio-group-gap-x': '20px',
+  /* 组标签字号 */
+  '--radio-group-label-size': '14px',
+  /* 组标签字重 */
+  '--radio-group-label-weight': '500',
+  /* 组标签下边距 */
+  '--radio-group-label-gap': '10px',
+
+  /* ── B17. 开关（§4） ─────────────────────────────── */
+  /* 滑块内边距 */
+  '--switch-thumb-inset': '2px',
+  /* 标签与轨道的间距 */
+  '--switch-label-gap': '10px',
+
+  /* ── B18. 滑块（§5） ─────────────────────────────── */
+  /* 刻度标签字号（规范 11–12px） */
+  '--slider-tick-size': '12px',
+  /* 刻度标签与轨道的间距 */
+  '--slider-tick-gap': '8px',
+  /* 当前值气泡高度 */
+  '--slider-bubble-h': '24px',
+  /* 气泡内边距 */
+  '--slider-bubble-padding': '4px 8px',
+  /* 气泡圆角 */
+  '--slider-bubble-radius': '6px',
+  /* 气泡字号 */
+  '--slider-bubble-size': '12px',
+  /* 气泡文字色（底色取 --accent） */
+  '--slider-bubble-color': '#FFFFFF',
+
+  /* ── B19. 步骤条（§6） ─────────────────────────────── */
+  /* 垂直排列步骤间距 */
+  '--step-gap-y': '24px',
+  /* 水平排列步骤间距 */
+  '--step-gap-x': '40px',
+  /* 圆点内数字/图标字号（规范 12–14px） */
+  '--step-num-size': '13px',
+  /* 圆点内数字字重 */
+  '--step-num-weight': '600',
+
+  /* ── B20. 手风琴（§7） ─────────────────────────────── */
+  /* 内容区内边距 */
+  '--accordion-body-padding': '0 20px 16px',
+  /* 内容区字号 */
+  '--accordion-body-size': '14px',
+  /* 内容区行高 */
+  '--accordion-body-leading': '1.6',
+
+  /* ── B21. 选项卡（§8） ─────────────────────────────── */
+  /* 内容区上边距（规范 16–24px） */
+  '--tab-content-gap': '20px',
+
+  /* ── B22. 面包屑（§9） ─────────────────────────────── */
+  /* 首页图标尺寸（规范 14–16px） */
+  '--breadcrumb-icon-size': '15px',
+  /* 图标与文字间距 */
+  '--breadcrumb-icon-gap': '6px',
+
+  /* ── B23. 表格（§10） ─────────────────────────────── */
+  /* 排序图标尺寸（规范 12–14px） */
+  '--table-sort-icon-size': '13px',
+  /* 排序图标与文字间距 */
+  '--table-sort-gap': '4px',
+  /* 选择列宽 */
+  '--table-select-col-width': '48px',
+  /* 操作列宽（右对齐） */
+  '--table-action-col-width': '120px',
+
+  /* ── B24. 日期选择器（§11） ─────────────────────────────── */
+  /* 月份导航箭头尺寸（规范 24–28px） */
+  '--datepicker-nav-size': '26px',
+  /* 月份标题字号（规范 14–16px） */
+  '--datepicker-title-size': '15px',
+  /* 星期行字号（规范 11–12px） */
+  '--datepicker-weekday-size': '12px',
+  /* 星期行高度 */
+  '--datepicker-weekday-height': '32px',
+  /* 非本月日期的不透明度 */
+  '--datepicker-other-opacity': '0.5',
+
+  /* ── B25. 文件上传（§12） ─────────────────────────────── */
+  /* 文件列表项高度 */
+  '--upload-file-height': '48px',
+  /* 文件列表项内边距 */
+  '--upload-file-padding': '8px 12px',
+  /* 文件图标尺寸 */
+  '--upload-file-icon': '20px',
+  /* 删除按钮尺寸 */
+  '--upload-file-remove': '24px',
+
+  /* ── B26. 评分（§13） ─────────────────────────────── */
+  /* 悬停放大倍数 */
+  '--rating-hover-scale': '1.15',
+  /* 悬停过渡时长 */
+  '--rating-hover-duration': '0.15s',
+
+  /* ── B27. 气泡提示（§14） ─────────────────────────────── */
+  /* 与触发元素的间距 */
+  '--tooltip-offset': '8px',
+
+  /* ── B28. 抽屉（§15） ─────────────────────────────── */
+  /* 滑入时长 */
+  '--drawer-duration': '0.3s',
+  /* 滑入缓动 */
+  '--drawer-ease': 'cubic-bezier(0.32, 0.72, 0, 1)',
+
+
+
+  /* ── B31. 通知徽标（§18） ─────────────────────────────── */
+  /* 与背景同色的分离描边（叠在头像上时用） */
+  '--badge-ring-width': '2px',
+  /* 相对父元素右上角的水平偏移 */
+  '--badge-offset-x': '-4px',
+  /* 相对父元素右上角的垂直偏移 */
+  '--badge-offset-y': '-4px',
+
+
+  /* ── B33. 通用状态与交互（§21） ─────────────────────────────── */
+  /* 聚焦外环的 offset */
+  '--focus-ring-offset': '2px',
+  /* 激活态缩放（规范 0.97–0.99；按钮另有 --btn-active-transform） */
+  '--active-scale': '0.98',
+  /* 禁用态不透明度（规范 0.4–0.5） */
+  '--state-disabled-opacity': '0.45',
+  /* 按钮内联加载圈尺寸 */
+  '--loading-spinner-size': '16px',
+  /* 加载中文字保留但降低不透明度 */
+  '--loading-text-opacity': '0.6',
+  /* 字段错误文字字号 */
+  '--field-error-size': '12px',
+  /* 错误文字与控件的间距 */
+  '--field-error-gap': '6px',
+  /* 成功态右侧勾图标尺寸 */
+  '--field-success-icon': '16px',
   '--bg-media-opacity': '0.18',
 }
 
@@ -679,6 +829,359 @@ const MATRIX = {
   // 圆角 4 / 6 / 4 / 0 / 2
   '--checkbox-radius': ['4px', '6px', '4px', '0px', '2px'],
   // 勾选图标 12 / 14 / 12 / 14 / 10
+
+  /* ── B14. 下拉 / 选择器（§1） ──────────────────────────── */
+  // 箭头尺寸 16 / 18 / 16 / 18 / 14
+  '--select-arrow-size': ['16px', '18px', '16px', '18px', '14px'],
+  // 箭头颜色
+  '--select-arrow-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
+  // 面板阴影不单独登记：第三批 §1 的面板阴影与既有 --shadow-float 五套逐值相同
+  // 面板最大高度
+  '--dropdown-max-height': ['280px', '320px', '300px', '340px', '240px'],
+  // 面板与触发器的间距
+  '--dropdown-offset': ['6px', '8px', '6px', '4px', '4px'],
+  // 选项左右内边距（原为 5 套同值 16px，第三批改为逐风格）
+  '--dropdown-item-padding-x': ['14px', '18px', '16px', '18px', '12px'],
+  // 选项字号
+  '--dropdown-item-font-size': ['13px', '14px', '13px', '14px', '12px'],
+  // 选项悬停底色
+  '--dropdown-item-hover-bg': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#F7F7F5', '#FAFAFA', '#141414'],
+  // 选项选中底色（neo 是纯色而非淡色叠加，无法复用 --accent-soft）
+  '--dropdown-item-active-bg': ['rgba(59, 130, 246, 0.12)', 'rgba(99, 102, 241, 0.12)', 'rgba(214, 40, 114, 0.08)', '#FF6B35', 'rgba(34, 197, 94, 0.12)'],
+  // 选项选中文字色
+  '--dropdown-item-active-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#FFFFFF', '#E8E8E8'],
+  // 选项禁用文字色
+  '--dropdown-item-disabled-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#999999', '#6B6B6B'],
+  // 选中勾尺寸（mono 只用竖条，故为 0）
+  '--dropdown-check-size': ['14px', '16px', '14px', '16px', '0px'],
+  // 选中勾颜色
+  '--dropdown-check-color': ['#3B82F6', '#6366F1', '#D62872', '#FFFFFF', 'transparent'],
+  // 分组标题高度
+  '--dropdown-group-height': ['28px', '32px', '30px', '34px', '26px'],
+  // 分组标题字号
+  '--dropdown-group-font-size': ['11px', '12px', '11px', '12px', '11px'],
+  // 分组标题字重
+  '--dropdown-group-weight': ['600', '600', '600', '700', '500'],
+  // 分组标题颜色
+  '--dropdown-group-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
+  // 分组标题上边距
+  '--dropdown-group-gap': ['6px', '8px', '6px', '4px', '4px'],
+  // 搜索命中文字高亮底（accent 20%，不加粗）
+  '--dropdown-hit-bg': ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.2)', 'rgba(214, 40, 114, 0.2)', 'rgba(255, 107, 53, 0.2)', 'rgba(34, 197, 94, 0.2)'],
+
+  /* ── B15. 复选框（§2） ──────────────────────────── */
+  // 悬停边框色（默认边框复用 --stroke-width / --stroke-color）
+  '--checkbox-hover-border': ['#3F3F46', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 选中背景
+  '--checkbox-checked-bg': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 勾选框与标签的间距
+  '--checkbox-label-gap': ['10px', '12px', '10px', '12px', '8px'],
+  // 标签字号
+  '--checkbox-label-size': ['14px', '14px', '14px', '15px', '13px'],
+  // 不确定态中间横线宽度（颜色用 --text-on-accent）
+  '--checkbox-indeterminate-width': ['8px', '9px', '8px', '10px', '8px'],
+
+  /* ── B16. 单选框（§3） ──────────────────────────── */
+  // 尺寸 18 / 20 / 18 / 22 / 16（与复选框同值但独立登记：两者是规范里的两行）
+  '--radio-size': ['18px', '20px', '18px', '22px', '16px'],
+  // 选中内圆尺寸
+  '--radio-dot-size': ['8px', '9px', '8px', '10px', '7px'],
+  // 选中边框与内圆的颜色
+  '--radio-checked-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 圆点与标签的间距
+  '--radio-label-gap': ['10px', '12px', '10px', '12px', '8px'],
+
+  /* ── B17. 开关（§4） ──────────────────────────── */
+  // 轨道宽 40 / 44 / 42 / 48 / 36
+  '--switch-track-w': ['40px', '44px', '42px', '48px', '36px'],
+  // 轨道高
+  '--switch-track-h': ['22px', '24px', '24px', '26px', '20px'],
+  // 轨道圆角
+  '--switch-track-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
+  // 滑块尺寸
+  '--switch-thumb-size': ['18px', '20px', '20px', '22px', '16px'],
+  // 滑块圆角
+  '--switch-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
+  // 关闭态轨道背景
+  '--switch-off-bg': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
+  // 开启态轨道背景
+  '--switch-on-bg': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 滑块过渡（连缓动一起给，故为组合值）
+  '--switch-transition': ['0.2s ease', '0.25s ease', '0.2s ease', '0.15s linear', '0.15s ease'],
+
+  /* ── B18. 滑块（§5） ──────────────────────────── */
+  // 轨道高
+  '--slider-track-h': ['4px', '6px', '6px', '8px', '4px'],
+  // 轨道圆角
+  '--slider-track-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
+  // 已选段颜色
+  '--slider-fill': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 未选段颜色
+  '--slider-track': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
+  // 手柄尺寸
+  '--slider-thumb-size': ['18px', '20px', '20px', '24px', '16px'],
+  // 手柄圆角
+  '--slider-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
+  // 手柄边框（组合值）
+  '--slider-thumb-border': ['2px solid #0A0A0A', '2px solid #FFFFFF', '2px solid #FFFFFF', '2px solid #000000', '1px solid #0D0D0D'],
+  // 手柄阴影
+  '--slider-thumb-shadow': ['0 2px 8px rgba(0, 0, 0, 0.4)', '0 2px 12px rgba(99, 102, 241, 0.2)', '0 2px 8px rgba(0, 0, 0, 0.12)', '4px 4px 0 #000000', 'none'],
+
+  /* ── B19. 步骤条（§6） ──────────────────────────── */
+  // 圆点尺寸
+  '--step-dot-size': ['28px', '32px', '30px', '36px', '24px'],
+  // 圆点圆角
+  '--step-dot-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
+  // 连接线高度
+  '--step-line-h': ['2px', '2px', '2px', '3px', '2px'],
+  // 连接线颜色
+  '--step-line-color': ['#2A2A2D', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#000000', '#2A2A2A'],
+  // 当前步骤色（规范里「完成色」五套与它同值，故合并为一个令牌）
+  '--step-current-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 未完成色
+  '--step-todo-color': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
+  // 标签字号
+  '--step-label-size': ['13px', '14px', '13px', '14px', '12px'],
+
+  /* ── B20. 手风琴（§7） ──────────────────────────── */
+  // 折叠项头高度
+  '--accordion-item-height': ['56px', '64px', '60px', '64px', '48px'],
+  // 头部上下内边距
+  '--accordion-padding-y': ['16px', '18px', '16px', '18px', '12px'],
+  // 头部左右内边距
+  '--accordion-padding-x': ['20px', '24px', '24px', '24px', '16px'],
+  // 圆角
+  '--accordion-radius': ['12px', '16px', '12px', '0px', '4px'],
+  // 标题字号
+  '--accordion-title-size': ['15px', '16px', '15px', '16px', '14px'],
+  // 标题字重
+  '--accordion-title-weight': ['500', '500', '600', '700', '500'],
+  // 展开图标尺寸（展开时旋转 180°）
+  '--accordion-icon-size': ['16px', '18px', '16px', '18px', '14px'],
+  // 展开动画（图标旋转与标题同步）
+  '--accordion-transition': ['0.25s ease', '0.3s ease', '0.25s ease', '0.15s linear', '0.15s ease'],
+
+  /* ── B21. 选项卡（§8） ──────────────────────────── */
+  // 选项卡高
+  '--tab-height': ['40px', '44px', '42px', '48px', '36px'],
+  // 内边距（上下）
+  '--tab-padding-y': ['10px', '12px', '11px', '14px', '8px'],
+  // 内边距（左右）
+  '--tab-padding-x': ['16px', '20px', '18px', '20px', '14px'],
+  // 字号
+  '--tab-font-size': ['14px', '15px', '14px', '15px', '13px'],
+  // 字重
+  '--tab-font-weight': ['500', '500', '600', '700', '500'],
+  // 未选中文字色
+  '--tab-color': ['#6B7280', '#6B7280', '#8A8A8A', '#666666', '#6B6B6B'],
+  // 选中文字色
+  '--tab-active-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#000000', '#E8E8E8'],
+  // 指示条高度
+  '--tab-indicator-height': ['2px', '2px', '2px', '3px', '2px'],
+  // 指示条颜色
+  '--tab-indicator-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 选项卡之间的间距
+  '--tab-gap': ['24px', '28px', '24px', '20px', '20px'],
+
+  /* ── B22. 面包屑（§9） ──────────────────────────── */
+  // 整条高度
+  '--breadcrumb-height': ['24px', '28px', '26px', '28px', '22px'],
+  // 字号
+  '--breadcrumb-font-size': ['13px', '14px', '13px', '14px', '12px'],
+  // 分隔符内容（带引号，直接给 content: 用）
+  '--breadcrumb-separator': ['"/"', '"›"', '"/"', '"→"', '">"'],
+  // 分隔符颜色
+  '--breadcrumb-separator-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
+  // 链接色
+  '--breadcrumb-link-color': ['#6B7280', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
+  // 当前页色
+  '--breadcrumb-current-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#FF6B35', '#22C55E'],
+  // 项间距
+  '--breadcrumb-gap': ['8px', '10px', '8px', '10px', '8px'],
+
+  /* ── B23. 表格（§10） ──────────────────────────── */
+  // 行高
+  '--table-row-height': ['48px', '56px', '52px', '56px', '40px'],
+  // 表头高
+  '--table-head-height': ['40px', '48px', '44px', '48px', '36px'],
+  // 单元格内边距（上下）
+  '--table-cell-padding-y': ['12px', '14px', '13px', '14px', '10px'],
+  // 单元格内边距（左右）
+  '--table-cell-padding-x': ['16px', '20px', '18px', '20px', '14px'],
+  // 正文字号
+  '--table-font-size': ['13px', '14px', '14px', '14px', '12px'],
+  // 表头字号
+  '--table-head-font-size': ['12px', '13px', '12px', '13px', '11px'],
+  // 表头字重
+  '--table-head-weight': ['600', '600', '600', '700', '500'],
+  // 描边宽度（只画底边，neo 2px）
+  '--table-border-width': ['1px', '1px', '1px', '2px', '1px'],
+  // 描边颜色
+  '--table-border-color': ['#2A2A2D', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#000000', '#2A2A2A'],
+  // 斑马纹底色（tech / glass / neo 无斑马纹）
+  '--table-zebra-bg': ['transparent', 'transparent', '#FAFAFA', 'transparent', '#141414'],
+  // 行悬停背景
+  '--table-row-hover-bg': ['#27272A', 'rgba(255, 255, 255, 0.3)', '#F7F7F5', '#FAFAFA', '#1A1A1A'],
+  // 表头是否大写（第三批给出了逐风格差异，故不能复用全局 --label-transform）
+  '--table-head-transform': ['uppercase', 'none', 'uppercase', 'uppercase', 'uppercase'],
+
+  /* ── B24. 日期选择器（§11） ──────────────────────────── */
+  // 面板宽
+  '--datepicker-width': ['280px', '320px', '300px', '320px', '260px'],
+  // 面板内边距
+  '--datepicker-padding': ['16px', '20px', '18px', '20px', '14px'],
+  // 面板圆角
+  '--datepicker-radius': ['12px', '16px', '12px', '0px', '4px'],
+  // 日期单元格尺寸（正方形）
+  '--datepicker-cell-size': ['36px', '40px', '38px', '44px', '32px'],
+  // 单元格圆角
+  '--datepicker-cell-radius': ['8px', '9999px', '8px', '0px', '4px'],
+  // 选中背景
+  '--datepicker-selected-bg': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
+  // 今天标记颜色
+  '--datepicker-today-color': ['#3B82F6', '#6366F1', '#D62872', '#000000', '#22C55E'],
+  // 今天标记：底部 2px 下划线 / 全框描边两种做法，统一用 box-shadow 表达（配色上面的 --datepicker-today-color + currentColor）
+  '--datepicker-today-marker': ['inset 0 -2px 0 0 currentColor', '0 0 0 1px currentColor', 'inset 0 -2px 0 0 currentColor', '0 0 0 2px currentColor', 'inset 0 -2px 0 0 currentColor'],
+  // 日期字号
+  '--datepicker-font-size': ['13px', '14px', '13px', '14px', '12px'],
+
+  /* ── B25. 文件上传（§12） ──────────────────────────── */
+  // 拖拽区高度
+  '--upload-height': ['160px', '180px', '160px', '180px', '140px'],
+  // 拖拽区内边距
+  '--upload-padding': ['24px', '28px', '24px', '28px', '20px'],
+  // 圆角
+  '--upload-radius': ['12px', '16px', '12px', '0px', '4px'],
+  // 图标尺寸
+  '--upload-icon-size': ['32px', '36px', '32px', '36px', '28px'],
+  // 主文案字号
+  '--upload-title-size': ['14px', '15px', '14px', '15px', '13px'],
+  // 副文案字号
+  '--upload-sub-size': ['12px', '13px', '12px', '13px', '11px'],
+  // 拖拽激活态背景（accent 5%，边框同时变 --accent）
+  '--upload-drag-bg': ['rgba(59, 130, 246, 0.05)', 'rgba(99, 102, 241, 0.05)', 'rgba(214, 40, 114, 0.05)', 'rgba(255, 107, 53, 0.05)', 'rgba(34, 197, 94, 0.05)'],
+
+  /* ── B26. 评分（§13） ──────────────────────────── */
+  // 星尺寸
+  '--rating-star-size': ['16px', '18px', '16px', '20px', '14px'],
+  // 星间距
+  '--rating-star-gap': ['4px', '4px', '4px', '6px', '3px'],
+  // 填充色
+  '--rating-fill': ['#F59E0B', '#F59E0B', '#F59E0B', '#FF6B35', '#22C55E'],
+  // 空星色
+  '--rating-empty': ['#3F3F46', '#D1D5DB', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
+  // 数字字号
+  '--rating-number-size': ['13px', '14px', '13px', '14px', '12px'],
+
+  /* ── B27. 气泡提示（§14） ──────────────────────────── */
+  // 内边距（上下）
+  '--tooltip-padding-y': ['6px', '8px', '8px', '8px', '6px'],
+  // 内边距（左右）
+  '--tooltip-padding-x': ['10px', '14px', '12px', '12px', '10px'],
+  // 圆角
+  '--tooltip-radius': ['6px', '10px', '8px', '0px', '4px'],
+  // 背景
+  '--tooltip-bg': ['#27272A', 'rgba(30, 27, 75, 0.9)', '#1A1A1A', '#000000', '#1A1A1A'],
+  // 文字色
+  '--tooltip-color': ['#FAFAFA', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#E8E8E8'],
+  // 字号
+  '--tooltip-font-size': ['12px', '13px', '12px', '13px', '12px'],
+  // 箭头尺寸（neo 无箭头）
+  '--tooltip-arrow-size': ['6px', '8px', '6px', '0px', '4px'],
+  // 最大宽
+  '--tooltip-max-width': ['240px', '280px', '240px', '260px', '220px'],
+  // 出现延迟（neo 无延迟）
+  '--tooltip-delay': ['200ms', '200ms', '200ms', '0ms', '200ms'],
+  // 阴影（neo 用硬阴影）
+  '--tooltip-shadow': ['0 4px 12px rgba(0, 0, 0, 0.2)', '0 4px 12px rgba(0, 0, 0, 0.2)', '0 4px 12px rgba(0, 0, 0, 0.2)', '4px 4px 0 #000000', '0 4px 12px rgba(0, 0, 0, 0.2)'],
+
+  /* ── B28. 抽屉（§15） ──────────────────────────── */
+  // 宽度
+  '--drawer-width': ['400px', '440px', '420px', '440px', '380px'],
+  // 内边距
+  '--drawer-padding': ['24px', '28px', '28px', '28px', '20px'],
+  // 圆角：抽屉从右侧滑入，圆的必须是可见的左边缘两角（四值顺序 左上 右上 右下 左下）
+  '--drawer-radius': ['16px 0 0 16px', '24px 0 0 24px', '20px 0 0 20px', '0px', '4px 0 0 4px'],
+  // 阴影
+  '--drawer-shadow': ['-8px 0 32px rgba(0, 0, 0, 0.4)', '-8px 0 40px rgba(99, 102, 241, 0.16)', '-8px 0 32px rgba(0, 0, 0, 0.12)', '-8px 0 0 #000000', 'none'],
+  // 遮罩色
+  '--drawer-scrim': ['rgba(0, 0, 0, 0.7)', 'rgba(30, 27, 75, 0.3)', 'rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.8)'],
+  // 遮罩模糊（只有 glass 有）
+  '--drawer-scrim-backdrop': ['none', 'blur(8px)', 'none', 'none', 'none'],
+  // 头部高
+  '--drawer-head-height': ['64px', '72px', '68px', '72px', '56px'],
+  // 底部高
+  '--drawer-foot-height': ['72px', '80px', '76px', '80px', '64px'],
+
+  /* ── B29. 骨架屏（§16） ──────────────────────────── */
+  // 循环时长（原为 5 套同值 1.5s，第三批改为逐风格）
+  '--skeleton-duration': ['1.5s', '1.8s', '1.5s', '1s', '1.2s'],
+  // 动画名：neo 用脉冲而不是 shimmer（规范明确要求）
+  '--skeleton-animation-name': ['skeleton-shimmer', 'skeleton-shimmer', 'skeleton-shimmer', 'skeleton-pulse', 'skeleton-shimmer'],
+  // 动画缓动
+  '--skeleton-easing': ['linear', 'linear', 'linear', 'ease-in-out', 'linear'],
+  // 底色
+  '--skeleton-bg': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#1A1A1A'],
+  // 高亮色
+  '--skeleton-highlight': ['#3F3F46', 'rgba(255, 255, 255, 0.7)', '#F7F7F5', '#FAFAFA', '#2A2A2A'],
+  // 文字行高
+  '--skeleton-line-height': ['16px', '16px', '16px', '16px', '14px'],
+  // 行间距（文字骨架宽度 100% / 80% / 60% 由使用点写死三档）
+  '--skeleton-line-gap': ['8px', '10px', '8px', '8px', '6px'],
+
+  /* ── B30. 空状态（§17） ──────────────────────────── */
+  // 图标尺寸
+  '--empty-icon-size': ['64px', '72px', '64px', '72px', '56px'],
+  // 图标颜色
+  '--empty-icon-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
+  // 标题字号
+  '--empty-title-size': ['18px', '20px', '18px', '20px', '16px'],
+  // 标题字重
+  '--empty-title-weight': ['600', '600', '600', '700', '500'],
+  // 描述字号
+  '--empty-desc-size': ['14px', '15px', '14px', '15px', '13px'],
+  // 描述颜色
+  '--empty-desc-color': ['#6B7280', '#6B7280', '#8A8A8A', '#666666', '#6B6B6B'],
+  // 按钮上边距
+  '--empty-btn-gap': ['24px', '28px', '24px', '28px', '20px'],
+  // 整块上边距
+  '--empty-padding-top': ['80px', '96px', '80px', '96px', '64px'],
+
+  /* ── B31. 通知徽标（§18） ──────────────────────────── */
+  // 数字徽标高
+  '--badge-height': ['18px', '20px', '18px', '22px', '16px'],
+  // 内边距（左右）
+  '--badge-padding-x': ['5px', '6px', '5px', '6px', '4px'],
+  // 圆角
+  '--badge-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
+  // 背景
+  '--badge-bg': ['#EF4444', '#EF4444', '#D62872', '#FF6B35', '#22C55E'],
+  // 文字色（mono 是深字配绿底）
+  '--badge-color': ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#0D0D0D'],
+  // 字号
+  '--badge-font-size': ['11px', '12px', '11px', '12px', '10px'],
+  // 最小宽
+  '--badge-min-width': ['18px', '20px', '18px', '22px', '16px'],
+  // 点状尺寸
+  '--badge-dot-size': ['8px', '10px', '8px', '10px', '6px'],
+
+  /* ── B32. 滚动条（§19） ──────────────────────────── */
+  // 宽度
+  '--scrollbar-width': ['8px', '10px', '8px', '12px', '6px'],
+  // 轨道色（glass 透明）
+  '--scrollbar-track': ['#0A0A0A', 'transparent', '#F7F7F5', '#E5E5E5', '#0D0D0D'],
+  // 滑块色
+  '--scrollbar-thumb': ['#27272A', 'rgba(99, 102, 241, 0.3)', '#D4D4D4', '#000000', '#2A2A2A'],
+  // 滑块圆角
+  '--scrollbar-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
+  // 滑块悬停色
+  '--scrollbar-thumb-hover': ['#3F3F46', 'rgba(99, 102, 241, 0.5)', '#8A8A8A', '#FF6B35', '#22C55E'],
+  // 滑块内边距（用 border 撑出）
+  '--scrollbar-padding': ['2px', '2px', '2px', '0px', '1px'],
+
+  /* ── B33. 通用状态与交互（§21） ──────────────────────────── */
+  // 所有控件的聚焦外环（输入框继续用自己的 --input-focus-shadow，当前两者同值）
+  '--focus-ring': ['0 0 0 3px rgba(59, 130, 246, 0.15)', '0 0 0 3px rgba(99, 102, 241, 0.15)', '0 0 0 3px rgba(214, 40, 114, 0.15)', '0 0 0 3px rgba(255, 107, 53, 0.15)', '0 0 0 3px rgba(34, 197, 94, 0.15)'],
   '--checkbox-icon-size': ['12px', '14px', '12px', '14px', '10px'],
 }
 

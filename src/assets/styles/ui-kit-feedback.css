@@ -1,0 +1,718 @@
+/*
+ * 组件套件分片 · 反馈与浮层
+ * ============================================================================
+ *
+ * 负责第三批规范的这几节：
+ *   §14 气泡提示（B27）  §15 抽屉（B28）      §16 骨架屏（B29）
+ *   §17 空状态（B30）    §18 通知徽标（B31）  §19 滚动条（B32）
+ *   §21 通用状态与交互（B33）—— 全站复用的工具类，也放在本片
+ *
+ * ## 与 global.css 的分工
+ *   global.css  基础重置 + 第一/二批组件（按钮/输入框/卡片/价格/标签/Toast/
+ *               模态框/下拉/进度/加载圈/头像/复选框/字段）+ 区块头 + 共享动效。
+ *   本分片      第三批的**反馈与浮层**族，外加全局滚动条与状态工具类。
+ *   加载顺序：variables → global → 本分片（同优先级后者胜，故本片负责收口）。
+ *   除下面列出的几处，本片的类名与 global.css 没有选择器重叠；
+ *   `html` 上的 `scrollbar-width/color` 是 global.css 没设过的新属性，不构成覆盖。
+ *   加载圈也未与 global.css 的 `.u-spinner` 重叠：`.u-spinner` 是区块级（accent 弧线），
+ *   本片的 `.u-loading-spinner` 是按钮内联级（弧线取 currentColor，见 §21 注释）。
+ *
+ * ## 本分片覆盖了 global.css 的哪几处（收尾删旧版时按此清单）
+ *   1. `::-webkit-scrollbar` / `-track` / `-thumb` / `-thumb:hover`
+ *      （global.css 第 81–97 行）→ 本片 §19。
+ *      旧版硬编码 `--space-unit` 与 `--micro-badge-radius`，无滑块内边距、
+ *      无悬停色，且没写 Firefox 的 `scrollbar-width/color`。
+ *   2. `.u-skeleton` 与 `.u-skeleton::after`（global.css 第 932–946 行）→ 本片 §16。
+ *      旧版是「`--bg-surface` 底 + `::after` 高光层 + `@keyframes shimmer`」；
+ *      本片改用 `--skeleton-*` 整组令牌，并用 `--skeleton-animation-name` 在
+ *      shimmer / pulse 两个动画间切换，所以 `::after` 与 `@keyframes shimmer`
+ *      在收尾后会失去消费者，可一并删除。
+ *   3. 【清单外，请一并确认】`.u-field-error`（global.css 第 1259 行）→ 本片 §21。
+ *      你给的覆盖清单里没有它，但 §21 要求 `.u-field-error` 消费
+ *      `--danger` + `--field-error-size` + `--field-error-gap`，而旧版用的是
+ *      `--fs-label` 且没有间距 —— 同名冲突，请删旧版、留本片版本。
+ *   4. global.css 顶部注释（第 1–18 行）中「骨架屏」一条的描述随第 2 点失效。
+ *
+ * ## 写这一片的约定
+ *   - 只消费令牌：没有色值字面量（`transparent` 是关键字，用于箭头与滑块裁剪）、
+ *     没有 px 字面量（`@media` 断点除外）、没有 em/rem 字号、没有 `!important`。
+ *   - 尺寸要么取令牌，要么 `calc(var(--space-unit) * n)`。
+ *   - 不声明任何局部自定义属性：局部 `--x` 会被 designTokens 测试判为
+ *     「引用了未登记的令牌」，需要传值请走组件 `:style` 绑定的既有通道。
+ *   - 移动端缩放一律在**使用点**乘 `--mobile-*` 系数（令牌写在 `<html>` 行内，
+ *     在 `@media` 里重定义无效）。
+ *   - 「减少动态效果」的降级由 variables.css 末尾的全局规则统一负责
+ *     （那是全仓库唯一允许 `!important` 的地方），本片不重复声明。
+ *   - 命名：状态类 `u-is-*`，元素类 `u-<族>-<元素>`，变体 `u-<族>--<变体>`。
+ *
+ * ## 标记约定（纯 CSS，无 JS 依赖；开合态由使用方切 `u-is-open`）
+ *   气泡：<span class="u-tooltip-wrap">触发元素<span class="u-tooltip u-tooltip--top" role="tooltip">文案</span></span>
+ *   抽屉：<div class="u-drawer-scrim u-is-open"></div>
+ *         <aside class="u-drawer u-is-open" role="dialog" aria-modal="true" aria-labelledby="…">
+ *           <header class="u-drawer-head"><h2 class="u-drawer-title" id="…">标题</h2>
+ *             <button class="u-drawer-close" type="button" aria-label="关闭">✕</button></header>
+ *           <div class="u-drawer-body">…</div><footer class="u-drawer-foot">…</footer></aside>
+ *         （`u-is-open` 也可以写在共同的 `.u-drawer-root` 上，两种都支持）
+ *   骨架：<div class="u-skeleton"></div> / <span class="u-skeleton u-skeleton--text u-skeleton--w80"></span>
+ *         <div class="u-skeleton-lines">…若干 --text 行…</div>
+ *         <div class="u-skeleton u-skeleton--avatar"></div>
+ *         <div class="u-skeleton u-skeleton--card">
+ *           <div class="u-skeleton u-skeleton--card-media"></div>
+ *           <div class="u-skeleton-lines">三行 --text</div>
+ *           <div class="u-skeleton u-skeleton--card-btn"></div></div>
+ *   空态：<div class="u-empty"><div class="u-empty-icon" aria-hidden="true">…</div>
+ *           <p class="u-empty-title">…</p><p class="u-empty-desc">…</p>
+ *           <div class="u-empty-actions">…按钮…</div></div>
+ *   徽标：<span class="u-badge">99+</span>  （「超过 99 显示 99+」是 JS 的判断）
+ *         <span class="u-badge-host"><img …><span class="u-badge u-badge--float u-badge--ring">3</span></span>
+ *         <span class="u-badge u-badge--dot u-badge--float u-badge--ring"></span>
+ */
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §14 气泡提示 Tooltip（B27）
+ *   纯 CSS 悬停 / 聚焦显示。`--tooltip-delay` 只作用于**出现**（基础态
+ *   transition-delay 默认 0），移开鼠标立即淡出，不会拖着不走。
+ *   箭头用四条 border 画成三角形，`border-width` 直接吃 `--tooltip-arrow-size`：
+ *   neo-brutalism 下它是 0px，四条边框同时归零，箭头自然消失（无需分支）。
+ *   注意：触发元素所在的容器不要 `overflow: hidden`，否则气泡会被裁掉。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.u-tooltip {
+  position: absolute;
+  /* 页内浮层：只压住同层兄弟，不参与模态(2000)/Toast(3000) 的层级 */
+  z-index: 10;
+  max-width: var(--tooltip-max-width);
+  padding: var(--tooltip-padding-y) var(--tooltip-padding-x);
+  font-size: var(--tooltip-font-size);
+  line-height: var(--leading-body);
+  color: var(--tooltip-color);
+  background-color: var(--tooltip-bg);
+  border-radius: var(--tooltip-radius);
+  box-shadow: var(--tooltip-shadow);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--transition-interactive),
+    visibility var(--transition-interactive),
+    background-color var(--transition-surface);
+}
+
+/* 箭头：0×0 盒子 + 四边等宽边框，只给「朝向触发元素」的那一边上色 */
+.u-tooltip::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: var(--tooltip-arrow-size);
+  border-color: transparent;
+}
+
+/* 显示：悬停，或内部任意元素获得焦点（键盘 Tab 也能看到提示） */
+.u-tooltip-wrap:hover .u-tooltip,
+.u-tooltip-wrap:focus-within .u-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: var(--tooltip-delay);
+}
+
+/* ── 四个方向（必须选一个：不写变体时不显示箭头）──────────────────────── */
+
+/* 上：气泡在触发元素上方，箭头朝下 */
+.u-tooltip--top {
+  bottom: calc(100% + var(--tooltip-offset));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.u-tooltip--top::after {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-top-color: var(--tooltip-bg);
+}
+
+/* 下：气泡在下方，箭头朝上 */
+.u-tooltip--bottom {
+  top: calc(100% + var(--tooltip-offset));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.u-tooltip--bottom::after {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-bottom-color: var(--tooltip-bg);
+}
+
+/* 右：气泡在右侧，箭头朝左 */
+.u-tooltip--right {
+  top: 50%;
+  left: calc(100% + var(--tooltip-offset));
+  transform: translateY(-50%);
+}
+
+.u-tooltip--right::after {
+  top: 50%;
+  right: 100%;
+  transform: translateY(-50%);
+  border-right-color: var(--tooltip-bg);
+}
+
+/* 左：气泡在左侧，箭头朝右 */
+.u-tooltip--left {
+  top: 50%;
+  right: calc(100% + var(--tooltip-offset));
+  transform: translateY(-50%);
+}
+
+.u-tooltip--left::after {
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  border-left-color: var(--tooltip-bg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §15 抽屉 Drawer（B28）—— 右侧滑入
+ *   遮罩与面板是两个独立的 fixed 层（z-index 2000 / 2001，与
+ *   `.u-modal-overlay` / `.u-modal` 同层，抽屉与模态互斥出现）。
+ *   开合由 `u-is-open` 驱动，默认态是**关闭**：没加类就完全不可见，
+ *   避免误渲染时整块盖住页面。滚动锁定 / Escape 关闭 / 焦点陷阱与归还
+ *   走 useBodyScroll 与组件逻辑，不在 CSS 职责内（对齐 LoginModal 的模态约定）。
+ *
+ *   关于 `--drawer-radius`：标注说的是「右侧抽屉只圆左边两角」，
+ *   但 presets 里五套的取值是 `0 16px 16px 0`（圆的是右上/右下两角，
+ *   与 `--drawer-shadow` 的 `-8px 0 …` 左侧投影方向也不一致）。
+ *   本文件按令牌字面值使用、不改写令牌内容；若确认要圆左边两角，
+ *   在 presets.js 把它改成 `16px 0 0 16px` 即可，本片无需改动。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background-color: var(--drawer-scrim);
+  backdrop-filter: var(--drawer-scrim-backdrop);
+  -webkit-backdrop-filter: var(--drawer-scrim-backdrop);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--drawer-duration) var(--drawer-ease),
+    visibility var(--drawer-duration) var(--drawer-ease);
+}
+
+.u-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2001;
+  display: flex;
+  flex-direction: column;
+  width: var(--drawer-width);
+  /* 视口比 --drawer-width 还窄时的兜底，防止面板把遮罩挤没 */
+  max-width: 100vw;
+  color: var(--text-primary);
+  background-color: var(--bg-elevated);
+  border-radius: var(--drawer-radius);
+  box-shadow: var(--drawer-shadow);
+  /* 关闭态：整块滑出视口右侧之外 */
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform var(--drawer-duration) var(--drawer-ease),
+    visibility var(--drawer-duration) var(--drawer-ease);
+}
+
+/* 开：类写在自己身上，或写在共同的 .u-drawer-root 上，两种都支持 */
+.u-drawer-scrim.u-is-open,
+.u-drawer-root.u-is-open .u-drawer-scrim {
+  opacity: 1;
+  visibility: visible;
+}
+
+.u-drawer.u-is-open,
+.u-drawer-root.u-is-open .u-drawer {
+  transform: none;
+  visibility: visible;
+}
+
+.u-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: calc(var(--space-unit) * 2);
+  height: var(--drawer-head-height);
+  padding: 0 var(--drawer-padding);
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.u-drawer-title {
+  overflow: hidden;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 右上角关闭按钮：尺寸走图标按钮令牌组。
+ * position + z-index 不是多余的 —— 与 `.u-modal-close` 同一个教训：
+ * 定位元素且 z-index: auto 时，DOM 靠后的内容会盖在按钮上，点击落到内容里。 */
+.u-drawer-close {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  font-size: var(--icon-btn-icon-size);
+  line-height: 1;
+  color: var(--text-secondary);
+  border-radius: var(--icon-btn-radius);
+  transition:
+    background-color var(--transition-interactive),
+    color var(--transition-interactive);
+}
+
+.u-drawer-close:hover {
+  color: var(--accent);
+  background-color: var(--bg-soft);
+}
+
+/* 只加外环、不动 outline：系统强制色 / 高对比度模式下 outline 仍可见，
+ * `outline-offset` 让默认 outline 与外环错开，两者不糊在一起 */
+.u-drawer-close:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+.u-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--drawer-padding);
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+}
+
+.u-drawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: calc(var(--space-unit) * 1.5);
+  /* min-height 而不是 height：按钮换行时脚部可以长高 */
+  min-height: var(--drawer-foot-height);
+  padding: 0 var(--drawer-padding);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §16 骨架屏 Skeleton（B29）—— 覆盖 global.css 的 .u-skeleton 与 ::after
+ *
+ *   两个动画由 `--skeleton-animation-name` 切换，动画名在这里落地：
+ *     skeleton-shimmer  高光横扫（背景层 + background-position）
+ *     skeleton-pulse    明暗呼吸（background-color 在底色 / 高亮色之间过渡）
+ *   关键点：静态 `background-position: -100% 0` 把整层高光移到可视区之外，
+ *   所以脉冲模式下不会残留一条静止的亮带（此时只有 background-color 在动）。
+ *
+ *   组合骨架 `.u-skeleton--card` 只负责排版，闪烁交给每一块子元素，
+ *   因此它自己清掉底色与动画（`background: none` + `animation: none`）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--skeleton-bg);
+  /* 高光层宽 200%，靠 background-position 从左扫到右 */
+  background-image: linear-gradient(90deg, transparent, var(--skeleton-highlight), transparent);
+  background-repeat: no-repeat;
+  background-size: 200% 100%;
+  background-position: -100% 0;
+  border-radius: var(--radius-card);
+  animation: var(--skeleton-animation-name) var(--skeleton-duration) var(--skeleton-easing) infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    background-color: var(--skeleton-bg);
+  }
+  50% {
+    background-color: var(--skeleton-highlight);
+  }
+}
+
+/* 文字行：行高走 --skeleton-line-height，三档宽度由使用点写死
+ * （令牌层在 --skeleton-line-gap 的注释里明确「100% / 80% / 60% 由使用点写死」） */
+.u-skeleton--text {
+  height: var(--skeleton-line-height);
+  border-radius: var(--radius-pill);
+}
+
+.u-skeleton--w100 {
+  width: 100%;
+}
+
+.u-skeleton--w80 {
+  width: 80%;
+}
+
+.u-skeleton--w60 {
+  width: 60%;
+}
+
+/* 多行容器：行间距走 --skeleton-line-gap */
+.u-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--skeleton-line-gap);
+}
+
+/* 头像：正方形 + 胶囊圆角 = 圆（尺寸沿用头像令牌，可被行内 --avatar-size 覆盖） */
+.u-skeleton--avatar {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--radius-pill);
+}
+
+/* 卡片组合（图片区 + 3 行文字 + 1 个按钮）：外框不闪 */
+.u-skeleton--card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--skeleton-line-gap);
+  background: none;
+  animation: none;
+}
+
+.u-skeleton--card-media {
+  flex-shrink: 0;
+  height: var(--card-image-height);
+  /* 图片区与第一行文字之间留出比行间距更大一档的呼吸 */
+  margin-bottom: var(--skeleton-line-gap);
+}
+
+.u-skeleton--card-btn {
+  align-self: flex-start;
+  width: calc(var(--space-unit) * 12);
+  height: var(--btn-height);
+  margin-top: var(--skeleton-line-gap);
+  border-radius: var(--btn-radius);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §17 空状态 Empty（B30）
+ *   间距刻意用「元素 margin」而不是容器 flex gap：这样 --empty-btn-gap
+ *   就是按钮与描述之间的**实际**间距，而不是「间距 − gap」。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--empty-padding-top) var(--container-padding) calc(var(--empty-padding-top) * 0.5);
+  text-align: center;
+}
+
+/* 图标同时给 width/height（SVG/图片）与 font-size（emoji/图标字体）：
+ * 套件里没有图标组件，两种写法都要能用 */
+.u-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--empty-icon-size);
+  height: var(--empty-icon-size);
+  font-size: var(--empty-icon-size);
+  line-height: 1;
+  margin-bottom: calc(var(--space-unit) * 2);
+  color: var(--empty-icon-color);
+}
+
+.u-empty-title {
+  margin-bottom: var(--space-unit);
+  font-size: var(--empty-title-size);
+  font-weight: var(--empty-title-weight);
+  color: var(--text-primary);
+}
+
+.u-empty-desc {
+  font-size: var(--empty-desc-size);
+  color: var(--empty-desc-color);
+}
+
+.u-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: var(--empty-btn-gap);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §18 通知徽标 Badge（B31）
+ *   数字走等宽字体 + `tabular-nums`：个位数与「99+」宽度稳定，堆叠时不跳。
+ *   `.u-badge--dot` 只给尺寸，内容留空由使用方保证（CSS 不产生内容）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* 浮标的定位参照物（相对定位的宿主） */
+.u-badge-host {
+  position: relative;
+  display: inline-flex;
+}
+
+.u-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--badge-min-width);
+  height: var(--badge-height);
+  padding: 0 var(--badge-padding-x);
+  font-family: var(--font-mono);
+  font-size: var(--badge-font-size);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--badge-color);
+  background-color: var(--badge-bg);
+  border-radius: var(--badge-radius);
+  white-space: nowrap;
+}
+
+/* 叠在头像 / 封面右上角：--badge-offset-* 是负值，表示向宿主之外溢出 */
+.u-badge--float {
+  position: absolute;
+  top: var(--badge-offset-y);
+  right: var(--badge-offset-x);
+}
+
+/* 与背景同色的分离描边：把徽标从底图里「切」出来。
+ * 颜色取宿主表面色 --bg-surface（令牌层只给了宽度，没给颜色）。 */
+.u-badge--ring {
+  box-shadow: 0 0 0 var(--badge-ring-width) var(--bg-surface);
+}
+
+/* 纯圆点态：尺寸换成 --badge-dot-size，内边距清零 */
+.u-badge--dot {
+  width: var(--badge-dot-size);
+  min-width: var(--badge-dot-size);
+  height: var(--badge-dot-size);
+  padding: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §19 滚动条（B32）—— 覆盖 global.css 第 81–97 行的两小块
+ *   WebKit 走 `::-webkit-scrollbar` 系列，Firefox 走 `scrollbar-width/color`。
+ *   滑块内边距用「透明边框 + background-clip: padding-box」实现：
+ *   border 把盒子撑大，背景被裁到 padding box，于是滑块看起来变细、留出空隙。
+ *   --scrollbar-padding 为 0 时（neo-brutalism）边框归零，自然退化成满宽滑块。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border: var(--scrollbar-padding) solid transparent;
+  border-radius: var(--scrollbar-thumb-radius);
+  background-clip: padding-box;
+}
+
+/* 悬停只换 background-color（不用 background 简写），
+ * 否则会把 background-clip: padding-box 一并重置掉、内边距失效 */
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox：`scrollbar-width` 只接受 auto / thin / none，拿不到 px 令牌，
+ * 故宽度取 thin；配色消费同一组令牌。两个属性均可继承，写在 html 上即覆盖全站。 */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §21 通用状态与交互（B33）—— 全站复用的工具类
+ *   这一节里的 `.u-field-error` 覆盖 global.css 第 1259 行的同名规则（见文件头）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* 焦点外环：只加环、不抹 outline（对比度/强制色模式仍靠 outline 兜底），
+ * outline-offset 让默认 outline 与外环错开 */
+.u-focusable:focus-visible {
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: var(--focus-ring);
+}
+
+/* 按下反馈 */
+.u-pressable {
+  transition: transform var(--transition-interactive);
+}
+
+.u-pressable:active {
+  transform: scale(var(--active-scale));
+}
+
+/* 禁用态 */
+.u-is-disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+/*
+ * 加载态：整块降不透明度（文字保留但变淡，与 ant-design 的 .ant-btn-loading 同做法）。
+ * 注意 opacity 是**分组**属性：容器一旦设了它，内部元素再怎么设 opacity: 1
+ * 也回不到全不透明。所以要保持加载圈清晰时，用下面这个只包住文案的类，
+ * 而不是给容器加 u-is-loading。
+ */
+.u-is-loading {
+  opacity: var(--loading-text-opacity);
+}
+
+/* 只让文字变淡（同一容器里的加载圈保持原样） */
+.u-loading-text {
+  opacity: var(--loading-text-opacity);
+  color: var(--text-muted);
+}
+
+/*
+ * 加载圈：默认 --loading-spinner-size（按钮内联 16px 档）。
+ * 弧线用 currentColor —— 它既能用在页面里，也能用在主按钮里
+ * （主按钮底色就是 --accent，弧线若取 accent 会隐形）；
+ * 需要固定弧线颜色时，在圈上覆写 color 即可。轨道取 --bg-surface。
+ */
+.u-loading-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--loading-spinner-size);
+  height: var(--loading-spinner-size);
+  border: var(--spinner-border) solid var(--bg-surface);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: loading-spin var(--spinner-duration) linear infinite;
+}
+
+.u-loading-spinner--sm {
+  width: var(--spinner-size-sm);
+  height: var(--spinner-size-sm);
+}
+
+.u-loading-spinner--md {
+  width: var(--spinner-size-md);
+  height: var(--spinner-size-md);
+}
+
+.u-loading-spinner--lg {
+  width: var(--spinner-size-lg);
+  height: var(--spinner-size-lg);
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 字段错误：颜色 + 字号 + 与控件的间距 */
+.u-field-error {
+  margin-top: var(--field-error-gap);
+  font-size: var(--field-error-size);
+  color: var(--danger);
+}
+
+/*
+ * 在既有的 .u-field（global.css 的 flex 纵向布局，已有 gap）里时不再叠加外边距，
+ * 否则实际间距会变成 gap + --field-error-gap（两者当前同为 6px，会翻倍成 12px）。
+ */
+.u-field .u-field-error,
+.u-field .u-field-success {
+  margin-top: 0;
+}
+
+/* 字段成功：文字 + 右侧勾。勾用左/下两条边旋转 45° 画出来，
+ * 尺寸走 --field-success-icon，描边宽度走全局 --stroke-width（neo 下自动变 2px） */
+.u-field-success {
+  display: flex;
+  align-items: center;
+  gap: var(--field-error-gap);
+  margin-top: var(--field-error-gap);
+  font-size: var(--field-error-size);
+  color: var(--success);
+}
+
+.u-field-success::after {
+  content: '';
+  flex-shrink: 0;
+  width: calc(var(--field-success-icon) * 0.6);
+  height: calc(var(--field-success-icon) * 0.35);
+  border-left: var(--stroke-width) solid var(--success);
+  border-bottom: var(--stroke-width) solid var(--success);
+  transform: rotate(-45deg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * 响应式（断点 991 / 767，与 global.css 同一套：575 / 767 / 991 / 1199）
+ *   移动端一律「在使用点乘 --mobile-* 系数」，不在 @media 里重定义令牌。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* 平板：卡片骨架的图片区随卡片一起收一档（对齐 .ui-card-media 的既有做法） */
+@media (max-width: 991px) {
+  .u-skeleton--card-media {
+    height: calc(var(--card-image-height) * var(--mobile-control-scale));
+  }
+}
+
+/* 手机：抽屉取「令牌 × 控件系数」与「视口减 6 个间距单位」中的较小者 ——
+ * 既跟着令牌收窄，又保证最窄屏下右侧仍露出一条遮罩可以点到。
+ * 头部/脚部高度与内边距同步收一档，空状态的整块上边距按区块系数收。 */
+@media (max-width: 767px) {
+  .u-drawer {
+    width: min(
+      calc(var(--drawer-width) * var(--mobile-control-scale)),
+      calc(100vw - var(--space-unit) * 6)
+    );
+  }
+
+  .u-drawer-head {
+    height: calc(var(--drawer-head-height) * var(--mobile-control-scale));
+    padding: 0 calc(var(--drawer-padding) * var(--mobile-padding-scale));
+  }
+
+  .u-drawer-body {
+    padding: calc(var(--drawer-padding) * var(--mobile-padding-scale));
+  }
+
+  .u-drawer-foot {
+    min-height: calc(var(--drawer-foot-height) * var(--mobile-control-scale));
+    padding: 0 calc(var(--drawer-padding) * var(--mobile-padding-scale));
+  }
+
+  .u-empty {
+    padding-top: calc(var(--empty-padding-top) * var(--mobile-section-scale));
+  }
+}

@@ -78,23 +78,8 @@ body::after {
   min-height: 100vh;
 }
 
-::-webkit-scrollbar {
-  width: var(--space-unit);
-  height: var(--space-unit);
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-page);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--stroke-color);
-  border-radius: var(--micro-badge-radius);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
-}
+/* 滚动条已迁到 ui-kit-feedback.css（§19）：那里按 --scrollbar-* 令牌化，
+ * 并且同时覆盖 WebKit 与 Firefox 两套属性。此处不要重复定义。 */
 
 button {
   border: none;
@@ -210,15 +195,6 @@ img {
   }
   50% {
     transform: translate3d(2%, -2%, 0) scale(1.15);
-  }
-}
-
-@keyframes shimmer {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
   }
 }
 
@@ -929,21 +905,9 @@ button.u-tag:hover:not(.u-tag--accent) {
   color: var(--text-muted);
 }
 
-.u-skeleton {
-  position: relative;
-  overflow: hidden;
-  background: var(--bg-surface);
-  border-radius: var(--radius-card);
-}
-
-.u-skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, var(--bg-soft), transparent);
-  transform: translateX(-100%);
-  animation: shimmer var(--skeleton-duration) infinite;
-}
+/* 骨架屏已迁到 ui-kit-feedback.css（§16）：那里按 --skeleton-* 令牌化，
+ * 且动画名逐风格不同（neo 用 skeleton-pulse，其余用 skeleton-shimmer），
+ * 因此旧的单一名 shimmer keyframes 也一并删除。此处不要重复定义。 */
 
 /* ────────────────────────────────────────────────────────────
  * 12. 头像 / 复选框
@@ -1256,10 +1220,9 @@ button.u-tag:hover:not(.u-tag--accent) {
   color: var(--text-muted);
 }
 
-.u-field-error {
-  font-size: var(--fs-label);
-  color: var(--danger);
-}
+/* .u-field-error / .u-field-success 已迁到 ui-kit-feedback.css（§21）：
+ * 那里按 --field-error-size / --field-error-gap / --field-success-icon 令牌化，
+ * 并且会消掉与 .u-field 的 flex gap 叠加出来的双倍间距。此处不要重复定义。 */
 
 /* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开 */
 .u-field-value {

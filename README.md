@@ -682,7 +682,62 @@ Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版�
 | 底边那一像素没有背景/模糊 | `::before` 的 `inset: 0` 只覆盖 padding box，边框区域露出页面内容 | 边框移到 `::before` 上，背景 + 模糊 + 边框同层铺满整高 |
 | 菜单项可点区域只有约 21px | `.menu-link` 是 `padding: 4px 0` | 改为整条通高（tab 式），下划线落在导航栏底边上 |
 
-### 9.11 硬编码与断点纪律
+### 9.11 组件套件（第四轮：第三批规范 21 节）
+
+第二批只做到「组件尺寸」，这批是完整的交互组件：**19 个族、212 个新令牌**，
+拆成四个分片文件（按族划分，不按页面）：
+
+| 文件 | 覆盖 |
+| --- | --- |
+| `ui-kit-form.css` | §1 下拉/选择器、§2 复选框、§3 单选框、§4 开关、§5 滑块 |
+| `ui-kit-nav.css` | §6 步骤条、§7 手风琴、§8 选项卡、§9 面包屑 |
+| `ui-kit-data.css` | §10 表格、§11 日期选择器、§12 文件上传、§13 评分 |
+| `ui-kit-feedback.css` | §14 气泡、§15 抽屉、§16 骨架、§17 空态、§18 徽标、§19 滚动条、§21 通用状态 |
+
+`main.js` 的引入顺序是 **variables → global → 四个分片**：分片要覆盖基础层的旧实现
+（骨架屏动画、滚动条、`.u-field-error` 三处已从 `global.css` 删除）。
+
+**先做减法再落地**。规范里大量取值与第二批逐值相同，能复用就不新增：
+
+- §1 下拉触发器那张 8 行表**只产出 2 个新令牌**（箭头尺寸与颜色）——
+  高度/内边距/圆角/字号/描边分别与 `--input-height` / `--input-padding-*` /
+  `--radius-input` / `--input-font-size` / `--stroke-*` 逐值相同。好处是下拉框与相邻
+  输入框**天然对齐**，不需要 `calc()` 凑。
+- `--dropdown-shadow` **没有登记**：§1 的面板阴影五套取值与既有的 `--shadow-float` 逐值相同
+  （tech `0 8px 24px rgba(0,0,0,.4)` / glass `0 8px 32px rgba(99,102,241,.12)` /
+  bento `0 4px 16px rgba(0,0,0,.08)` / neo `6px 6px 0 #000000` / mono `none`），
+  于是共用，并在 `themeContract.test.js` 留了一条**反向断言**防止日后又拆开。
+
+**死令牌白名单**（`test/kitAllowlist.js`）：`designTokens.test.js` 原本要求「已登记的必须有人用」，
+而这批组件里有一部分的使用页面还没写。白名单四条规则 —— 未登记引用失败；已登记无人用且不在白名单失败；
+在白名单允许但必须写明 `family` 与 `expectedConsumer`；**在白名单却已有人用则失败**。
+第四条是关键：白名单只能缩小，不能腐烂。
+**当前白名单是空表** —— 四个分片自身即消费者，415 个令牌全部有人用。
+
+**标记契约**（接线时必须遵守，否则样式不生效）：
+
+| 组件 | 约定 |
+| --- | --- |
+| 半星 | `[aria-checked="mixed"]`（整星 `"true"`，空星无属性） |
+| 表格 | `.u-table` 是真 `<table>`，假定 `thead`/`tbody`；`aria-sort` 放 `th`、`aria-selected` 放 `tr`；**无 sticky 表头**（规范未给 max-height） |
+| 日期选择器 | 只读 `aria-readonly="true"` 在 `.u-datepicker` 根上；「今天」要同时给 `color` 与 `box-shadow`（标记值用 `currentColor`） |
+| 滑块气泡 | `.u-slider-bubble` 必须是 `.u-slider` 的直接子元素（轨道 `overflow: hidden`） |
+| 下拉 | `.u-select-panel` 不滚动、`.u-select-list` 滚动（否则搜索型下拉的搜索框会跟着滚走） |
+| 抽屉 | `u-is-open` 写在元素自己身上或共同祖先 `.u-drawer-root` 上，两种都支持 |
+| 气泡提示 | 必须给方向变体（`.u-tooltip--top/--bottom/--left/--right`），否则不显示箭头 |
+| 文件上传 | `.u-upload--drag` 是 **dragover 激活态**，不是静态外观 |
+| 手风琴 | `.u-accordion-item` 必须**只有两个子元素**：`button.u-accordion-head` + `div.u-accordion-body`（单项是两行 grid，多一个子元素就会多出一行） |
+| 步骤条 | 连接线写在项末尾，或作为 `<li class="u-step-line">`；末项不必写（写了也被 `:last-child` 隐藏） |
+| 聚焦 | 分片**不抹掉**全局 `:focus-visible` 的 outline，而是叠加 `box-shadow: var(--focus-ring)` —— 强制色/高对比度模式下仍可见，这是无障碍底线 |
+| 加载圈 | `.u-loading-spinner` 弧线取 `currentColor`（主按钮底色就是 accent，取 accent 会隐形）；区块级的 `.u-spinner` 仍在 `global.css` |
+| 字段错误 | 挂在外层 `.u-field` 上（`.u-field-error` / `.u-field-success` 作子元素） |
+
+**视觉复核怎么做**（`bsk` 不可用时的替代路径）：把 `variables.css` + `global.css` + 四个分片
+内联进一个静态 HTML，再把某主题的 415 个令牌写成 `<html style="…">`（等价于 store 运行时做的事），
+用 headless Chrome 截图。这条路径发现过一个真问题 —— `--drawer-radius` 的取值方向是反的
+（`0 16px 16px 0` 圆的是屏幕外那两角），已修。
+
+### 9.12 硬编码与断点纪律
 
 - 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
   再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。
@@ -760,7 +815,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 509 个用例）
+npm test             # 单元测试（node:test，共 534 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -873,7 +928,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 509 个用例。
+共 534 个用例。
 
 ### 主题契约测试
 
@@ -1061,7 +1116,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（509 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（534 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

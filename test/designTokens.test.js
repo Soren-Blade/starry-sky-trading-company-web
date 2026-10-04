@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { KIT_ALLOWLIST } from './kitAllowlist.js'
 
 const WEB_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SRC = path.join(WEB_ROOT, 'src')
@@ -95,7 +96,7 @@ const BREAKPOINTS = [1199, 991, 767, 575]
 test('variables.css 中的每个令牌都至少被一处样式引用（无死令牌）', () => {
   const tokens = definedTokens()
   const counts = usageCounts(tokens, styleFiles())
-  const unused = tokens.filter((t) => counts[t] === 0)
+  const unused = tokens.filter((t) => counts[t] === 0 && !(t in KIT_ALLOWLIST))
 
   // 死令牌会稀释「可用令牌」的信号，结果是作者继续写新的硬编码值 ——
   // 这正是本仓库此前的状态：16 个令牌无人使用，而组件里硬编码着它们的值
@@ -104,6 +105,34 @@ test('variables.css 中的每个令牌都至少被一处样式引用（无死令
     [],
     `以下令牌定义了却无人使用，应删除或真正用上：\n  ${unused.join('\n  ')}`
   )
+})
+
+test('组件套件白名单：过期条目必须删掉（白名单只能缩小，不能腐烂）', () => {
+  const tokens = definedTokens()
+  const counts = usageCounts(tokens, styleFiles())
+  const stale = Object.keys(KIT_ALLOWLIST).filter((t) => counts[t] > 0)
+  assert.deepEqual(
+    stale,
+    [],
+    `以下令牌已经在样式里被使用了，请从 test/kitAllowlist.js 中删除这几条：\n  ${stale.join('\n  ')}`
+  )
+})
+
+test('组件套件白名单：每条都必须写明 family 与 expectedConsumer', () => {
+  const missing = Object.entries(KIT_ALLOWLIST)
+    .filter(([, meta]) => !meta?.family || !meta?.expectedConsumer)
+    .map(([token]) => token)
+  assert.deepEqual(
+    missing,
+    [],
+    `白名单条目必须说明归属与预期消费者：\n  ${missing.join('\n  ')}`
+  )
+})
+
+test('组件套件白名单：不得登记不存在的令牌', () => {
+  const tokens = new Set(definedTokens())
+  const ghosts = Object.keys(KIT_ALLOWLIST).filter((t) => !tokens.has(t))
+  assert.deepEqual(ghosts, [], `白名单里这些令牌在 variables.css 中不存在：\n  ${ghosts.join('\n  ')}`)
 })
 
 test('样式中引用的每个 --token 都必须在 variables.css 中定义（运行时注入的除外）', () => {

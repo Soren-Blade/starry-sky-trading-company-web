@@ -1,0 +1,758 @@
+/*
+ * 组件套件 · 数据展示分片（ui-kit-data.css）
+ * ============================================================================
+ *
+ * 负责第三批组件规范里「数据展示」这一族，共四节：
+ *   §10 表格（B23）        .u-table-wrap / .u-table / .u-table--zebra /
+ *                          .u-table-sort / .u-table-col-select / .u-table-col-action
+ *   §11 日期选择器（B24）  .u-datepicker + head / nav / title / weekdays /
+ *                          weekday / grid / cell（selected / today / outside）
+ *   §12 文件上传（B25）    .u-upload / --drag / icon / title / sub /
+ *                          list / file / file-icon / file-remove
+ *   §13 评分（B26）        .u-rating / --readonly / star / number
+ *
+ * 与 global.css 的分工：
+ *   global.css 是「基础重置 + 全站共享外壳」（按钮 / 输入框 / 卡片 / 提示框 /
+ *   模态框 / 下拉 / 标签 / 分页 / 骨架屏……）；本文件只放上述四族的组件类，
+ *   不重复实现任何共享外壳，也不做页面级布局与留白。
+ *   本文件不 @import、不 !important、不定义令牌：取值全部来自
+ *   variables.css（名册 + 首屏兜底）与 theme/presets.js（五套取值矩阵）。
+ *
+ * 写法约定（与 global.css 一致）：
+ *   · 尺寸只用令牌或 calc(--space-unit * n)；结构性边框宽度用 --stroke-width，
+ *     表格底部描边用它专用的 --table-border-width（该令牌存在就是为了只画底边）；
+ *   · 字号一律走令牌；移动端在使用点乘 --mobile-* 系数 —— 令牌由主题 store
+ *     写在 <html> 的行内样式上，在 @media 里重定义令牌不会生效；
+ *   · 断点只用 767 / 575 两档：这四族在 991 / 1199 没有需要变化的尺寸，
+ *     页面级缩放由 global.css 负责；
+ *   · 状态一次给全：默认 / 悬停 / 聚焦（--focus-ring）/ 按下（--active-scale）/
+ *     选中 / 禁用（--state-disabled-opacity）/ 只读——只读用「不进入交互规则」
+ *     的写法表达（:not(只读选择器)），而不是把悬停效果再改回来。
+ *
+ * 四处令牌语义上的坑，实现时都已处理：
+ *   1. --table-zebra-bg 在 tech / glass / neo 是 transparent。
+ *      斑马纹直接刷在 tr 上、表格本体不另铺底色，所以 transparent 时
+ *      等于「没有斑马纹」，而不是刷出一条白带子。
+ *   2. --datepicker-today-marker 的取值里带 currentColor。
+ *      「今天」那个单元格必须同时声明 color: --datepicker-today-color，
+ *      标记才会取到今天色；只写 box-shadow 会取到继承来的父级颜色。
+ *   3. --upload-file-padding 是「8px 12px」这样的两值简写。
+ *      简写不能进 calc（calc(8px 12px * 0.8) 非法，整条声明会被丢弃），
+ *      所以移动端只收文件项的高度，内边距保持令牌原值。
+ *   4. 半星：类名表里没有半星类，用 [aria-checked="mixed"]（半选 radio 的
+ *      标准状态）+ background-clip: text 表达，渐变在 50% 处分界，两侧分别是
+ *      --rating-fill / --rating-empty（见 §13）。
+ *
+ * 两处刻意的取舍（详见各自注释）：
+ *   · 表头铺 --bg-surface、表体铺 --bg-surface-2。反过来的话，
+ *     tech / neo / mono 三套里 --table-row-hover-bg 与 --bg-surface 同值，
+ *     行悬停会完全看不出来；现在这样五套风格的行悬停都有对比度。
+ *   · 面板内的小标题（月份名、上传文案）用正文系数缩放，不用标题系数：
+ *     ×0.7 是区块标题的档位，套到 12–15px 的面板内文字上会掉到 10px 以下。
+ */
+
+/* ────────────────────────────────────────────────────────────
+ * §10 表格
+ *
+ * 结构：.u-table-wrap（横向滚动容器）> table.u-table
+ *       thead > tr > th（表头）/ tbody > tr > td（表体）
+ * 只有底边描边，没有竖线；选择列与操作列用列类名标注。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.u-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--table-font-size);
+  color: var(--text-primary);
+  /* 表体是「下沉」的次级表面：行悬停底色在五套风格里都比它亮一档 */
+  background: var(--bg-surface-2);
+  text-align: left;
+}
+
+/* 表头：抬起一档的表面 + 大写（大小写由 --table-head-transform 决定，
+ * mono / glass 为 none），只画底边 */
+.u-table th {
+  height: var(--table-head-height);
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
+  font-size: var(--table-head-font-size);
+  font-weight: var(--table-head-weight);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--table-head-transform);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border-bottom: var(--table-border-width) solid var(--table-border-color);
+  text-align: inherit;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.u-table tbody tr {
+  height: var(--table-row-height);
+  transition: background-color var(--transition-interactive);
+}
+
+.u-table tbody td {
+  padding: var(--table-cell-padding-y) var(--table-cell-padding-x);
+  color: var(--text-primary);
+  border-bottom: var(--table-border-width) solid var(--table-border-color);
+  vertical-align: middle;
+}
+
+/* 斑马纹：透明令牌 = 没有斑马纹（表格本体不铺同色底，见文件头说明） */
+.u-table--zebra tbody tr:nth-child(even) {
+  background: var(--table-zebra-bg);
+}
+
+/* 行悬停 + 选中：
+ * 四条规则的层叠顺序是刻意的 —— 斑马纹 → 悬停 → 偶数行悬停 → 选中 → 选中悬停，
+ * 这样「选中」永远压得住斑马纹与悬停，不会出现「选中的偶数行看不出被选中」。 */
+.u-table tbody tr:hover {
+  background: var(--table-row-hover-bg);
+}
+
+.u-table--zebra tbody tr:nth-child(even):hover {
+  background: var(--table-row-hover-bg);
+}
+
+.u-table tbody tr[aria-selected='true'] {
+  background: var(--bg-soft);
+}
+
+.u-table tbody tr[aria-selected='true']:hover {
+  background: var(--bg-soft);
+}
+
+/* 排序按钮：表头单元格里的 <button>，两个方向箭头由 ::before / ::after 画 */
+.u-table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--table-sort-gap);
+  padding: 0;
+  font-size: var(--table-head-font-size);
+  font-weight: var(--table-head-weight);
+  color: var(--text-secondary);
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: color var(--transition-interactive);
+}
+
+.u-table-sort::before,
+.u-table-sort::after {
+  content: '';
+  flex-shrink: 0;
+  width: calc(var(--table-sort-icon-size) * 0.5);
+  height: calc(var(--table-sort-icon-size) * 0.5);
+  /* 未排序方向用弱化色，当前排序方向用强调色（见下） */
+  background: var(--text-muted);
+  transition: background-color var(--transition-interactive);
+}
+
+/* 上箭头 */
+.u-table-sort::before {
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+/* 下箭头 */
+.u-table-sort::after {
+  clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+}
+
+.u-table th[aria-sort='ascending'] .u-table-sort::before,
+.u-table th[aria-sort='descending'] .u-table-sort::after {
+  background: var(--accent);
+}
+
+.u-table-sort:hover {
+  color: var(--text-primary);
+}
+
+.u-table-sort:hover::before,
+.u-table-sort:hover::after {
+  background: var(--text-secondary);
+}
+
+/* 聚焦：用共享外环替掉浏览器默认轮廓（默认轮廓在表头里会溢到相邻列上） */
+.u-table-sort:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.u-table-sort:active {
+  transform: scale(var(--active-scale));
+}
+
+.u-table-sort:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 选择列：固定宽（列类名可以打在 th / td / col 上，col 只吃宽度） */
+.u-table .u-table-col-select {
+  width: var(--table-select-col-width);
+  text-align: center;
+}
+
+/* 操作列：右对齐 + 固定宽 + 不换行（一排按钮不许被拆成两行） */
+.u-table .u-table-col-action {
+  width: var(--table-action-col-width);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * §11 日期选择器
+ *
+ * 结构：.u-datepicker > .u-datepicker-head（nav + title）
+ *                      > .u-datepicker-weekdays > .u-datepicker-weekday ×7
+ *                      > .u-datepicker-grid > .u-datepicker-cell ×42
+ * 只读（展示用日历）：把 aria-readonly="true" 打在 .u-datepicker 根上。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-datepicker {
+  width: var(--datepicker-width);
+  /* 兜底：容器比设计宽窄时按容器收缩，单元格随列宽等比缩小 */
+  max-width: 100%;
+  padding: var(--datepicker-padding);
+  font-size: var(--datepicker-font-size);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--datepicker-radius);
+  /* 面板阴影与提示框 / 下拉菜单同源（第三批已把三者合并为一个令牌） */
+  box-shadow: var(--shadow-float);
+  user-select: none;
+}
+
+.u-datepicker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 0.5);
+  margin-bottom: calc(var(--space-unit) * 1);
+}
+
+.u-datepicker-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--datepicker-nav-size);
+  height: var(--datepicker-nav-size);
+  font-size: var(--datepicker-nav-size);
+  line-height: 1;
+  color: var(--text-muted);
+  border-radius: var(--datepicker-cell-radius);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+.u-datepicker:not([aria-readonly='true']) .u-datepicker-nav:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.u-datepicker-nav:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.u-datepicker:not([aria-readonly='true']) .u-datepicker-nav:active:not(:disabled) {
+  transform: scale(var(--active-scale));
+}
+
+.u-datepicker-nav:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.u-datepicker-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--datepicker-title-size);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 星期行：7 列等宽，与下面的日期网格同栅格，列才对得齐 */
+.u-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: center;
+  height: var(--datepicker-weekday-height);
+}
+
+.u-datepicker-weekday {
+  font-size: var(--datepicker-weekday-size);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.u-datepicker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 0.25);
+}
+
+/* 日期单元格：正方形。宽度取「列宽」与 --datepicker-cell-size 的较小值 ——
+ * 规范里 36px × 7 列比面板内宽略宽，作为上限才不会撑破面板 */
+.u-datepicker-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  width: 100%;
+  max-width: var(--datepicker-cell-size);
+  aspect-ratio: 1;
+  padding: 0;
+  font-size: var(--datepicker-font-size);
+  /* 显式给出文字色：今天标记用的是 currentColor，不能靠继承 */
+  color: var(--text-primary);
+  background: none;
+  border-radius: var(--datepicker-cell-radius);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive),
+    box-shadow var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+/* 悬停：选中单元格不进入这条规则 —— 它的选择器比 .u-datepicker-cell--selected
+ * 更长、特异性更高，否则一悬停就会把选中底色换掉。 */
+.u-datepicker:not([aria-readonly='true'])
+  .u-datepicker-cell:not(.u-datepicker-cell--selected):hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.u-datepicker-cell:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* 今天 + 聚焦同时命中时两个阴影都要留（box-shadow 会整体覆盖，不能只写一个） */
+.u-datepicker-cell--today:focus-visible {
+  box-shadow: var(--focus-ring), var(--datepicker-today-marker);
+}
+
+.u-datepicker:not([aria-readonly='true']) .u-datepicker-cell:active:not(:disabled) {
+  transform: scale(var(--active-scale));
+}
+
+.u-datepicker-cell:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+/* 今天：颜色与标记必须成对出现 —— 标记里的 currentColor 取自这里的 color */
+.u-datepicker-cell--today {
+  color: var(--datepicker-today-color);
+  box-shadow: var(--datepicker-today-marker);
+  font-weight: var(--fw-heading);
+}
+
+/* 非本月日期：弱化色 + 不透明度双重表达，不靠颜色单一信号 */
+.u-datepicker-cell--outside {
+  color: var(--text-muted);
+  opacity: var(--datepicker-other-opacity);
+}
+
+/* 选中：写在今天之后，底色与文字色压过今天；
+ * 「今天 + 选中」时标记随 currentColor 变成 --text-on-accent ——
+ * 这是刻意的：在强调底色上再用强调色画标记等于看不见。 */
+.u-datepicker-cell--selected {
+  color: var(--text-on-accent);
+  background: var(--datepicker-selected-bg);
+  font-weight: var(--fw-heading);
+}
+
+/* 选中单元格再次声明自己的配色：悬停规则已把选中态排除在外，
+ * 这里保留是为了「选中的格子悬停后看不出任何变化」这条约定不被后续改动破坏。 */
+.u-datepicker-cell--selected:hover:not(:disabled) {
+  color: var(--text-on-accent);
+  background: var(--datepicker-selected-bg);
+}
+
+/* 只读：不进入上面的悬停 / 按下规则，这里只需要把光标交还默认值 */
+.u-datepicker[aria-readonly='true'] .u-datepicker-nav,
+.u-datepicker[aria-readonly='true'] .u-datepicker-cell {
+  cursor: default;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * §12 文件上传
+ *
+ * 结构：.u-upload（拖拽区 / 点击选择）> .u-upload-icon + .u-upload-title + .u-upload-sub
+ *       .u-upload-list > .u-upload-file > icon + 文本 + .u-upload-file-remove
+ * .u-upload--drag = 拖拽悬停（dragover）态，不是「拖拽区」这个静态形态。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 1);
+  width: 100%;
+  min-height: var(--upload-height);
+  padding: var(--upload-padding);
+  text-align: center;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  /* 虚线是这一族的形态特征：宽度与颜色都走令牌 */
+  border: var(--stroke-width) dashed var(--stroke-color);
+  border-radius: var(--upload-radius);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+/* 悬停：拖拽悬停（--drag）时不进入这条规则 ——
+ * 拖拽中指针必然在元素上，两条规则会同时命中，
+ * 而这条的选择器更长、特异性更高，会把 --upload-drag-bg 盖掉。 */
+.u-upload:not(.u-upload--drag):not([aria-disabled='true']):not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
+
+/* 拖拽悬停：专用底色令牌（accent 5%）+ 边框转强调色 */
+.u-upload--drag {
+  background: var(--upload-drag-bg);
+  border-color: var(--accent);
+}
+
+.u-upload:not([aria-disabled='true']):not(:disabled):focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.u-upload:not([aria-disabled='true']):not(:disabled):active {
+  transform: scale(var(--active-scale));
+}
+
+.u-upload[aria-disabled='true'],
+.u-upload:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.u-upload-icon {
+  font-size: var(--upload-icon-size);
+  line-height: 1;
+  color: var(--accent);
+}
+
+.u-upload-title {
+  font-size: var(--upload-title-size);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-upload-sub {
+  font-size: var(--upload-sub-size);
+  color: var(--text-muted);
+}
+
+.u-upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  width: 100%;
+}
+
+/* 列表紧跟在拖拽区后面时才补间距，嵌在拖拽区里时不额外留白 */
+.u-upload + .u-upload-list {
+  margin-top: calc(var(--space-unit) * 1.5);
+}
+
+.u-upload-file {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  width: 100%;
+  min-height: var(--upload-file-height);
+  padding: var(--upload-file-padding);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--divider);
+  border-radius: var(--radius-card);
+  transition:
+    border-color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+.u-upload-file:hover {
+  border-color: var(--accent);
+}
+
+.u-upload-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--upload-file-icon);
+  height: var(--upload-file-icon);
+  font-size: var(--upload-file-icon);
+  line-height: 1;
+  color: var(--accent);
+}
+
+/* 删除按钮：图标随按钮尺寸等比（0.6 是图标占按钮的比例，不是魔法数值） */
+.u-upload-file-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--upload-file-remove);
+  height: var(--upload-file-remove);
+  margin-left: auto;
+  font-size: calc(var(--upload-file-remove) * 0.6);
+  line-height: 1;
+  color: var(--text-secondary);
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive),
+    transform var(--transition-interactive);
+}
+
+/* 删除是破坏性动作：悬停与聚焦一起转成错误色 */
+.u-upload-file-remove:hover,
+.u-upload-file-remove:focus-visible {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.u-upload-file-remove:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.u-upload-file-remove:active {
+  transform: scale(var(--active-scale));
+}
+
+.u-upload-file-remove:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * §13 评分
+ *
+ * 结构：.u-rating > .u-rating-star ×n + .u-rating-number
+ * 星形用元素自身的文字/字形（★）表达，状态走 aria-checked：
+ *   true = 整星填充，mixed = 半星，其余 = 空星。
+ * 只读：.u-rating--readonly（悬停不放大、光标非手型）。
+ * ──────────────────────────────────────────────────────────── */
+
+.u-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rating-star-gap);
+  color: var(--rating-empty);
+}
+
+.u-rating-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--rating-star-size);
+  height: var(--rating-star-size);
+  font-size: var(--rating-star-size);
+  line-height: 1;
+  color: var(--rating-empty);
+  /* 聚焦外环是圆的，与星形的视觉重量匹配 */
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    transform var(--rating-hover-duration) ease-out,
+    color var(--transition-interactive);
+}
+
+/* 选中（整星） */
+.u-rating-star[aria-checked='true'] {
+  color: var(--rating-fill);
+}
+
+/* 半星：渐变在 50% 处分界，左侧填充色、右侧空星色，
+ * 再用 background-clip: text 把渐变裁进字形里（color 必须透明，
+ * 否则字形本身的颜色会盖住渐变）。
+ * 前提：星形是**元素自己的文本节点**（<span class="u-rating-star">★</span>），
+ * 用 ::before 生成的字形裁不到；SVG 图标则请改用 fill 表达。 */
+.u-rating-star[aria-checked='mixed'] {
+  background: linear-gradient(
+    90deg,
+    var(--rating-fill) 50%,
+    var(--rating-empty) 50%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 悬停放大：只读态不进入这两条规则 */
+.u-rating:not(.u-rating--readonly) .u-rating-star:hover:not(:disabled) {
+  transform: scale(var(--rating-hover-scale));
+}
+
+.u-rating:not(.u-rating--readonly) .u-rating-star:active:not(:disabled) {
+  transform: scale(var(--active-scale));
+}
+
+.u-rating-star:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.u-rating-star:disabled {
+  opacity: var(--state-disabled-opacity);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 只读：关掉悬停放大，光标交还默认值 */
+.u-rating--readonly .u-rating-star,
+.u-rating--readonly .u-rating-star:hover {
+  transform: none;
+  cursor: default;
+}
+
+.u-rating-number {
+  margin-left: calc(var(--space-unit) * 0.5);
+  font-size: var(--rating-number-size);
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 响应式
+ * 统一断点，本文件只用到 767 / 575 两档（见文件头说明）。
+ * 系数一律乘在使用点：令牌写在 <html> 的行内样式上，
+ * 在 @media 里重定义令牌不生效。
+ * ──────────────────────────────────────────────────────────── */
+
+/* 移动端：控件高 ×0.9、内边距 ×0.8、正文 ×0.95 */
+@media (max-width: 767px) {
+  /* ── 表格 ─────────────────────────────────────────────── */
+  .u-table {
+    font-size: calc(var(--table-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-table th {
+    height: calc(var(--table-head-height) * var(--mobile-control-scale));
+    font-size: calc(var(--table-head-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-table-sort {
+    font-size: calc(var(--table-head-font-size) * var(--mobile-body-scale));
+  }
+
+  .u-table tbody tr {
+    height: calc(var(--table-row-height) * var(--mobile-control-scale));
+  }
+
+  .u-table th,
+  .u-table tbody td {
+    padding: calc(var(--table-cell-padding-y) * var(--mobile-padding-scale))
+      calc(var(--table-cell-padding-x) * var(--mobile-padding-scale));
+  }
+
+  /* ── 日期选择器 ───────────────────────────────────────── */
+  .u-datepicker {
+    padding: calc(var(--datepicker-padding) * var(--mobile-padding-scale));
+  }
+
+  .u-datepicker-title {
+    font-size: calc(var(--datepicker-title-size) * var(--mobile-body-scale));
+  }
+
+  .u-datepicker-nav {
+    width: calc(var(--datepicker-nav-size) * var(--mobile-control-scale));
+    height: calc(var(--datepicker-nav-size) * var(--mobile-control-scale));
+    font-size: calc(var(--datepicker-nav-size) * var(--mobile-control-scale));
+  }
+
+  .u-datepicker-weekdays {
+    height: calc(var(--datepicker-weekday-height) * var(--mobile-control-scale));
+  }
+
+  .u-datepicker-weekday {
+    font-size: calc(var(--datepicker-weekday-size) * var(--mobile-body-scale));
+  }
+
+  .u-datepicker-cell {
+    max-width: calc(var(--datepicker-cell-size) * var(--mobile-control-scale));
+  }
+
+  /* ── 文件上传 ─────────────────────────────────────────── */
+  .u-upload {
+    min-height: calc(var(--upload-height) * var(--mobile-control-scale));
+    padding: calc(var(--upload-padding) * var(--mobile-padding-scale));
+  }
+
+  .u-upload-icon {
+    font-size: calc(var(--upload-icon-size) * var(--mobile-control-scale));
+  }
+
+  .u-upload-title {
+    font-size: calc(var(--upload-title-size) * var(--mobile-body-scale));
+  }
+
+  .u-upload-sub {
+    font-size: calc(var(--upload-sub-size) * var(--mobile-body-scale));
+  }
+
+  /* 文件项只收高度：内边距是两值简写，不能进 calc（见文件头说明） */
+  .u-upload-file {
+    min-height: calc(var(--upload-file-height) * var(--mobile-control-scale));
+  }
+
+  /* ── 评分 ─────────────────────────────────────────────── */
+  .u-rating-star {
+    width: calc(var(--rating-star-size) * var(--mobile-control-scale));
+    height: calc(var(--rating-star-size) * var(--mobile-control-scale));
+    font-size: calc(var(--rating-star-size) * var(--mobile-control-scale));
+  }
+
+  .u-rating-number {
+    font-size: calc(var(--rating-number-size) * var(--mobile-body-scale));
+  }
+}
+
+/* 窄屏：表格的选择 / 操作两列各收一档，别让固定宽吃掉半屏 */
+@media (max-width: 575px) {
+  .u-table .u-table-col-select {
+    width: calc(var(--table-select-col-width) * var(--mobile-padding-scale));
+  }
+
+  .u-table .u-table-col-action {
+    width: calc(var(--table-action-col-width) * var(--mobile-padding-scale));
+  }
+
+  /* 文件项允许换行：文件名过长时删除按钮掉到第二行，而不是把文件名挤没 */
+  .u-upload-file {
+    flex-wrap: wrap;
+  }
+}
