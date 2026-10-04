@@ -127,16 +127,21 @@ class DOMExceptionLike extends Error {
 /**
  * 安装浏览器全局桩，仅覆盖被测模块真正触及的部分。
  *
- * 需要的只有两处：
+ * 需要的是：
  *   1. axios 的浏览器平台探测会读 `window.location.href`
  *   2. 源码里若干 `typeof window !== "undefined"` 分支
+ *   3. 直接写 `document.xxx` 的模块（如 useBodyScroll）
+ *
+ * 因此 `globalThis.document` 与 `globalThis.window.document` 是**同一个对象** ——
+ * 早期只挂 `window.document`，导致裸 `document` 引用报 ReferenceError。
  *
  * **这不是 jsdom 替代品。** 曾经为了跑通 ant-design-vue 的 message 而在这里一路补
  * `createElementNS` / `createComment` / `getComputedStyle`…… 那是用桩去追一个 UI 库，
  * 缺口补不完。现在 ant-design-vue 已在解析层被替换为测试替身
- * （见 ./loaders/alias.mjs），这里因此可以保持极小。
+ * （见 ./loaders/alias.mjs），这里因此可以保持较小。
  *
- * 若将来确需渲染组件，应引入 jsdom，而不是继续往这里加 API。
+ * 若将来确需**渲染组件**，应引入 jsdom，而不是继续往这里加 API
+ * （实测仅补 DOM 桩会在 Vue 的 `SVGElement is not defined` 处失败）。
  */
 export function installDomStub() {
   if (globalThis.window) return false
@@ -144,6 +149,7 @@ export function installDomStub() {
   const noop = () => {}
 
   globalThis.window = {
+    innerWidth: 1024,
     location: {
       href: "http://localhost:5173/",
       origin: "http://localhost:5173",
@@ -163,14 +169,25 @@ export function installDomStub() {
     scrollTo: noop,
   }
 
-  // axios 会检查 window.document 是否存在来决定平台
-  globalThis.window.document = {
+  // axios 会检查 window.document 是否存在来决定平台；
+  // 同时把同一个对象挂到 globalThis.document，供直接使用裸 `document` 的模块
+  const documentStub = {
     body: { style: {} },
-    documentElement: { style: {} },
+    documentElement: { style: {}, clientWidth: 1024 },
     createElement: () => ({ style: {}, setAttribute: noop, appendChild: noop }),
+    createElementNS: () => ({ style: {}, appendChild: noop }),
+    createComment: () => ({ textContent: "" }),
+    createTextNode: (text) => ({ textContent: text }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    getElementsByTagName: () => [],
+    getElementById: () => null,
     addEventListener: noop,
     removeEventListener: noop,
   }
+
+  globalThis.window.document = documentStub
+  globalThis.document = documentStub
 
   return true
 }

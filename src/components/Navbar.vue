@@ -78,7 +78,6 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { throttle } from '@/utils/index.js'
-import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll'
 import LoginModal from './LoginModal.vue'
 import { NAV_MENU } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
@@ -92,7 +91,11 @@ const router = useRouter()
 // 游客也会拿到 token，但不应被当作已登录。
 const { isLoggedIn, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
 
-const { enableScroll } = useBodyScroll()
+// 说明：这里**不再**引入 useBodyScroll。
+// 早期版本只取了 enableScroll 并在关闭登录弹窗时调用它，但 Navbar 自己
+// 从未调用 disableScroll —— 属于「无主释放」。滚动锁现在由 useBodyScroll
+// 内部引用计数管理，登录弹窗（LoginModal）是唯一的持有者，
+// 它的卸载回调会自行释放，无需外部再解锁。
 
 const isScrolled = ref(false)
 const menuOpen = ref(false)
@@ -129,7 +132,6 @@ const openLoginModal = () => {
 
 const handleLoginSuccess = () => {
   showLoginModal.value = false
-  enableScroll()
   userMenuOpen.value = false
   menuOpen.value = false
 
@@ -142,7 +144,6 @@ const handleLoginSuccess = () => {
 
 const handleCloseLoginModal = () => {
   showLoginModal.value = false
-  enableScroll()
 }
 
 // ============ 用户菜单项 ============

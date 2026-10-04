@@ -106,6 +106,11 @@ registerHooks({
       return { url: ANTD_STUB_URL, shortCircuit: true }
     }
 
+    // 3b) （已移除）vue 替身：曾尝试在加载层把 vue 换成只含 onUnmounted 的替身，
+    // 但因为 --test-isolation=none 让所有测试文件共享进程，这会切断其他文件
+    // 对真实 vue 的使用（pinia store 等），造成跨文件污染。
+    // 现在的做法是给 useBodyScroll 注入 onUnmounted，见 test/useBodyScroll.test.js。
+
     // 1) @/ 别名
     if (specifier.startsWith('@/')) {
       const found = resolveLoose(resolvePath(SRC_DIR, specifier.slice(2)))
