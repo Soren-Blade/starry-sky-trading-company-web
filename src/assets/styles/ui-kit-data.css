@@ -222,6 +222,16 @@
   font-size: var(--datepicker-font-size);
   color: var(--text-primary);
   background: var(--bg-elevated);
+  /*
+   * 毛玻璃：五套里只有 liquid-glass 的 --effect-backdrop 不是 none，也只有它的
+   * --bg-elevated 是**半透明**（rgba(255,255,255,0.72)）。没有这层模糊时，
+   * 「半透明」就等于「透明」—— 背后的表单文字会直接透过日历显示出来，
+   * 与日期数字叠在一起，看起来就是「文字太拥挤」。其余四套该令牌为 none，
+   * 加这一行对它们没有任何影响（.ui-card / .u-modal / .u-toast / .u-dropdown
+   * 一直都有这一层，浮层面板是漏掉的四分之一）。
+   */
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
   border: var(--stroke-width) solid var(--stroke-color);
   border-radius: var(--datepicker-radius);
   /* 面板阴影与提示框 / 下拉菜单同源（第三批已把三者合并为一个令牌） */
@@ -300,10 +310,20 @@
   text-align: center;
 }
 
+/*
+ * 7 列铺满，**不留列间隙**。
+ *
+ * 规范给的是「面板 280 + 内边距 16 + 单元格 36」：7 × 36 = 252 而可用内宽只有
+ * 248 —— 也就是说规范本身就假定单元格紧挨着排。原先这里加了
+ * `calc(var(--space-unit) * 0.25)`（tech 下 2px × 6 = 12px）的间隙，把每列压到
+ * 33px；在真实的 Profile 字段里（面板被限到 263px 宽）更是只剩 31px，
+ * 13px 的数字挤在 31px 的格子里，肉眼就是「文字太拥挤」。
+ * 去掉间隙后列宽 = 可用内宽 / 7，正好回到规范想要的 35–36px。
+ */
 .u-datepicker-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: calc(var(--space-unit) * 0.25);
+  gap: 0;
 }
 
 /* 日期单元格：正方形。宽度取「列宽」与 --datepicker-cell-size 的较小值 ——

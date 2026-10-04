@@ -51,11 +51,29 @@
         </router-link>
 
         <!--
+          身份占位骨架：身份**还没解析出来**的那一瞬间。
+          此时既不能显示登录按钮（几百毫秒后会变成头像，是一次刺眼的跳动），
+          也不能留空（顶栏会先塌再撑开）。用一个与头像等尺寸的骨架占住位置。
+          它覆盖的正是启动遮罩延迟出现的那一小段（遮罩 200ms 内不显示）。
+        -->
+        <span
+          v-if="!identityResolved"
+          class="u-skeleton u-skeleton--avatar"
+          role="status"
+          :aria-label="BOOT.identityPending"
+        ></span>
+
+        <!--
           无身份（退出登录 / 退出游客之后）才显示登录入口。
           游客**不再**走这一支：他有头像、有昵称、也有要退出的身份，
           把他当成「未登录」会让他既看不到自己是谁，也找不到退出入口。
         -->
-        <button v-if="!hasIdentity" type="button" class="u-btn-primary" @click="openLoginModal">
+        <button
+          v-else-if="!hasIdentity"
+          type="button"
+          class="u-btn-primary"
+          @click="openLoginModal"
+        >
           {{ AUTH.loginCta }}
         </button>
 
@@ -197,7 +215,7 @@ import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
-import { NAV_MENU, PRODUCT_GRID, SITE, AUTH } from '@/constants/index.js'
+import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
 const userStore = useUserStore()
@@ -209,6 +227,18 @@ const router = useRouter()
 // isGuest 用于游客标记与文案；顶栏的「显示头像还是登录按钮」判断走的是
 // hasIdentity（游客也算有身份），因此这里不需要 isLoggedIn。
 const { isGuest, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
+
+/**
+ * 身份是否已经解析过一次。
+ *
+ * `initialized` 在 `init()` 结束后为 true（无论结果是注册用户、游客还是失败），
+ * 而 `logout()` 之后刻意保持 true（否则路由守卫会立刻再建一个游客）。
+ * 因此它正好能区分三种状态：
+ *   !initialized            → 还在解析，显示占位骨架
+ *   initialized && userId   → 有身份，显示头像与用户面板
+ *   initialized && !userId  → 确实没有身份，显示登录按钮
+ */
+const identityResolved = computed(() => userStore.initialized)
 
 /**
  * 是否有身份（游客也算）。

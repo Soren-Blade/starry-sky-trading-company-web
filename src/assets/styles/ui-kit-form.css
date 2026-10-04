@@ -184,6 +184,10 @@
   min-width: var(--dropdown-width);
   padding: var(--dropdown-padding-y) 0;
   background: var(--bg-elevated);
+  /* 毛玻璃：只有 liquid-glass 的 --effect-backdrop 不是 none，也只有它的
+   * --bg-elevated 是半透明 —— 缺这层模糊时选项会与背后的页面文字叠在一起。 */
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--dropdown-radius);
   box-shadow: var(--shadow-float);

@@ -71,7 +71,9 @@ starry-sky-trading-company-web/
     │   ├── index.js              # 常量出口（只 re-export content.js）
     │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / FOOTER / 主题弹窗
     ├── hooks/
-    │   ├── useToken/index.js             # localStorage 读写 token
+    │   ├── useToken/index.js             # localStorage 读写 token（含「记住我」）
+│   ├── useBootScreen/index.js        # 首屏遮罩的三个时间闸（延迟/最短/最长）
+│   ├── useRouteLoading/index.js      # 路由是否在切换（顶部进度条）
     │   ├── useRefreshToken/index.js      # 刷新 token（再导出 @/api/request 的单飞实现）
     │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动（含引用计数）
     │   ├── useModalA11y/index.js         # 模态无障碍：Escape / 焦点陷阱 / 焦点归还 / 滚动锁定
@@ -136,8 +138,28 @@ app.mount('#app')
   `padding-top: var(--navbar-height)` 在这里统一给出，**各页面不再自己写顶栏占位**
 - `<Footer />` 页脚
 - 右下角"回到顶部"悬浮按钮（滚动超过 300px 出现，用 `throttle` 节流）
+- 顶部路由进度条 `<div class="route-progress">`（导航中显示，见 §5）
+- **首屏启动遮罩** `<div class="boot-screen">`，挂在 `.app-container` **外面**（见 §5）
 
-`App.vue` 的 `onMounted` 里并行调用 `userStore.init()` 与 `shopStore.init()`。
+### `onMounted` 的启动顺序
+
+```js
+startBoot()                      // 启动计时开始（遮罩延迟出现）
+try {
+  await userStore.init()         // 身份：复用本地 token 或建游客
+  await router.isReady()         // 首次路由就位（含首屏分包下载）
+} finally {
+  booting.value = false; finishBoot()   // 无论成败都必须放行
+}
+shopStore.init()                 // 商品数据**不阻塞**启动（有骨架屏）
+if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身份就绪后再取
+```
+
+`userStore.init()` 必须**先于** `shopStore.init()`：商品接口要鉴权，两者赛跑会让
+冷启动的商品请求先发出并 401，进而触发「登录态失效」回调把深链悄悄带回首页。
+
+`shopStore.init()` 则**必须排在放行之后**：它有自己的骨架屏，让全屏遮罩等它
+只会把「边看边加载」变成更久的白屏。
 
 ---
 
@@ -168,12 +190,14 @@ app.mount('#app')
 | `/rules` | `Rules` | `pages/Legal.vue` | 平台规则 - 星辰商行 | |
 | `/:pathMatch(.*)*` | `NotFound` | `pages/NotFound.vue` | 页面未找到 - 星辰商行 | |
 
-**导航守卫**有两个：
+**导航守卫**有三个：
 
-1. `router.afterEach` 把 `to.meta.title` 写入 `document.title`。
-2. `router.beforeEach` **先确保身份就绪**（`userStore.init()`，幂等），
-   再判断 `to.meta.requiresAuth`：未登录时**打开登录弹窗**并把原目标写进
-   `query.redirect`，然后回首页。
+1. `router.beforeEach` 第一件事是 `markRouteLoading()`（顶栏那条进度条），
+   然后**先确保身份就绪**（`userStore.init()`，幂等），再判断 `to.meta.requiresAuth`：
+   未登录时**打开登录弹窗**并把原目标写进 `query.redirect`，然后回首页。
+2. `router.afterEach` 把 `to.meta.title` 写入 `document.title`，并 `markRouteLoaded()`。
+3. `router.onError` 同样 `markRouteLoaded()` —— 分包下载失败时若不收，
+   进度条会一直挂在页面顶部。
 
 > 为什么必须在守卫里等身份：受保护接口要带 token，而组件在 `onMounted` 里立刻发请求。
 > 身份没就绪就发请求会 401 → 刷新失败 → 触发「登录态失效」回调 →
@@ -184,6 +208,52 @@ app.mount('#app')
 
 **滚动行为**：优先恢复 `savedPosition`；有 `hash` 时滚动到锚点
 （页脚的「联系我们」→ `/about#about-contact` 依赖这条，否则锚点等于失效）；否则回到顶部。
+
+---
+
+## 5. 加载状态：三层各管一段
+
+刷新时页面必须先把数据请求回来才能显示（顶栏的头像/昵称就是典型），
+Vercel 上这段可能到几秒。**不能用一个全屏转圈盖住所有情况** ——
+那会把「边看边加载」变成「更久的白屏」。因此按「要等多久 / 能不能先渲染」分三层：
+
+| 层 | 覆盖什么 | 表现 | 实现 |
+| --- | --- | --- | --- |
+| **首屏启动遮罩** | 身份解析 + 首次路由就位（含首屏分包） | 全屏品牌动画 | `hooks/useBootScreen` + `App.vue` |
+| **顶栏身份占位** | 身份**尚未**解析出来的那一瞬 | 与头像等尺寸的骨架 | `Navbar.vue` 的 `identityResolved` |
+| **顶部路由进度条** | 应用内导航（懒加载分包下载） | 视口顶部 4px 细条 | `hooks/useRouteLoading` + 路由守卫 |
+| **页面内局部加载** | 各页面自己的数据 | 骨架屏 / `.u-loading-block` | 各组件（见下） |
+
+### 首屏启动遮罩的三个时间闸
+
+`useBootScreen` 不是简单的 `v-if="booting"`，那样会有两个反向问题：加载快时闪一下白屏、
+加载慢时一闪而过。因此：
+
+| 闸 | 默认 | 解决什么 |
+| --- | --- | --- |
+| `delay` | 200ms | 本地开发身份初始化只要几十毫秒，遮罩一闪而过比不显示更难看。**加载快就全程不出现**，这段由顶栏的骨架顶着 |
+| `minVisible` | 400ms | 一旦出现就至少留够这段时间，否则「出现→立刻消失」是反方向的闪烁 |
+| `maxWait` | 8000ms | 后端挂住时 axios 要等自己的超时，不能让遮罩无限期盖住应用 |
+
+计时器通过参数注入（`schedule` / `cancel` / `now`），因此这套时序可以在没有浏览器的情况下
+用假时钟测（`test/bootScreen.test.js`）。
+
+另外两条硬约束：遮罩挂在 `.app-container` **外面**（这样启动期间可以给应用壳加 `inert`，
+Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toast（3000）**之下**，
+启动期间的告警仍然看得见。
+
+### 局部的加载态约定
+
+- 区块级加载用共享类 `.u-loading-block` + `.u-spinner`，**不要各页面自己写间距**
+- 列表/卡片用骨架屏 `.u-skeleton`（含 `--avatar` / `--card` 等变体，走 `--skeleton-*` 令牌）
+- 顶栏身份占位直接复用 `.u-skeleton--avatar`（它的尺寸就是 `--avatar-size`，与真头像等宽等高，
+  出现与消失都不会让顶栏跳动）
+- **「暂无数据」不等于「加载中」**：数据没回来之前显示空态是**错的**，
+  用户会以为站点没内容。分类区块此前就是这样（加载期间显示「暂无商品分类」），已修
+
+### 层级顺序（改 z-index 前先看这张表）
+
+顶栏 `100` < 回到顶部 `900` < 路由进度条 `950` < 模态框 `2000` < 启动遮罩 `2500` < toast `3000`
 
 **导航菜单**（`constants/index.js` 的 `NAV_MENU`，被 `Navbar` 渲染）：首页、商品分类、热门推荐、工具分享、关于我们。
 顶栏右侧另有：样式主题、**购物车（带角标）**、登录/注册或用户头像下拉
@@ -825,7 +895,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 585 个用例）
+npm test             # 单元测试（node:test，共 619 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -918,6 +988,8 @@ test/
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
+├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
+├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
 ├── render.mjs                        # 渲染辅助：编译 .vue + SSR 渲染 + 环境桩
 ├── stores.user.test.js               # 用户 store：getters / init / login / register / logout
 ├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
@@ -939,7 +1011,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 585 个用例。
+共 619 个用例。
 
 ### 主题契约测试
 
@@ -1128,7 +1200,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（585 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（619 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

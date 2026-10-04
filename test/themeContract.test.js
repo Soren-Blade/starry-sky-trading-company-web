@@ -714,3 +714,77 @@ test('togglePanel / openPanel / closePanel：弹窗状态由 store 集中管理'
   store.openPanel()
   assert.equal(store.panelOpen, true)
 })
+
+/**
+ * 取出某个选择器的规则块（这些分片里没有嵌套规则，取到第一个 `}` 即可）。
+ * @param {string} css
+ * @param {string} selector
+ * @returns {string|null}
+ */
+function ruleBlock(css, selector) {
+  const at = css.indexOf(`${selector} {`)
+  if (at < 0) return null
+  const end = css.indexOf('}', at)
+  return css.slice(at, end)
+}
+
+test('浮层面板必须带毛玻璃：只有 liquid-glass 的半透明底色会因此露馅', () => {
+  /*
+   * 真机排查出来的缺陷（用户反馈「只有液态玻璃有这个毛病」）：
+   *
+   * 五套里**只有 liquid-glass** 的 `--effect-backdrop` 不是 none，也**只有它**的
+   * `--bg-elevated` 是半透明（rgba(255,255,255,0.72)）。半透明的底色必须配一层
+   * backdrop-filter 才成立；缺了它，「半透明」就等于「透明」—— 面板背后的表单文字
+   * 会直接透上来，与日期数字叠在一起，表现就是「文字太拥挤」。
+   *
+   * `.ui-card` / `.u-modal` / `.u-toast` / `.u-dropdown` 一直都有这一层，
+   * 第三批新增的四个浮层面板漏了 —— 这条断言就是钉住它们。
+   */
+  const glass = getTheme('liquid-glass').tokens
+  assert.notEqual(glass['--effect-backdrop'], 'none', '前提：glass 确实有毛玻璃令牌')
+  assert.match(glass['--bg-elevated'], /^rgba\(/, '前提：glass 的浮层底色确实是半透明的')
+
+  const targets = [
+    ['ui-kit-form.css', '.u-select-panel'],
+    ['ui-kit-data.css', '.u-datepicker'],
+    ['ui-kit-feedback.css', '.u-tooltip'],
+    ['ui-kit-feedback.css', '.u-drawer'],
+  ]
+
+  const missing = []
+  for (const [file, selector] of targets) {
+    const css = fs.readFileSync(path.join(WEB_ROOT, 'src', 'assets', 'styles', file), 'utf8')
+    const block = ruleBlock(css, selector)
+    if (!block) {
+      missing.push(`${file} 里找不到 ${selector}`)
+      continue
+    }
+    if (!/backdrop-filter:\s*var\(--effect-backdrop\)/.test(block)) {
+      missing.push(`${file} 的 ${selector} 未应用 --effect-backdrop`)
+    }
+  }
+
+  assert.deepEqual(missing, [], `以下浮层缺毛玻璃，glass 下会透出背后的文字：\n  ${missing.join('\n  ')}`)
+})
+
+test('浮层面板的宽度上限取视口而不是字段（字段常比设计宽度窄）', () => {
+  /*
+   * 真机实测：Profile 的生日字段是两列栅格里的一格，1440px 下只有 263px 宽。
+   * 面板原写 `max-width: 100%`，于是被压到 263px —— 7 列各 31px、13px 的数字
+   * 几乎顶到格边。面板是**浮层**，没有理由跟着字段一起变窄，上限应当按视口收口，
+   * 只在视口本身就窄时才继续收缩。
+   */
+  const css = fs.readFileSync(
+    path.join(WEB_ROOT, 'src', 'components', 'DatePickerField.vue'),
+    'utf8'
+  )
+  const block = ruleBlock(css, '.datepicker-panel')
+  assert.ok(block, '应能找到 .datepicker-panel 规则')
+  // 先剥注释：这段的说明文字里恰好引用了 `max-width: 100%` 这个反面写法，
+  // 不剥掉的话 doesNotMatch 会把注释当成实现（同 `<select` 那次的坑）。
+  const decls = block.replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.match(decls, /max-width:\s*calc\(100vw -/, 'max-width 应按视口收口')
+  assert.doesNotMatch(decls, /max-width:\s*100%/, '不要再退回「跟着字段变窄」')
+  assert.match(decls, /max-height:\s*calc\(100dvh -/, '还要有视口高度上限')
+  assert.match(decls, /overflow:\s*auto/, '超高时改为面板内滚动')
+})

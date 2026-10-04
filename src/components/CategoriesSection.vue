@@ -43,7 +43,17 @@
           </button>
         </li>
 
-        <li v-if="!shopClass.length" class="categories-empty">暂无商品分类</li>
+        <!--
+          加载中显示骨架格，而不是直接落到「暂无商品分类」——
+          后者在数据回来之前是**错的**（分类明明有），用户会以为站点没内容。
+        -->
+        <template v-if="shopLoading && !shopClass.length">
+          <li v-for="n in 4" :key="`skeleton-${n}`" class="categories-cell">
+            <span class="u-skeleton categories-cell-skeleton" aria-hidden="true"></span>
+          </li>
+        </template>
+
+        <li v-else-if="!shopClass.length" class="categories-empty">暂无商品分类</li>
       </ul>
     </div>
   </section>
@@ -80,7 +90,7 @@ const props = defineProps({
 
 const shopStore = useShopStore()
 const router = useRouter()
-const { shopClass } = storeToRefs(shopStore)
+const { shopClass, loading: shopLoading } = storeToRefs(shopStore)
 
 const isIndex = computed(() => props.variant === 'index')
 
@@ -211,6 +221,18 @@ const handleCategoryClick = (category) => {
   background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
+}
+
+/* 加载骨架：占满一个卡片的位置，避免骨架期栅格塌成一行 */
+.categories-cell-skeleton {
+  display: block;
+  width: 100%;
+  min-height: calc(var(--space-unit) * 18);
+}
+
+/* 索引版是行式面板，骨架跟着变矮，否则四行骨架会把区块撑得比真实内容高得多 */
+.categories-section--index .categories-cell-skeleton {
+  min-height: calc(var(--space-unit) * 8);
 }
 
 /* ── index 变体（分类页）：行式索引面板 ───────────────────────

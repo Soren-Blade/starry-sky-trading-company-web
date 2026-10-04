@@ -316,9 +316,17 @@ export function formatChineseDate(iso) {
   return `${date.getFullYear()} 年 ${pad2(date.getMonth() + 1)} 月 ${pad2(date.getDate())} 日`
 }
 
-/** 供面板标题用的中文月份：2026 年 10 月 */
+/**
+ * 供面板标题用的中文月份。
+ *
+ * **刻意用紧凑写法「1990年1月」**，而不是触发器的「1990 年 01 月」：
+ * 月份头一行要塞下 4 个导航按钮（各 26px）+ 标题，面板内宽只有 246px。
+ * 带空格与零填充的写法要 126px，正好把这一行**填到一点余量不剩**
+ * （真机实测：内容 246 = 可用 246），标题看起来就是被挤住的。
+ * 紧凑写法约 80px，留出 40px 余量；触发器的日期文案不受影响。
+ */
 export function formatChineseMonth(year, month) {
-  return `${year} 年 ${pad2(month + 1)} 月`
+  return `${year}年${month + 1}月`
 }
 
 /**
@@ -843,11 +851,23 @@ watch(
   top: calc(100% + var(--dropdown-offset));
   left: 0;
   z-index: 20;
-  /* max-width 保留：字段比设计宽度更窄时（窄列 / ≤575px 档）面板仍收得住，
-     单元格随列宽等比缩小 —— 这条才是「上限」。 */
-  max-width: 100%;
-  /* 圆角靠裁剪表达，不必回样式分片给 .u-datepicker 补 overflow */
-  overflow: hidden;
+  /*
+   * 上限取**视口**而不是字段：
+   *
+   * 面板是浮层，没有理由跟着字段一起变窄。写成 `max-width: 100%` 时，真实的
+   * Profile 字段只有 263px（两列栅格里的一格），面板就被压到 263px ——
+   * 7 列各 31px、13px 的数字几乎顶到格边，标题也被挤到没有余量。
+   * 改成按视口收口后，面板稳定拿到规范的 280px（列宽 35.4px），
+   * 只有在视口本身就窄（< 312px）时才继续收缩。
+   */
+  max-width: calc(100vw - var(--space-unit) * 4);
+  /*
+   * 高度上限同样按视口收口：面板 6×7 网格 + 头部 + 星期行 + 底部约 340px，
+   * 视口比它矮时（小窗口 / 横屏手机）光靠翻转也放不下，那就让它自己滚，
+   * 至少不会有一截永远看不见。overflow: auto 同样会把内容裁到圆角内。
+   */
+  max-height: calc(100dvh - var(--space-unit) * 4);
+  overflow: auto;
   animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
@@ -871,8 +891,12 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space-unit) * 0.5);
-  margin-top: var(--datepicker-cell-radius);
-  padding-top: calc(var(--space-unit) * 0.5);
+  /* 上间距只留分隔线本身的呼吸位：这里原本是
+     `margin-top: --datepicker-cell-radius`（tech 下 8px）+ 4px padding，
+     与网格之间白出 12px —— 面板总共才 340px，这段自造的空白占了 3%，
+     而它并不来自规范（§11 只定义了面板内边距、单元格与星期行高度）。 */
+  margin-top: 0;
+  padding-top: calc(var(--space-unit) * 0.25);
   border-top: var(--stroke-width) solid var(--divider);
 }
 

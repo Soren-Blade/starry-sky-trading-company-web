@@ -267,8 +267,12 @@ test('resolveInitialView：只给 viewDate 不给 modelValue 时，落在 viewDa
   assert.deepEqual(resolveInitialView('', '1990-01-31', TODAY), { year: 1990, month: 0 })
 
   // 落点换算成用户真正看到的那行面板标题（真机探针读的就是它，两边必须一致）
+  // 标题用紧凑写法「1990年1月」：月份头一行要塞下 4 个导航按钮，带空格与零填充的
+  // 「1990 年 01 月」要 126px，会把这一行填到一点余量不剩（真机实测过）。
   const landed = resolveInitialView('', '1990-01-01', TODAY)
-  assert.equal(formatChineseMonth(landed.year, landed.month), '1990 年 01 月')
+  assert.equal(formatChineseMonth(landed.year, landed.month), '1990年1月')
+  // 触发器的日期文案另有其人，不受标题紧凑写法影响
+  assert.equal(formatChineseDate('1990-01-01'), '1990 年 01 月 01 日')
 })
 
 test('resolveInitialView：modelValue 与 viewDate 同时给时，以 modelValue 为准', () => {

@@ -44,12 +44,19 @@ const REGISTERED = {
   created_at: '2026-01-01T00:00:00.000Z',
 }
 
-/** 无身份：退出之后的状态（userInfo 为空） */
+/** 无身份：退出之后的状态（userInfo 为空，但身份**已经**解析过了） */
 const ANONYMOUS = {}
 
-async function renderNavbar(userInfo) {
+/**
+ * 渲染顶栏。
+ *
+ * `initialized` 必须显式给出 —— 它区分的是「身份还没解析出来」与
+ * 「解析完了，确实没有身份」这两件完全不同的事（前者显示骨架，后者显示登录按钮）。
+ * 默认 true 表示「已经解析完」，与页面加载完成后的稳定状态一致。
+ */
+async function renderNavbar(userInfo, storeState = {}) {
   const [pinia, env] = await Promise.all([
-    createPiniaWithState({ user: { userInfo } }),
+    createPiniaWithState({ user: { initialized: true, userInfo, ...storeState } }),
     createRenderEnv(),
   ])
   return renderComponent('/components/Navbar.vue', {
@@ -61,6 +68,32 @@ async function renderNavbar(userInfo) {
 /** 页面里可见的「登录 / 注册」按钮（顶栏那一颗，不是下拉面板里的） */
 const hasTopLoginButton = (html) =>
   new RegExp(`<button[^>]*class="u-btn-primary"[^>]*>\\s*${AUTH.loginCta}\\s*</button>`).test(html)
+
+// ── 身份尚未解析：占位骨架 ─────────────────────────────────
+//
+// 这是「刷新时顶栏先闪一下登录按钮、再变成头像」的直接修复。
+// 刷新后应用要先拿到身份才知道该显示什么，Vercel 上这段有几百毫秒到几秒；
+// 期间显示登录按钮是**错的**（用户可能已经登录），而且会立刻跳变成头像。
+
+test('身份未解析：显示占位骨架，绝不显示登录按钮', async () => {
+  const html = await renderNavbar({}, { initialized: false })
+
+  assert.match(html, /u-skeleton u-skeleton--avatar/, '应显示与头像等尺寸的骨架')
+  assert.equal(hasTopLoginButton(html), false, '身份未知时显示登录按钮会在拿到身份后跳变')
+  assert.equal(html.includes('user-avatar-btn'), false, '身份未知时也还不能渲染头像按钮')
+})
+
+test('身份未解析：骨架带可访问名，读屏用户知道正在确认登录状态', async () => {
+  const html = await renderNavbar({}, { initialized: false })
+  assert.match(html, /role="status"[^>]*aria-label="正在确认登录状态"/)
+})
+
+test('身份已解析且无身份：骨架换成登录按钮（骨架必须消失）', async () => {
+  const html = await renderNavbar(ANONYMOUS)
+
+  assert.equal(hasTopLoginButton(html), true)
+  assert.equal(html.includes('u-skeleton--avatar'), false, '解析完成后不该还留着骨架')
+})
 
 // ── 要求 1：游客也显示头像与信息 ────────────────────────────
 

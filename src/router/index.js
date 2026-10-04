@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { markRouteLoaded, markRouteLoading } from '@/hooks/useRouteLoading'
 
 const routes = [
   {
@@ -142,9 +143,15 @@ const router = createRouter({
   }
 })
 
-// 路由守卫 - 更新页面标题
+// 路由守卫 - 更新页面标题，并收起「导航中」进度条
 router.afterEach((to) => {
   document.title = to.meta.title || '星辰商行'
+  markRouteLoaded()
+})
+
+// 导航出错（分包下载失败、守卫抛错）也要收起进度条，否则它会一直挂在那里
+router.onError(() => {
+  markRouteLoaded()
 })
 
 // 路由守卫 - 任何页面都先确保身份就绪，再判断是否需要账号登录。
@@ -158,6 +165,10 @@ router.afterEach((to) => {
 // 而 App.vue 在 onMounted 里已经先发起了一次，所以这里通常只是等那个 Promise。
 // 这里懒加载 store，避免 router 与 store 的循环依赖。
 router.beforeEach(async (to) => {
+  // 放在最前面：分包下载与守卫耗时都算「导航中」，
+  // 用户点的这一下从此刻起就有反馈
+  markRouteLoading()
+
   const { useUserStore } = await import('@/stores/user')
   const userStore = useUserStore()
 
@@ -173,6 +184,8 @@ router.beforeEach(async (to) => {
   // 只提示不打开弹窗的话，用户还得自己找到右上角的登录入口。
   userStore.openLoginModal('请先登录账号后再访问该页面')
 
+  // 重定向会再触发一次 beforeEach，那次同样会 markRouteLoading ——
+  // 因此这里用的是开关而不是计数器，不会只增不减地漂移
   return { name: 'Home', query: { redirect: to.fullPath } }
 })
 
