@@ -1,3 +1,5 @@
+import { lookup, lookupOr } from '@/utils/safeLookup.js';
+
 /**
  * 完整的 Emoji 渐变颜色映射表
  * 根据社交平台、账号状态、互动等场景分类
@@ -253,28 +255,40 @@ class EmojiGradientGenerator {
     // 调用方（如 CategoriesSection）直接透传后端字段，icon_url 可能为 null，
     // 这里做兜底，避免 emoji.trim() 抛 TypeError 导致整块渲染失败。
     const cleanEmoji = normalizeEmoji(emoji);
-    let gradientConfig = this.gradientMap[cleanEmoji];
-    
+
+    // 必须用自有属性查找：`this.gradientMap['toString']` 会取到
+    // Object.prototype.toString（函数），于是下面访问 .colors 得到 undefined，
+    // 最终在 finalColors[0] 处抛
+    // 「TypeError: Cannot read properties of undefined (reading '0')」。
+    // 实测确认：'toString' / 'constructor' / 'valueOf' / 'hasOwnProperty' / '__proto__'
+    // 都会触发，而后端字段是外部数据，不能假定它一定是合法 emoji。
+    let gradientConfig = lookup(this.gradientMap, cleanEmoji, null);
+
     // 如果未找到且允许使用默认
     if (!gradientConfig && useDefault) {
-      gradientConfig = this.gradientMap['default'];
+      gradientConfig = lookup(this.gradientMap, 'default', null);
     }
-    
+
     // 如果还是没有配置，返回随机渐变
     if (!gradientConfig) {
       return this.generateRandomGradient(angle);
     }
-    
+
     const finalAngle = angle !== null ? angle : gradientConfig.angle;
-    const finalColors = colors !== null ? colors : gradientConfig.colors;
-    
+    const finalColors = colors !== null ? colors : gradientConfig.colors || [];
+
+    // 配置缺失颜色时也走随机渐变，避免渲染出 `linear-gradient(...undefined...)`
+    if (finalColors.length < 2) {
+      return this.generateRandomGradient(angle);
+    }
+
     // 如果设置了透明度，转换为rgba
     let colorStops = `${finalColors[0]} 0%, ${finalColors[1]} 100%`;
     if (opacity < 1) {
       const rgbaColors = finalColors.map(hex => this.hexToRgba(hex, opacity));
       colorStops = `${rgbaColors[0]} 0%, ${rgbaColors[1]} 100%`;
     }
-    
+
     return `linear-gradient(${finalAngle}deg, ${colorStops})`;
   }
 
@@ -285,15 +299,17 @@ class EmojiGradientGenerator {
    */
   getEmojiInfo(emoji) {
     const cleanEmoji = normalizeEmoji(emoji);
-    const config = this.gradientMap[cleanEmoji] || this.gradientMap['default'];
-    
+    // 同 getGradient：必须用自有属性查找，否则 'toString' 这类输入会取到函数
+    const config =
+      lookup(this.gradientMap, cleanEmoji, null) || lookup(this.gradientMap, 'default', null);
+
     return {
       emoji: cleanEmoji,
       gradient: this.getGradient(cleanEmoji),
-      colors: config.colors,
-      angle: config.angle,
-      category: config.category,
-      categoryName: this.categories[config.category] || '未知分类'
+      colors: config ? config.colors : [],
+      angle: config ? config.angle : null,
+      category: config ? config.category : null,
+      categoryName: lookupOr(this.categories, config ? config.category : null, '未知分类')
     };
   }
 

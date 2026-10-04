@@ -152,8 +152,8 @@
                 <button
                   type="button"
                   class="copy-icon-btn"
-                  title="复制卡号"
-                  aria-label="复制卡号"
+                  title="复制脱敏卡号（含掩码，仅用于核对）"
+                  aria-label="复制脱敏卡号，仅用于核对"
                   @click="copyCardNo(record)"
                 >
                   📋
@@ -188,6 +188,7 @@ import { useKamiStore } from '@/stores/kami'
 import { useToolStore } from '@/stores/tool'
 import api from '@/api/index'
 import { formatISOTime } from '@/hooks/useSimpleTimeFormatter'
+import { lookupOr } from '@/utils/safeLookup.js'
 import SectionHeader from '@/components/SectionHeader.vue'
 
 const userStore = useUserStore()
@@ -230,11 +231,25 @@ const tableColumns = [
 /** 时间格式化：交给统一的 hook，避免 Invalid Date 渲染成 NaN */
 const formatDate = (value) => formatISOTime(value, 'YYYY-MM-DD HH:mm') || '—'
 
-const getStatusText = (status) =>
-  ({ unused: '未使用', used: '已使用', expired: '已过期', disabled: '已禁用' })[status] || status || '未知'
+const STATUS_TEXT = {
+  unused: '未使用',
+  used: '已使用',
+  expired: '已过期',
+  disabled: '已禁用',
+}
 
-const getStatusColor = (status) =>
-  ({ unused: 'blue', used: 'green', expired: 'red', disabled: 'default' })[status] || 'default'
+const STATUS_COLOR = {
+  unused: 'blue',
+  used: 'green',
+  expired: 'red',
+  disabled: 'default',
+}
+
+// 用自有属性查找：status 来自后端，若它恰好等于 'toString' 这类原型链属性名，
+// `STATUS_TEXT[status]` 会返回函数而不是文案（server 侧曾出现过同类缺陷）。
+const getStatusText = (status) => lookupOr(STATUS_TEXT, status, status || '未知')
+
+const getStatusColor = (status) => lookupOr(STATUS_COLOR, status, 'default')
 
 const getToolName = (toolId) => {
   if (!toolId) return null
@@ -244,12 +259,14 @@ const getToolName = (toolId) => {
 }
 
 const copyCardNo = async (card) => {
-  // 列表接口只返回脱敏卡号，复制的是脱敏值（完整卡号不再下发给前端）
+  // 列表接口只返回**脱敏**卡号（见 server 端 kamiApi：完整 card_no 会导致掩码失效）。
+  // 因此这里复制到的是 "****1234" 这类值 —— 按钮文案必须如实说明，
+  // 否则用户会以为复制到了可用于激活的完整卡号。
   const text = card.card_no_display
   if (!text) return
   try {
     await navigator.clipboard.writeText(text)
-    message.success('卡号已复制')
+    message.success('已复制脱敏卡号（含掩码，仅用于核对）')
   } catch {
     message.error('复制失败，请手动选择复制')
   }

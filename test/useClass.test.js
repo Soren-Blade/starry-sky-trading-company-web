@@ -30,7 +30,10 @@ test('classifyToolsByClass：空数组返回仅含 all 分类的合法结构', (
   assert.equal(result.classes[0].class, 'all')
   assert.equal(result.classes[0].count, 0)
   assert.deepEqual(result.classes[0].tools, [])
-  assert.deepEqual(result.classified, {})
+  // classified 是**无原型**对象：键来自后端的 tool.class，
+  // 普通对象会让 'toString' 这类键命中原型链（见 utils/safeLookup.js）
+  assert.deepEqual(Object.keys(result.classified), [])
+  assert.equal(Object.getPrototypeOf(result.classified), null)
 })
 
 test('classifyToolsByClass：按 class 分组', () => {

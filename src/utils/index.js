@@ -2,6 +2,8 @@
  * 动画工具函数
  */
 
+import { lookup } from './safeLookup.js'
+
 export const animationUtils = {
   // 创建交错延迟的动画
   staggerDelay: (index, baseDelay = 0.1) => {
@@ -42,7 +44,9 @@ export const styleUtils = {
       xl: '0 12px 32px rgba(0, 0, 0, 0.2)',
       glass: '0 8px 32px rgba(31, 38, 135, 0.17)',
     };
-    return shadows[intensity] || shadows.md;
+    // 用自有属性查找：shadows['toString'] 会取到 Object.prototype.toString（函数），
+    // 直接拼进 CSS 会产生非法值。
+    return lookup(shadows, intensity, shadows.md);
   },
 
   // 生成过渡样式

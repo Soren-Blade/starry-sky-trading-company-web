@@ -1,3 +1,5 @@
+import { lookup, createBareMap } from '../../utils/safeLookup.js';
+
 /**
  * 根据class关键字对工具数组进行分类
  * @param {Array} tools - 工具数组
@@ -34,19 +36,24 @@ function classifyToolsByClass(tools, options = {}) {
     ...customClassMapping
   };
 
-  // 初始化数据结构
-  const classified = {};
+  // 初始化数据结构。
+  // classNames / classIcons 的键来自后端的 tool.class，必须是**无原型**对象：
+  // 否则 tool.class === 'toString' 时 `!stats.classNames['toString']` 会因为
+  // 继承来的函数被判为「已存在」，真实分类名不会被写入；
+  // 且 classNames['toString'] 会返回函数而不是字符串。
+  const classified = createBareMap();
   const stats = {
     totalTools: tools.length,
-    classCounts: {},
-    classNames: {},
-    classIcons: {} // 存储每个分类的图标（从工具中获取）
+    classCounts: createBareMap(),
+    classNames: createBareMap(),
+    classIcons: createBareMap() // 存储每个分类的图标（从工具中获取）
   };
 
   // 处理所有工具，确保数据一致性
   const processedTools = tools.map(tool => {
     const toolClass = tool.class;
-    const className = tool.class_name || classMapping[toolClass] || toolClass;
+    // classMapping 是普通对象，直接用 [] 会沿原型链取到 Object.prototype 上的函数
+    const className = tool.class_name || lookup(classMapping, toolClass, undefined) || toolClass;
     
     // 存储分类信息
     if (!stats.classNames[toolClass]) {
@@ -122,7 +129,7 @@ function classifyToolsByClass(tools, options = {}) {
   }
 
   // 对分类本身进行排序（按第一个工具的sort_order）
-  const sortedClassified = {};
+  const sortedClassified = createBareMap();
   const sortedClasses = Object.keys(classified).sort((a, b) => {
     const orderA = classified[a][0]?.sort_order || 999;
     const orderB = classified[b][0]?.sort_order || 999;
@@ -241,7 +248,8 @@ function getDefaultIcon(toolClass) {
     pdf: '📄',
     code: '⌨️',
   };
-  return iconMap[toolClass] || '🔧';
+  // 用自有属性查找：iconMap['toString'] 会取到 Object.prototype.toString
+  return lookup(iconMap, toolClass, '🔧');
 }
 
 /**
