@@ -195,7 +195,8 @@ export function isSameSelectValue(a, b) {
 </script>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useId, watch } from 'vue'
+import { computed, nextTick, ref, useAttrs, useId, watch } from 'vue'
+import { useClickOutside } from '@/hooks/useClickOutside/index.js'
 
 /** 面板内的固定文案：这里没有第二处消费方，因此不进 constants */
 const SEARCH_PLACEHOLDER = '输入关键字筛选'
@@ -486,25 +487,14 @@ const handleKeydown = (event) => {
 
 // ── 点击外部关闭 ────────────────────────────────────────────
 
-/**
- * 用**捕获阶段**的 pointerdown 而不是 click：click 要等 pointerup，落点可能已经被
- * 别处的重渲染换掉；捕获阶段又先于任何 stopPropagation 的处理函数，落点判定最准。
- *
- * 用 pointerdown 而不是 mousedown：触摸设备上同样会触发，不必再挂一套 touch 监听。
+/*
+ * 监听器本身（捕获阶段 + pointerdown + 卸载清理）在 hooks/useClickOutside 里，
+ * 与 DatePickerField 共用一份 —— 这段的坑很细，复制两份迟早会有一份漂移。
+ * 这里只负责「当前是否该关」：面板没开就直接返回，免得每次点击都写一次状态。
  */
-const handleDocumentPointerDown = (event) => {
+useClickOutside(rootRef, () => {
   if (!open.value) return
-  const root = rootRef.value
-  if (!root || root.contains(event.target)) return
   closePanel()
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', handleDocumentPointerDown, true)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('pointerdown', handleDocumentPointerDown, true)
 })
 
 // 面板开着时被父组件禁用：立刻收起来，不能留一个点不动的浮层

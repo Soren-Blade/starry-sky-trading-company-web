@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import { renderComponent, createPiniaWithState, createRenderEnv } from './render.mjs'
 
@@ -254,11 +255,31 @@ test('个人中心：只读区渲染账号信息，表单预填当前资料', as
 
 test('个人中心：性别选项与数据库约束一致（male / female / unknown）', async () => {
   const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
-  // 多一个不在 CHECK 约束里的值，用户选中后会撞约束、接口返回 500。
-  // 空值那个选项在 SSR 下渲染成裸 `<option value>`（Vue 省略空字符串属性），
-  // 因此这里两种写法都要认。
-  const values = [...html.matchAll(/<option(?: value="([^"]*)")?(?=[ >])/g)].map((m) => m[1] ?? '')
-  assert.deepEqual([...new Set(values)].sort(), ['', 'female', 'male', 'unknown'])
+
+  /*
+   * 性别原来用原生 <select>，选项能从 SSR 的 <option> 里抓；换成 SelectField 之后
+   * 选项由组件渲染成 listbox 的项（value 不出现在 DOM 属性上），所以改为**源码级**断言。
+   *
+   * 这条用例真正要守的不是 DOM 形状，而是「送给接口的取值集合不能超出数据库 CHECK 约束」——
+   * 多一个不在约束里的值，用户选中后会撞约束、接口 500。所以：
+   *   1) 源码里的取值集合必须精确等于 '' + male/female/unknown；
+   *   2) 页面上必须真的渲染出四个选项的文案（证明接线没断）。
+   */
+  const source = readFileSync(new URL('../src/pages/Profile.vue', import.meta.url), 'utf8')
+  const block = source.match(/const genderOptions = \[([\s\S]*?)\n\]/)
+  assert.ok(block, '应能找到 genderOptions 定义')
+
+  const values = [...block[1].matchAll(/value:\s*'([^']*)'/g)].map((m) => m[1])
+  assert.deepEqual(
+    [...new Set(values)].sort(),
+    ['', 'female', 'male', 'unknown'],
+    '性别取值必须与数据库 CHECK 约束一致'
+  )
+
+  // 接线没断：页面上确实是一个 SelectField 触发器（面板 v-if 关闭时不渲染，
+  // 所以这里断言的是触发器语义，而不是选项文案 —— 后者会与文案常量耦合）。
+  assert.match(html, /aria-haspopup="listbox"/, '性别应渲染成 SelectField 的触发器')
+  assert.match(html, /aria-label="性别"/, '触发器应带可访问名')
 })
 
 test('个人中心：说明哪些字段不能自助修改', async () => {

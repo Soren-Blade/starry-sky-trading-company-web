@@ -131,36 +131,42 @@
           <div class="profile-grid">
             <div class="u-field">
               <label class="u-field-label" for="profile-gender">{{ TRADE.profileGender }}</label>
-              <select
+              <!--
+                原生 <select> 的弹出层由操作系统绘制，五套主题一套都管不到；
+                这里换成消费 ui-kit-form.css §1 的 SelectField，与上面几处
+                （卡密的工具/状态筛选、主题弹窗的字体选择）保持同一套外观。
+                id 交给组件后会落在触发器的 <button> 上，而 <button> 是 labelable
+                元素，所以 <label for> 的关联照旧成立。
+              -->
+              <SelectField
                 id="profile-gender"
                 v-model="form.gender"
-                class="u-input"
+                :options="genderOptions"
                 :disabled="!userStore.isLoggedIn"
-              >
-                <option value="">{{ TRADE.profileGenderUnset }}</option>
-                <option value="male">{{ TRADE.profileGenderMale }}</option>
-                <option value="female">{{ TRADE.profileGenderFemale }}</option>
-                <option value="unknown">{{ TRADE.profileGenderUnknown }}</option>
-              </select>
+                :aria-label="TRADE.profileGender"
+              />
             </div>
 
             <div class="u-field">
-              <span class="u-field-label">{{ TRADE.profileBirthday }}</span>
+              <label class="u-field-label" for="profile-birthday">{{ TRADE.profileBirthday }}</label>
               <!--
                 原生 `<input type="date">` 的弹出日历由操作系统绘制，五套主题都管不到；
                 这里换成消费 ui-kit-data.css §11 的 DatePickerField。
                 值仍是 `YYYY-MM-DD` 或空串，与原生控件的 value 同构，
                 因此 toDateInput()、isDirty 与 `patch.birthday = … || null` 都不必改。
-                面板内「未来日期」不可选（沿用脚本里已有的 today 常量作为 max）；
-                不再用 `<label for>` 关联 —— label 的 for 只对可标记元素
-                （input / select / textarea）生效，指向 button 是无效关联，
-                所以可访问名改由组件的 ariaLabel 提供。
+                `:max="today"` 禁掉未来日期（生日不该在未来）。
+                `view-date` 只在**没有选中值**时决定首次落点：生日往往是几十年前，
+                否则打开会落在今天所在月，而 max 又把之后的日子全禁掉 ——
+                42 格里只剩个位数可点，要退回 1990 年得点几百次。
+                id 落在组件的触发器 <button> 上，而 <button> 是 labelable 元素，
+                所以上面 <label for> 的关联成立（点标签也能打开面板）。
               -->
               <DatePickerField
                 id="profile-birthday"
                 v-model="form.birthday"
                 :aria-label="TRADE.profileBirthday"
                 :max="today"
+                view-date="1990-01-01"
                 :disabled="!userStore.isLoggedIn"
               />
             </div>
@@ -217,6 +223,8 @@ import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
+// 性别用自绘下拉：原生 <select> 的弹出层同理，五套主题都管不到
+import SelectField from '@/components/SelectField.vue'
 
 const userStore = useUserStore()
 const { userInfo, nickname } = storeToRefs(userStore)
@@ -240,7 +248,32 @@ const form = ref({
 /** 提交前的基线，用来判断「有没有改过」 */
 const baseline = ref({ ...form.value })
 
-const today = new Date().toISOString().slice(0, 10)
+/**
+ * 本地「今天」。
+ *
+ * 不能用 `new Date().toISOString().slice(0, 10)`：那取的是 **UTC** 日期，
+ * 在 UTC+8 的 00:00–08:00 之间会比本地日期**早一天**，于是 `max` 卡在昨天，
+ * 用户在凌晨选不了今天的日期。
+ */
+const today = (() => {
+  const now = new Date()
+  const pad = (value) => String(value).padStart(2, '0')
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+})()
+
+/**
+ * 性别选项。
+ *
+ * 空串是「未设置」，与 `form.gender` 的初值、`fillForm()` 里的 `data.gender || ''`
+ * 以及提交时的 `patch.gender = form.value.gender || null` 同构 —— 后端把
+ * 「不提交」与「提交为空」区别对待，这里不要改成 null。
+ */
+const genderOptions = [
+  { value: '', label: TRADE.profileGenderUnset },
+  { value: 'male', label: TRADE.profileGenderMale },
+  { value: 'female', label: TRADE.profileGenderFemale },
+  { value: 'unknown', label: TRADE.profileGenderUnknown },
+]
 
 /** 后端返回的 birthday 可能是 Date 序列化后的 ISO 串，统一截成 YYYY-MM-DD */
 const toDateInput = (value) => {
