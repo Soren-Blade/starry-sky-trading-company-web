@@ -34,7 +34,9 @@
     -->
     <div
       v-if="open"
+      ref="panelRef"
       class="u-datepicker datepicker-panel"
+      :class="{ 'datepicker-panel--up': placement === 'top' }"
       role="dialog"
       aria-modal="false"
       :aria-label="ariaLabel"
@@ -351,7 +353,7 @@ export function resolveInitialView(modelValue, viewDate, todayIso) {
 </script>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useClickOutside } from '@/hooks/useClickOutside/index.js'
 
 // ── 组件 ────────────────────────────────────────────────────
@@ -391,6 +393,15 @@ const WEEKDAYS = WEEKDAY_LABELS
 
 const rootRef = ref(null)
 const triggerRef = ref(null)
+const panelRef = ref(null)
+/**
+ * 面板朝上还是朝下。
+ *
+ * 只在「下方放不下、且上方更宽裕」时翻上去：面板高 360px（6×7 网格 + 头部 + 底部），
+ * 字段又常常落在表单中段，不翻转时下半截会直接掉出视口 —— 实测 1366×673 的窗口里
+ * 面板底边到 917px，超出视口 244px，而那是绝对定位元素，滚动也带不回来。
+ */
+const placement = ref('bottom')
 /** 42 个格子的 DOM 引用，用来把键盘光标落到真实元素上 */
 const cellRefs = ref([])
 const setCellRef = (el, index) => {
@@ -564,6 +575,31 @@ const shiftYear = (delta) => {
   moveCursorTo(formatIsoDate(target.year, target.month, target.day))
 }
 
+/**
+ * 决定面板朝上还是朝下。
+ *
+ * 必须在面板渲染**之后**量它的真实高度：360px 这个数是 6×7 网格 + 头部 + 底部
+ * 加出来的结果，五套主题的 `--datepicker-cell-size` 不同（36/40/38/44/32），
+ * 写死一个估算值就会在某些主题下判错。
+ */
+const adjustPlacement = () => {
+  const trigger = triggerRef.value
+  const panel = panelRef.value
+  if (!trigger?.getBoundingClientRect || !panel?.getBoundingClientRect) return
+
+  const viewportH = window.innerHeight || document.documentElement?.clientHeight || 0
+  if (!viewportH) return
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const panelHeight = panel.getBoundingClientRect().height
+  const spaceBelow = viewportH - triggerRect.bottom
+  const spaceAbove = triggerRect.top
+
+  // 下方放得下就保持朝下；放不下时选更宽裕的一侧（上方也放不下就仍朝下，
+  // 至少不会把面板顶到视口外看不见触发器）。
+  placement.value = spaceBelow < panelHeight && spaceAbove > spaceBelow ? 'top' : 'bottom'
+}
+
 const openPanel = () => {
   // 打开时刷新「今天」：页面可能挂着过了一夜，标记与「今天」按钮都要跟上
   todayIso.value = toIsoDate(new Date())
@@ -574,8 +610,11 @@ const openPanel = () => {
   const base = resolveInitialView(selectedIso.value, props.viewDate, todayIso.value)
   viewYear.value = base.year
   viewMonth.value = base.month
+  // 先按默认（朝下）渲染出来，量到真实高度后再决定是否翻转 —— 否则量不到高度
+  placement.value = 'bottom'
   open.value = true
   resetCursor()
+  nextTick(adjustPlacement)
 }
 
 /** 关闭并归还焦点。由 focusout 触发的关闭不归还 —— 焦点已经去了别处，抢回来是错的 */
@@ -727,6 +766,25 @@ watch(cursorIndex, () => {
   if (open.value) focusCursorCell()
 })
 
+/*
+ * 面板开着时窗口尺寸变了要重新判朝向：把窗口从矮拉高（或反过来）之后，
+ * 「下方放不放得下」的结论会变，不重算就会停在一个已经不合适的方向上。
+ * 只在打开期间挂监听，关掉即摘，避免常驻一个全局 resize 监听。
+ */
+watch(open, (isOpen) => {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
+  if (isOpen) {
+    window.addEventListener('resize', adjustPlacement)
+    return
+  }
+  window.removeEventListener('resize', adjustPlacement)
+})
+
+onBeforeUnmount(() => {
+  if (typeof window === 'undefined' || typeof window.removeEventListener !== 'function') return
+  window.removeEventListener('resize', adjustPlacement)
+})
+
 // 面板开着时被父组件禁用：立刻收起来，不能留一个点不动的浮层
 watch(
   () => props.disabled,
@@ -791,6 +849,17 @@ watch(
   /* 圆角靠裁剪表达，不必回样式分片给 .u-datepicker 补 overflow */
   overflow: hidden;
   animation: enterUp var(--enter-duration) var(--enter-ease) both;
+}
+
+/*
+ * 下方放不下面板时翻到触发器上方（判据见 adjustPlacement）。
+ * 面板高 360px 左右，而字段常在表单中段 —— 不翻的话下半截直接掉出视口。
+ * 用 `top: auto` 取消朝下时的 top，否则两个 top 会打架（后写的赢，
+ * 但显式写 auto 才能让 bottom 真正生效）。
+ */
+.datepicker-panel--up {
+  top: auto;
+  bottom: calc(100% + var(--dropdown-offset));
 }
 
 /*

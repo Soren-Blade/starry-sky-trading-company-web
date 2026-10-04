@@ -504,3 +504,36 @@ test('42 格的 key 用下标：用 iso 会让每次翻页重建 42 个节点，
   )
   assert.doesNotMatch(source, /:key="cell\.iso"/, '不要退回 iso 做 key（会重建节点并关掉面板）')
 })
+
+test('面板放不下时会翻到触发器上方（否则下半截掉出视口，且绝对定位滚动也带不回来）', () => {
+  const source = stripHtmlComments(readComponentSource())
+
+  /*
+   * 真机实测（1366 宽，字段在两列栅格里、纵向位于表单中段）：
+   *   视口高 805 → 面板 top 570 / bottom 930，超出视口 125px
+   *   视口高 673 → 面板 top 557 / bottom 917，超出视口 244px
+   *   视口高 505 → 面板 top 153 / bottom 513
+   * 面板恒高 360px（6×7 网格 + 头部 + 底部）且只有朝下一种定位。
+   * 面板是绝对定位元素，溢出部分不会撑开文档、滚动也看不到。
+   *
+   * 修法：渲染后用真实高度判一次朝向 —— 下方放不下且上方更宽裕时翻上去。
+   * 高度必须**实测**而不是写死估算值：五套主题的 --datepicker-cell-size
+   * 不同（36/40/38/44/32），面板高随之变化。
+   */
+  assert.match(source, /class="u-datepicker datepicker-panel"/, '面板根元素要能挂 --up')
+  assert.match(source, /'datepicker-panel--up': placement === 'top'/, '朝上时要加修饰类')
+  assert.match(source, /const panelRef = ref\(null\)/, '需要面板的 DOM 引用才能量高度')
+  assert.match(source, /panel\.getBoundingClientRect\(\)\.height/, '必须实测面板高度')
+  assert.match(source, /spaceBelow < panelHeight && spaceAbove > spaceBelow/, '翻转判据')
+  assert.match(source, /nextTick\(adjustPlacement\)/, '要等渲染完再量')
+
+  // 样式侧：朝上用的是 bottom，且必须把 top 显式写回 auto
+  assert.match(
+    source,
+    /\.datepicker-panel--up \{[^}]*top: auto;[^}]*bottom: calc\(100% \+ var\(--dropdown-offset\)\)/,
+    '朝上定位要取消 top 并改用 bottom'
+  )
+  // 窗口尺寸变了要重算，且只在打开期间挂监听
+  assert.match(source, /window\.addEventListener\('resize', adjustPlacement\)/, 'resize 时重算朝向')
+  assert.match(source, /window\.removeEventListener\('resize', adjustPlacement\)/, '关闭/卸载时要摘掉监听')
+})
