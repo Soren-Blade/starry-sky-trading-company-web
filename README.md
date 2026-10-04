@@ -346,13 +346,20 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-需要后端同时运行在 8080（见 [server README](../starry-sky-trading-company-server/README.md)），`vite.config.js` 中的 `server.proxy` 目前为空，跨域由后端 `cors()` 全开放承担。
+需要后端同时运行在 8080（见 [server README](../starry-sky-trading-company-server/README.md)）。
+
+`vite.config.js` 已为 `/user/login`、`/user/register`、`/user/visitorLogin`、`/user/refreshToken`、
+`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/userBackend`、`/health` 配置了开发代理，
+默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
+由于 `/user` 下既有后端接口也有前端路由（`/user/kami` 是页面），代理只列了四个具体接口而非 `/user` 前缀 ——
+**新增后端接口时若前缀不是上述之一，需要同步在这里加代理规则**。
 
 其他脚本：
 
 ```bash
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
+npm test           # 单元测试（node:test，13 个用例）
 ```
 
 **路径别名**：`@` → `./src`，在 `vite.config.js` 的 `resolve.alias` 生效；`jsconfig.json` 里有一份对应配置供编辑器解析。
@@ -377,13 +384,34 @@ Vercel 静态站点，构建命令为 Vite 默认流程，产物目录 `dist`（
 
 ## 13. 测试
 
-`src/__tests__/imports.test.js` 目前**不是可执行的测试**：
+使用 **Node 内置 `node:test`**，无新增依赖：
 
-- `package.json` 中没有任何测试运行器（无 vitest / jest / `@vue/test-utils`），也没有 `test` 脚本
-- 文件内没有 `describe` / `it` / `expect`，主体是 import 与 `console.log`
-- 其中的 import 已失效：引用了不存在的 `@/pages/New.vue`，以及 `constants/index.js` 不再导出的 `CATEGORIES` / `HOT_PRODUCTS`
+```bash
+npm test
+```
 
-若需要接入测试，最小改动是安装 `vitest` + `jsdom` + `@vue/test-utils`，加 `"test": "vitest run"`，并把该文件重写为真正的断言（store 需先 `setActivePinia(createPinia())`，接口用 `vi.mock('@/api/index')`）。
+```
+test/
+└── utils.test.js      # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
+```
+
+`package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
+在受限环境下会被拒绝，同进程运行即可。
+
+**为什么不用 vitest**：曾安装并尝试，但 vitest 加载配置文件与 vite 一样要经 esbuild
+派生常驻子进程，在受限环境下报 `spawn EPERM`；`node:test` 零依赖且可直接运行，故改用后者
+（vitest / jsdom / @vue/test-utils 已卸载）。
+
+**当前覆盖范围有限**：仅 `src/utils`。以下尚未覆盖，原因是它们导入 Vue 或需要 DOM：
+
+| 未覆盖 | 说明 |
+| --- | --- |
+| `stores/*` | 需要 Pinia 容器（`setActivePinia`）；已移除的 `imports.test.js` 就因为没有它而无法做任何断言 |
+| `hooks/useClass`、`hooks/useSimpleTimeFormatter` | 前者是纯函数可直接测；后者依赖 dayjs，也接近纯函数 |
+| 组件渲染 | 需要 `@vue/test-utils` + jsdom |
+
+若要提升覆盖，优先补 `hooks/useClass/index.js` 与 `useSimpleTimeFormatter` —— 它们接近纯函数，
+无需引入新依赖即可测。
 
 ---
 
