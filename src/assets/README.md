@@ -145,7 +145,7 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
    | 进度与加载 | `.u-progress` / `.u-progress-bar` / `.u-spinner`(+-sm/-lg) / `.u-loading-block` / `.u-skeleton` |
    | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
 
-6. **共享结构类**：`.section-header` 系列、`.page-header`、`.visually-hidden`、
+6. **共享结构类**：`.section-header` 系列、`.visually-hidden`、
    `.hide-mobile` / `.show-mobile`
 7. **焦点管理**：`:focus-visible` 统一样式
 8. **移动端缩放**：文件末尾三个媒体查询里统一处理

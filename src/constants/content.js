@@ -67,18 +67,57 @@ export const SECTIONS = {
   },
 }
 
-/** 页面头文案（供 PageHeader 使用） */
+/**
+ * 各页面的开场文案
+ *
+ * 主页以外的页面**不再使用统一的页头组件**（`PageHeader` 已删除）——
+ * 每个页面按自己的信息结构设计开场：索引页用「编号 + 大字标题 + 计数」，
+ * 榜单页用「横向标题带」，工作台用「左侧竖排标题」，编辑页用「首行眉标」。
+ * 这里只提供文案，版式由各页面自己的 scoped 样式决定。
+ *
+ * 字段约定：
+ *   eyebrow     眉标（短、大写友好，等宽字体呈现）
+ *   title       标题
+ *   description 一句说明
+ *   meta        右侧/次要的计数或提示（可选）
+ */
 export const PAGES = {
-  categories: { title: '商品分类', subtitle: '浏览所有分类，发现适合你的完美选择' },
-  hot: { title: '热门推荐', subtitle: '精选热销商品，享受优质生活' },
-  tools: { title: '工具分享', subtitle: '按分类浏览实用工具，收藏常用的那几个' },
-  appleId: { title: '共享苹果 ID', subtitle: '浏览最新的共享苹果 ID 列表，获取更多账号资源' },
-  about: { title: '关于我们', subtitle: '了解星辰商行的故事' },
+  categories: {
+    eyebrow: 'INDEX',
+    title: '商品分类',
+    description: '浏览所有分类，找到你需要的那一类',
+  },
+  hot: {
+    eyebrow: 'RANKING',
+    title: '热卖榜',
+    description: '按销量与浏览量排序的精选商品',
+  },
+  tools: {
+    eyebrow: 'WORKSPACE',
+    title: '工具工作台',
+    description: '按分类筛选、搜索并收藏常用工具',
+  },
+  appleId: {
+    eyebrow: 'DIRECTORY',
+    title: '共享苹果 ID',
+    description: '按线路整理的账号目录，复制即可使用',
+  },
+  about: {
+    eyebrow: 'ABOUT',
+    title: '关于我们',
+    description: '星辰商行的由来、做事方式与联系方式',
+  },
+  kami: {
+    eyebrow: 'CONSOLE',
+    title: '卡密控制台',
+    description: '激活新卡密或查看已有卡密',
+  },
   notFound: {
+    eyebrow: 'ERROR',
     title: '页面未找到',
-    subtitle: '抱歉，您访问的页面不存在或已被删除',
+    description: '抱歉，您访问的页面不存在或已被删除',
     backHome: '返回首页',
-    suggestionsTitle: '您可能想查看：',
+    suggestionsTitle: '您可能想查看',
   },
 }
 

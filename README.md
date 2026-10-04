@@ -257,7 +257,7 @@ app.mount('#app')
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
 | `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。模态约定见下 |
 | `SectionHeader.vue` | **区块头**（icon + title + description）。样式定义在 `global.css` 的 `.section-header` 系列，供各 Section 组件复用 |
-| `PageHeader.vue` | **页面头**（title + subtitle）。样式统一在 `global.css` 的 `.page-header`，各页面不再逐页覆写渐变 |
+| ~~`PageHeader.vue`~~ | **已删除**（第三轮）。除主页外的页面不再套同一个页头，各自设计开场 —— 见 §9.9 |
 
 ### 区块
 
@@ -504,7 +504,42 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 （唯一渲染出口，挂在 `App.vue` 根部）+ `hooks/useToast/index.js`
 （`notify.success/warning/error/info` 门面，供组件内外统一调用，路由守卫与 store action 也用它）。
 
-### 9.8 硬编码与断点纪律
+### 9.9 页面版式（第三轮）
+
+除主页（其「页头」就是 Hero）外，**不再有统一的页头组件**：`PageHeader.vue` 与
+`.page-header` 样式已删除，每个页面按自己的信息结构设计开场，文案仍集中在
+`constants/content.js` 的 `PAGES`（字段 `eyebrow / title / description`）。
+
+| 页面 | 版式 | 开场 |
+| --- | --- | --- |
+| 主页 `/home` | Hero + 分类卡片网格 + 商品网格 | Hero（眉标 + 大字标题 + 双 CTA + 特性行 + 视觉面板） |
+| 商品分类 `/categories` | **索引**：行式索引面板（序号 + 图标 + 名称 + 说明 + 浏览），`CategoriesSection` 的 `variant="index"` | 竖排：眉标 + 大字标题 + 说明 + 分类数 |
+| 热门推荐 `/hot` | **榜单**：标题带 + 带序号的商品网格，`HotProductsSection` 的 `variant="board"` | 横向标题带（左标题 / 右计数） |
+| 工具分享 `/tool` | **工作台**：左侧筛选轨（分类 + 计数 + 已收藏）吸顶 + 右侧工具条与网格 | 左对齐：眉标 + 大字标题 + 说明 + 工具数 |
+| 卡密管理 `/user/kami` | **控制台**：左激活面板（吸顶）+ 右卡密表格与分页 | 眉标 + 大字标题 + 说明 + 卡密总数 |
+| 共享苹果 ID `/other/appleId` | **目录**：左线路轨（使用说明折叠 + 线路锚点）+ 右账号目录 | 眉标 + 大字标题 + 说明 + 双线路计数 |
+| 关于我们 `/about` | **编辑式双栏**：左侧目录吸顶 + 右侧正文（编号价值列表 + 标签值对照表） | 左栏：眉标 + 大字标题 + 说明 + 页内锚点 |
+| 2FA `/other/2fa` | **终端面板**：窗口标题栏（三个圆点 + 等宽标题）+ 输入区 + 读数区 + 进度条；教程区在面板下方做键值对照 | 面板标题栏 |
+| 404 | **大号数字**：`404` 作为视觉主体（`calc(var(--fs-display) * 2.5)`）+ 右侧说明与行式建议链接 | 大号数字 |
+
+**装订线只有一条**：`--container-max`。原先 1320 与 1280 并存，会让导航栏的
+Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版有问题」的根因之一，
+`--container-content` 已删除。
+
+带吸顶侧栏的页面统一用 `top: calc(var(--navbar-height) + var(--space-unit) * 2)`
+让出粘性顶栏的高度（`≤767px` 时顶栏是 `var(--navbar-height) * var(--mobile-nav-scale)`）。
+
+### 9.10 导航栏排版修复（第三轮）
+
+| 问题 | 根因 | 修法 |
+| --- | --- | --- |
+| Logo 与下方内容左右错位 20px | 导航用 `--container-max`(1320)，商品/工具/卡密区块用 `--container-content`(1280) | 令牌层只留 `--container-max`，全站一条装订线 |
+| 导航链接会压到搜索栏上 | `.navbar-menu` 曾是 `flex: 1`（basis 0）+ `min-width: 0`，而 `.menu-list` 不换行 → 宽度不足时菜单盒被压到 0，链接溢出 | 菜单改 `flex: none` 不参与伸缩，改由搜索栏吸收剩余空间；`≤1199` 再收一档密度 |
+| 导航项与操作区之间是一个大空洞 | 菜单 `flex: 1` 吃掉了全部剩余空间 | 搜索栏改为可伸缩（`flex: 1 1 auto`，上限 `--input-height * 12`），空洞被搜索栏填满 |
+| 底边那一像素没有背景/模糊 | `::before` 的 `inset: 0` 只覆盖 padding box，边框区域露出页面内容 | 边框移到 `::before` 上，背景 + 模糊 + 边框同层铺满整高 |
+| 菜单项可点区域只有约 21px | `.menu-link` 是 `padding: 4px 0` | 改为整条通高（tab 式），下划线落在导航栏底边上 |
+
+### 9.11 硬编码与断点纪律
 
 - 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
   再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。
@@ -572,7 +607,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 422 个用例）
+npm test             # 单元测试（node:test，共 421 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
 npm run verify       # lint + test + build + verify:dev
@@ -671,7 +706,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 422 个用例。
+共 421 个用例。
 
 ### 主题契约测试
 
@@ -819,7 +854,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `KamiSection` 双层 `{ params }` 导致分页与筛选失效（已重写并统一到 API 层包装） |
 | ✅ | 请求失败统一抛 `'faile'`，服务端 `message` 被丢弃 |
 | ✅ | `Navbar` 卡密管理项把 `<router-link>` 嵌在 `<button>` 里（已改为独立 `<router-link>`） |
-| ✅ | 区块头被复制 5 份、页面头被复制 4 份（已抽取 `SectionHeader.vue` / `PageHeader.vue`） |
+| ✅ | 区块头被复制 5 份、页面头被复制 4 份 —— 区块头已抽取为 `SectionHeader.vue`；页面头在第三轮**整体删除**，改为每页独立开场（见 §9.9） |
 | ✅ | `Tool.vue` 的搜索对 `tool.description` 直接调 `.toLowerCase()`（已统一 null 安全处理） |
 | ✅ | `Tool.vue` 收藏是写死的 `Set([1,3,5])`（已改为真实可切换并持久化到 localStorage） |
 | ✅ | `2FA.vue` 中 `countdown === 0` 永不成立（已改为 `=== 30`，并给异步计算加序号守卫） |
@@ -847,7 +882,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（422 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（421 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

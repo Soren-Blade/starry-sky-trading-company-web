@@ -1,36 +1,50 @@
 <template>
+  <!--
+    版式三：终端面板。
+    整页只有**一个**带窗口装饰的面板（原先两个居中窄卡片），
+    教程区退到面板下方、用 --divider 分隔，改成键值对照排版。
+  -->
   <div class="fp-page-2fa">
-    <div class="fp-container">
-      <h1>2FA验证码工具（实时更新）</h1>
-
-      <div class="field">
-        <label class="fp-label" for="secret">请输入双重密钥 (2FA Secret Key, Base32格式)：</label>
-        <input
-          id="secret"
-          v-model="secret"
-          class="u-input"
-          placeholder="例如：JBSWY3DPEHPK3PXP"
-          aria-label="2FA 密钥（Base32）"
-        />
-        <div class="helper">示例密钥为演示用，点击下方"演示密钥"可复制。</div>
+    <section class="fp-panel">
+      <!-- 窗口装饰条：三个语义色圆点 + 等宽标题，整体对屏幕阅读器隐藏 -->
+      <div class="fp-chrome">
+        <span class="fp-dots" aria-hidden="true">
+          <span class="fp-dot fp-dot--danger"></span>
+          <span class="fp-dot fp-dot--warning"></span>
+          <span class="fp-dot fp-dot--muted"></span>
+        </span>
+        <h1 class="fp-chrome-title">2FA验证码工具（实时更新）</h1>
       </div>
 
-      <div class="actions">
-        <!--
-          这里原先写的是 aria-disabled="!hasSecret" —— 那是**字面量字符串**，
-          浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
-          :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
-        -->
-        <button class="u-btn-primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
-        <button class="u-btn-secondary" @click="copyCode" :disabled="!code">复制当前验证码</button>
-      </div>
+      <div class="fp-panel-body">
+        <div class="field">
+          <label class="fp-label" for="secret">请输入双重密钥 (2FA Secret Key, Base32格式)：</label>
+          <input
+            id="secret"
+            v-model="secret"
+            class="u-input"
+            placeholder="例如：JBSWY3DPEHPK3PXP"
+            aria-label="2FA 密钥（Base32）"
+          />
+          <div class="helper">示例密钥为演示用，点击下方"演示密钥"可复制。</div>
+        </div>
 
-      <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
-        当前页面不是安全上下文，浏览器已禁用 WebCrypto，无法生成验证码。请通过 HTTPS 或 localhost 访问本页。
-      </div>
+        <div class="actions">
+          <!--
+            这里原先写的是 aria-disabled="!hasSecret" —— 那是**字面量字符串**，
+            浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
+            :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
+          -->
+          <button class="u-btn-primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
+          <button class="u-btn-secondary" @click="copyCode" :disabled="!code">复制当前验证码</button>
+        </div>
 
-      <div class="fp-code-area" v-if="hasSecret">
-        <div class="fp-card">
+        <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
+          当前页面不是安全上下文，浏览器已禁用 WebCrypto，无法生成验证码。请通过 HTTPS 或 localhost 访问本页。
+        </div>
+
+        <!-- 验证码读数：等宽 + 价格档字号 + 强调色，是面板里的主角 -->
+        <div class="fp-code-area" v-if="hasSecret">
           <div class="fp-meta">
             <div class="meta-row">
               <div class="meta-label">当前密钥：</div>
@@ -63,23 +77,27 @@
           <div class="fp-note" v-if="error">{{ error }}</div>
         </div>
       </div>
-    </div>
+    </section>
 
     <div class="fp-tutorial">
-      <!-- 一个页面只应有一个 h1；这里是次级说明区块，用 h2 -->
+      <!-- 一个页面只应有一个 h1（面板标题栏），这里是次级说明区块，用 h2 -->
       <h2>2FA工具说明</h2>
       <div class="fp-tutorial-body">
-        <p>
-          <span>演示密钥：</span>
+        <p class="fp-kv-row">
+          <span class="fp-kv-key">演示密钥</span>
           <button class="u-btn-secondary key-inline" @click="copyDemoKey" aria-label="复制演示密钥">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
-          （点击此密钥可复制）
         </p>
-        <p>
-          <span>新手提示：</span>必须在倒计时结束前输入验证码登录或验证，否则会失效显示错误。测试功能时必须输入正确编码的密钥，不要随便输入1串字符测试获取功能。目前点击获取验证码的按钮后会自动复制验证码到剪切板，直接去粘贴即可。如果想要验证生成的验证码是否正确，点击生成二维码的按钮，使用谷歌验证器APP扫描添加检查。
+        <p class="fp-kv-row">
+          <span class="fp-kv-key">复制方式</span>
+          <span class="fp-kv-value">点击「获取并复制验证码」后自动写入剪贴板</span>
         </p>
-        <!-- <p>
-          <span>更多方式：</span>还可以将密钥加在网址（https://2fa.run/2fa/）后面，示例：
-          <a class="demo-link" href="https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL" target="_blank" rel="noreferrer">https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</a>，这样访问也可查询验证码。这样的格式发给新手使用，最合适不过。
+        <p class="fp-kv-row">
+          <span class="fp-kv-key">新手提示</span>
+          <span class="fp-kv-value">必须在倒计时结束前输入验证码登录或验证，否则会失效显示错误。测试功能时必须输入正确编码的密钥，不要随便输入1串字符测试获取功能。如果想要验证生成的验证码是否正确，点击生成二维码的按钮，使用谷歌验证器APP扫描添加检查。</span>
+        </p>
+        <!-- <p class="fp-kv-row">
+          <span class="fp-kv-key">更多方式</span>
+          <span class="fp-kv-value">还可以将密钥加在网址（https://2fa.run/2fa/）后面，示例：<a class="demo-link" href="https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL" target="_blank" rel="noreferrer">https://2fa.run/2fa/7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</a>，这样访问也可查询验证码。这样的格式发给新手使用，最合适不过。</span>
         </p> -->
       </div>
     </div>
@@ -225,45 +243,96 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/*
+ * 2FA —— 终端面板
+ *
+ * 整页只有一个面板：顶部是窗口装饰条（三个语义色圆点 + 等宽标题），
+ * 主体里依次是密钥输入、操作按钮、验证码读数与进度条。教程区在面板下方，
+ * 用 --divider 分隔，排版改成「标签 + 值」的等宽对照表。
+ * 顶栏是 sticky 且参与文档流，因此页面不再声明顶部占位。
+ */
 .fp-page-2fa {
-  /* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: calc(var(--space-unit) * 2.25);
+  gap: calc(var(--section-gap) * 0.4);
+  width: 100%;
   padding: var(--section-gap) var(--container-padding);
   background: transparent;
 }
 
-/* 两张卡片同宽同表面：窄内容列取 --container-narrow 的 64%，与改造前的 640px 一致。
+/* 窄内容列取 --container-narrow 的 64%，与改造前的 640px 一致。
    不写成 calc(var(--space-unit) * 80)：4px 基础单位的主题下会缩到 320px 挤坏表单。 */
-.fp-container,
+.fp-panel,
 .fp-tutorial {
   width: 100%;
   max-width: calc(var(--container-narrow) * 0.64);
-  padding: var(--card-padding-lg);
+}
+
+.fp-panel {
+  overflow: hidden;
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
 
-h1 {
-  margin: 0 0 calc(var(--space-unit) * 2.25);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-display);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  color: var(--text-primary);
-  text-align: center;
+/* 窗口装饰条：--bg-surface-2 让它比面板主体深一档，像终端标题栏 */
+.fp-chrome {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.25) var(--card-padding-lg);
+  background: var(--bg-surface-2);
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.fp-dots {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+/* 圆点直径从控件高度派生，随主题的控件密度一起变，不写死 px */
+.fp-dot {
+  width: calc(var(--input-height) * 0.225);
+  height: calc(var(--input-height) * 0.225);
+  border-radius: var(--radius-pill);
+}
+
+.fp-dot--danger {
+  background: var(--danger);
+}
+
+.fp-dot--warning {
+  background: var(--warning);
+}
+
+.fp-dot--muted {
+  background: var(--disabled-bg);
+}
+
+.fp-chrome-title {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fp-panel-body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--card-padding-lg);
 }
 
 .field {
   display: block;
   width: 100%;
-  margin-bottom: calc(var(--space-unit) * 1.5);
 }
 
 .field .fp-label {
@@ -285,7 +354,7 @@ h1 {
 .actions {
   display: flex;
   gap: calc(var(--space-unit) * 1.25);
-  margin-top: calc(var(--space-unit) * 1.25);
+  margin-top: calc(var(--space-unit) * 2);
   justify-content: center;
 }
 
@@ -295,23 +364,15 @@ h1 {
   min-width: calc(var(--space-unit) * 20);
 }
 
+/* 验证码读数区：与输入区之间用一条 --divider 隔开，像终端里的输出分段 */
 .fp-code-area {
-  margin-top: calc(var(--space-unit) * 2.25);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: calc(var(--space-unit) * 1.25);
   width: 100%;
-  gap: var(--space-unit);
-}
-
-/* Card-style container inside the main container */
-.fp-card {
-  width: 100%;
-  padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-card);
+  margin-top: calc(var(--space-unit) * 2.5);
+  padding-top: calc(var(--space-unit) * 2.5);
+  border-top: var(--stroke-width) solid var(--divider);
 }
 
 .fp-meta {
@@ -327,19 +388,22 @@ h1 {
 }
 
 .meta-label {
+  flex-shrink: 0;
   min-width: calc(var(--space-unit) * 11.25);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-weight: var(--fw-label);
 }
 
 .meta-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text-primary);
+  font-family: var(--font-mono);
   font-weight: var(--fw-price);
 }
 
 /* 验证码是这一页的主角：等宽字体 + 价格档字号 + 主题强调色 */
 .meta-code {
-  font-family: var(--font-mono);
   font-size: var(--fs-price);
   font-weight: var(--fw-price);
   letter-spacing: var(--tracking-label);
@@ -348,6 +412,7 @@ h1 {
 
 .meta-remaining {
   margin-left: auto;
+  flex-shrink: 0;
   color: var(--text-muted);
   font-size: var(--fs-label);
 }
@@ -355,20 +420,19 @@ h1 {
 /* 进度条本体交给 .u-progress / .u-progress-bar（高度、圆角、轨道色、过渡由
    --progress-* 与 --transition-progress 决定），这里只补它与上方 meta 区的间距 */
 .fp-progress {
-  margin-top: calc(var(--space-unit) * 1.25);
+  margin-top: var(--space-unit);
 }
 
 /* 错误提示：先声明 .fp-note，再声明 .secure-warning，
    两者优先级相同，靠后的一条在同时命中时生效 */
 .fp-note {
-  margin-top: var(--space-unit);
   color: var(--danger);
   font-size: var(--fs-label);
   text-align: center;
 }
 
 .secure-warning {
-  margin: 0 0 calc(var(--space-unit) * 2);
+  margin: calc(var(--space-unit) * 2) 0 0;
   padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
   color: var(--danger);
   font-size: var(--fs-sm);
@@ -379,43 +443,69 @@ h1 {
   border-radius: var(--radius-panel);
 }
 
+/* 教程区：面板下方，无独立卡片外壳，靠 --divider 与面板分隔 */
+.fp-tutorial {
+  padding-top: calc(var(--space-unit) * 2.5);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
 .fp-tutorial h2 {
-  margin: var(--space-unit) 0;
+  margin: 0 0 calc(var(--space-unit) * 1.5);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-label);
   color: var(--text-primary);
 }
 
-.fp-tutorial-body p {
-  white-space: pre-line;
-  color: var(--text-secondary);
-  font-size: var(--fs-body);
+.fp-tutorial-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 键值对照：标签在左（muted），值在右（等宽） */
+.fp-kv-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr);
+  gap: calc(var(--space-unit) * 2);
+  margin: 0;
+  padding: calc(var(--space-unit) * 1.5) 0;
   line-height: var(--leading-body);
-  margin: var(--space-unit) 0;
 }
 
-.fp-tutorial-body p span {
+.fp-kv-row + .fp-kv-row {
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.fp-kv-key {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-label);
-  color: var(--text-primary);
+}
+
+.fp-kv-value {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
 }
 
 /* 演示密钥：按钮外观（底色 / 描边 / 圆角 / 悬停）来自 .u-btn-secondary，
-   这里只把它换成等宽字体，读起来才像一串密钥。
+   这里只把它换成等宽字体并让它左对齐，读起来才像一串密钥。
    密钥是 32 位不可断行的长串，窄屏下必须允许在按钮内换行，
-   否则 neo-brutalism 的内边距会把卡片撑破；高度仍以 --btn-height 为下限。 */
+   否则 neo-brutalism 的内边距会把面板撑破；高度仍以 --btn-height 为下限。 */
 .key-inline {
+  justify-self: start;
   height: auto;
   min-height: var(--btn-height);
   font-family: var(--font-mono);
   white-space: normal;
   overflow-wrap: anywhere;
+  text-align: left;
 }
 
 /*
- * 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、正文字号 ×0.95。
- * 标题字号不乘 --mobile-title-scale：本页 h1 的桌面档只有 --fs-h3（紧凑工具页），
- * ×0.7 后会小于同页 h2（--fs-body），层级反而倒挂。
+ * 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、控件高度 ×0.9、
+ * 标题字号 ×0.7、正文字号 ×0.95。
  */
 @media (max-width: 767px) {
   .fp-page-2fa {
@@ -423,31 +513,47 @@ h1 {
       calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
-  .fp-container,
-  .fp-tutorial {
+  .fp-panel-body {
     padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
-  .fp-card {
-    padding: calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  .fp-tutorial {
+    padding-top: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+  }
+
+  .fp-chrome {
+    padding: calc(var(--space-unit))
+      calc(var(--card-padding-lg) * var(--mobile-padding-scale));
+  }
+
+  .fp-dot {
+    width: calc(var(--input-height) * var(--mobile-control-scale) * 0.225);
+    height: calc(var(--input-height) * var(--mobile-control-scale) * 0.225);
+  }
+
+  /* 标题栏那一行是窗口装饰而不是标题，按 ×0.9 的控件档收，不走标题档 */
+  .fp-chrome-title {
+    font-size: calc(var(--fs-sm) * var(--mobile-control-scale));
+  }
+
+  /* 教程区的两个层级：h2 走标题档 ×0.7，正文值走正文档 ×0.95 */
+  .fp-tutorial h2 {
+    font-size: calc(var(--fs-body) * var(--mobile-title-scale));
+  }
+
+  .fp-tutorial-body .fp-kv-value {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
   }
 
   /* 控件高度在移动端 ×0.9，换行型按钮的高度下限同样跟着收 */
   .key-inline {
     min-height: calc(var(--btn-height) * var(--mobile-control-scale));
   }
-
-  .fp-tutorial-body p {
-    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
-  }
 }
 
 /*
  * 小屏适配（统一断点 575，与 global.css 末尾的断点体系一致）。
- *
- * 原来三段重复的小屏媒体查询已合并到这一处；其中「标签与输入框竖排」
- * 的意图由 `.fp-label` 的 display:block + 输入框 width:100% 直接满足，
+ * 「标签与输入框竖排」由 .fp-label 的 display:block + 输入框 width:100% 直接满足，
  * 「按钮横排并换行」由 .actions 的默认横排 + 这里的 flex-wrap 满足。
  */
 @media (max-width: 575px) {
@@ -458,6 +564,12 @@ h1 {
 
   .meta-remaining {
     margin-left: 0;
+  }
+
+  /* 键值对照在窄屏竖排：标签一行、值一行 */
+  .fp-kv-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-unit);
   }
 
   .actions {

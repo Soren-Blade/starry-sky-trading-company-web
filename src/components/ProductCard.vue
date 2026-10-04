@@ -4,7 +4,7 @@
     :class="{ 'ui-card--lg': featured }"
     role="link"
     tabindex="0"
-    :aria-label="`查看商品 ${title}`"
+    :aria-label="ariaLabel"
     @click="onGoDetail"
     @keydown.enter.prevent="onGoDetail"
     @keydown.space.prevent="onGoDetail"
@@ -18,6 +18,11 @@
       <!-- 折扣标签：accent 底 + 反白字 -->
       <span v-else-if="discountPercent > 0" class="u-discount product-flag">
         -{{ discountPercent }}%
+      </span>
+      <!-- 榜单序号：放右上角与缺货/折扣标记错开（这张卡右上角本来是空的；
+           序号本身不朗读，语义并入整卡的 aria-label） -->
+      <span v-if="rank > 0" class="u-tag u-tag--accent product-rank" aria-hidden="true">
+        {{ rank }}
       </span>
     </div>
 
@@ -87,6 +92,8 @@ const props = defineProps({
   product: { type: Object, required: true },
   /** bento 的主推位用大卡片（400px / 28px 内边距 / 280px 图片） */
   featured: { type: Boolean, default: false },
+  /** 榜单名次：>0 时在图片区右上角显示序号徽标（主页与专区不传，卡片保持原样） */
+  rank: { type: Number, default: 0 },
 })
 const emit = defineEmits(['go-detail', 'buy'])
 
@@ -101,6 +108,13 @@ const currency = computed(() => ({
 
 const title = computed(
   () => props.product.main_title || props.product.name || props.product.product_name || '商品'
+)
+
+/** 整卡的可访问名：榜单卡把名次一并说出（徽标自身 aria-hidden，否则只会被读成一个孤立的数字） */
+const ariaLabel = computed(() =>
+  props.rank > 0
+    ? `查看商品 ${title.value}（榜单第 ${props.rank} 名）`
+    : `查看商品 ${title.value}`
 )
 
 const subtitle = computed(
@@ -163,10 +177,22 @@ const onBuy = () => emit('buy', props.product)
   height: 100%;
 }
 
-.product-flag {
+/* 角标共用的定位：贴图片区上沿（缺货/折扣在左上，榜单序号在右上） */
+.product-flag,
+.product-rank {
   position: absolute;
   top: calc(var(--space-unit) * 1.5);
+}
+
+.product-flag {
   left: calc(var(--space-unit) * 1.5);
+}
+
+/* 榜单序号：等宽数字，让 1 与 10 在同一列视觉重量一致 */
+.product-rank {
+  right: calc(var(--space-unit) * 1.5);
+  font-family: var(--font-mono);
+  font-weight: var(--fw-heading);
 }
 
 .product-prices {

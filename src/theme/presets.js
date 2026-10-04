@@ -107,9 +107,11 @@ const SHARED = {
   '--mobile-title-scale': '0.7',
   '--mobile-body-scale': '0.95',
 
-  /* 与风格无关的栅格宽度：切换风格时页面骨架不跳动 */
+  /* 页面内容栅格宽度。
+   * 刻意只保留**一个**宽度：导航栏、Hero、各区块、页脚共用同一条装订线，
+   * 否则 Logo 左边缘会对不上下方的卡片/表格（此前 1320 与 1280 并存，就是这个问题）。
+   * `--container-narrow` 供 2FA / 关于我们这类窄内容列使用。 */
   '--container-max': '1320px',
-  '--container-content': '1280px',
   '--container-narrow': '1000px',
   '--container-padding': '20px',
 

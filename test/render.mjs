@@ -312,7 +312,6 @@ export async function createRenderEnv() {
 
   // 子组件必需 props：渲染父组件时注入，否则会报 Missing required prop
   const requiredProps = {
-    PageHeader: { title: '桩标题' },
     SectionHeader: { title: '桩标题' },
     ProductCard: { product: { id: 1, product_name: '桩商品', price: 1, stock_quantity: 1 } },
     ToolCard: { tool: { id: 1, tool_name: '桩工具' } },
@@ -320,7 +319,6 @@ export async function createRenderEnv() {
   }
 
   // 注册到全局，使父组件模板里的子组件能被解析并拿到必需 props
-  const { default: PageHeader } = await import('@/components/PageHeader.vue')
   const { default: SectionHeader } = await import('@/components/SectionHeader.vue')
   const { default: ProductCard } = await import('@/components/ProductCard.vue')
   const { default: ToolCard } = await import('@/components/ToolCard.vue')
@@ -335,7 +333,6 @@ export async function createRenderEnv() {
       },
     })
 
-  globalComponents.PageHeader = withDefaults('PageHeader', PageHeader, requiredProps.PageHeader)
   globalComponents.SectionHeader = withDefaults('SectionHeader', SectionHeader, requiredProps.SectionHeader)
   globalComponents.ProductCard = withDefaults('ProductCard', ProductCard, requiredProps.ProductCard)
   globalComponents.ToolCard = withDefaults('ToolCard', ToolCard, requiredProps.ToolCard)

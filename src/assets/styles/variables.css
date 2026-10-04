@@ -146,8 +146,10 @@
   --space-unit: 8px;
   --grid-gap: 16px;
   --section-gap: 96px;
+  /* 页面内容栅格宽度。
+   * 只保留一个宽度：导航栏、Hero、区块、页脚共用同一条装订线，
+   * 否则 Logo 左边缘对不上下方的卡片与表格。 */
   --container-max: 1320px;
-  --container-content: 1280px;
   --container-narrow: 1000px;
   --container-padding: 20px;
 

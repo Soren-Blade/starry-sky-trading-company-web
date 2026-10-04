@@ -1,190 +1,353 @@
 <template>
+  <!--
+    版式一：编辑式双栏。
+    左栏是粘性目录（眉标 + 大标题 + 说明 + 锚点列表），右栏是可滚动的正文；
+    页面头不再是居中色块，而是与目录共用同一条基线。≤991px 收成单栏。
+  -->
   <div class="about-page">
-    <!-- 页头改用共享组件：结构与样式在 global.css 的 .page-header，页面不再手写一份 -->
-    <PageHeader v-bind="PAGES.about" />
+    <div class="about-shell">
+      <!-- 左栏：锚点用原生 <a href="#id">，滚动定位交给浏览器，不写 JS -->
+      <aside class="about-aside">
+        <p class="about-eyebrow">{{ PAGES.about.eyebrow }}</p>
+        <h1 class="about-title">{{ PAGES.about.title }}</h1>
+        <p class="about-lead">{{ PAGES.about.description }}</p>
 
-    <div class="about-container">
-      <section class="about-section">
-        <h2>我们的愿景</h2>
-        <p>
-          星辰商行致力于为用户带来精选商品和优质服务。我们相信，每一件商品都承载着独特的故事和品质，
-          我们的使命是让消费者在享受便利购物的同时，感受到生活的美好。
-        </p>
-      </section>
+        <nav class="about-nav" aria-label="本页目录">
+          <ul class="about-nav-list">
+            <li><a href="#about-vision">我们的愿景</a></li>
+            <li><a href="#about-values">我们的核心价值</a></li>
+            <li><a href="#about-contact">联系我们</a></li>
+          </ul>
+        </nav>
+      </aside>
 
-      <section class="about-section">
-        <h2>我们的核心价值</h2>
-        <div class="values-grid">
-          <div class="value-card">
-            <div class="value-icon" aria-hidden="true">✨</div>
-            <h3>品质优先</h3>
-            <p>每一件商品都经过严格筛选，确保品质与美学的完美结合</p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon" aria-hidden="true">⚡</div>
-            <h3>高效服务</h3>
-            <p>快速配送、贴心售后，让您的购物体验更加轻松</p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon" aria-hidden="true">💫</div>
-            <h3>创新体验</h3>
-            <p>不断创新购物方式，为用户提供更好的体验</p>
-          </div>
-          <div class="value-card">
-            <div class="value-icon" aria-hidden="true">❤️</div>
-            <h3>用户至上</h3>
-            <p>以用户需求为中心，打造温暖的购物社区</p>
-          </div>
-        </div>
-      </section>
+      <!-- 右栏：三段正文，段间用 --divider 分隔 -->
+      <div class="about-body">
+        <section id="about-vision" class="about-section">
+          <h2>我们的愿景</h2>
+          <p>
+            星辰商行致力于为用户带来精选商品和优质服务。我们相信，每一件商品都承载着独特的故事和品质，
+            我们的使命是让消费者在享受便利购物的同时，感受到生活的美好。
+          </p>
+        </section>
 
-      <section class="about-section">
-        <h2>联系我们</h2>
-        <div class="contact-info">
-          <p><span aria-hidden="true">📍</span> 地址：中国 北京市 朝阳区</p>
-          <p><span aria-hidden="true">📞</span> 电话：400-800-8888</p>
-          <p><span aria-hidden="true">✉️</span> 邮箱：service@starrysky.com</p>
-          <p><span aria-hidden="true">🕐</span> 服务时间：9:00 - 22:00</p>
-        </div>
-      </section>
+        <section id="about-values" class="about-section">
+          <h2>我们的核心价值</h2>
+          <!-- 编号列表：等宽的 01/02/03/04 替代主页那种卡片网格，与首页拉开观感 -->
+          <ol class="value-list">
+            <li class="value-item">
+              <span class="value-index" aria-hidden="true">01</span>
+              <h3 class="value-title">品质优先</h3>
+              <p class="value-text">每一件商品都经过严格筛选，确保品质与美学的完美结合</p>
+            </li>
+            <li class="value-item">
+              <span class="value-index" aria-hidden="true">02</span>
+              <h3 class="value-title">高效服务</h3>
+              <p class="value-text">快速配送、贴心售后，让您的购物体验更加轻松</p>
+            </li>
+            <li class="value-item">
+              <span class="value-index" aria-hidden="true">03</span>
+              <h3 class="value-title">创新体验</h3>
+              <p class="value-text">不断创新购物方式，为用户提供更好的体验</p>
+            </li>
+            <li class="value-item">
+              <span class="value-index" aria-hidden="true">04</span>
+              <h3 class="value-title">用户至上</h3>
+              <p class="value-text">以用户需求为中心，打造温暖的购物社区</p>
+            </li>
+          </ol>
+        </section>
+
+        <section id="about-contact" class="about-section">
+          <h2>联系我们</h2>
+          <!-- 联系方式做成「标签 + 值」对照表，值用等宽字体，取代原来一串 emoji 段落 -->
+          <dl class="contact-table">
+            <div class="contact-row">
+              <dt class="contact-label"><span aria-hidden="true">📍</span> 地址</dt>
+              <dd class="contact-value">中国 北京市 朝阳区</dd>
+            </div>
+            <div class="contact-row">
+              <dt class="contact-label"><span aria-hidden="true">📞</span> 电话</dt>
+              <dd class="contact-value">400-800-8888</dd>
+            </div>
+            <div class="contact-row">
+              <dt class="contact-label"><span aria-hidden="true">✉️</span> 邮箱</dt>
+              <dd class="contact-value">service@starrysky.com</dd>
+            </div>
+            <div class="contact-row">
+              <dt class="contact-label"><span aria-hidden="true">🕐</span> 服务时间</dt>
+              <dd class="contact-value">9:00 - 22:00</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import PageHeader from '@/components/PageHeader.vue'
 import { PAGES } from '@/constants/index.js'
 </script>
 
 <style scoped>
-/* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
+/*
+ * 关于我们 —— 编辑式双栏
+ *
+ * 页面头组件（PageHeader / .page-header）已删除，本页的开场是**左栏的眉标 +
+ * 大标题**，标题字号取 --fs-h1；顶栏是 position: sticky 且参与文档流，
+ * 因此主内容不需要顶部占位，只有左栏的 sticky 偏移要留出它的高度。
+ * 全部尺寸来自令牌，颜色来自语义令牌，五套风格下都成立。
+ */
 .about-page {
   width: 100%;
+  padding: calc(var(--section-gap) * 0.7) 0 calc(var(--section-gap) * 0.5);
 }
 
-.about-container {
+.about-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: calc(var(--section-gap) * 0.5);
+  align-items: start;
   max-width: var(--container-narrow);
   margin: 0 auto;
-  padding: var(--section-gap) var(--container-padding);
+  padding: 0 var(--container-padding);
+}
+
+/* 左栏贴住顶栏下沿：偏移 = 顶栏高度 + 两个基础单位 */
+.about-aside {
+  position: sticky;
+  top: calc(var(--navbar-height) + var(--space-unit) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+/* 眉标：等宽 + 强调色，与右栏正文的衬线/无衬线形成层次 */
+.about-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--accent);
+}
+
+.about-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+}
+
+.about-lead {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* 锚点列表：每项下方一道 --divider，像目录条目 */
+.about-nav {
+  margin-top: var(--space-unit);
+}
+
+.about-nav-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.about-nav-list a {
+  display: block;
+  padding: calc(var(--space-unit) * 1.25) 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  border-bottom: var(--stroke-width) solid var(--divider);
+  transition:
+    color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    padding-left var(--transition-interactive);
+}
+
+.about-nav-list a:hover {
+  padding-left: var(--space-unit);
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* 右栏：三段正文，段与段之间用 --divider 分隔 */
+.about-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--section-gap) * 0.4);
+  min-width: 0;
 }
 
 .about-section {
-  margin-bottom: calc(var(--section-gap) * 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+  /* 锚点跳转时给粘性顶栏留出高度，标题不会被顶栏盖住 */
+  scroll-margin-top: calc(var(--navbar-height) + var(--space-unit) * 2);
 }
 
-.about-section:last-child {
-  margin-bottom: 0;
+/* 分隔线只加在相邻的后续段落上，最后一段不会多出一道线 */
+.about-section:first-child {
+  padding-top: 0;
+}
+
+.about-section + .about-section {
+  padding-top: calc(var(--section-gap) * 0.4);
+  border-top: var(--stroke-width) solid var(--divider);
 }
 
 .about-section h2 {
-  display: inline-block;
+  margin: 0;
+  font-family: var(--font-display);
   font-size: var(--fs-h2);
   font-weight: var(--fw-heading);
   letter-spacing: var(--tracking-display);
   text-transform: var(--heading-transform);
   color: var(--text-primary);
-  /* 结构性分隔线跟随主题描边宽度：粗野主义的 2px 在直角主题下才不突兀 */
-  border-bottom: var(--stroke-width) solid var(--accent);
-  padding-bottom: calc(var(--space-unit) * 1.5);
-  margin-bottom: calc(var(--space-unit) * 3);
 }
 
 .about-section p {
+  margin: 0;
   font-size: var(--fs-body);
   line-height: var(--leading-body);
   color: var(--text-secondary);
-  margin: 0;
 }
 
-.values-grid {
+/* 核心价值：编号 + 标题 + 说明的三列行式列表，行间同样用 --divider */
+.value-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.value-item {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--grid-gap);
-  margin-top: calc(var(--grid-gap) * 1.5);
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: calc(var(--space-unit) * 2);
+  row-gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 2) 0;
 }
 
-/* 原先的紫粉渐变底改为令牌表面色 + 边框，五套主题下都能成立 */
-.value-card {
-  padding: var(--card-padding-lg);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
-  text-align: center;
-  transition:
-    transform var(--transition-surface),
-    border-color var(--transition-surface),
-    box-shadow var(--transition-surface);
+.value-item + .value-item {
+  border-top: var(--stroke-width) solid var(--divider);
 }
 
-.value-card:hover {
-  transform: var(--card-hover-transform);
-  border-color: var(--card-hover-border);
-  box-shadow: var(--shadow-card-hover);
-}
-
-.value-icon {
-  display: block;
-  font-size: var(--fs-h1);
-  /* 卡片内部节奏：1.5 个基础单位（原 --card-gap 的替代） */
-  margin-bottom: calc(var(--space-unit) * 1.5);
-}
-
-.value-card h3 {
+/* 编号：等宽字体撑起左列，为 05 及以后留出两位宽度 */
+.value-index {
+  grid-row: 1 / 3;
+  font-family: var(--font-mono);
   font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-  margin: 0 0 calc(var(--space-unit) * 1.5);
+  font-weight: var(--fw-label);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-label);
+  color: var(--accent);
 }
 
-.value-card p {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
+.value-title {
+  grid-column: 2;
   margin: 0;
-}
-
-.contact-info {
+  font-family: var(--font-body);
   font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.value-text {
+  grid-column: 2;
+  margin: 0;
+  font-size: var(--fs-sm);
   line-height: var(--leading-body);
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-.contact-info p {
-  margin: var(--space-unit) 0;
+/* 联系方式：标签 + 值的对照表，值用等宽字体 */
+.contact-table {
+  display: flex;
+  flex-direction: column;
 }
 
-/* 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、标题 ×0.7、正文 ×0.95 */
-@media (max-width: 767px) {
-  .about-container {
-    padding: calc(var(--section-gap) * var(--mobile-section-scale))
-      calc(var(--container-padding) * var(--mobile-padding-scale));
+.contact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: calc(var(--space-unit) * 2);
+  align-items: baseline;
+  padding: calc(var(--space-unit) * 1.25) 0;
+}
+
+.contact-row + .contact-row {
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.contact-label {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.contact-value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+/* ≤991px：双栏收成单栏，左栏不再粘住 */
+@media (max-width: 991px) {
+  .about-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--section-gap) * 0.4);
   }
 
-  .about-section {
-    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
+  .about-aside {
+    position: static;
+    top: auto;
+  }
+}
+
+/* 移动端缩放：区块间距 ×0.6、内边距 ×0.8、标题 ×0.7、正文 ×0.95 */
+@media (max-width: 767px) {
+  .about-page {
+    padding: calc(var(--section-gap) * var(--mobile-section-scale)) 0
+      calc(var(--section-gap) * var(--mobile-section-scale) * 0.5);
+  }
+
+  .about-shell {
+    gap: calc(var(--section-gap) * var(--mobile-section-scale));
+    padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  /* 本页开场标题是 --fs-h1，正文小标题是 --fs-h2，移动端各乘 0.7 后层级仍成立 */
+  .about-title {
+    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
   }
 
   .about-section h2 {
     font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
   }
 
+  .about-body {
+    gap: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
+  .about-section + .about-section {
+    padding-top: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
   .about-section p,
-  .contact-info {
+  .about-lead {
     font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 
-  .values-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .value-card {
-    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
-  }
-
-  .value-icon {
-    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
+  .about-nav-list a {
+    padding: var(--space-unit) 0;
   }
 }
 </style>

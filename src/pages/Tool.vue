@@ -1,27 +1,65 @@
 <template>
   <div class="tool-page">
-    <!-- 页头：文案与其它页面同源（constants/content.js 的 PAGES） -->
-    <PageHeader v-bind="PAGES.tools" />
+    <!-- 开场：眉标 + 大标题 + 说明 + 计数（PageHeader 已删除，页面自己排版） -->
+    <header class="workspace-head">
+      <p class="workspace-eyebrow">{{ PAGES.tools.eyebrow }}</p>
+      <h1 class="workspace-title">{{ PAGES.tools.title }}</h1>
+      <p class="workspace-desc">{{ PAGES.tools.description }}</p>
+      <span class="u-tag u-tag--accent workspace-count">{{ filteredTools.length }} 个工具</span>
+    </header>
 
-    <div class="page-container">
-      <!-- 分类过滤器 -->
-      <div class="category-filter">
-        <div class="filter-tabs">
-          <button
-            v-for="category in toolData.classes"
-            :key="category.class"
-            type="button"
-            class="u-tag filter-tab"
-            :class="{ 'u-tag--accent': activeCategory === category.class }"
-            @click="toolStore.setActiveCategory(category.class)"
-          >
-            <span class="tab-icon" aria-hidden="true">{{ category.icon }}</span>
-            <span class="tab-label">{{ category.class_name }}</span>
-          </button>
+    <!-- 工作台两栏：左侧竖排筛选轨 + 右侧工具区 -->
+    <div class="workspace-body">
+      <aside class="workspace-rail" aria-label="工具筛选">
+        <div class="rail-group">
+          <p class="rail-label">分类</p>
+          <div class="rail-list">
+            <!-- 「全部」不是后端分类，但计数可由工具总数直接得出，避免它孤零零没有数字 -->
+            <button
+              type="button"
+              class="rail-item"
+              :class="{ 'rail-item--active': activeCategory === 'all' }"
+              :aria-pressed="activeCategory === 'all'"
+              @click="toolStore.setActiveCategory('all')"
+            >
+              <span class="rail-icon" aria-hidden="true">🧰</span>
+              <span class="rail-name">全部</span>
+              <span class="rail-count">{{ filteredTools.length }}</span>
+            </button>
+            <button
+              v-for="category in toolData.classes"
+              :key="category.class"
+              type="button"
+              class="rail-item"
+              :class="{ 'rail-item--active': activeCategory === category.class }"
+              :aria-pressed="activeCategory === category.class"
+              @click="toolStore.setActiveCategory(category.class)"
+            >
+              <span class="rail-icon" aria-hidden="true">{{ category.icon }}</span>
+              <span class="rail-name">{{ category.class_name }}</span>
+              <span v-if="Number.isFinite(Number(category.count))" class="rail-count">
+                {{ category.count }}
+              </span>
+            </button>
+          </div>
         </div>
-        <div class="filter-actions">
+
+        <!-- 已收藏开关：形态走 .u-btn-secondary，选中态的强调底用 [aria-pressed] 表达 -->
+        <button
+          type="button"
+          class="u-btn-secondary rail-favorites"
+          :aria-pressed="showFavorites"
+          @click="toggleFavorites"
+        >
+          <span class="rail-icon" aria-hidden="true">❤️</span>
+          <span class="rail-name">{{ TOOL_PAGE.favorites }}</span>
+        </button>
+      </aside>
+
+      <section class="workspace-main">
+        <div class="workspace-toolbar">
           <!-- 搜索框：图标定位与输入区让位来自共享类 .u-search / .u-search-icon -->
-          <div class="u-search search-box">
+          <div class="u-search toolbar-search">
             <label class="visually-hidden" for="tool-search">搜索工具</label>
             <span class="u-search-icon" aria-hidden="true">🔍</span>
             <input
@@ -32,40 +70,33 @@
               class="u-input"
             />
           </div>
-          <button
-            type="button"
-            class="u-tag favorites-btn"
-            :class="{ 'u-tag--accent': showFavorites }"
-            :aria-pressed="showFavorites"
-            @click="toggleFavorites"
-          >
-            <span class="favorites-icon" aria-hidden="true">❤️</span>
-            <span class="favorites-text">{{ TOOL_PAGE.favorites }}</span>
-          </button>
+          <!-- 当前筛选说明：只有一个可切换的筛选态，用短横线占位避免文案区跳动 -->
+          <p class="toolbar-note">{{ showFavorites ? TOOL_PAGE.favorites : '—' }}</p>
         </div>
-      </div>
 
-      <!-- 工具网格 -->
-      <div class="tools-grid">
-        <ToolCard
-          v-for="(tool, index) in filteredTools"
-          :key="tool.id"
-          :tool="tool"
-          :is-favorited="favoriteTools.has(Number(tool.id))"
-          :style="{ '--i': index }"
-          @open-tool="handleOpenTool"
-          @toggle-favorite="handleToggleFavorite"
-        />
-        <!-- 加载 / 错误 / 空态：加载走共享的 .u-loading-block，另两态共用同一块占位 -->
-        <div v-if="toolsLoading" class="u-loading-block" role="status">
-          <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
-          <span>{{ TOOL_PAGE.loading }}</span>
+        <div class="tools-grid">
+          <ToolCard
+            v-for="(tool, index) in filteredTools"
+            :key="tool.id"
+            :tool="tool"
+            :is-favorited="favoriteTools.has(Number(tool.id))"
+            :style="{ '--i': index }"
+            @open-tool="handleOpenTool"
+            @toggle-favorite="handleToggleFavorite"
+          />
+          <!-- 加载 / 错误 / 空态：加载走共享的 .u-loading-block，另两态共用同一块占位 -->
+          <div v-if="toolsLoading" class="u-loading-block" role="status">
+            <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
+            <span>{{ TOOL_PAGE.loading }}</span>
+          </div>
+          <div v-else-if="toolsError" class="empty-note empty-note--error">
+            {{ TOOL_PAGE.errorPrefix }}{{ toolsError }}
+          </div>
+          <div v-else-if="filteredTools.length === 0" class="empty-note">
+            {{ TOOL_PAGE.empty }}
+          </div>
         </div>
-        <div v-else-if="toolsError" class="empty-note empty-note--error">
-          {{ TOOL_PAGE.errorPrefix }}{{ toolsError }}
-        </div>
-        <div v-else-if="filteredTools.length === 0" class="empty-note">{{ TOOL_PAGE.empty }}</div>
-      </div>
+      </section>
     </div>
   </div>
 </template>
@@ -74,7 +105,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import ToolCard from '@/components/ToolCard.vue'
-import PageHeader from '@/components/PageHeader.vue'
 import { useToolStore } from '@/stores/tool'
 import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
@@ -217,58 +247,252 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ════════════════════════════════════════════════════════════════
+ * 工作台版式：开场 + 「左轨筛选 / 右区工具」两栏，小屏退化为单栏。
+ *
+ * 只消费 variables.css 的令牌与 global.css 的共享类（.u-tag / .u-input /
+ * .u-search / .u-btn-secondary / .u-loading-block / .u-spinner），
+ * 本文件不新增令牌、不新增全局类。
+ *
+ * 两处刻意的选择：
+ *   1. 左轨固定用 --dropdown-width 这一档宽度，不做 max-content 自适应 ——
+ *      「技术单色」主题的 --space-unit 是 4px，若间距写法取 var(--space-unit) * n，
+ *      同一版面会在五套主题间漂移；控件内部节奏一律取组件尺寸令牌。
+ *   2. 轨道/工具栏的面板厚度写死 calc(var(--space-unit) * n)，因为它表达的是
+ *      「这个面板多厚」，应当随主题密度一起缩放。
+ * ════════════════════════════════════════════════════════════════ */
+
 .tool-page {
   width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
   /* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
-  padding: var(--section-gap) 0;
-  /* 页面底色由 body 的 --bg-page 承担，页面不再自带浅色渐变底 */
+  padding: var(--section-gap) var(--container-padding);
+  /* 页面底色由 body 的 --bg-page 承担 */
   background: transparent;
 }
 
-.page-container {
-  max-width: var(--container-content);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
+/* ── 开场 ─────────────────────────────────────────────────────── */
 
-.category-filter {
+.workspace-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2.5);
-  margin-bottom: calc(var(--space-unit) * 4);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: var(--section-gap);
 }
 
-.filter-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-unit);
+.workspace-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--accent);
 }
 
-/* 分类 tab 与「已收藏」的尺寸、描边、圆角与选中态全部来自 .u-tag / .u-tag--accent
-   （选中态悬停时的文字色已在 global.css 修好，这里不再写兜底覆盖），
-   组件内只放大 emoji 图标，使其与标签文字比例协调 */
-.tab-icon,
-.favorites-icon {
+.workspace-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+}
+
+.workspace-desc {
+  max-width: var(--container-narrow);
+  margin: 0;
   font-size: var(--fs-body);
-  line-height: 1;
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
 }
 
-.filter-actions {
+/* 计数：外观全部来自 .u-tag / .u-tag--accent，这里只让它自己占一行 */
+.workspace-count {
+  margin-top: calc(var(--space-unit) * 0.5);
+}
+
+/* ── 两栏 ─────────────────────────────────────────────────────── */
+
+.workspace-body {
+  display: grid;
+  grid-template-columns: var(--dropdown-width) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--section-gap);
+}
+
+/* ── 左轨 ─────────────────────────────────────────────────────── */
+
+.workspace-rail {
+  /* 顶栏是 position: sticky，因此吸顶位置必须在顶栏高度之下留出空隙 */
+  position: sticky;
+  top: calc(var(--navbar-height) + var(--space-unit) * 2);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 3);
+  padding: calc(var(--space-unit) * 2.5);
+  /* 样式用与 .ui-card 同一族令牌，但它是面板而非卡片：不套 .ui-card，
+     以免继承悬停位移与图片区规则 */
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.rail-group {
+  display: flex;
+  flex-direction: column;
   gap: calc(var(--space-unit) * 1.5);
 }
 
-/* 搜索框的 flex 布局、图标定位与输入区让位来自 .u-search / .u-search-icon / .u-input，
-   这里只负责它在筛选行里占多宽 */
-.search-box {
-  width: calc(var(--space-unit) * 25);
+.rail-label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+.rail-list {
+  display: flex;
+  flex-direction: column;
+  /* 分类多到超出视口时轨内自滚，吸顶面板不会被拉出屏幕 */
+  max-height: calc(var(--space-unit) * 40);
+  overflow-y: auto;
+}
+
+/* 竖排分类项：做法参照 .u-dropdown-item--active（左侧强调竖条 + 柔和强调底），
+   但这里是导航列表而不是下拉菜单，因此按令牌自己写，不套 .u-dropdown-item */
+.rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.25);
+  width: 100%;
+  height: var(--dropdown-item-height);
+  padding: 0 calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  text-align: left;
+  border-radius: var(--btn-radius);
+  transition:
+    background-color var(--transition-interactive),
+    color var(--transition-interactive);
+}
+
+/* 选中竖条：常态就在（透明），选中才上色，因此切换时文字不会横向位移 */
+.rail-item::before {
+  content: '';
+  position: absolute;
+  top: calc(50% - var(--dropdown-item-height) / 2);
+  left: 0;
+  width: var(--dropdown-active-bar);
+  height: var(--dropdown-item-height);
+  background: transparent;
+}
+
+.rail-item:hover {
+  background: var(--bg-soft);
+  color: var(--accent);
+}
+
+.rail-item--active {
+  background: var(--bg-soft);
+  color: var(--accent);
+}
+
+.rail-item--active::before {
+  background: var(--accent);
+}
+
+.rail-icon {
+  flex-shrink: 0;
+  font-size: var(--input-icon-size);
+  line-height: 1;
+}
+
+.rail-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 每项右侧的工具数：等宽数字，避免个位数/两位数切换时标签左右抖 */
+.rail-count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--tag-font-size);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* 选中项的计数跟着标签一起提亮（--text-muted 在强调底上对比度不足） */
+.rail-item--active .rail-count {
+  color: var(--accent);
+}
+
+/* 已收藏开关：形态来自 .u-btn-secondary，选中态（aria-pressed）换成强调底 */
+.rail-favorites {
+  gap: calc(var(--space-unit) * 1.25);
+  width: 100%;
+  color: var(--text-on-accent);
+}
+
+.rail-favorites[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.rail-favorites[aria-pressed='true']:hover {
+  border-color: var(--accent-strong);
+  color: var(--text-on-accent);
+}
+
+/* ── 右区：工具条 + 网格 ──────────────────────────────────────── */
+
+.workspace-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2.5);
+  min-width: 0;
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+/* 搜索框的定位与输入区让位来自 .u-search / .u-search-icon / .u-input，
+   这里只负责它在工具条里占多宽 */
+.toolbar-search {
+  max-width: calc(var(--space-unit) * 40);
+}
+
+.toolbar-note {
+  flex-shrink: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
 }
 
 .tools-grid {
   display: grid;
-  /* 卡片最小宽度走 --card-width，随主题密度一起缩放（不再借用间距单位换算） */
+  /* 卡片最小宽度走 --card-width，随主题密度一起缩放 */
   grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
   gap: var(--grid-gap);
 }
@@ -291,41 +515,148 @@ onMounted(() => {
   border-color: var(--danger);
 }
 
-@media (max-width: 767px) {
-  .tool-page {
-    padding: calc(var(--section-gap) * var(--mobile-section-scale)) 0;
+/* ── 1199：两栏间距先收一档 ───────────────────────────────────── */
+
+@media (max-width: 1199px) {
+  .workspace-body {
+    gap: calc(var(--section-gap) * 0.75);
+  }
+}
+
+/* ── 991：两栏变单栏，左轨退化为横向可滚动的筛选条 ─────────────── */
+
+@media (max-width: 991px) {
+  .workspace-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--section-gap) * 0.5);
   }
 
-  .category-filter {
-    flex-direction: column;
-    align-items: stretch;
-    gap: calc(var(--space-unit) * 1.5);
+  .workspace-rail {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: calc(var(--space-unit) * 2);
   }
 
-  .filter-tabs {
-    justify-content: center;
-    gap: calc(var(--space-unit) * 0.75);
-  }
-
-  .filter-actions {
-    justify-content: center;
-    gap: var(--space-unit);
-  }
-
-  /* 搜索框占满剩余宽度，与「已收藏」并排 */
-  .search-box {
+  .rail-group {
     flex: 1;
-    width: auto;
     min-width: 0;
   }
 
-  /* 卡片窄一档（×0.8）：小屏每行至少两张，窄到 575 时回到一张 */
+  /* 横排时分类在轨内横向滚动（滚动条隐藏，触屏与 Shift+滚轮仍可用） */
+  .rail-list {
+    flex-direction: row;
+    gap: var(--space-unit);
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .rail-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail-item {
+    width: auto;
+    padding: 0 calc(var(--space-unit) * 1.25);
+    white-space: nowrap;
+  }
+
+  /* 横排没有左侧竖条的位置，改由底色与文字色表达选中 */
+  .rail-item::before {
+    content: none;
+  }
+
+  .rail-favorites {
+    width: auto;
+    flex-shrink: 0;
+  }
+}
+
+/* ── 767：移动端缩放（控件高 ×0.9、内边距 ×0.8、区块间距 ×0.6、
+ *          标题字号 ×0.7、正文字号 ×0.95）───────────────────────── */
+
+@media (max-width: 767px) {
+  .tool-page {
+    padding: calc(var(--section-gap) * var(--mobile-section-scale)) var(--container-padding);
+  }
+
+  .workspace-head {
+    gap: calc(var(--space-unit) * var(--mobile-padding-scale));
+    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
+  .workspace-title {
+    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
+  }
+
+  .workspace-desc {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
+
+  .workspace-count {
+    /* --tag-height 是「文字行高 + 微小余量」，×0.9 会把中文裁掉；
+       计数的字号与内边距在这里只按内边距系数收 */
+    padding: calc(var(--tag-padding-y) * var(--mobile-padding-scale))
+      calc(var(--tag-padding-x) * var(--mobile-padding-scale));
+  }
+
+  .workspace-body {
+    gap: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
+  .workspace-rail {
+    /* 单栏后是一块横向面板，内边距按 ×0.8 收 */
+    padding: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+    gap: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  }
+
+  .rail-item {
+    height: calc(var(--dropdown-item-height) * var(--mobile-control-scale));
+    padding: 0 calc(var(--space-unit) * 1.25 * var(--mobile-padding-scale));
+  }
+
+  .workspace-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(var(--space-unit) * 1.5);
+    padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+  }
+
+  .toolbar-search {
+    max-width: none;
+  }
+
+  /* 两列而不是「自动铺」：--card-width 在窄屏会把 auto-fill 撑破容器 */
   .tools-grid {
-    grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-width) * 0.8), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .empty-note {
+    padding: calc(var(--space-unit) * 6 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
     font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
+
+  /* .u-loading-block 的区块级内边距在这里跟着移动端系数收 */
+  .u-loading-block {
+    padding: calc(var(--section-gap) * 0.4 * var(--mobile-section-scale))
+      var(--container-padding);
+  }
+}
+
+/* ── 575：单列 + 容器装订线收一档 ─────────────────────────────── */
+
+@media (max-width: 575px) {
+  .tool-page {
+    padding-right: calc(var(--container-padding) * var(--mobile-padding-scale));
+    padding-left: calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  .tools-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

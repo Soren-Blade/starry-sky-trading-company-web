@@ -1,42 +1,27 @@
 <template>
   <section class="kami-section">
     <div class="section-container">
-      <!-- header（共享组件，样式在 global.css） -->
-      <SectionHeader icon="🎴" title="卡密管理" description="查看并激活你的卡密" />
-
-      <!-- tabs：外观来自 global.css 的 .u-tag / .u-tag--accent -->
-      <div class="tab-bar">
-        <button
-          type="button"
-          class="u-tag"
-          :class="{ 'u-tag--accent': activeTab === 'list' }"
-          :aria-pressed="activeTab === 'list'"
-          @click="activeTab = 'list'"
-        >
-          <span aria-hidden="true">📋</span> 我的卡密
-        </button>
-        <button
-          type="button"
-          class="u-tag"
-          :class="{ 'u-tag--accent': activeTab === 'activate' }"
-          :aria-pressed="activeTab === 'activate'"
-          @click="activeTab = 'activate'"
-        >
-          <span aria-hidden="true">✨</span> 激活卡密
-        </button>
-      </div>
-
-      <!-- 未登录提示：卡密属于账号资产，游客态不给操作入口 -->
+      <!-- 未登录提示：卡密属于账号资产，游客态不给操作入口。
+           新版式没有页签，这块居中的提示卡就是整个区块的全部内容。 -->
       <div v-if="!canUseKami" class="notice-card">
         <p class="notice-title">请先登录账号</p>
         <p class="notice-desc">卡密与账号绑定，游客身份无法激活或查看卡密。</p>
       </div>
 
-      <template v-else>
-        <!-- activate section -->
-        <div v-if="activeTab === 'activate'" class="activate-container">
-          <div class="activate-card">
-            <h3>激活新卡密</h3>
+      <!--
+        控制台版式：左栏「激活新卡密」= 操作面板（桌面端 sticky 跟随滚动），
+        右栏「我的卡密」= 数据面板（工具条 + 表格 + 分页）。
+        两件事同时可见，因此不再需要「我的卡密 / 激活卡密」页签。
+      -->
+      <div v-else class="console-grid">
+        <!-- ── 左栏：激活 ─────────────────────────────────── -->
+        <div class="console-side">
+          <div class="panel activate-panel">
+            <div class="panel-head">
+              <h3 class="panel-title"><span aria-hidden="true">✨</span> 激活新卡密</h3>
+              <p class="panel-sub">选择工具后粘贴卡密号</p>
+            </div>
+
             <div class="activate-form">
               <select v-model="selectedToolId" class="u-input" aria-label="选择工具">
                 <option value="">请选择工具</option>
@@ -45,6 +30,7 @@
                 </option>
               </select>
               <input
+                ref="activateInput"
                 v-model="activateCode"
                 type="text"
                 class="u-input"
@@ -62,6 +48,7 @@
                 {{ activating ? '激活中...' : '激活' }}
               </button>
             </div>
+
             <p
               v-if="activationResult"
               :class="activationResult.success ? 'success-msg' : 'error-msg'"
@@ -69,14 +56,15 @@
             >
               {{ activationResult.message }}
             </p>
+
             <p class="activate-tips">
               <span aria-hidden="true">⚡</span> 激活后可在"我的卡密"中查看详情
             </p>
           </div>
         </div>
 
-        <!-- list section with table -->
-        <div v-else class="list-container">
+        <!-- ── 右栏：列表 ─────────────────────────────────── -->
+        <div class="panel list-panel">
           <div class="list-toolbar">
             <div class="toolbar-left">
               <span class="card-count">共 {{ pagination.total }} 张卡密</span>
@@ -86,10 +74,15 @@
                 type="button"
                 class="refresh-btn u-btn-secondary"
                 :disabled="loading"
-                title="刷新卡密列表"
+                :aria-label="loading ? '正在刷新卡密列表' : '刷新卡密列表'"
                 @click="reload(1)"
               >
-                <span v-if="loading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+                <span
+                  v-if="loading"
+                  class="u-spinner u-spinner--sm"
+                  role="status"
+                  aria-label="加载中"
+                ></span>
                 <span v-else aria-hidden="true">🔄</span>
                 {{ loading ? '刷新中...' : '刷新' }}
               </button>
@@ -180,7 +173,7 @@
                   v-if="record.status === 'unused'"
                   type="link"
                   size="small"
-                  @click="goActivate"
+                  @click="focusActivate"
                 >
                   去激活
                 </a-button>
@@ -189,7 +182,7 @@
             </template>
           </a-table>
         </div>
-      </template>
+      </div>
     </div>
   </section>
 </template>
@@ -212,7 +205,6 @@ import {
   resolveToolName,
   toToolOptions,
 } from '@/hooks/useKamiDisplay'
-import SectionHeader from '@/components/SectionHeader.vue'
 
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
@@ -221,7 +213,6 @@ const toolStore = useToolStore()
 const { userKamis, pagination, loading, error } = storeToRefs(kamiStore)
 const { toolData } = storeToRefs(toolStore)
 
-const activeTab = ref('list')
 const statusFilter = ref('all')
 
 // 游客也能拿到 userInfo，但卡密是账号资产，因此以「已用账号登录」为准
@@ -254,9 +245,11 @@ const reload = async (page = 1) => {
 
 const handlePaginationChange = (page) => reload(page)
 
-const goActivate = () => {
-  activation.clearResult()
-  activeTab.value = 'activate'
+/** 激活输入框：表格「去激活」把光标送到左栏，而不是跳转/切页签 */
+const activateInput = ref(null)
+
+const focusActivate = () => {
+  activateInput.value?.focus()
 }
 
 // 激活流程的状态与提交逻辑抽到 @/hooks/useKamiActivation（可单独测试）
@@ -309,18 +302,16 @@ watch(
 .kami-section {
   position: relative;
   width: 100%;
-  /* 段落节奏从 --section-gap 派生，随主题密度（density）缩放 */
-  padding: calc(var(--section-gap) * 0.5) 0 calc(var(--section-gap) * 0.6);
+  /* 开场留白由 Kami.vue 承担，这里只留与页脚之间的收尾 */
+  padding: 0 0 calc(var(--section-gap) * 0.4);
   background: transparent;
 }
 
 .section-container {
-  max-width: var(--container-content);
+  max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 var(--container-padding);
 }
-
-/* 区块头样式已抽到 global.css（.section-header 系列），组件内不再声明 */
 
 /* ── 未登录提示 ─────────────────────────────────────────────── */
 
@@ -350,47 +341,68 @@ watch(
   color: var(--text-secondary);
 }
 
-/* ── 页签 ───────────────────────────────────────────────────── */
+/* ── 控制台栅格：左操作 / 右数据 ─────────────────────────────── */
 
-.tab-bar {
-  display: flex;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-bottom: calc(var(--space-unit) * 5);
+.console-grid {
+  display: grid;
+  align-items: start;
+  /* 操作面板窄、数据面板宽：表格要放得下 8 列 */
+  grid-template-columns: minmax(0, calc(var(--container-narrow) * 0.34)) minmax(0, 1fr);
+  gap: calc(var(--space-unit) * 3);
 }
 
-/* 页签外观全部来自共享类 .u-tag / .u-tag--accent
-   （高度/内边距/圆角/选中态配色都由 global.css 给全），组件内不复写 */
-
-/* ── 激活卡密 ───────────────────────────────────────────────── */
-
-.activate-container {
-  display: flex;
-  justify-content: center;
-  padding: calc(var(--space-unit) * 2.5);
+/* 桌面端左栏跟随滚动。顶栏是 position: sticky（参与文档流、高度 --navbar-height），
+   因此粘住位置必须让出它的高度，否则面板顶部会滑到顶栏底下 */
+.console-side {
+  position: sticky;
+  top: calc(var(--navbar-height) + var(--space-unit) * 2);
 }
 
-.activate-card {
-  width: 100%;
-  max-width: calc(var(--container-narrow) / 2);
-  padding: var(--card-padding-lg);
+/* 两块面板共用同一套外壳（只有圆角/描边/阴影走令牌，内边距各自声明） */
+.panel {
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
+  overflow: hidden;
 }
 
-.activate-card h3 {
-  margin: 0 0 calc(var(--space-unit) * 3);
+/* 左栏面板是表单容器，用面板档内边距 */
+.activate-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+  padding: var(--card-padding-lg);
+}
+
+.panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
   font-size: var(--fs-h3);
   color: var(--text-primary);
 }
+
+/* 面板副标题：标签档字号，压住标题的视觉重量 */
+.panel-sub {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* ── 激活表单 ───────────────────────────────────────────────── */
 
 .activate-form {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 1.5);
-  margin-bottom: calc(var(--space-unit) * 2);
 }
 
 /* 表单控件复用 .u-input（高度/内边距/边框/圆角/焦点环都随主题，
@@ -418,26 +430,19 @@ watch(
 }
 
 .activate-tips {
-  margin: calc(var(--space-unit) * 2) 0 0;
+  margin: 0;
   font-size: var(--fs-sm);
-  text-align: center;
   color: var(--text-muted);
 }
 
 /* ── 卡密列表 ───────────────────────────────────────────────── */
 
-.list-container {
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
+/* 数据面板：工具条与表格自己带内边距，外壳不再叠加 */
 .list-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
   padding: var(--card-padding-lg);
   border-bottom: var(--stroke-width) solid var(--divider);
 }
@@ -454,11 +459,12 @@ watch(
 
 .toolbar-right {
   display: flex;
+  align-items: center;
   gap: calc(var(--space-unit) * 1.5);
 }
 
 /* .refresh-btn 复用 .u-btn-secondary（描边/悬停/disabled 由共享类给全），
-   加载中把 ⏳ 换成共享加载圈，因此组件内不再需要旋转动画 */
+   加载中把 🔄 换成共享加载圈，因此组件内不再需要旋转动画 */
 
 /* 状态筛选与 .u-input 同源，只把宽度交还给工具栏（桌面按内容宽，
    窄屏在媒体查询里撑满） */
@@ -467,14 +473,20 @@ watch(
   cursor: pointer;
 }
 
-/* 列表错误横幅：语义底 + 语义字色，不再用固定的浅红 */
+/* 错误横幅夹在工具条与表格之间：横向贴满，只在上下留出与表格的间距 */
 .error-banner {
-  margin: 0;
+  margin: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
   padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
   font-size: var(--fs-sm);
   color: var(--danger);
   background: var(--danger-bg);
-  border-bottom: var(--stroke-width) solid var(--danger);
+  border: var(--stroke-width) solid var(--danger);
+  border-radius: var(--btn-radius);
+}
+
+/* 表格外框与工具条的左右内边距对齐，避免表格紧贴面板边缘 */
+.list-panel :deep(.kami-ant-table) {
+  padding: calc(var(--space-unit) * 2);
 }
 
 /* ── 表格（ant-design-vue 覆盖：沿用 :deep() 提高特异性，不用强制优先级）── */
@@ -668,32 +680,51 @@ watch(
   color: var(--accent);
 }
 
-/* ── 响应式（统一断点 767）────────────────────────────────────
-   移动端缩放按规范：内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95
-   （.u-input / .u-btn-* / .u-tag 等共享类的高度与内边距缩放已在 global.css 内处理） */
+/* ── 响应式 ─────────────────────────────────────────────────── */
 
-@media (max-width: 767px) {
-  .kami-section {
-    padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale)) 0
-      calc(var(--section-gap) * 0.6 * var(--mobile-section-scale));
+/* ≤991：两栏变单栏，激活面板挪到列表**上方**（先操作、后查看），
+   同时解除 sticky —— 单栏里粘住会把下方的列表顶出视口 */
+@media (max-width: 991px) {
+  .console-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 2.5);
   }
 
-  .tab-bar {
-    gap: var(--space-unit);
-    margin-bottom: calc(var(--space-unit) * 5 * var(--mobile-section-scale));
+  .console-side {
+    position: static;
+    top: auto;
+  }
+}
+
+/* ≤767：移动端缩放按规范 —— 内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、
+   正文字号 ×0.95（.u-input / .u-btn-* / .u-tag / .u-spinner 等共享类
+   的高度与内边距缩放已在 global.css 内处理）。
+   sticky 的让位高度也要跟着顶栏一起按 --mobile-nav-scale 收。 */
+@media (max-width: 767px) {
+  .kami-section {
+    padding: 0 0 calc(var(--section-gap) * 0.4 * var(--mobile-section-scale));
+  }
+
+  .console-grid {
+    gap: calc(var(--space-unit) * 2.5 * var(--mobile-section-scale));
+  }
+
+  .console-side {
+    top: calc(var(--navbar-height) * var(--mobile-nav-scale) + var(--space-unit) * 2);
   }
 
   .notice-card,
-  .activate-card {
+  .activate-panel {
     padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
-  .notice-title,
-  .activate-card h3 {
+  .panel-title,
+  .notice-title {
     font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
   }
 
   .notice-desc,
+  .panel-sub,
   .activate-tips,
   .success-msg,
   .error-msg,
@@ -702,14 +733,9 @@ watch(
     font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
   }
 
-  .activate-container {
-    padding: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
-  }
-
   .list-toolbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: calc(var(--space-unit) * 1.5);
     padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
@@ -725,8 +751,25 @@ watch(
     width: 100%;
   }
 
+  .list-panel :deep(.kami-ant-table) {
+    padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  }
+
   :deep(.kami-ant-table) {
     font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+  }
+
+  :deep(.kami-ant-table .ant-pagination) {
+    padding: 0 calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  }
+}
+
+/* ≤575：工具条的两个控件各占一行，避免窄屏被挤成半宽 */
+@media (max-width: 575px) {
+  .toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

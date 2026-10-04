@@ -7,7 +7,7 @@
  *   2. **组件层共享类** —— 按钮 / 输入框 / 卡片 / 价格 / 提示框 / 模态框 /
  *      下拉 / 标签 / 进度 / 加载圈 / 骨架屏 / 头像 / 复选框。
  *      组件规范表里的尺寸全部在这里落地，组件自身只保留布局；
- *   3. 共享结构类 —— .section-header / .page-header；
+ *   3. 共享结构类 —— .section-header 系列（页面头已删除，见文件末尾说明）；
  *   4. 共享动效 —— 入场（含 scroll-driven reveal）、背景网格、shimmer。
  *
  * 具体视觉值一律来自 variables.css（名册 + 兜底）与 theme/presets.js（五套取值）。
@@ -1043,42 +1043,14 @@ button.u-tag:hover:not(.u-tag--accent) {
   margin: 0;
 }
 
-.page-header {
-  position: relative;
-  text-align: center;
-  padding: calc(var(--section-gap) * 0.55) var(--container-padding)
-    calc(var(--section-gap) * 0.5);
-  background: var(--bg-surface-2);
-  border-bottom: var(--stroke-width) solid var(--border);
-}
-
-.page-header h1 {
-  font-family: var(--font-display);
-  font-size: var(--fs-h1);
-  font-weight: var(--fw-display);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  margin: 0 0 calc(var(--space-unit) * 2);
-  color: var(--text-primary);
-}
-
-.page-header p {
-  font-size: var(--fs-body);
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* 标题下的一道强调线：给页面头身份感，又不引入渐变 */
-.page-header::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: calc(var(--space-unit) * 7);
-  height: calc(var(--space-unit) * 0.25);
-  background: var(--accent);
-  transform: translateX(-50%);
-}
+/*
+ * 页面头（.page-header）已删除。
+ *
+ * 原先除主页外的每个页面都套同一个居中渐变页头，等于「一个模板换文案」。
+ * 现在每个页面按自己的信息结构设计开场（索引页的竖排开场、榜单页的横向标题带、
+ * 工作台的左轨标题、编辑页的首行眉标……），文案仍集中在 constants/content.js 的 PAGES。
+ * 页面标题统一用 --fs-h1，因此该令牌仍然有人消费。
+ */
 
 /* ────────────────────────────────────────────────────────────
  * 14. 响应式与移动端缩放
@@ -1189,14 +1161,6 @@ button.u-tag:hover:not(.u-tag--accent) {
   .section-title,
   .title-icon {
     font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
-  }
-
-  .page-header {
-    padding: calc(var(--section-gap) * var(--mobile-section-scale)) 16px;
-  }
-
-  .page-header h1 {
-    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
   }
 }
 

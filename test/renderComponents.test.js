@@ -94,7 +94,6 @@ const COMPONENTS = allComponents()
  * （调用方本就必须传），因此在渲染测试里补上桩数据，而不是改组件。
  */
 const REQUIRED_PROPS = {
-  'PageHeader.vue': { title: '桩标题' },
   'SectionHeader.vue': { title: '桩标题' },
   'ProductCard.vue': {
     product: {
@@ -206,11 +205,6 @@ test('SectionHeader：props 正确落到 DOM', async () => {
   assert.match(html, /aria-hidden="true"/)
 })
 
-test('PageHeader：标题与副标题正确渲染', async () => {
-  const html = await render('/components/PageHeader.vue', { title: '工具', subtitle: '副标题' })
-  assert.match(html, /<h1[^>]*>工具<\/h1>/)
-  assert.match(html, /副标题/)
-})
 
 test('KamiSection：未登录时给出提示，且不渲染激活表单', async () => {
   const html = await render('/components/KamiSection.vue')
@@ -222,11 +216,14 @@ test('KamiSection：未登录时给出提示，且不渲染激活表单', async 
   assert.equal(html.includes('请粘贴卡密号'), false, '未登录不应渲染激活输入框')
 })
 
-test('KamiSection：两个 tab 按钮存在且带 aria 属性', async () => {
+test('KamiSection：游客态只渲染提示卡，不渲染控制台两栏', async () => {
   const html = await render('/components/KamiSection.vue')
-  assert.match(html, /我的卡密/)
-  assert.match(html, /激活卡密/)
-  assert.match(html, /<button/)
+
+  // 「我的卡密 / 激活卡密」页签在第三轮改版里已删除，改成「左激活面板 + 右卡密列表」的
+  // 控制台版式；游客态下两栏都不渲染，只剩登录提示 —— 因此这里断言的是新结构。
+  assert.match(html, /notice-card/, '游客态应只有提示卡')
+  assert.equal(html.includes('console-grid'), false, '游客态不应渲染控制台两栏')
+  assert.equal(html.includes('我的卡密'), false, '游客态不应出现列表标题')
 })
 
 test('CategoriesSection：含区块头，且渲染结果里分类卡片的 icon 不为空', async () => {

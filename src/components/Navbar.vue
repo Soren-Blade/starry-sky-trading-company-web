@@ -8,10 +8,10 @@
         <span class="logo-text">{{ SITE.name }}</span>
       </router-link>
 
-      <!-- 桌面端导航（≥768px） -->
+      <!-- 桌面端导航（≥768px）：通高 tab，下划线落在导航栏底边 -->
       <nav class="navbar-menu hide-below-768" :aria-label="SITE.name">
         <ul class="menu-list">
-          <li v-for="item in navMenu" :key="item.id">
+          <li v-for="item in navMenu" :key="item.id" class="menu-item">
             <router-link :to="item.path" class="menu-link" @click="handleMenuClick">
               {{ item.label }}
             </router-link>
@@ -275,22 +275,37 @@ onUnmounted(() => {
 
 <style scoped>
 /* ── 粘性定位与表面 ─────────────────────────────────────── */
+/*
+ * 排查修复记录（导航栏排版问题）：
+ *  1. 装订线不一致：`.navbar-inner` 用 --container-max(1320)，而商品/工具/卡密
+ *     区块用 --container-content(1280)，导致 Logo 左边缘与下方卡片差 20px。
+ *     → 令牌层只保留 --container-max，全站共用一条装订线。
+ *  2. 导航链接会与搜索栏重叠：`.navbar-menu` 曾是 `flex: 1`（flex-basis 0）+
+ *     `min-width: 0`，而 `.menu-list` 不换行 —— 宽度不足时菜单盒被压到 0，
+ *     内部链接溢出到搜索栏上。→ 菜单改为 `flex: none`（不参与伸缩），
+ *     由搜索栏吸收剩余空间，并在 ≤1199 收一档密度。
+ *  3. 底部边框那一像素没有背景：`::before` 的 `inset: 0` 只覆盖 padding box，
+ *     边框区域露出的是页面内容。→ 边框移到 `::before` 上，背景与模糊一起铺满整高。
+ *  4. 菜单项可点区域只有 ~21px：`padding: 4px 0`。→ 改为整条通高（tab 式），
+ *     下划线落在导航栏底边上。
+ */
 .navbar {
   position: sticky;
   top: 0;
   /* 规范：z-index 100。低于模态框（2000）与提示框（3000） */
   z-index: 100;
-  border-bottom: var(--stroke-width) solid var(--nav-border-color);
   transition: box-shadow var(--transition-surface);
 }
 
-/* 表面与毛玻璃层。放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释） */
+/* 表面 + 毛玻璃 + 底部边框（三层都放在同一个伪元素上，保证铺满整高）
+ * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释） */
 .navbar::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
   background: var(--bg-nav);
+  border-bottom: var(--stroke-width) solid var(--nav-border-color);
   backdrop-filter: var(--nav-backdrop);
   -webkit-backdrop-filter: var(--nav-backdrop);
   transition: backdrop-filter var(--transition-surface);
@@ -311,9 +326,9 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--nav-menu-gap);
   height: var(--navbar-height);
+  max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 var(--nav-padding-x);
-  max-width: var(--container-max);
 }
 
 /* ── Logo ───────────────────────────────────────────────── */
@@ -321,7 +336,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit));
-  flex-shrink: 0;
+  flex: none;
   height: var(--nav-logo-height);
 }
 
@@ -345,26 +360,33 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-/* ── 主导航 ─────────────────────────────────────────────── */
+/* ── 主导航：通高 tab，不参与伸缩 ───────────────────────── */
 .navbar-menu {
-  flex: 1;
-  min-width: 0;
+  flex: none;
+  height: 100%;
 }
 
 .menu-list {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--nav-menu-gap);
+  height: 100%;
+}
+
+.menu-item {
+  display: flex;
 }
 
 .menu-link {
   position: relative;
-  display: block;
-  padding: calc(var(--space-unit) * 0.5) 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
   font-size: var(--nav-link-size);
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   text-transform: var(--label-transform);
+  white-space: nowrap;
   color: var(--text-secondary);
   transition: color var(--transition-interactive);
 }
@@ -374,14 +396,14 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-/* 选中/悬停用一道强调色下划线表达，不引入背景块 */
+/* 选中/悬停用一道强调色下划线表达，落在导航栏底边上 */
 .menu-link::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2px;
+  height: calc(var(--space-unit) * 0.25);
   background: var(--accent);
   transform: scaleX(0);
   transition: transform var(--transition-interactive);
@@ -392,10 +414,12 @@ onUnmounted(() => {
   transform: scaleX(1);
 }
 
-/* ── 搜索栏：宽度由输入框高度派生，随风格一起收放 ─────────── */
+/* ── 搜索栏：吸收剩余空间，因此导航项与操作区之间不再有一个大空洞 ── */
 .navbar-search {
-  flex: 0 1 calc(var(--input-height) * 6);
-  min-width: calc(var(--input-height) * 4);
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: calc(var(--input-height) * 12);
+  margin-left: calc(var(--space-unit) * 2);
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */
@@ -403,8 +427,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit) * 1.5);
+  flex: none;
   margin-left: auto;
-  flex-shrink: 0;
 }
 
 /* ── 用户菜单 ───────────────────────────────────────────── */
@@ -460,20 +484,21 @@ onUnmounted(() => {
 .menu-toggle-bars {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: calc(var(--space-unit) * 0.5);
-  width: calc(var(--icon-btn-icon-size));
+  width: var(--icon-btn-icon-size);
 }
 
 .menu-toggle-bars i {
   display: block;
-  height: 2px;
+  height: calc(var(--space-unit) * 0.25);
   background: currentColor;
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   transition: transform var(--transition-interactive), opacity var(--transition-interactive);
 }
 
 .menu-toggle.active .menu-toggle-bars i:nth-child(1) {
-  transform: translateY(calc(var(--space-unit) * 0.5 + 2px)) rotate(45deg);
+  transform: translateY(calc(var(--space-unit) * 0.75)) rotate(45deg);
 }
 
 .menu-toggle.active .menu-toggle-bars i:nth-child(2) {
@@ -481,7 +506,7 @@ onUnmounted(() => {
 }
 
 .menu-toggle.active .menu-toggle-bars i:nth-child(3) {
-  transform: translateY(calc((var(--space-unit) * -0.5) - 2px)) rotate(-45deg);
+  transform: translateY(calc(var(--space-unit) * -0.75)) rotate(-45deg);
 }
 
 /* ── 移动端抽屉 ─────────────────────────────────────────── */
@@ -495,7 +520,7 @@ onUnmounted(() => {
   padding: calc(var(--space-unit) * 2) var(--nav-padding-x) calc(var(--space-unit) * 3);
   background: var(--bg-elevated);
   border-bottom: var(--stroke-width) solid var(--stroke-color);
-  transform: translateY(-8px);
+  transform: translateY(calc(var(--space-unit) * -1));
   opacity: 0;
   visibility: hidden;
   transition:
@@ -534,9 +559,38 @@ onUnmounted(() => {
 }
 
 /* ── 响应式 ─────────────────────────────────────────────── */
+/* 992–1199：菜单项、间距、内边距各收一档，保证搜索栏仍放得下且不挤压菜单 */
+@media (max-width: 1199px) {
+  .navbar-inner {
+    gap: calc(var(--nav-menu-gap) * 0.6);
+    padding: 0 calc(var(--nav-padding-x) * 0.6);
+  }
+
+  .menu-list {
+    gap: calc(var(--nav-menu-gap) * 0.6);
+  }
+
+  .menu-link {
+    font-size: calc(var(--nav-link-size) * 0.92);
+  }
+
+  .navbar-search {
+    margin-left: var(--space-unit);
+  }
+
+  .navbar-actions {
+    gap: var(--space-unit);
+  }
+}
+
 @media (max-width: 991px) {
   .hide-below-992 {
     display: none;
+  }
+
+  /* 搜索栏收起后，菜单贴住 Logo，操作区推到最右 */
+  .navbar-menu {
+    margin-right: auto;
   }
 }
 
@@ -558,10 +612,8 @@ onUnmounted(() => {
   .navbar-drawer {
     top: calc(var(--navbar-height) * var(--mobile-nav-scale));
     max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale));
-  }
-
-  .navbar-actions {
-    gap: var(--space-unit);
+    padding-left: calc(var(--nav-padding-x) * 0.6);
+    padding-right: calc(var(--nav-padding-x) * 0.6);
   }
 }
 

@@ -1,7 +1,8 @@
 <template>
-  <section class="hot-section">
+  <section class="hot-section" :class="{ 'hot-section--board': isBoard }">
     <div class="section-inner">
-      <SectionHeader v-bind="SECTIONS.hot" />
+      <!-- 榜单页的标题由页面开场的标题带承担，区块不再重复一遍 -->
+      <SectionHeader v-if="!isBoard" v-bind="SECTIONS.hot" />
 
       <!-- 搜索状态：有关键词时告知用户过滤结果数量，避免「商品怎么变少了」的困惑 -->
       <p v-if="keyword" class="hot-status" role="status">
@@ -37,6 +38,7 @@
             <ProductCard
               :product="product"
               :featured="index === 0"
+              :rank="isBoard ? index + 1 : 0"
               :style="{ '--i': index }"
               @go-detail="handleGoDetail"
               @buy="handleBuy"
@@ -61,6 +63,10 @@
  *
  * 列表来自 `shopStore.filteredProducts`（数据层负责搜索匹配），
  * 组件不再自己写一份 filter —— 搜索栏在导航栏里，两处必须用同一套规则。
+ *
+ * 两个变体只差「要不要区块头」与「要不要上榜序号」，栅格完全一致：
+ *   - `section`（默认，主页用）—— 带区块头；
+ *   - `board`（榜单页用）—— 不带区块头，每张卡带上榜名次。
  */
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -68,6 +74,15 @@ import { useShopStore } from '@/stores/shop'
 import ProductCard from '@/components/ProductCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import { PRODUCT_GRID, SECTIONS } from '@/constants/index.js'
+
+const props = defineProps({
+  /**
+   * 区块变体：
+   *   'section' 带区块头的常规区块（主页）
+   *   'board'   榜单（无区块头 + 卡片序号）
+   */
+  variant: { type: String, default: 'section' },
+})
 
 const shopStore = useShopStore()
 const { filteredProducts, searchKeyword, loading, error } = storeToRefs(shopStore)
@@ -77,6 +92,7 @@ const SKELETON_COUNT = 4
 
 const products = computed(() => filteredProducts.value)
 const keyword = computed(() => searchKeyword.value.trim())
+const isBoard = computed(() => props.variant === 'board')
 
 // 详情页尚未实现，先记录并保留入口
 const handleGoDetail = (product) => {
@@ -103,8 +119,13 @@ const handleBuy = (product) => {
   background: transparent;
 }
 
+/* 榜单版：顶部留白由页面的标题带承担，区块只留一点呼吸位（底部不变，页脚前仍需留白） */
+.hot-section--board {
+  padding-top: calc(var(--section-gap) * 0.3);
+}
+
 .section-inner {
-  max-width: var(--container-content);
+  max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 var(--container-padding);
 }
@@ -168,6 +189,10 @@ const handleBuy = (product) => {
   .hot-section {
     padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale)) 0
       calc(var(--section-gap) * 0.7 * var(--mobile-section-scale));
+  }
+
+  .hot-section--board {
+    padding-top: calc(var(--section-gap) * 0.3 * var(--mobile-section-scale));
   }
 
   .section-inner {
