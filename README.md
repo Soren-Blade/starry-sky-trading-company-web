@@ -326,13 +326,27 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 ## 9. 样式体系
 
-**变量**（`assets/styles/variables.css`，挂在 `:root`）：色彩（`--color-primary` `#8A6DFF` 等 6 个）、渐变（`--gradient-primary` 等 3 个）、阴影（`--shadow-sm/md/lg/xl/glass`）、圆角（`--radius-sm/md/lg/xl`）、过渡（`--transition-fast/base/slow`）、断点（`--breakpoint-*`，CSS 变量无法用于 `@media`，仅为记录）。
+详见 [`src/assets/README.md`](src/assets/README.md)。要点：
 
-**全局样式**（`assets/styles/global.css`）：基础重置、WebKit 滚动条定制、元素重置、`.container` 响应式容器、10 个动画关键帧（`fadeInUp` `fadeInScale` `float` 等）、工具类（`.text-gradient` `.glass-effect` `.hide-mobile` `.show-mobile` 等）、`:focus-visible` 焦点样式。
+**设计令牌**（`assets/styles/variables.css` 的 `:root`）：品牌色、语义色（`--color-muted` /
+`--color-border` / `--color-success|warning|danger`）、渐变、阴影（含 `--shadow-card`）、
+毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
 
-**加载方式**：`main.js` 直接 `import` 两个 css，且 `global.css` 顶部又 `@import './variables.css'`，变量文件因此被引入两次。
+> **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
+> 统一使用 `1199` / `991` / `767` / `575`。此前的 `--breakpoint-*` 变量已删除。
 
-**组件样式**：全部使用 `<style scoped>`，通过 `var(--color-*)` 引用变量。antd 表格等需要穿透时用 `:deep()`（见 `KamiSection.vue`）。
+**全局样式**（`assets/styles/global.css`，约 336 行）：基础重置、WebKit 滚动条、元素重置、
+**4 个动画关键帧**（`fadeInUp` `fadeInScale` `float` `floatRandom`）、
+**共享结构类**（`.section-header` 系列、`.page-header`、`.ui-card` 系列、
+`.visually-hidden`、`.hide-mobile`/`.show-mobile`）、`:focus-visible`。
+
+**加载方式**：`main.js` 依次 `import` `variables.css` → `global.css` → antd reset。
+`global.css` **不再** `@import variables.css`（此前导致 `:root` 输出两次）。
+
+**组件样式**：全部 `<style scoped>`，通过 `var(--token)` 引用。antd 表格等需穿透时用 `:deep()`
+（见 `KamiSection.vue`）。
+
+**设计规范的单一来源**：`.dsh/skills/project-ui-system/SKILL.md`。
 
 ---
 
