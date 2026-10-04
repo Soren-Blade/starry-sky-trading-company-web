@@ -111,6 +111,9 @@ const REQUIRED_PROPS = {
     appleId: { account: 'a@b.c', password: 'p', status: 'available' },
     source: 'Stub',
   },
+  // HelpModal 的 title 同时作为可见标题与 aria-labelledby 的目标，
+  // 没有默认值（默认标题会让读屏念出一句与内容无关的话），因此单独渲染时必须给。
+  'HelpModal.vue': { title: '桩标题' },
 }
 
 const propsFor = (spec) => REQUIRED_PROPS[path.basename(spec)] || {}

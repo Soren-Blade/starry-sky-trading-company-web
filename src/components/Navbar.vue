@@ -34,6 +34,22 @@
         <!-- 样式主题切换（图标按钮 + 弹窗） -->
         <ThemeSwitcher />
 
+        <!--
+          购物车入口：只要有身份就显示（游客也能看自己的车）。
+          未登录时点它不跳转让登录弹窗先拦一道 —— 那样用户会以为按钮坏了。
+        -->
+        <router-link
+          v-if="userStore.userId"
+          to="/cart"
+          class="u-icon-btn navbar-cart"
+          :aria-label="cartLabel"
+        >
+          <span aria-hidden="true">🛒</span>
+          <span v-if="cartCount > 0" class="navbar-cart-badge" aria-hidden="true">
+            {{ cartCount > 99 ? '99+' : cartCount }}
+          </span>
+        </router-link>
+
         <!-- 未登录（含游客）显示登录入口 -->
         <button v-if="!isLoggedIn" type="button" class="u-btn-primary" @click="openLoginModal">
           登录 / 注册
@@ -59,16 +75,21 @@
               <p class="user-since">注册于 {{ toDate(userInfo.created_at) }}</p>
             </div>
             <div class="u-dropdown-divider"></div>
-            <button type="button" class="u-dropdown-item" @click="handleMyProfile">
+            <!--
+              下拉项一律用 <router-link>，不要用「button 里包 router-link」——
+              那是嵌套交互元素，键盘与读屏都会出问题（此前卡密管理项就是这么写的）。
+              需要先关菜单的场景由 @click 统一处理。
+            -->
+            <router-link class="u-dropdown-item" to="/user/profile" @click="handleMenuClick">
               个人中心
-            </button>
-            <button type="button" class="u-dropdown-item" @click="handleMyFavorites">
+            </router-link>
+            <router-link class="u-dropdown-item" to="/user/favorites" @click="handleMenuClick">
               我的收藏
-            </button>
-            <button type="button" class="u-dropdown-item" @click="handleMyOrders">
+            </router-link>
+            <router-link class="u-dropdown-item" to="/user/orders" @click="handleMenuClick">
               订单管理
-            </button>
-            <router-link class="u-dropdown-item" to="/user/kami" @click="handleMyKami">
+            </router-link>
+            <router-link class="u-dropdown-item" to="/user/kami" @click="handleMenuClick">
               卡密管理
             </router-link>
             <div class="u-dropdown-divider"></div>
@@ -113,13 +134,6 @@
         </li>
       </ul>
     </div>
-
-    <!-- 登录/注册模态框 -->
-    <LoginModal
-      v-if="showLoginModal"
-      @close="handleCloseLoginModal"
-      @login-success="handleLoginSuccess"
-    />
   </header>
 </template>
 
@@ -143,8 +157,8 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useShopStore } from '@/stores/shop'
+import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
-import LoginModal from './LoginModal.vue'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 import { NAV_MENU, PRODUCT_GRID, SITE } from '@/constants/index.js'
@@ -152,6 +166,7 @@ import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
 const userStore = useUserStore()
 const shopStore = useShopStore()
+const cartStore = useCartStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -160,14 +175,19 @@ const router = useRouter()
 const { isLoggedIn, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
 
 // 说明：这里**不**引入 useBodyScroll。
-// 滚动锁由 useBodyScroll 内部引用计数管理，LoginModal / ThemeSwitcher 是持有者，
+// 滚动锁由 useModalA11y / useBodyScroll 内部引用计数管理，弹窗组件是持有者，
 // 它们的卸载与关闭回调会自行释放，无需外部再解锁。
 
 const isScrolled = ref(false)
 const menuOpen = ref(false)
 const userMenuOpen = ref(false)
-const showLoginModal = ref(false)
 const navMenu = NAV_MENU
+
+/** 购物车角标：来自 cart store，登录后由 App.vue 拉取 */
+const cartCount = computed(() => cartStore.count)
+const cartLabel = computed(() =>
+  cartCount.value > 0 ? `购物车，${cartCount.value} 件商品` : '购物车'
+)
 
 /** 搜索关键词：双向绑定到数据层，商品网格据此过滤 */
 const keyword = computed({
@@ -183,8 +203,10 @@ const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
 }
 
+/** 收起所有菜单（抽屉与用户下拉） */
 const handleMenuClick = () => {
   menuOpen.value = false
+  userMenuOpen.value = false
 }
 
 const toggleUserMenu = () => {
@@ -202,42 +224,15 @@ const handleSearchSubmit = () => {
   }
 }
 
+/**
+ * 打开登录弹窗。
+ *
+ * 弹窗本体挂在 App.vue 上（全站唯一实例），这里只改 store 状态 ——
+ * 因为拉起登录的入口不止顶栏一个（下单、收藏、购物车、路由守卫都要能拉起）。
+ */
 const openLoginModal = () => {
-  showLoginModal.value = true
+  userStore.openLoginModal()
   menuOpen.value = false
-}
-
-const handleLoginSuccess = () => {
-  showLoginModal.value = false
-  userMenuOpen.value = false
-  menuOpen.value = false
-
-  // 若因路由守卫被挡回首页，登录成功后回到原目标页
-  const redirect = route.query.redirect
-  if (typeof redirect === 'string' && redirect.startsWith('/')) {
-    router.replace(redirect)
-  }
-}
-
-const handleCloseLoginModal = () => {
-  showLoginModal.value = false
-}
-
-// 个人中心 / 我的收藏 / 订单管理 尚未实现，仅关闭菜单
-const handleMyProfile = () => {
-  userMenuOpen.value = false
-}
-
-const handleMyFavorites = () => {
-  userMenuOpen.value = false
-}
-
-const handleMyOrders = () => {
-  userMenuOpen.value = false
-}
-
-const handleMyKami = () => {
-  userMenuOpen.value = false
 }
 
 const handleLogout = async () => {
@@ -474,6 +469,34 @@ onUnmounted(() => {
 
 .u-dropdown-item.logout {
   color: var(--danger);
+}
+
+/* ── 购物车入口与角标 ───────────────────────────────────── */
+.navbar-cart {
+  position: relative;
+  flex: none;
+}
+
+/* 角标压在图标按钮右上角：微型徽标圆角 + 强调底 + 反白字，
+   与 ToolCard 的收藏数徽标同构（描边取顶栏表面色，与背景连成一体） */
+.navbar-cart-badge {
+  position: absolute;
+  top: calc(var(--space-unit) * -0.5);
+  right: calc(var(--space-unit) * -0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--space-unit) * 2.5);
+  height: calc(var(--space-unit) * 2.5);
+  padding: 0 calc(var(--space-unit) * 0.5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border: var(--stroke-width) solid var(--bg-nav);
+  border-radius: var(--micro-badge-radius);
 }
 
 /* ── 汉堡按钮 ───────────────────────────────────────────── */

@@ -63,6 +63,7 @@
  */
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
 import { getEmojiGradient } from '@/hooks/useEmoji'
 import SectionHeader from '@/components/SectionHeader.vue'
@@ -78,6 +79,7 @@ const props = defineProps({
 })
 
 const shopStore = useShopStore()
+const router = useRouter()
 const { shopClass } = storeToRefs(shopStore)
 
 const isIndex = computed(() => props.variant === 'index')
@@ -85,9 +87,11 @@ const isIndex = computed(() => props.variant === 'index')
 /** 索引行号：两位补零（01、02…），等宽字体下不会因位数变化而抖动 */
 const formatOrder = (index) => String(index + 1).padStart(2, '0')
 
-// 分类详情页尚未实现，先记录点击
+/** 进入分类详情页（此前只 console.info 一句「待实现」） */
 const handleCategoryClick = (category) => {
-  console.info('查看分类（待实现）:', category.category_name)
+  const id = Number(category?.id)
+  if (!Number.isFinite(id)) return
+  router.push({ name: 'CategoryDetail', params: { id } })
 }
 </script>
 

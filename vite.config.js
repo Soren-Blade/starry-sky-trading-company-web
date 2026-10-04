@@ -29,6 +29,11 @@ export default defineConfig(({ mode }) => {
       strictPort: false,
       // 联调代理：把 VITE_API_BASE_URL 留空（或代码里走相对路径）时，
       // 前端请求会经由这里转发到后端，规避跨域并让 Cookie 落在同一 origin。
+      //
+      // 注意：`/user` 下既有后端接口也有**前端路由**（/user/kami、/user/orders…），
+      // 因此这里只能逐个列出具体接口，不能图省事写 `'/user'`。
+      // 同理，新增后端前缀时必须在这里补一条 —— 漏了不会报错，
+      // 只会让该接口在 dev 下打到 dev server 自己（404）。
       proxy: {
         '/user/login': { target: apiTarget, changeOrigin: true },
         '/user/register': { target: apiTarget, changeOrigin: true },
@@ -39,6 +44,9 @@ export default defineConfig(({ mode }) => {
         '/class': { target: apiTarget, changeOrigin: true },
         '/toolApi': { target: apiTarget, changeOrigin: true },
         '/kamiApi': { target: apiTarget, changeOrigin: true },
+        '/cartApi': { target: apiTarget, changeOrigin: true },
+        '/orderApi': { target: apiTarget, changeOrigin: true },
+        '/favoriteApi': { target: apiTarget, changeOrigin: true },
         '/userBackend': { target: apiTarget, changeOrigin: true },
         '/health': { target: apiTarget, changeOrigin: true },
       },

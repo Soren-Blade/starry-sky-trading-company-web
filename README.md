@@ -54,10 +54,13 @@ starry-sky-trading-company-web/
     │   ├── request.js            # axios 实例：注入 token、解析响应、401 刷新重试
     │   └── ask/                  # 按后端路由分组的接口封装
     │       ├── user.js           # /user
-    │       ├── userApi.js        # /userApi
-    │       ├── shop.js           # /shop 与 /class
+    │       ├── userApi.js        # /userApi（用户信息、资料修改）
+    │       ├── shop.js           # /shop 与 /class（含商品详情）
     │       ├── toolApi.js        # /toolApi
-    │       └── kami.js           # /kamiApi
+    │       ├── kami.js           # /kamiApi
+    │       ├── cart.js           # /cartApi
+    │       ├── order.js          # /orderApi
+    │       └── favorite.js       # /favoriteApi
     ├── assets/
     │   ├── styles/
     │   │   ├── variables.css     # 设计令牌名册（+ 默认主题 tech-minimal 的兜底值）
@@ -71,10 +74,14 @@ starry-sky-trading-company-web/
     │   ├── useToken/index.js             # localStorage 读写 token
     │   ├── useRefreshToken/index.js      # 刷新 token（再导出 @/api/request 的单飞实现）
     │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动（含引用计数）
+    │   ├── useModalA11y/index.js         # 模态无障碍：Escape / 焦点陷阱 / 焦点归还 / 滚动锁定
+    │   ├── useProductActions/index.js    # 商品的看详情 / 加购 / 立即下单（含未登录拦截）
+    │   ├── useOpenTool/index.js          # 打开外部工具（地址校验、弹窗拦截、复用已开窗口）
     │   ├── useClass/index.js             # 按 class 字段对工具分组
     │   ├── useEmoji/index.js             # emoji → 渐变色（分类卡底纹用）
     │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
     │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
+    │   ├── useToast/index.js             # 提示框门面（notify.success/warning/error/info）
     │   └── useSimpleTimeFormatter/index.js # 时间格式化与时区转换
     ├── pages/                    # 路由目标页面（见 §4）
     ├── router/
@@ -84,6 +91,8 @@ starry-sky-trading-company-web/
     │   ├── shop.js
     │   ├── tool.js
     │   ├── kami.js
+    │   ├── cart.js               # 购物车（服务端为唯一事实来源）
+    │   ├── favorite.js           # 收藏（登录走服务端、游客的工具有 localStorage 兜底）
     │   └── theme.js              # 设计风格：切换、单项自定义、持久化、写入 :root
     ├── theme/                    # 设计风格（样式体系的运行时层）
     │   ├── presets.js            # 五套风格的完整令牌取值 + 可调项定义
@@ -132,24 +141,49 @@ app.mount('#app')
 
 `src/router/index.js`，history 模式，全部页面按需懒加载。
 
-| 路径 | name | 组件 | 标题 |
-| --- | --- | --- | --- |
-| `/` | — | *重定向到 `/home`* | — |
-| `/home` | `Home` | `pages/Home.vue` | 首页 - 星辰商行 |
-| `/categories` | `Categories` | `pages/Categories.vue` | 商品分类 - 星辰商行 |
-| `/hot` | `Hot` | `pages/Hot.vue` | 热门推荐 - 星辰商行 |
-| `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 |
-| `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 |
-| `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 |
-| `/other/appleId` | `appleId` | `pages/AppleId.vue` | appleId - 星辰商行 |
-| `/user/kami` | `kami` | `pages/Kami.vue` | 卡密管理 - 星辰商行 |
-| `/:pathMatch(.*)*` | `NotFound` | `pages/NotFound.vue` | 页面未找到 - 星辰商行 |
+| 路径 | name | 组件 | 标题 | 需登录 |
+| --- | --- | --- | --- | --- |
+| `/` | — | *重定向到 `/home`* | — | — |
+| `/home` | `Home` | `pages/Home.vue` | 首页 - 星辰商行 | |
+| `/categories` | `Categories` | `pages/Categories.vue` | 商品分类 - 星辰商行 | |
+| `/hot` | `Hot` | `pages/Hot.vue` | 热门推荐 - 星辰商行 | |
+| `/product/:id` | `ProductDetail` | `pages/ProductDetail.vue` | 商品详情 - 星辰商行 | |
+| `/category/:id` | `CategoryDetail` | `pages/CategoryDetail.vue` | 分类商品 - 星辰商行 | |
+| `/cart` | `Cart` | `pages/Cart.vue` | 购物车 - 星辰商行 | |
+| `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 | |
+| `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
+| `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | |
+| `/other/appleId` | `appleId` | `pages/AppleId.vue` | appleId - 星辰商行 | |
+| `/user/kami` | `kami` | `pages/Kami.vue` | 卡密管理 - 星辰商行 | ✅ |
+| `/user/profile` | `Profile` | `pages/Profile.vue` | 个人中心 - 星辰商行 | ✅ |
+| `/user/favorites` | `Favorites` | `pages/Favorites.vue` | 我的收藏 - 星辰商行 | ✅ |
+| `/user/orders` | `Orders` | `pages/Orders.vue` | 订单管理 - 星辰商行 | ✅ |
+| `/user/orders/:orderNo` | `OrderDetail` | `pages/OrderDetail.vue` | 订单详情 - 星辰商行 | ✅ |
+| `/terms` | `Terms` | `pages/Legal.vue` | 用户协议 - 星辰商行 | |
+| `/privacy` | `Privacy` | `pages/Legal.vue` | 隐私政策 - 星辰商行 | |
+| `/rules` | `Rules` | `pages/Legal.vue` | 平台规则 - 星辰商行 | |
+| `/:pathMatch(.*)*` | `NotFound` | `pages/NotFound.vue` | 页面未找到 - 星辰商行 | |
 
-**导航守卫**：只有一个 `router.afterEach`，把 `to.meta.title` 写入 `document.title`。**没有任何鉴权守卫**（`/user/kami` 也未保护）。
+**导航守卫**有两个：
 
-**滚动行为**：优先恢复 `savedPosition`，否则回到顶部。
+1. `router.afterEach` 把 `to.meta.title` 写入 `document.title`。
+2. `router.beforeEach` **先确保身份就绪**（`userStore.init()`，幂等），
+   再判断 `to.meta.requiresAuth`：未登录时**打开登录弹窗**并把原目标写进
+   `query.redirect`，然后回首页。
+
+> 为什么必须在守卫里等身份：受保护接口要带 token，而组件在 `onMounted` 里立刻发请求。
+> 身份没就绪就发请求会 401 → 刷新失败 → 触发「登录态失效」回调 →
+> 被带回首页，表现就是**深链访问任何页面都静默变成首页**（实测冷启动访问 `/tool`）。
+>
+> 未登录时只弹提示不打开弹窗的话，用户还得自己找到右上角的登录入口 ——
+> 因此这里直接 `userStore.openLoginModal(...)`，弹窗本体挂在 `App.vue` 上（全站唯一实例）。
+
+**滚动行为**：优先恢复 `savedPosition`；有 `hash` 时滚动到锚点
+（页脚的「联系我们」→ `/about#about-contact` 依赖这条，否则锚点等于失效）；否则回到顶部。
 
 **导航菜单**（`constants/index.js` 的 `NAV_MENU`，被 `Navbar` 渲染）：首页、商品分类、热门推荐、工具分享、关于我们。
+顶栏右侧另有：样式主题、**购物车（带角标）**、登录/注册或用户头像下拉
+（个人中心 / 我的收藏 / 订单管理 / 卡密管理 / 退出登录）。
 
 > `/other/2fa` 与 `/other/appleId` 不在顶部导航里，属于直接通过 URL 访问的工具页。
 
@@ -160,8 +194,16 @@ app.mount('#app')
 | `Home.vue` | `HeroSection` + `CategoriesSection` + `HotProductsSection`；Hero 的"去逛逛"按钮滚动到分类区块 |
 | `Categories.vue` | 页头 + `CategoriesSection` |
 | `Hot.vue` | 页头 + `HotProductsSection` |
+| `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
+| `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格 |
+| `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
 | `Tool.vue` | 工具页：分类 tab + 搜索框 + "已收藏"筛选 + `ToolCard` 网格 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
+| `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、头像、性别、生日） |
+| `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
+| `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
+| `OrderDetail.vue` | 订单号标题带 + 明细面板 + 联系备注 + 状态时间线 + 动作行 |
+| `Legal.vue` | 左目录吸顶 + 右正文；三份文档共用一个组件，由 `meta.legalKey` 选内容 |
 | `AppleId.vue` | 仅包一层 `AppleIdSection`（页头已注释） |
 | `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制 |
 | `About.vue` | 静态内容：愿景、核心价值、联系方式 |
@@ -177,26 +219,75 @@ app.mount('#app')
 
 | 成员 | 说明 |
 | --- | --- |
-| `isLoggedIn` | 是否已登录 |
+| `isLoggedIn` | 是否已登录（`user_type === 'registered'`；游客也有 token，但不算登录） |
+| `isGuest` / `userId` | 是否游客 / 当前用户 id |
 | `userInfo` | 当前用户信息（来自 `GET /userApi/getUserInfo`） |
-| `visitorLogin()` | 本地有双 token 则直接拉用户信息，否则调 `POST /user/visitorLogin` 再拉 |
-| `getUserInfo()` | 拉取并合并到 `userInfo`，置 `isLoggedIn = true` |
-| `logout()` | 清空状态并把 localStorage 中的 token 写为空串 |
-| `inint()` | 空实现的占位（拼写有误，未接入） |
+| `loginModalOpen` | 登录/注册弹窗开关。**放 store 是因为拉起登录的入口不止顶栏一个** —— 下单、加购、收藏、路由守卫都要能拉起它；弹窗本体因此在 `App.vue` |
+| `init()` | 身份初始化：本地有双 token 就拉用户信息，否则调 `POST /user/visitorLogin`。并发调用共享同一个 Promise |
+| `getUserInfo()` | 拉取并合并到 `userInfo` |
+| `login(payload)` / `register(payload)` | 账号登录 / 注册，返回 `{ success, message }` |
+| `updateProfile(patch)` | 修改昵称/头像/性别/生日，成功后把回读结果并入 `userInfo` |
+| `openLoginModal(reason)` / `closeLoginModal()` | 打开（可带一句提示）/ 关闭登录弹窗 |
+| `logout()` | 清空状态并把 localStorage 中的 token 写为空串，随后重新以游客身份初始化 |
 
 ### `shop.js` — `useShopStore`
 
 | 成员 | 说明 |
 | --- | --- |
-| `shopClass` | 商品分类 |
-| `shopInfo` | 商品列表 |
+| `shopClass` | 商品分类树 |
+| `shopInfo` | 商品列表（`getProducts` 默认拉 `limit: 100`） |
 | `searchKeyword` | 商品搜索关键词（导航栏搜索栏写入） |
-| `filteredProducts` | **getter**：按 `searchKeyword` 过滤后的商品列表。匹配规则只此一处 —— 搜索栏与商品网格分处两个组件，规则不能各写一份 |
+| `filteredProducts` | **getter**：按 `searchKeyword` 过滤后的商品列表。匹配规则只此一处 |
 | `pagination` | 分页信息 |
 | `setSearchKeyword(kw)` | 写入搜索关键词（空串表示不过滤） |
 | `getCategories()` | 以 `{ tree: true }` 调 `/class/getCategories` |
-| `getProducts()` | 以 `{ in_stock: 'all' }` 调 `/shop/getProducts` |
+| `getProducts(extra)` | 以 `{ in_stock: 'all', limit: 100 }` 调 `/shop/getProducts` |
 | `init()` | 并行调用上面两个，并在 `finally` 里收尾 `loading` |
+
+> **搜索为什么仍在客户端**：`filteredProducts` 是搜索栏与商品网格共用的唯一匹配规则，
+> 改成服务端搜索意味着两处都要变成异步、且要各自处理 loading 与竞态。
+> 折中做法是把 `limit` 提到服务端上限（100），超过 100 件商品时首页只展示前 100 条，
+> 完整目录走分类详情页（那里按 `category_id` 过滤）。
+
+### `cart.js` — `useCartStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `items` / `totalQuantity` / `totalAmount` | 购物车行与汇总（**全部来自服务端**） |
+| `availableCount` / `unavailableCount` / `hasUnavailable` | 可下单与不可下单的计数 |
+| `availableItems` / `count` / `isEmpty` | 结算用、角标用、空态用的派生值 |
+| `fetch({silent})` | 拉购物车。`silent` 时不进入 loading（首屏角标刷新用） |
+| `add(productId, quantity)` / `updateQuantity(id, q)` / `remove(id)` / `clear()` | 四个写操作 |
+| `reset()` | 清空本地状态（切换账号时调用） |
+
+三条刻意的约定：
+
+1. **不做本地乐观更新**。每个写接口都返回整份购物车，store 直接把响应覆盖到 state ——
+   前端再算一遍金额就等于有两套逻辑，迟早对不上。
+2. **需要登录账号**。游客请求会拿到 403 `REGISTERED_ACCOUNT_REQUIRED`，
+   action 把它翻译成 `{ needLogin: true }` 交给调用方弹登录弹窗，
+   而不是把 403 当普通错误弹一个「操作失败」。
+3. **action 不抛异常**，统一返回 `{ success, message, needLogin }`。
+
+### `favorite.js` — `useFavoriteStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `productIds` / `toolIds` | 已收藏的 id（渲染星标用） |
+| `productItems` / `toolItems` | 收藏详情（「我的收藏」页用，服务端已补齐 `target`） |
+| `isProductFavorited(id)` / `isToolFavorited(id)` | 判断（id 兼容数字与字符串） |
+| `load(force)` | 从**正确的来源**加载；用 `loadedForUserId` 记住这份数据属于谁 |
+| `toggle(type, id)` / `toggleProduct(id)` / `toggleTool(id)` | 收藏 / 取消收藏 |
+| `reset()` | 清空（切换账号时调用） |
+
+**为什么工具收藏有两套存储**：改造前工具收藏**只有** localStorage（游客也能用），
+商品收藏则完全不存在。现在登录用户的收藏统一放到服务端（跨设备一致、换浏览器不丢），
+但**保留游客态的 localStorage 兜底**（沿用原 key `SSTC_TOOL_FAVORITES`，老数据不丢）——
+直接砍掉会让游客点星星时突然被要求登录，那是功能退化而不是完善。
+游客收藏**商品**时返回 `{ needLogin: true }`。
+
+`loadedForUserId` 用 `user:<id>` / `guest` 作为键：同一用户重复进页面直接返回，
+切换账号时自动重载 —— 否则会把上一个账号的收藏显示给新账号。
 
 ### `tool.js` — `useToolStore`
 
@@ -255,7 +346,8 @@ app.mount('#app')
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`）。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
-| `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。模态约定见下 |
+| `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。「忘记密码」与新窗口「微信/QQ 登录」都指向 `HelpModal`（如实说明第三方登录尚未接入）。模态约定见下 |
+| `HelpModal.vue` | 通用「说明 + 联系方式」弹窗：标题、引导段、编号步骤、可点的 `tel:`/`mailto:` 联系方式。联系方式取自 `constants/CONTACT`，与页脚、关于我们共用一份 |
 | `SectionHeader.vue` | **区块头**（icon + title + description）。样式定义在 `global.css` 的 `.section-header` 系列，供各 Section 组件复用 |
 | ~~`PageHeader.vue`~~ | **已删除**（第三轮）。除主页外的页面不再套同一个页头，各自设计开场 —— 见 §9.9 |
 
@@ -277,13 +369,32 @@ app.mount('#app')
 
 ### 弹窗（模态）约定
 
-`LoginModal.vue` 是唯一模态组件，新增弹窗需照做：
+约定**只有一个实现**：`hooks/useModalA11y/index.js`。
+`LoginModal`、`ThemeSwitcher`、`HelpModal` 三处都用它，不再各写一份。
 
-- `role="dialog"` + `aria-modal="true"` + `aria-labelledby` 指向一个 `.visually-hidden` 标题
-- **Escape 关闭**：在 `document` 上监听 `keydown`（只挂在容器上不可靠，焦点可能不在其中）
-- **焦点陷阱**：`Tab` / `Shift+Tab` 在弹窗内循环
-- **焦点归还**：打开前记录 `document.activeElement`，卸载时归还
-- **滚动锁定**：`useBodyScroll`，卸载时自动恢复
+| 约定 | 实现位置 |
+| --- | --- |
+| `role="dialog"` + `aria-modal="true"` + `aria-labelledby` 指向一个 `.visually-hidden` 标题 | 组件模板 |
+| **Escape 关闭**：监听挂在 `document` 上（只挂容器不可靠，焦点可能不在其中） | `useModalA11y` |
+| **焦点陷阱**：`Tab` / `Shift+Tab` 在弹窗内循环 | `useModalA11y` |
+| **焦点归还**：打开前记录 `document.activeElement`，关闭时归还 | `useModalA11y` |
+| **滚动锁定**：`useBodyScroll`（引用计数），关闭自动恢复 | `useModalA11y` |
+
+两种用法：
+
+```js
+// 挂载即打开（LoginModal / HelpModal）
+const { modalRef } = useModalA11y({ close: () => emit('close') })
+
+// 常驻组件 + 由状态开关（ThemeSwitcher）
+const { modalRef, activate, deactivate } = useModalA11y({ close, auto: false, initialFocus: '.theme-close' })
+watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
+```
+
+> **嵌套弹窗必须是兄弟节点，不能是子节点。** `.u-modal-overlay` 上有 `backdrop-filter`，
+> 而 `backdrop-filter` 会让元素成为 `fixed` 后代的包含块（与 Navbar 踩过的坑同源）——
+> 嵌在里面的弹窗会以遮罩层的 padding box 为参照定位，并在遮罩层滚动时跟着滚。
+> `LoginModal` 因此用**两个根节点**（遮罩层 + `HelpModal`）。
 
 | 组件 | 说明 |
 | --- | --- |
@@ -337,11 +448,14 @@ const requests = axios.create({
 
 | 模块 | 导出 | 对应后端 |
 | --- | --- | --- |
-| `user.js` | `visitorLogin` | `POST /user/visitorLogin` |
-| `userApi.js` | `getUserInfo` | `GET /userApi/getUserInfo` |
-| `shop.js` | `getCategories(params)`、`getProducts(params)` | `/class/getCategories`、`/shop/getProducts` |
-| `toolApi.js` | `getTools`、`getAppleIds` | `/toolApi/getTools`、`/toolApi/getAppleIds` |
-| `kami.js` | `getUserCards(user_id, params)`、`activateCard(data)`、`verifyCard(data)` | `/kamiApi/*` |
+| `user.js` | `visitorLogin`、`login`、`register` | `POST /user/visitorLogin`、`/user/login`、`/user/register` |
+| `userApi.js` | `getUserInfo`、`updateProfile(patch)` | `GET /userApi/getUserInfo`、`PUT /userApi/profile` |
+| `shop.js` | `getCategories(params)`、`getProducts(params)`、`getProduct(id)` | `/class/getCategories`、`/shop/getProducts`、`/shop/getProduct/:id` |
+| `toolApi.js` | `getTools`、`getToolClasses`、`getTool`、`getAppleIds` | `/toolApi/*` |
+| `kami.js` | `getUserCards(user_id, params)`、`activateCard(data)`、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
+| `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
+| `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
+| `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
 
 `api/index.js` 把上述模块的具名导出汇总为一个对象并默认导出，组件里通过 `import api from '@/api/index'` 统一调用（如 `api.getProducts(params)`）。
 
@@ -367,11 +481,15 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useToken` | `setAccessToken` / `setRefreshToken` / `getAccessToken` / `getRefreshToken` | localStorage 读写封装 |
 | `useRefreshToken` | `refreshToken()` / `isRefreshToken(config)` | 刷新 token；promise 级去重 |
 | `useBodyScroll` | `disableScroll` / `enableScroll` / `toggle` | 弹窗打开时锁 `body` 滚动，并在 `onUnmounted` 自动恢复 |
-| `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类，并附带每个分类的图标、数量、最热门工具、是否含新工具 |
-| `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表和一个 `EmojiGradientGenerator` 单例类；绝大部分导出尚未被使用 |
+| `useModalA11y` | `modalRef` / `activate` / `deactivate` / `handleKeydown` | 模态无障碍的**唯一实现**（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）。`auto: false` 用于常驻组件，`initialFocus` 支持选择器/元素/函数 |
+| `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message? }` |
+| `useOpenTool` | `openTool(tool)` | 打开外部工具：地址校验、弹窗被拦截的提示、复用已开窗口（同一工具点两次不会开出两个标签页） |
+| `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
+| `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表 |
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
-| `useKamiDisplay` | `getStatusText` / `getStatusColor` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与配色用 `lookupOr` 查表以避开原型链；工具 id 兼容数字与字符串（后端 bigint 返回字符串）。状态映射与筛选下拉选项同源，避免两处错位 |
-| `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated`。`activate()` 返回 `{ success, reason, message }`，`reason` 区分 `empty_tool`/`empty_code`/`server`/`thrown`/`ok`，且**不向外抛异常** |
+| `useToast` | `notify.success/warning/error/info` | 提示框门面，供组件内外统一调用（路由守卫与 store action 也用它） |
+| `useKamiDisplay` | `getStatusText` / `getStatusColor` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与配色用 `lookupOr` 查表以避开原型链；工具 id 兼容数字与字符串 |
+| `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated` |
 
 > `useKamiActivation` 有一条与其他 hook 不同的约定：**激活成功后若列表刷新失败，
 > 仍报告成功**（文案附「请手动刷新」）。因为卡密在服务端已经生效，
@@ -476,6 +594,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | --- | --- |
 | 按钮 | `.u-btn-primary` / `.u-btn-secondary` / `.u-icon-btn` |
 | 输入框/搜索框 | `.u-input` / `.u-search` / `.u-search-icon` |
+| 表单字段 | `.u-field` / `.u-field-label` / `.u-field-hint` / `.u-field-error` / `.u-field-value`（只读值用等宽字体，与可编辑输入框区分） |
 | 卡片 | `.ui-card` / `.ui-card--lg` / `.ui-card-media` / `.ui-card-body` / `.ui-card-title` / `.ui-card-sub` |
 | 价格 | `.u-price` / `.u-price-decimals` / `.u-price-original` / `.u-discount` |
 | 标签 | `.u-tag` + `--accent/--success/--warning/--danger/--info` |
@@ -484,6 +603,15 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
 | 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
 | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
+| 事务页外壳 | `.page-shell` / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
+| 事务页面板 | `.page-panel(-head)` / `.page-note(--warning/--error)` / `.page-empty(-title/-hint)` / `.page-actions` |
+
+> **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
+> `.page-header` 被删是因为**营销页**（分类索引 / 榜单 / 工作台 / 目录 / 编辑式双栏）
+> 各有自己的开场节奏，套同一个居中页头等于「一个模板换文案」。
+> 而购物车、订单、收藏、个人中心、法务与两个详情页属于**另一族**：
+> 信息密集型事务页 —— 窄标题带 + 单列内容 + 明确的动作区，版式本就应当一致。
+> 把这族的外壳收成一套共享类，好过在 8 个页面里各抄一遍（约 320 行相同 CSS）。
 
 命名迁移（旧 → 新）：`.u-cta` → `.u-btn-primary`、`.u-btn` → `.u-btn-secondary`、
 `.u-chip` → `.u-tag`；`.u-cta--lg` 已删除（规范没有「大按钮」这一档）。
@@ -515,8 +643,16 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 主页 `/home` | Hero + 分类卡片网格 + 商品网格 | Hero（眉标 + 大字标题 + 双 CTA + 特性行 + 视觉面板） |
 | 商品分类 `/categories` | **索引**：行式索引面板（序号 + 图标 + 名称 + 说明 + 浏览），`CategoriesSection` 的 `variant="index"` | 竖排：眉标 + 大字标题 + 说明 + 分类数 |
 | 热门推荐 `/hot` | **榜单**：标题带 + 带序号的商品网格，`HotProductsSection` 的 `variant="board"` | 横向标题带（左标题 / 右计数） |
+| 商品详情 `/product/:id` | **事务页**：面包屑 + 左图右信息两栏 + 描述面板 + 同类商品 | `.page-shell-head`（眉标 + 大字标题） |
+| 分类商品 `/category/:id` | **事务页**：标题带（含子分类入口）+ 商品网格 | `.page-shell-head--row` |
+| 购物车 `/cart` | **事务页**：左条目列表 + 右吸顶结算面板 | `.page-shell-head--row`（右侧件数标签） |
 | 工具分享 `/tool` | **工作台**：左侧筛选轨（分类 + 计数 + 已收藏）吸顶 + 右侧工具条与网格 | 左对齐：眉标 + 大字标题 + 说明 + 工具数 |
 | 卡密管理 `/user/kami` | **控制台**：左激活面板（吸顶）+ 右卡密表格与分页 | 眉标 + 大字标题 + 说明 + 卡密总数 |
+| 个人中心 `/user/profile` | **事务页**：左只读账号信息 / 右可编辑资料 | `.page-shell-head--row` |
+| 我的收藏 `/user/favorites` | **事务页**：胶囊页签 + 卡片网格 | `.page-shell-head--row` |
+| 订单管理 `/user/orders` | **事务页**：状态页签 + 订单卡片列表 + 分页 | `.page-shell-head--row` |
+| 订单详情 `/user/orders/:orderNo` | **事务页**：订单号标题带 + 明细 / 备注 / 状态时间线三个面板 | 标题带带等宽订单号 |
+| 用户协议 / 隐私政策 / 平台规则 | **事务页 · 编辑式双栏**：左目录吸顶 + 右条款正文 | 眉标 + 标题 + 最后更新日期 |
 | 共享苹果 ID `/other/appleId` | **目录**：左线路轨（使用说明折叠 + 线路锚点）+ 右账号目录 | 眉标 + 大字标题 + 说明 + 双线路计数 |
 | 关于我们 `/about` | **编辑式双栏**：左侧目录吸顶 + 右侧正文（编号价值列表 + 标签值对照表） | 左栏：眉标 + 大字标题 + 说明 + 页内锚点 |
 | 2FA `/other/2fa` | **终端面板**：窗口标题栏（三个圆点 + 等宽标题）+ 输入区 + 读数区 + 进度条；教程区在面板下方做键值对照 | 面板标题栏 |
@@ -592,11 +728,17 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 （5173 被占用时 Vite 自动退到 5174、5175……，`strictPort: false`），也不需要后端 CORS 白名单配合。
 
 `vite.config.js` 已为 `/user/login`、`/user/register`、`/user/visitorLogin`、`/user/refreshToken`、
-`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/userBackend`、`/health` 配置了开发代理，
+`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/cartApi`、`/orderApi`、`/favoriteApi`、
+`/userBackend`、`/health` 配置了开发代理，
 默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
-由于 `/user` 下既有后端接口也有前端路由（`/user/kami` 是页面），代理只列了四个具体接口而非 `/user` 前缀 ——
-**新增后端接口时若前缀不是上述之一，需要同步在这里加代理规则**，否则该接口在 dev 下会 404
-（打到 dev server 自己，不会转发给后端）。
+由于 `/user` 下既有后端接口也有前端路由（`/user/kami`、`/user/orders` 是页面），代理只列了四个具体接口
+而非 `/user` 前缀 —— **新增后端接口时若路径不在上述之内，需要同步在这里加代理规则**，
+否则该接口在 dev 下会 404（打到 dev server 自己，不会转发给后端，而且返回的是 index.html，
+前端拿到一段 HTML 去解析，报的却是「网络错误」，排查方向会被带偏）。
+
+> `npm run verify:dev` 现在会**静态比对**「前端 `src/api/ask/*.js` 里的每条调用路径」
+> 与「`vite.config.js` 的 proxy 键」，并真实请求三个交易前缀确认返回的是 JSON 而不是
+> index.html。忘记加代理规则会被这条断言直接拦下。
 
 > 只有「刻意把 `VITE_API_BASE_URL` 设成 `http://localhost:8080`（直连、跨源）」时才需要后端
 > 的 `CORS_ORIGINS` 放行；那份白名单在 server 仓库的 `.env` 里，且支持 `/正则/` 条目以覆盖端口漂移。
@@ -607,11 +749,16 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 421 个用例）
+npm test             # 单元测试（node:test，共 469 个用例）
 npm run check        # lint + test
-npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
+npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（16 项）
 npm run verify       # lint + test + build + verify:dev
 ```
+
+> `npm run build` 在本机偶尔会因 esbuild 清理系统临时目录失败而报
+> `[vite:esbuild-transpile] remove ... Access is denied` —— 那是环境问题而非代码问题。
+> 把 `TEMP`/`TMP` 指到工作区内的目录即可：
+> `$env:TEMP="F:\Starry Sky Trading Company\.npm-cache\tmp"; npm run build`。
 
 ### `npm run verify:dev` —— 唯一的「真实运行」验证
 
@@ -624,6 +771,8 @@ HMR 能推送。`scripts/verify-dev.cjs` 补上这一段：
 | `/` 返回 200 且含 HMR 客户端与入口 | 确认 dev 中间件正常 |
 | 代理 `/health` 转发到后端 | 真实后端，返回后端 JSON |
 | 代理 `POST /user/visitorLogin` 返回 token | 确认带响应头的接口也能透传 |
+| **代理能覆盖全部前端 API 调用路径** | 静态比对 `src/api/ask/*.js` 的每条调用路径与 `vite.config.js` 的 proxy 键（整条匹配或首段匹配） |
+| **三个交易前缀真实转发** | `/cartApi`、`/orderApi`、`/favoriteApi` 经 5173 请求后端，断言返回 JSON 而不是 index.html |
 | HMR WebSocket 握手 | **必须带子协议 `vite-hmr`**，否则握手失败 |
 | 改源文件后收到变更推送 | 实测收到 `custom:file-changed` 且指向该文件 |
 | 未触发整页 reload | HMR 应为局部热更新 |
@@ -694,6 +843,8 @@ test/
 ├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
 ├── stores.tool.test.js               # 工具 store：toolData 形状、分类产出、Apple ID 双来源
 ├── stores.kami.test.js               # 卡密 store：用户切换重置、筛选拼装、分页合并
+├── stores.cart.test.js               # 购物车 store：整份覆盖、needLogin 翻译、loading 复位
+├── stores.favorite.test.js           # 收藏 store：游客走 localStorage、登录走服务端、缓存键按 userId
 ├── useKamiDisplay.test.js            # 卡密展示层纯函数（状态文案/配色、工具名、日期）
 ├── useKamiActivation.test.js         # 卡密激活流程（校验、服务端失败、异常、activating 复位）
 ├── designTokens.test.js              # 设计令牌卫生（无死令牌、断点白名单、无重复媒体查询）
@@ -703,10 +854,11 @@ test/
 ├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
 ├── renderComponents.test.js          # 组件渲染（SSR）：全部 .vue 渲染、无警告/插值事故
 ├── renderKamiData.test.js            # 注入真实 store 数据渲染：逐格断言 8 列内容与状态分支
+├── renderTradeData.test.js           # 注入 store 数据渲染交易页：购物车/收藏/个人中心/法务的具体内容
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 421 个用例。
+共 469 个用例。
 
 ### 主题契约测试
 
@@ -747,7 +899,7 @@ test/
 
 1. 前端 `src/api/ask/*.js` 里调用的每个「方法 + 路径」在 server 的 `src/router/*` 中都有对应路由
 2. 不存在同名路径但方法不一致的情况
-3. 12 个关键接口（登录/注册/刷新/用户信息/商品/分类/工具/卡密/探活）显式存在
+3. 26 个关键接口（登录/注册/刷新/用户信息/资料修改/商品列表与详情/分类/工具/卡密/购物车/订单/收藏/探活）显式存在
 4. 解析器自检 —— 解析结果数量低于阈值即失败，避免正则失效导致「假通过」
 
 动态段会归一化后比较（前端 `${userId}` 与后端 `:user_id` 视为同一段）。
@@ -820,11 +972,14 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 
 | 未覆盖 | 原因与说明 |
 | --- | --- |
-| 组件渲染 | 需要 jsdom（或在 CI 里用真实浏览器）；当前加载器不渲染 SFC |
+| 真实浏览器行为 | 本机 `bsk`（BrowserSkill CLI）未安装，无法真实打开页面。CSS 布局、响应式、真实点击/键盘事件、无障碍树都只能靠人工看 |
 | `hooks/useBodyScroll` | 依赖 DOM 尺寸测量 |
+| `hooks/useModalA11y` 的焦点陷阱 | 依赖 `offsetParent` 与真实焦点，SSR 下拿不到 |
+| 由 `onMounted` 取数的页面内容 | SSR 不执行 `onMounted`，`Orders` / `OrderDetail` / `ProductDetail` / `CategoryDetail` 只能断言首屏骨架（见 `renderTradeData.test.js` 末尾） |
 
 已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、`useKamiDisplay`、`useKamiActivation`、
-四个 store（`user` / `shop` / `tool` / `kami`），以及跨仓库的接口契约。
+六个 store（`user` / `shop` / `tool` / `kami` / `cart` / `favorite`），
+带数据的页面渲染（卡密表格逐格、交易页具体内容），以及跨仓库的接口契约。
 
 > 测试基础设施（`test/loaders/alias.mjs`、`test/setup.js`）模拟了 Vite 的解析规则；
 > 若 `vite.config.js` 的 `resolve.alias` 有变动，这里需要同步。
@@ -882,7 +1037,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（421 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（469 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

@@ -1059,6 +1059,210 @@ button.u-tag:hover:not(.u-tag--accent) {
  */
 
 /* ────────────────────────────────────────────────────────────
+ * 15. 事务页外壳与表单字段
+ *
+ * 为什么这里可以有一套共享外壳，而 `.page-header` 当年必须删掉：
+ *   `.page-header` 被删，是因为**营销页**（分类索引 / 榜单 / 工作台 / 目录 /
+ *   编辑式双栏）各有自己的信息结构与开场节奏，套同一个居中页头等于
+ *   「一个模板换文案」。而购物车、订单、收藏、个人中心、法务与两个详情页
+ *   属于**另一族**：信息密集型事务页 —— 窄标题带 + 单列内容 + 明确的动作区，
+ *   版式本来就应当一致。把这族的外壳收成一套共享类，
+ *   好过在 8 个文件里各抄一遍（约 320 行完全相同的 CSS）。
+ *
+ * 用法：
+ *   <div class="page-shell">
+ *     <header class="page-shell-head">
+ *       <div>
+ *         <p class="page-shell-eyebrow">EYEBROW</p>
+ *         <h1 class="page-shell-title">标题</h1>
+ *         <p class="page-shell-desc">说明</p>
+ *       </div>
+ *       <p class="u-tag u-tag--accent">计数 / 状态</p>
+ *     </header>
+ *     <section class="page-panel">…</section>
+ *   </div>
+ * ──────────────────────────────────────────────────────────── */
+
+.page-shell {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  /* 顶栏是 sticky 且参与文档流，页面不再自己留顶部占位（见 App.vue） */
+  padding: var(--section-gap) var(--container-padding);
+}
+
+/* 标题带：默认竖排；--row 变体让动作/计数贴右侧（列表页用） */
+.page-shell-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: var(--section-gap);
+}
+
+.page-shell-head--row {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 3);
+}
+
+.page-shell-eyebrow {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--accent);
+}
+
+.page-shell-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+}
+
+.page-shell-title-link {
+  color: inherit;
+  transition: color var(--transition-interactive);
+}
+
+.page-shell-title-link:hover {
+  color: var(--accent);
+}
+
+.page-shell-desc {
+  max-width: var(--container-narrow);
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* 面板：事务页的内容块。与 .ui-card 的区别是不带悬停位移与媒体区规则 ——
+ * 面板是「一片区域」，不是「一件可点开的东西」 */
+.page-panel {
+  padding: calc(var(--space-unit) * 3);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.page-panel + .page-panel {
+  margin-top: calc(var(--space-unit) * 3);
+}
+
+.page-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  margin: 0 0 calc(var(--space-unit) * 2);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+}
+
+/* 小字说明：与正文拉开层级，用于「下单说明」「只读字段提示」这类旁注 */
+.page-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.page-note--warning {
+  padding: var(--tag-padding-y) calc(var(--space-unit) * 1.5);
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-radius: var(--radius-input);
+}
+
+.page-note--error {
+  padding: var(--tag-padding-y) calc(var(--space-unit) * 1.5);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius-input);
+}
+
+/* 空态：事务页的空列表统一用它，与 HotProductsSection 的 .grid-note 同构 */
+.page-empty {
+  padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2.5);
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.page-empty-title {
+  margin: 0 0 calc(var(--space-unit));
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+.page-empty-hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* 动作行：一行按钮，窄屏改为整宽堆叠 */
+.page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+/* ── 表单字段 ───────────────────────────────────────────────
+ * LoginModal 里的 .form-group 只管登录弹窗；事务页新增了资料表单、
+ * 结算表单等多处同类结构，统一收在这里，避免第三次抄同一段。 */
+.u-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.u-field-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  color: var(--text-secondary);
+}
+
+.u-field-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.u-field-error {
+  font-size: var(--fs-label);
+  color: var(--danger);
+}
+
+/* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开 */
+.u-field-value {
+  min-height: var(--input-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--input-padding-x);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-input);
+  overflow-wrap: anywhere;
+}
+
+/* ────────────────────────────────────────────────────────────
  * 14. 响应式与移动端缩放
  * 统一断点：575 / 767 / 991 / 1199（与 variables.css 末尾的文档注释一致）
  * ──────────────────────────────────────────────────────────── */
@@ -1167,6 +1371,53 @@ button.u-tag:hover:not(.u-tag--accent) {
   .section-title,
   .title-icon {
     font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
+  }
+
+  /* 事务页：区块留白 ×0.6、两侧内边距 ×0.8、标题 ×0.7、正文 ×0.95、
+   * 面板内边距 ×0.8；标题带在窄屏纵排（右侧计数/动作自己换行） */
+  .page-shell {
+    padding: calc(var(--section-gap) * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  .page-shell-head,
+  .page-shell-head--row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(var(--space-unit) * 2);
+    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
+  .page-shell-title {
+    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
+  }
+
+  .page-shell-desc {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
+
+  .page-panel {
+    padding: calc(var(--space-unit) * 3 * var(--mobile-padding-scale));
+  }
+
+  .page-panel-head {
+    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
+  }
+
+  .page-empty {
+    padding: calc(var(--space-unit) * 6 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+  }
+
+  /* 动作行：窄屏整宽堆叠，按钮不再半截宽 */
+  .page-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .u-field-value {
+    min-height: calc(var(--input-height) * var(--mobile-control-scale));
+    padding: 0 calc(var(--input-padding-x) * var(--mobile-padding-scale));
   }
 }
 

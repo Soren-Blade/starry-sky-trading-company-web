@@ -104,12 +104,16 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import ToolCard from '@/components/ToolCard.vue'
 import { useToolStore } from '@/stores/tool'
+import { useFavoriteStore } from '@/stores/favorite'
+import { useOpenTool } from '@/hooks/useOpenTool'
 import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
 import { PAGES, TOOL_PAGE } from '@/constants/index.js'
 
 const toolStore = useToolStore()
+const favoriteStore = useFavoriteStore()
 const { toolData, activeCategory, toolsLoading, toolsError } = storeToRefs(toolStore)
+const { openTool } = useOpenTool()
 
 const searchQuery = ref('')
 const showFavorites = ref(false)
@@ -126,28 +130,14 @@ const railClasses = computed(() =>
   (toolData.value.classes || []).filter((item) => String(item.class || '').trim() !== '')
 )
 
-// 收藏为本地偏好（尚无后端接口），持久化到 localStorage 以便刷新后保留
-const FAVORITES_KEY = 'SSTC_TOOL_FAVORITES'
-
-const loadFavorites = () => {
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return new Set(Array.isArray(parsed) ? parsed.map(Number) : [])
-  } catch {
-    return new Set()
-  }
-}
-
-const favoriteTools = ref(loadFavorites())
-
-const persistFavorites = () => {
-  try {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favoriteTools.value]))
-  } catch {
-    /* 隐私模式下不可写，忽略 */
-  }
-}
+/**
+ * 收藏集合来自 favorite store。
+ *
+ * 此前是组件内的 localStorage 逻辑；现在统一到 store，因为「我的收藏」页
+ * 也要读同一份数据 —— 而且登录用户的收藏应该跟着账号走（换浏览器不丢），
+ * 游客仍然落在 localStorage（store 内部处理这条分支，组件不关心）。
+ */
+const favoriteTools = computed(() => new Set(favoriteStore.toolIds))
 
 /** 统一取小写字符串，兼容后端可能返回 null 的字段 */
 const lower = (value) => (value == null ? '' : String(value).toLowerCase())
@@ -188,71 +178,21 @@ const toggleFavorites = () => {
   }
 }
 
-// 记录已打开的工具窗口，避免同一工具重复开窗
-// 使用 Map 并在每次打开时顺带清理已关闭的引用，避免长期驻留
-const openedWindows = new Map()
-
+/** 打开外部工具（含未配置地址、非法地址、弹窗被拦截三种处理） */
 const handleOpenTool = (tool) => {
-  const url = tool?.tool_path
-
-  if (!url || typeof url !== 'string') {
-    notify.warning(TOOL_PAGE.missingPath)
-    return
-  }
-
-  // 顺带清理已关闭的窗口引用
-  for (const [key, win] of openedWindows) {
-    if (win.closed) openedWindows.delete(key)
-  }
-
-  let absoluteUrl
-  try {
-    absoluteUrl = new URL(url, window.location.origin).href
-  } catch {
-    notify.error(TOOL_PAGE.invalidPath)
-    return
-  }
-
-  const existing = openedWindows.get(url)
-  if (existing && !existing.closed) {
-    try {
-      // 窗口仍停留在原地址时直接聚焦，否则重新打开
-      if (existing.location.href === absoluteUrl) {
-        existing.focus()
-        return
-      }
-    } catch {
-      // 跨域读取 location 会抛错，视为页面已变化
-    }
-    openedWindows.delete(url)
-  }
-
-  const win = window.open(url, '_blank')
-  if (!win) {
-    notify.warning(TOOL_PAGE.popupBlocked)
-    return
-  }
-  openedWindows.set(url, win)
+  openTool(tool)
 }
 
-const handleToggleFavorite = (tool) => {
-  const id = Number(tool?.id)
-  if (!Number.isFinite(id)) return
-
-  if (favoriteTools.value.has(id)) {
-    favoriteTools.value.delete(id)
-    notify.success(TOOL_PAGE.removedFavorite)
-  } else {
-    favoriteTools.value.add(id)
-    notify.success(TOOL_PAGE.addedFavorite)
-  }
-  // Set 是响应式 ref 的内部可变对象，需触发一次更新
-  favoriteTools.value = new Set(favoriteTools.value)
-  persistFavorites()
+const handleToggleFavorite = async (tool) => {
+  const result = await favoriteStore.toggle('tool', tool?.id)
+  if (result.success) notify.success(result.favorited ? TOOL_PAGE.addedFavorite : TOOL_PAGE.removedFavorite)
+  else notify.error(result.message)
 }
 
 onMounted(() => {
   toolStore.init()
+  // 收藏与工具列表并行取；失败不影响工具网格
+  favoriteStore.load()
 })
 </script>
 

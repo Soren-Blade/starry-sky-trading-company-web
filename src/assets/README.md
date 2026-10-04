@@ -136,6 +136,7 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
    | --- | --- |
    | 按钮 | `.u-btn-primary` / `.u-btn-secondary` / `.u-icon-btn` |
    | 输入框 | `.u-input` / `.u-search` / `.u-search-icon` |
+   | 字段（表单） | `.u-field` / `.u-field-label` / `.u-field-hint` / `.u-field-error` / `.u-field-value` |
    | 卡片 | `.ui-card` / `.ui-card--lg` / `.ui-card-media` / `.ui-card-body` / `.ui-card-title` / `.ui-card-sub` / `.ui-card-interactive` |
    | 价格 | `.u-price` / `.u-price-decimals` / `.u-price-original` / `.u-discount` |
    | 标签 | `.u-tag` + `--accent/--success/--warning/--danger/--info` |
@@ -144,10 +145,18 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
    | 下拉 | `.u-dropdown` / `.u-dropdown-item` / `.u-dropdown-item--active` / `.u-dropdown-divider` |
    | 进度与加载 | `.u-progress` / `.u-progress-bar` / `.u-spinner`(+-sm/-lg) / `.u-loading-block` / `.u-skeleton` |
    | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
+   | 事务页外壳 | `.page-shell` / `.page-shell-head`(+-row) / `.page-shell-eyebrow` / `.page-shell-title`(+-link) / `.page-shell-desc` |
+   | 事务页面板 | `.page-panel` / `.page-panel-head` / `.page-note`(+-warning/-error) / `.page-empty`(+-title/-hint) / `.page-actions` |
+
+   **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
+   `.page-header` 被删是因为**营销页**（分类索引 / 榜单 / 工作台 / 目录 / 编辑式双栏）
+   各有自己的开场节奏，套同一个居中页头等于「一个模板换文案」。
+   而购物车、订单、收藏、个人中心、法务与两个详情页属于**另一族**：
+   信息密集型事务页 —— 窄标题带 + 单列内容 + 明确的动作区，版式本就应当一致。
+   把这族的外壳收成一套共享类，好过在 8 个页面里各抄一遍（约 320 行相同 CSS）。
 
 6. **共享结构类**：`.section-header` 系列、`.visually-hidden`、
-   `.hide-mobile` / `.show-mobile`
-7. **焦点管理**：`:focus-visible` 统一样式
+   `.hide-mobile` / `.show-mobile`7. **焦点管理**：`:focus-visible` 统一样式
 8. **移动端缩放**：文件末尾三个媒体查询里统一处理
    控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题 ×0.7、正文 ×0.95、圆角不变
 

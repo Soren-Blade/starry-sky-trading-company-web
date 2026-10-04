@@ -221,20 +221,15 @@
  * 无障碍遵循项目既有的模态约定：role=dialog + aria-modal + 隐藏标题、
  * Escape 关闭、Tab 焦点陷阱、焦点归还、滚动锁定。
  */
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { CUSTOM_FIELDS } from '@/theme/presets.js'
 import { THEME_PANEL } from '@/constants/content.js'
-import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll'
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 const themeStore = useThemeStore()
-const { disableScroll, enableScroll } = useBodyScroll()
 
 const tab = ref('preset')
-const modalRef = ref(null)
-
-/** 打开弹窗前拥有焦点的元素，关闭后归还焦点 */
-let previouslyFocused = null
 
 const tabId = (name) => `theme-tab-${name}`
 const panelId = (name) => `theme-panel-${name}`
@@ -246,6 +241,22 @@ const isChanged = (key) => themeStore.customizedKeys.includes(key)
 const accentValue = computed(() => themeStore.custom.accent || themeStore.theme.tokens['--accent'])
 
 const close = () => themeStore.closePanel()
+
+/**
+ * 模态约定（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）走统一的 useModalA11y。
+ *
+ * 与 LoginModal 的差别只有两点，都由参数表达：
+ *   - `auto: false` —— 本组件常驻，弹窗由 `themeStore.panelOpen` 开关，
+ *     不能在组件挂载时就激活；
+ *   - `initialFocus` —— 打开后把焦点放到关闭按钮上，而不是第一个输入框
+ *     （主题弹窗里第一个可聚焦元素是页签，聚焦它会立刻显示焦点环，
+ *      视觉上像是「已经选中了」）。
+ */
+const { modalRef, activate, deactivate } = useModalA11y({
+  close,
+  auto: false,
+  initialFocus: '.theme-close',
+})
 
 /** 范围控件用 input 事件，拖动过程中即时预览 */
 const onRangeInput = (key, event) => {
@@ -261,60 +272,17 @@ const onTabKeydown = (event, current) => {
   nextTick(() => document.getElementById(tabId(tab.value))?.focus())
 }
 
-/** 焦点陷阱：弹窗是模态的，Tab 不应跑到背后的页面 */
-const handleKeydown = (event) => {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    close()
-    return
-  }
-
-  if (event.key !== 'Tab' || !modalRef.value) return
-
-  const focusable = modalRef.value.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  )
-  const list = Array.from(focusable).filter((el) => !el.disabled && el.offsetParent !== null)
-  if (list.length === 0) return
-
-  const first = list[0]
-  const last = list[list.length - 1]
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
 watch(
   () => themeStore.panelOpen,
-  async (open) => {
+  (open) => {
     if (open) {
       tab.value = 'preset'
-      disableScroll()
-      previouslyFocused = typeof document !== 'undefined' ? document.activeElement : null
-      await nextTick()
-      modalRef.value?.querySelector('.theme-close')?.focus()
-      document.addEventListener('keydown', handleKeydown)
+      activate()
       return
     }
-
-    enableScroll()
-    document.removeEventListener('keydown', handleKeydown)
-    if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
-      previouslyFocused.focus()
-    }
-    previouslyFocused = null
+    deactivate()
   }
 )
-
-onUnmounted(() => {
-  // 滚动锁由 useBodyScroll 在卸载时自动释放；这里只需摘掉键盘监听
-  if (typeof document !== 'undefined') document.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <style scoped>

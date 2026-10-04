@@ -1,4 +1,10 @@
 <template>
+  <!--
+    两个根节点是刻意的：HelpModal 必须是遮罩层的**兄弟**而不是子节点。
+    `.u-modal-overlay` 上有 backdrop-filter，而 backdrop-filter 会让元素成为
+    fixed 后代的包含块（与 Navbar 踩过的坑同源）—— 嵌在里面的弹窗会以
+    遮罩层的 padding box 为参照定位，并在遮罩层滚动时跟着滚。
+  -->
   <div class="u-modal-overlay" @click.self="$emit('close')">
     <div
       ref="modalRef"
@@ -11,7 +17,7 @@
         {{ activeTab === 'login' ? '登录' : '注册' }}
       </h2>
 
-      <button class="u-modal-close" @click="close" aria-label="关闭弹窗">
+      <button class="u-modal-close" @click="$emit('close')" aria-label="关闭弹窗">
         ✕
       </button>
 
@@ -66,7 +72,9 @@
               <input v-model="loginForm.rememberMe" type="checkbox" /><span class="u-checkbox-box" aria-hidden="true"></span>
               <span>记住我</span>
             </label>
-            <a href="#" class="forgot-password">忘记密码?</a>
+            <button type="button" class="link-btn" @click="showHelpModal = true">
+              {{ AUTH.forgotPassword }}?
+            </button>
           </div>
 
           <button
@@ -82,13 +90,25 @@
           <div class="divider">或者</div>
 
           <div class="social-login">
-            <button type="button" class="u-btn-secondary social-btn">
+            <button
+              type="button"
+              class="u-btn-secondary social-btn"
+              @click="showHelpModal = true"
+            >
               <span>微信登录</span>
             </button>
-            <button type="button" class="u-btn-secondary social-btn">
+            <button
+              type="button"
+              class="u-btn-secondary social-btn"
+              @click="showHelpModal = true"
+            >
               <span>QQ登录</span>
             </button>
           </div>
+          <p class="social-note page-note">
+            第三方登录尚未接入。需要协助请
+            <button type="button" class="link-btn" @click="showHelpModal = true">联系客服</button>。
+          </p>
         </form>
 
         <!-- Register Form -->
@@ -144,7 +164,12 @@
           <div class="form-options">
             <label class="u-checkbox">
               <input v-model="registerForm.agreeTerms" type="checkbox" /><span class="u-checkbox-box" aria-hidden="true"></span>
-              <span>我同意<a href="#">用户协议</a>和<a href="#">隐私政策</a></span>
+              <span>
+                {{ AUTH.agreePrefix }}
+                <router-link to="/terms" class="inline-link">用户协议</router-link>
+                {{ AUTH.and }}
+                <router-link to="/privacy" class="inline-link">隐私政策</router-link>
+              </span>
             </label>
           </div>
 
@@ -171,79 +196,42 @@
       </div>
     </div>
   </div>
+
+  <!-- 找回密码 / 联系客服：当前没有邮件与短信服务，如实说明并给出真实联系方式，
+       而不是留一个点了什么都不发生的 `href="#"`。
+       注意它在遮罩层**外面**（见模板顶部注释）。 -->
+  <HelpModal
+    v-if="showHelpModal"
+    :title="AUTH.forgotTitle"
+    :intro="AUTH.forgotIntro"
+    :steps="AUTH.forgotSteps"
+    @close="showHelpModal = false"
+  />
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 import { useUserStore } from '@/stores/user';
-import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll';
+import { useModalA11y } from '@/hooks/useModalA11y';
+import HelpModal from '@/components/HelpModal.vue';
+import { AUTH } from '@/constants/index.js';
 
 const emit = defineEmits(['close', 'login-success']);
 const userStore = useUserStore();
-const { disableScroll, enableScroll } = useBodyScroll();
 
-const modalRef = ref(null);
 const activeTab = ref('login');
 const errorMessage = ref('');
 const successMessage = ref('');
 const loading = ref(false);
 
-/** 打开弹窗前拥有焦点的元素，关闭后归还焦点 */
-let previouslyFocused = null;
+/** 「忘记密码」弹窗：讲清当前不支持自助重置，并给出真实联系方式 */
+const showHelpModal = ref(false);
 
-/** 关闭弹窗：统一走这里，保证滚动与焦点都被恢复 */
-const close = () => {
-  emit('close');
-};
-
-/** 把 Tab 焦点限制在弹窗内 —— 弹窗是模态的，焦点不应跑到背后的页面 */
-const handleKeydown = (event) => {
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    close();
-    return;
-  }
-
-  if (event.key !== 'Tab' || !modalRef.value) return;
-
-  const focusable = modalRef.value.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  );
-  const list = Array.from(focusable).filter((el) => !el.disabled && el.offsetParent !== null);
-  if (list.length === 0) return;
-
-  const first = list[0];
-  const last = list[list.length - 1];
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
-};
-
-onMounted(async () => {
-  disableScroll();
-
-  // 记录来源焦点，并把焦点移入弹窗（首个输入框）
-  previouslyFocused = document.activeElement;
-  await nextTick();
-  const firstInput = modalRef.value?.querySelector('input, button');
-  firstInput?.focus();
-
-  document.addEventListener('keydown', handleKeydown);
-});
-
-onUnmounted(() => {
-  enableScroll();
-  document.removeEventListener('keydown', handleKeydown);
-  // 归还焦点，避免焦点落回 body 导致键盘用户失去位置
-  if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
-    previouslyFocused.focus();
-  }
-});
+/**
+ * 模态约定（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）统一由 useModalA11y 提供。
+ * 这里只负责把 close 接到 emit 上。
+ */
+const { modalRef } = useModalA11y({ close: () => emit('close') });
 
 const loginForm = ref({
   username: '',
@@ -447,16 +435,36 @@ const switchTab = (tab) => {
   color: var(--text-secondary);
 }
 
-.checkbox a,
-.forgot-password {
+/* 「忘记密码」「联系客服」与协议链接都必须是真实可交互元素。
+ * 原来是 `<a href="#">` —— 点了只会在地址栏多一个 `#`。
+ * 忘记密码是打开弹窗（button），协议是站内路由（router-link），
+ * 因此不能共用一套标签，只共用外观。 */
+.link-btn,
+.inline-link {
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
   color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color var(--transition-interactive);
 }
 
-.checkbox a:hover,
-.forgot-password:hover {
+.link-btn:hover,
+.inline-link:hover {
   color: var(--accent-strong);
   text-decoration: underline;
+}
+
+.inline-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.social-note {
+  margin-top: calc(var(--space-unit));
+  text-align: center;
 }
 
 .submit-btn {

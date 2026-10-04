@@ -115,9 +115,15 @@ if (!BUILT) {
     assert.deepEqual(present, [], `以下令牌已删除但仍出现在产物中：\n  ${present.join('\n  ')}`)
   })
 
-  test(':root 在产物中只输出一次（避免变量重复定义）', () => {
-    const count = (allCss.match(/:root/g) || []).length
-    assert.equal(count, 1, `:root 出现 ${count} 次`)
+  test(':root 令牌块在产物中只输出一次（避免变量重复定义）', () => {
+    // 只匹配**定义令牌的** `:root {`。
+    //
+    // 不能用 `/:root/g`：组件里合法地存在 `:root[data-theme='bento-editorial']`
+    // 这类「按主题覆盖」的选择器（HotProductsSection 就有一条，媒体查询里还有一条
+    // 同样写法的反向覆盖）。它们不是令牌定义，被算进来会让本用例报出
+    // 「:root 出现 3 次」这种与真实缺陷无关的失败 —— 本次全量构建时就踩到了。
+    const count = (allCss.match(/:root\s*\{/g) || []).length
+    assert.equal(count, 1, `:root{ 令牌块出现 ${count} 次（应为 1：variables.css 只应被引入一次）`)
   })
 
   test('index.html 引用的产物文件都存在', () => {

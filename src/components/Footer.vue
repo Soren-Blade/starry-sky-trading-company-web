@@ -9,18 +9,24 @@
             <span class="logo-text">{{ SITE.name }}</span>
           </div>
           <p class="about-text">{{ FOOTER.about }}</p>
-          <div class="social-links">
-            <a
-              v-for="item in FOOTER.socials"
-              :key="item.key"
-              href="#"
-              class="social-link"
-              :aria-label="item.label"
-              :title="item.label"
-            >
-              <span aria-hidden="true">{{ item.icon }}</span>
-            </a>
-          </div>
+
+          <!--
+            联系方式行。这里原本是四个社交图标（微信/QQ/微博/抖音），
+            每个都指向 `href="#"` —— 点了什么都不发生，而平台也没有这些官方账号。
+            编四个假链接比留死链更糟，因此换成真实可用的电话与邮箱：
+            `tel:` / `mailto:` 在手机上能直接唤起拨号与写邮件。
+          -->
+          <ul class="contact-links">
+            <li v-for="item in FOOTER.contacts" :key="item.key">
+              <a :href="item.href" class="contact-link" :aria-label="item.label">
+                <span aria-hidden="true">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </a>
+            </li>
+          </ul>
+          <p class="contact-hours">
+            {{ FOOTER.hoursLabel }}：{{ CONTACT.hours }}
+          </p>
         </div>
       </div>
 
@@ -47,15 +53,15 @@
           <p class="copyright">
             {{ FOOTER.copyright }}
             <template v-for="link in FOOTER.legalLinks" :key="link.label">
-              | <a :href="link.href">{{ link.label }}</a>
+              | <router-link :to="link.to">{{ link.label }}</router-link>
             </template>
           </p>
 
           <!-- Links -->
           <div class="footer-bottom-links">
-            <a v-for="link in FOOTER.bottomLinks" :key="link.label" :href="link.href">
+            <router-link v-for="link in FOOTER.bottomLinks" :key="link.label" :to="link.to">
               {{ link.label }}
-            </a>
+            </router-link>
           </div>
         </div>
       </div>
@@ -67,10 +73,13 @@
 /**
  * 页脚
  *
- * 文案（品牌名 / 简介 / 社交 / 支付 / 版权 / 底部链接）全部取自
- * `constants/content.js` 的 SITE 与 FOOTER，组件只负责结构与样式。
+ * 文案（品牌名 / 简介 / 联系方式 / 结算方式 / 版权 / 底部链接）全部取自
+ * `constants/content.js` 的 SITE、FOOTER 与 CONTACT，组件只负责结构与样式。
+ *
+ * 链接全部指向真实路由（`/terms`、`/privacy`、`/rules`、`/about`）或真实协议
+ * （`tel:` / `mailto:`）—— 改造前这里 6 个链接都是 `href="#"`。
  */
-import { SITE, FOOTER } from '@/constants/content.js';
+import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
 </script>
 
 <style scoped>
@@ -145,20 +154,32 @@ import { SITE, FOOTER } from '@/constants/content.js';
 }
 
 /*
- * 社交圆钮：尺寸取图标按钮档（必要时垫到头像档），圆角取胶囊令牌。
- * 不用 em 从字号推导 —— 按钮尺寸应当独立于正文字号缩放。
+ * 联系方式行：与原先的社交圆钮占同样的位置，但每一项都是真实可点的
+ * `tel:` / `mailto:`，并按胶囊按钮的尺寸给足可点区域。
  */
-.social-link {
+.contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contact-link {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: max(var(--icon-btn-size), var(--avatar-size));
+  gap: calc(var(--space-unit) * 0.75);
   height: max(var(--icon-btn-size), var(--avatar-size));
-  font-size: var(--icon-btn-icon-size);
+  padding: 0 calc(var(--icon-btn-size) * 0.4);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
   color: var(--text-footer);
   background: var(--bg-soft);
   /* 描边取 currentColor（= --text-footer）：页脚底色五套各不相同
-   * （深底 / 浅底 / 深蓝），只有跟着页脚文字色走才能保证圆钮始终可见 ——
+   * （深底 / 浅底 / 深蓝），只有跟着页脚文字色走才能保证控件始终可见 ——
    * 截图里 tech-minimal 的圆钮原本几乎和页脚糊在一起。 */
   border: var(--stroke-width) solid currentColor;
   border-radius: var(--radius-pill);
@@ -169,11 +190,17 @@ import { SITE, FOOTER } from '@/constants/content.js';
     transform var(--transition-interactive);
 }
 
-.social-link:hover {
+.contact-link:hover {
   color: var(--text-on-accent);
   background: var(--accent);
   border-color: var(--accent);
   transform: translateY(calc(var(--space-unit) * -0.5));
+}
+
+.contact-hours {
+  margin: calc(var(--space-unit) * 1.5) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-footer-muted);
 }
 
 /* 分割线：宽度也走描边令牌，neo-brutalism 下自动变粗 */
@@ -293,7 +320,7 @@ import { SITE, FOOTER } from '@/constants/content.js';
       calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
-  .social-links {
+  .contact-links {
     gap: var(--space-unit);
   }
 

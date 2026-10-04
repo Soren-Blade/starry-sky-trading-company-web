@@ -105,7 +105,7 @@ test('getProducts：写入 products 与 pagination', async () => {
   }
 })
 
-test('getProducts：默认带 in_stock=all，且可被 extraParams 覆盖', async () => {
+test('getProducts：默认带 in_stock=all 与 limit=100，且可被 extraParams 覆盖', async () => {
   const store = freshStore()
   const seen = []
   const restore = stubApi({
@@ -117,8 +117,10 @@ test('getProducts：默认带 in_stock=all，且可被 extraParams 覆盖', asyn
   try {
     await store.getProducts()
     await store.getProducts({ in_stock: 'true', page: 3 })
-    assert.deepEqual(seen[0], { in_stock: 'all' })
-    assert.deepEqual(seen[1], { in_stock: 'true', page: 3 })
+    // limit 取服务端上限：搜索与展示都在客户端做（getters.filteredProducts），
+    // 只拉默认的 20 条会让「搜不到」与「没加载到」混为一谈。
+    assert.deepEqual(seen[0], { in_stock: 'all', limit: 100 })
+    assert.deepEqual(seen[1], { in_stock: 'true', limit: 100, page: 3 })
   } finally {
     restore()
   }

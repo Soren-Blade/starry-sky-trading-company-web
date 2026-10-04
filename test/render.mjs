@@ -135,7 +135,8 @@ export async function createPiniaPlugin() {
  * 因此拿到 store 实例后可直接改它的状态 —— **无需 mock api**。
  * 这样才能渲染「已登录 + 有卡密列表」这类真实状态，而不只是空态。
  *
- * @param {Record<string, object>} stateByStoreName key 为 store id（'user' / 'kami' / 'tool' / 'shop'）
+ * @param {Record<string, object>} stateByStoreName key 为 store id
+ *   （'user' / 'kami' / 'tool' / 'shop' / 'cart' / 'favorite'）
  */
 export async function createPiniaWithState(stateByStoreName = {}) {
   const pinia = await createPiniaPlugin()
@@ -146,6 +147,8 @@ export async function createPiniaWithState(stateByStoreName = {}) {
     kami: async () => (await import('@/stores/kami')).useKamiStore,
     tool: async () => (await import('@/stores/tool')).useToolStore,
     shop: async () => (await import('@/stores/shop')).useShopStore,
+    cart: async () => (await import('@/stores/cart')).useCartStore,
+    favorite: async () => (await import('@/stores/favorite')).useFavoriteStore,
   }
 
   for (const [storeName, partial] of Object.entries(stateByStoreName)) {
@@ -316,6 +319,7 @@ export async function createRenderEnv() {
     ProductCard: { product: { id: 1, product_name: '桩商品', price: 1, stock_quantity: 1 } },
     ToolCard: { tool: { id: 1, tool_name: '桩工具' } },
     AppleIdCard: { appleId: { account: 'a@b.c', password: 'p' }, source: 'Stub' },
+    HelpModal: { title: '桩标题' },
   }
 
   // 注册到全局，使父组件模板里的子组件能被解析并拿到必需 props
@@ -323,6 +327,7 @@ export async function createRenderEnv() {
   const { default: ProductCard } = await import('@/components/ProductCard.vue')
   const { default: ToolCard } = await import('@/components/ToolCard.vue')
   const { default: AppleIdCard } = await import('@/components/AppleIdCard.vue')
+  const { default: HelpModal } = await import('@/components/HelpModal.vue')
 
   const withDefaults = (name, Comp, props) =>
     defineComponent({
@@ -337,11 +342,20 @@ export async function createRenderEnv() {
   globalComponents.ProductCard = withDefaults('ProductCard', ProductCard, requiredProps.ProductCard)
   globalComponents.ToolCard = withDefaults('ToolCard', ToolCard, requiredProps.ToolCard)
   globalComponents.AppleIdCard = withDefaults('AppleIdCard', AppleIdCard, requiredProps.AppleIdCard)
+  globalComponents.HelpModal = withDefaults('HelpModal', HelpModal, requiredProps.HelpModal)
 
   const { createRouter, createMemoryHistory } = await import('vue-router')
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],
+    routes: [
+      // 法务页由 `meta.legalKey` 选内容，因此这里必须给出带 meta 的真实路由 ——
+      // 只有 catch-all 的话，`route.meta.legalKey` 永远是 undefined，
+      // 三份文档都会回落到用户协议，测「隐私政策」就测了个寂寞。
+      { path: '/terms', meta: { legalKey: 'terms' }, component: { render: () => null } },
+      { path: '/privacy', meta: { legalKey: 'privacy' }, component: { render: () => null } },
+      { path: '/rules', meta: { legalKey: 'rules' }, component: { render: () => null } },
+      { path: '/:pathMatch(.*)*', component: { render: () => null } },
+    ],
   })
   await router.push('/')
   await router.isReady()

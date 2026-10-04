@@ -31,6 +31,57 @@ const routes = [
     component: () => import('@/pages/About.vue'),
     meta: { title: '关于我们 - 星辰商行' }
   },
+  // ── 商品线 ────────────────────────────────────────────────────
+  {
+    path: '/product/:id',
+    name: 'ProductDetail',
+    component: () => import('@/pages/ProductDetail.vue'),
+    meta: { title: '商品详情 - 星辰商行' }
+  },
+  {
+    path: '/category/:id',
+    name: 'CategoryDetail',
+    component: () => import('@/pages/CategoryDetail.vue'),
+    meta: { title: '分类商品 - 星辰商行' }
+  },
+  {
+    path: '/cart',
+    name: 'Cart',
+    component: () => import('@/pages/Cart.vue'),
+    meta: { title: '购物车 - 星辰商行' }
+  },
+  // ── 账户线 ────────────────────────────────────────────────────
+  {
+    path: '/user/kami',
+    name: 'kami',
+    component: () => import('@/pages/Kami.vue'),
+    meta: { title: '卡密管理 - 星辰商行', requiresAuth: true }
+  },
+  {
+    path: '/user/profile',
+    name: 'Profile',
+    component: () => import('@/pages/Profile.vue'),
+    meta: { title: '个人中心 - 星辰商行', requiresAuth: true }
+  },
+  {
+    path: '/user/favorites',
+    name: 'Favorites',
+    component: () => import('@/pages/Favorites.vue'),
+    meta: { title: '我的收藏 - 星辰商行', requiresAuth: true }
+  },
+  {
+    path: '/user/orders',
+    name: 'Orders',
+    component: () => import('@/pages/Orders.vue'),
+    meta: { title: '订单管理 - 星辰商行', requiresAuth: true }
+  },
+  {
+    path: '/user/orders/:orderNo',
+    name: 'OrderDetail',
+    component: () => import('@/pages/OrderDetail.vue'),
+    meta: { title: '订单详情 - 星辰商行', requiresAuth: true }
+  },
+  // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',
     name: '2fa',
@@ -43,11 +94,24 @@ const routes = [
     component: () => import('@/pages/AppleId.vue'),
     meta: { title: 'appleId - 星辰商行' }
   },
+  // ── 法务页（三页共用一个组件，由 meta.legalKey 选内容）───────
   {
-    path: '/user/kami',
-    name: 'kami',
-    component: () => import('@/pages/Kami.vue'),
-    meta: { title: '卡密管理 - 星辰商行', requiresAuth: true }
+    path: '/terms',
+    name: 'Terms',
+    component: () => import('@/pages/Legal.vue'),
+    meta: { title: '用户协议 - 星辰商行', legalKey: 'terms' }
+  },
+  {
+    path: '/privacy',
+    name: 'Privacy',
+    component: () => import('@/pages/Legal.vue'),
+    meta: { title: '隐私政策 - 星辰商行', legalKey: 'privacy' }
+  },
+  {
+    path: '/rules',
+    name: 'Rules',
+    component: () => import('@/pages/Legal.vue'),
+    meta: { title: '平台规则 - 星辰商行', legalKey: 'rules' }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -68,6 +132,10 @@ const router = createRouter({
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition
+    } else if (to.hash) {
+      // 锚点跳转（如页脚的「联系我们」→ /about#about-contact）。
+      // 不处理 hash 的话会永远滚到顶部，锚点等于失效。
+      return { el: to.hash, behavior: 'smooth', top: 80 }
     } else {
       return { top: 0 }
     }
@@ -101,8 +169,9 @@ router.beforeEach(async (to) => {
 
   if (userStore.isLoggedIn) return true
 
-  const { notify } = await import('@/hooks/useToast/index.js')
-  notify.warning('请先登录账号后再访问卡密管理')
+  // 不只弹提示：直接**把登录弹窗打开**，并把原目标记在 query 里。
+  // 只提示不打开弹窗的话，用户还得自己找到右上角的登录入口。
+  userStore.openLoginModal('请先登录账号后再访问该页面')
 
   return { name: 'Home', query: { redirect: to.fullPath } }
 })

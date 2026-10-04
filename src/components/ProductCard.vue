@@ -60,10 +60,10 @@
           type="button"
           class="u-btn-primary product-buy"
           :disabled="isOut"
-          :aria-label="isOut ? '该商品缺货' : `购买 ${title}`"
+          :aria-label="isOut ? '该商品缺货' : `将 ${title} 加入购物车`"
           @click.stop="onBuy"
         >
-          {{ isOut ? PRODUCT_GRID.soldOut : PRODUCT_GRID.buy }}
+          {{ isOut ? PRODUCT_GRID.soldOut : PRODUCT_GRID.addToCart }}
         </button>
       </div>
     </div>
@@ -82,6 +82,10 @@
  * 货币与小数位由**主题**决定（`price.decimals`：bento/neo/mono 无小数，
  * mono 用 `$` 前缀）—— 这是「排版变动要同步数据层」的落点：
  * 货币不再是格式化函数里的常量，价格也不再是一个拼好的字符串。
+ *
+ * 卡片上的按钮是**加入购物车**而不是「立即购买」：网格里无法选数量、
+ * 也无法确认金额，直接下单等于让用户盲拍。需要立即购买的去详情页 ——
+ * 那里有数量选择与完整的金额，是天然的下单确认步骤。
  */
 import { computed } from 'vue'
 import { formatUtils } from '@/utils/index.js'
@@ -95,7 +99,12 @@ const props = defineProps({
   /** 榜单名次：>0 时在图片区右上角显示序号徽标（主页与专区不传，卡片保持原样） */
   rank: { type: Number, default: 0 },
 })
-const emit = defineEmits(['go-detail', 'buy'])
+/**
+ * 事件名与按钮语义保持一致：按钮是「加入购物车」，事件就叫 `add-to-cart`。
+ * 此前叫 `buy`（当年按钮写的是「购买」），改名后调用方不会再误以为
+ * 收到事件就等于「用户要立刻下单」。
+ */
+const emit = defineEmits(['go-detail', 'add-to-cart'])
 
 const themeStore = useThemeStore()
 
@@ -169,7 +178,7 @@ const isOut = computed(() => {
 const stockLabel = computed(() => props.product.stock_status?.message || PRODUCT_GRID.stockLabel)
 
 const onGoDetail = () => emit('go-detail', props.product)
-const onBuy = () => emit('buy', props.product)
+const onBuy = () => emit('add-to-cart', props.product)
 </script>
 
 <style scoped>

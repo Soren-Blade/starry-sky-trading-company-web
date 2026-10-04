@@ -93,7 +93,11 @@ export const useShopStore = defineStore('shop', {
          */
         async getProducts(extraParams = {}) {
             try {
-                const params = { in_stock: 'all', ...extraParams }
+                // limit 取服务端上限（100）：搜索与展示都在客户端做
+                // （见 getters.filteredProducts），只拉 20 条会让「搜不到」
+                // 与「没加载到」混为一谈。超过 100 件商品时首页只展示前 100 条，
+                // 需要完整目录请走分类详情页 —— 那里按 category_id 过滤。
+                const params = { in_stock: 'all', limit: 100, ...extraParams }
                 const result = await api.getProducts(params)
                 if (result?.success) {
                     this.shopInfo = result.data?.products ?? []

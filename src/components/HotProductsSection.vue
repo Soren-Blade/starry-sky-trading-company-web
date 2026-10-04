@@ -40,8 +40,8 @@
               :featured="index === 0"
               :rank="isBoard ? index + 1 : 0"
               :style="{ '--i': index }"
-              @go-detail="handleGoDetail"
-              @buy="handleBuy"
+              @go-detail="goDetail"
+              @add-to-cart="addToCart"
             />
           </li>
 
@@ -73,6 +73,7 @@ import { storeToRefs } from 'pinia'
 import { useShopStore } from '@/stores/shop'
 import ProductCard from '@/components/ProductCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
+import { useProductActions } from '@/hooks/useProductActions'
 import { PRODUCT_GRID, SECTIONS } from '@/constants/index.js'
 
 const props = defineProps({
@@ -87,22 +88,16 @@ const props = defineProps({
 const shopStore = useShopStore()
 const { filteredProducts, searchKeyword, loading, error } = storeToRefs(shopStore)
 
+// 「看详情」与「加入购物车」的完整逻辑（未登录时拉起登录弹窗等）在 composable 里，
+// 与商品详情页、分类详情页共用同一份，避免三处各写一遍。
+const { goDetail, addToCart } = useProductActions()
+
 /** 加载态占位块数量：与桌面端一屏可见的列数一致 */
 const SKELETON_COUNT = 4
 
 const products = computed(() => filteredProducts.value)
 const keyword = computed(() => searchKeyword.value.trim())
 const isBoard = computed(() => props.variant === 'board')
-
-// 详情页尚未实现，先记录并保留入口
-const handleGoDetail = (product) => {
-  console.info('查看商品详情（待实现）:', product.id || product.main_title)
-}
-
-// 下单流程尚未实现
-const handleBuy = (product) => {
-  console.info('发起购买（待实现）:', product.id || product.main_title)
-}
 </script>
 
 <style scoped>

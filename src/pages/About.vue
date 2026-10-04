@@ -60,23 +60,32 @@
 
         <section id="about-contact" class="about-section">
           <h2>联系我们</h2>
-          <!-- 联系方式做成「标签 + 值」对照表，值用等宽字体，取代原来一串 emoji 段落 -->
+          <!--
+            联系方式做成「标签 + 值」对照表，值用等宽字体。
+            取值来自 constants/CONTACT —— 页脚的「联系方式」行与
+            「忘记密码」弹窗读的是同一份，抄在这里会出现三个不一致的客服邮箱。
+            电话与邮箱是可点的真实协议（tel: / mailto:）。
+          -->
           <dl class="contact-table">
             <div class="contact-row">
               <dt class="contact-label"><span aria-hidden="true">📍</span> 地址</dt>
-              <dd class="contact-value">中国 北京市 朝阳区</dd>
+              <dd class="contact-value">{{ CONTACT.address }}</dd>
             </div>
             <div class="contact-row">
               <dt class="contact-label"><span aria-hidden="true">📞</span> 电话</dt>
-              <dd class="contact-value">400-800-8888</dd>
+              <dd class="contact-value">
+                <a :href="CONTACT.telHref">{{ CONTACT.phone }}</a>
+              </dd>
             </div>
             <div class="contact-row">
               <dt class="contact-label"><span aria-hidden="true">✉️</span> 邮箱</dt>
-              <dd class="contact-value">service@starrysky.com</dd>
+              <dd class="contact-value">
+                <a :href="CONTACT.mailtoHref">{{ CONTACT.email }}</a>
+              </dd>
             </div>
             <div class="contact-row">
               <dt class="contact-label"><span aria-hidden="true">🕐</span> 服务时间</dt>
-              <dd class="contact-value">9:00 - 22:00</dd>
+              <dd class="contact-value">{{ CONTACT.hours }}</dd>
             </div>
           </dl>
         </section>
@@ -86,7 +95,7 @@
 </template>
 
 <script setup>
-import { PAGES } from '@/constants/index.js'
+import { PAGES, CONTACT } from '@/constants/index.js'
 </script>
 
 <style scoped>
@@ -297,6 +306,19 @@ import { PAGES } from '@/constants/index.js'
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* 电话与邮箱可点：用强调色与下划线提示「这是链接」，而不是一段静态文本 */
+.contact-value a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition-interactive);
+}
+
+.contact-value a:hover {
+  color: var(--accent-strong);
 }
 
 /* ≤991px：双栏收成单栏，左栏不再粘住 */

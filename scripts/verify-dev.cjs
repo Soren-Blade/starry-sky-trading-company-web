@@ -130,6 +130,76 @@ const sleep = (ms) =>
     `HTTP ${visitor.status}，access-token=${Boolean(visitor.headers['access-token'])}`
   );
 
+  // ── 4b. 每个前端 API 请求路径都必须能被代理接住 ─────────────────
+  //
+  // 这是本项目真实踩过的坑：`vite.config.js` 的 proxy 是按路径逐条列出的，
+  // 且**不能**简单地写 `'/user'` —— `/user/kami`、`/user/orders` 是前端路由，
+  // 整段代理会让这些页面在 dev 下永远打不开。于是 `/user` 下的四个接口各自列了一条。
+  // 新增一个后端前缀却忘了加代理规则时，dev 下该接口会被 dev server 自己接住，
+  // 返回 index.html；前端拿到一段 HTML 去解析，报的却是「网络错误」，
+  // 排查方向被完全带偏。
+  //
+  // 判定规则：每个具体调用路径，要么**整条**是 proxy 的键（`/user/login` 这种），
+  // 要么它的**第一段**是 proxy 的键（`/cartApi/getCart` → `/cartApi`）。
+  const apiDir = path.join(WEB, 'src', 'api', 'ask');
+  const callPaths = new Set();
+
+  for (const file of fs.readdirSync(apiDir).filter((f) => f.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(apiDir, file), 'utf8');
+
+    const bases = {};
+    for (const m of src.matchAll(/const\s+(\w+)\s*=\s*['"]([^'"]+)['"]/g)) bases[m[1]] = m[2];
+
+    for (const m of src.matchAll(/request\.(?:get|post|put|patch|delete)\s*\(\s*[`'"]([^`'"]*)[`'"]/g)) {
+      // `${baseURL}` 还原成字面量；`${encodeURIComponent(x)}` 这类还原不了也无妨 ——
+      // 后面只看第一段路径。
+      const resolved = m[1].replace(/\$\{(\w+)\}/g, (_, name) => (name in bases ? bases[name] : ''));
+      callPaths.add(resolved.split('?')[0]);
+    }
+  }
+
+  const viteConfig = fs.readFileSync(path.join(WEB, 'vite.config.js'), 'utf8');
+  const proxyBlock = viteConfig.slice(viteConfig.indexOf('proxy:'));
+  const proxyKeys = new Set(
+    [...proxyBlock.matchAll(/^\s*'([^']+)':\s*\{\s*target/gm)].map((m) => m[1])
+  );
+
+  check(
+    '静态比对：前端 API 调用路径已全部解析出来',
+    callPaths.size >= 15,
+    `解析到 ${callPaths.size} 条：${[...callPaths].join(', ')}`
+  );
+
+  const firstSegment = (p) => '/' + String(p).split('/').filter(Boolean)[0];
+  const unproxied = [...callPaths].filter(
+    (p) => !proxyKeys.has(p) && !proxyKeys.has(firstSegment(p))
+  );
+  check(
+    'vite.config.js 的代理能覆盖全部前端 API 调用路径',
+    unproxied.length === 0,
+    `以下路径在 dev 下不会被转发：${unproxied.join(', ')}`
+  );
+
+  // 交易前缀是本次新增的三条，单独真实请求一次
+  for (const [prefix, expected] of [
+    ['/cartApi/getCart', 'UNAUTHORIZED'],
+    ['/orderApi/getOrders', 'UNAUTHORIZED'],
+    ['/favoriteApi/getFavorites?target_type=product', 'UNAUTHORIZED'],
+  ]) {
+    const res = await httpGet(5173, prefix);
+    let json = null;
+    try {
+      json = JSON.parse(res.body);
+    } catch {
+      /* 不是 JSON —— 说明被 dev server 接住返回了 index.html */
+    }
+    check(
+      `代理 ${prefix} 转发到后端（返回 JSON 而不是 index.html）`,
+      Boolean(json) && (json.code === expected || json.success === false),
+      `HTTP ${res.status}，body=${res.body.slice(0, 120)}`
+    );
+  }
+
   // ── 5. HMR 真实推送 ─────────────────────────────────────────────
   // 注意：Vite 的 HMR socket 必须带子协议 `vite-hmr`，只给 URL 会握手失败。
   // 见 /@vite/client 里的 `new WebSocket(url, "vite-hmr")`。

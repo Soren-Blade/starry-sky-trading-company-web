@@ -24,6 +24,15 @@ export const useUserStore = defineStore('user', {
         initialized: false,
         /** 进行中的初始化 Promise：并发调用共享它，见 init() 的注释 */
         initPromise: null,
+        /**
+         * 登录/注册弹窗是否打开。
+         *
+         * 放在 store 而不是 Navbar 的局部 ref：触发登录的场景**不止顶栏一个** ——
+         * 商品详情页的「立即购买」、购物车结算、工具收藏、路由守卫都要能拉起它。
+         * 弹窗本体因此也移到 App.vue（全站唯一实例），与 ThemeSwitcher 的
+         * `themeStore.panelOpen` 是同一套做法。
+         */
+        loginModalOpen: false,
     }),
 
     getters: {
@@ -150,9 +159,43 @@ export const useUserStore = defineStore('user', {
             clearTokens()
             this.userInfo = {}
             this.initialized = false
+            this.loginModalOpen = false
             notify.success('已退出登录')
             // 退出后重新以游客身份初始化，保证卡密等需登录功能给出正确提示
             await this.init()
+        },
+
+        /**
+         * 打开登录弹窗。
+         * @param {string} [reason] 触发原因，会作为提示告知用户「为什么突然要登录」
+         */
+        openLoginModal(reason) {
+            this.loginModalOpen = true
+            if (reason) notify.info(reason)
+        },
+
+        closeLoginModal() {
+            this.loginModalOpen = false
+        },
+
+        /**
+         * 修改个人资料（昵称 / 头像 / 性别 / 生日）
+         * @param {{nickname?: string, avatar_url?: string|null, gender?: string|null, birthday?: string|null}} patch
+         * @returns {Promise<{success: boolean, message: string}>}
+         */
+        async updateProfile(patch) {
+            try {
+                const result = await api.updateProfile(patch)
+                if (result?.success) {
+                    // 接口回读的就是更新后的白名单字段，直接并入本地状态，
+                    // 不必再发一次 getUserInfo
+                    if (result.data) this.userInfo = { ...this.userInfo, ...result.data }
+                    return { success: true, message: result.message || '资料已更新' }
+                }
+                return { success: false, message: result?.message || '资料更新失败' }
+            } catch (error) {
+                return { success: false, message: error.message || '资料更新失败，请稍后重试' }
+            }
         },
     },
 })
