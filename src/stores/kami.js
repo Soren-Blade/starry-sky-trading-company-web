@@ -50,6 +50,9 @@ export const useKamiStore = defineStore('kami', {
         async fetchUserKamis(userId, opts = {}) {
             if (!userId) {
                 this.error = '缺少用户信息'
+                // 这条路径不发请求，因此不在 try/finally 覆盖范围内；
+                // 必须显式复位，否则上一次请求留在 true 的 loading 会一直卡住加载指示器。
+                this.loading = false
                 return false
             }
 
