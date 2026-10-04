@@ -151,13 +151,10 @@ img {
  * 新增全局工具类前请先确认确有多处复用，并同步 assets/README.md。
  */
 
-/* 响应式隐藏 */
-@media (max-width: 767px) {
-  .hide-mobile {
-    display: none !important;
-  }
-}
-
+/* 响应式隐藏。
+ * 说明：.hide-mobile 的规则已并入本文件末尾的 `@media (max-width: 767px)` 块 ——
+ * 同一断点不再重复声明（见 .dsh/skills/project-ui-system 的断点纪律）。
+ * 与之互补的 .show-mobile 仍写在下面，使用 min-width 写法。 */
 @media (min-width: 768px) {
   .show-mobile {
     display: none !important;
@@ -306,6 +303,11 @@ img {
 }
 
 @media (max-width: 767px) {
+  /* 响应式隐藏（与下方 .show-mobile 的 min-width 写法互补） */
+  .hide-mobile {
+    display: none !important;
+  }
+
   .section-header {
     margin-bottom: 40px;
   }

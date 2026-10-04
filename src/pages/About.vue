@@ -66,7 +66,7 @@
 .page-header {
   text-align: center;
   padding: 60px 20px;
-  background: linear-gradient(135deg, #A29BFE 0%, #6C5CE7 100%);
+  background: var(--gradient-about);
   color: white;
 }
 
@@ -83,7 +83,7 @@
 }
 
 .about-container {
-  max-width: 1000px;
+  max-width: var(--container-narrow);
   margin: 0 auto;
   padding: 80px 20px;
 }
@@ -105,7 +105,7 @@
 .about-section p {
   font-size: 16px;
   line-height: 1.8;
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -144,14 +144,14 @@
 
 .value-card p {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
 .contact-info {
   font-size: 16px;
   line-height: 2;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .contact-info p {

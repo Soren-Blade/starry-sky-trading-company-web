@@ -418,7 +418,7 @@ const switchTab = (tab) => {
   border: none;
   background: none;
   font-size: 24px;
-  color: #999;
+  color: var(--color-muted);
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   display: flex;
@@ -445,7 +445,7 @@ const switchTab = (tab) => {
   border: none;
   font-size: 16px;
   font-weight: 600;
-  color: #999;
+  color: var(--color-muted);
   cursor: pointer;
   position: relative;
   transition: color 0.3s ease-in-out;
@@ -489,7 +489,7 @@ const switchTab = (tab) => {
 
 .form-group input {
   padding: 12px;
-  border: 1px solid #DDD;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.3s ease-in-out;
@@ -598,7 +598,7 @@ const switchTab = (tab) => {
 
 .divider {
   text-align: center;
-  color: #999;
+  color: var(--color-muted);
   font-size: 14px;
   position: relative;
   margin: 20px 0;
@@ -611,7 +611,7 @@ const switchTab = (tab) => {
   top: 50%;
   width: calc(50% - 20px);
   height: 1px;
-  background: #DDD;
+  background: var(--color-border-strong);
 }
 
 .divider::before {
@@ -630,7 +630,7 @@ const switchTab = (tab) => {
 
 .social-btn {
   padding: 12px;
-  border: 1px solid #DDD;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   background: white;
   font-size: 14px;
@@ -651,7 +651,7 @@ const switchTab = (tab) => {
 .social-btn.wechat {
   color: #09B981;
   border-color: #D1FAE5;
-  background: #F0FDF4;
+  background: var(--color-success-bg);
 }
 
 .social-btn.qq {
@@ -675,8 +675,8 @@ const switchTab = (tab) => {
 .success-message {
   margin-top: 16px;
   padding: 12px;
-  background: #F0FDF4;
-  color: #15803D;
+  background: var(--color-success-bg);
+  color: var(--color-success);
   border: 1px solid #BBF7D0;
   border-radius: 8px;
   font-size: 14px;

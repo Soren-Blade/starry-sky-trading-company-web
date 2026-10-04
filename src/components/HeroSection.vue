@@ -123,7 +123,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, #F8F9FA 0%, #EEE 50%, #EEEEEE 100%);
+  background: linear-gradient(135deg, var(--color-light) 0%, #EEE 50%, #EEEEEE 100%);
 }
 
 /* 背景装饰 */
@@ -197,7 +197,7 @@ onMounted(() => {
 }
 
 .title-gradient {
-  background: linear-gradient(135deg, #8A6DFF 0%, #6C5CE7 50%, #FD79A8 100%);
+  background: linear-gradient(135deg, #8A6DFF 0%, var(--color-primary-dark) 50%, var(--color-secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -205,7 +205,7 @@ onMounted(() => {
 
 .hero-subtitle {
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-secondary);
   line-height: 1.8;
   margin: 0;
 }

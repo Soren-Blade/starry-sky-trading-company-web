@@ -73,9 +73,9 @@ const handleCategoryClick = (category) => {
   padding: 120px 0;
   background: linear-gradient(
     180deg,
-    #F8F9FA 0%,
+    var(--color-light) 0%,
     #EEE 50%,
-    #F8F9FA 100%
+    var(--color-light) 100%
   );
 }
 

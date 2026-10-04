@@ -378,7 +378,7 @@ watch(
 
 .notice-desc {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -393,9 +393,9 @@ watch(
 .tab-bar button {
   padding: 10px 24px;
   border: 2px solid transparent;
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   background: #fff;
-  color: #666;
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -404,7 +404,7 @@ watch(
 }
 
 .tab-bar button:hover {
-  background: #f0f0f0;
+  background: var(--color-divider);
 }
 
 .tab-bar button.active {
@@ -445,7 +445,7 @@ watch(
 .tool-select,
 .activate-input {
   padding: 10px 14px;
-  border: 1px solid var(--color-border, #e9ecef);
+  border: 1px solid var(--color-border, var(--color-border));
   border-radius: var(--radius-sm);
   font-size: 14px;
   transition: var(--transition-fast);
@@ -482,14 +482,14 @@ watch(
 }
 
 .success-msg {
-  color: #15803d;
+  color: var(--color-success);
   margin: 0;
   font-size: 14px;
 }
 
 .error-msg,
 .error-banner {
-  color: #c0392b;
+  color: var(--color-danger);
   margin: 0;
   font-size: 14px;
 }
@@ -501,7 +501,7 @@ watch(
 }
 
 .activate-tips {
-  color: var(--color-muted, #999);
+  color: var(--color-muted, var(--color-muted));
   font-size: 13px;
   margin: 16px 0 0 0;
   text-align: center;
@@ -520,12 +520,12 @@ watch(
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .toolbar-left {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .card-count {
@@ -543,7 +543,7 @@ watch(
   border: 1px solid #d9d9d9;
   border-radius: 6px;
   background: #fff;
-  color: #666;
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
   transition: var(--transition-fast);
@@ -578,7 +578,7 @@ watch(
 
 .status-select {
   padding: 6px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-strong);
   border-radius: 6px;
   background: #fff;
   cursor: pointer;
@@ -598,7 +598,7 @@ watch(
 }
 
 :deep(.kami-ant-table .ant-table-tbody > tr > td) {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--color-divider);
   padding: 12px 16px;
 }
 
@@ -617,11 +617,11 @@ watch(
 }
 
 .muted {
-  color: #666;
+  color: var(--color-text-secondary);
 }
 
 .permanent {
-  color: #15803d;
+  color: var(--color-success);
   font-weight: 500;
 }
 

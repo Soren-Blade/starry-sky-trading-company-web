@@ -164,7 +164,7 @@ onMounted(() => {
   position: relative;
   width: 100%;
   padding: 48px 0 0 0;
-  background: linear-gradient(180deg, #f8f9fa 0%, #f1f2f4 100%);
+  background: linear-gradient(180deg, var(--color-light) 0%, #f1f2f4 100%);
 }
 
 .section-container {
@@ -198,7 +198,7 @@ onMounted(() => {
 
 .section-description {
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 0;
 }
 
@@ -237,7 +237,7 @@ onMounted(() => {
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background: #f8f9fa;
+  background: var(--color-light);
 }
 
 /* 中心苹果图标 */
@@ -494,26 +494,11 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-/* 响应式 */
-@media (max-width: 767px) {
-  .guide-toggle {
-    padding: 14px 16px;
-    font-size: 14px;
-  }
-
-  .guide-content {
-    padding: 16px;
-  }
-
-  .guide-list {
-    padding-left: 20px;
-  }
-
-  .guide-tips-list li {
-    font-size: 13px;
-    padding-left: 18px;
-  }
-}
+/*
+ * 小屏适配。
+ * 合并说明：原先有三个 `@media (max-width: 767px)` 块，选择器互不重叠
+ * （guide-* / section-* / ids-grid / warning-*），合并后层叠结果不变。
+ */
 
 .apple-ids-grid {
   display: flex;
@@ -560,6 +545,7 @@ onMounted(() => {
 }
 
 @media (max-width: 767px) {
+  /* 区块头（与 global.css 的 767px 块保持同一套缩放） */
   .section-title {
     font-size: 32px;
   }
@@ -572,6 +558,29 @@ onMounted(() => {
     font-size: 16px;
   }
 
+  .section-header {
+    margin-bottom: 40px;
+  }
+
+  /* 本组件特有：指南与警告区 */
+  .guide-toggle {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+
+  .guide-content {
+    padding: 16px;
+  }
+
+  .guide-list {
+    padding-left: 20px;
+  }
+
+  .guide-tips-list li {
+    font-size: 13px;
+    padding-left: 18px;
+  }
+
   .data-source-section {
     padding: 24px 16px;
   }
@@ -580,12 +589,25 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .section-header {
-    margin-bottom: 40px;
+  .warning-item {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .warning-icon {
+    font-size: 20px;
+  }
+
+  .warning-title {
+    font-size: 14px;
+  }
+
+  .warning-text {
+    font-size: 13px;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 575px) {
   .apple-id-section {
     padding: 32px 0;
   }
@@ -680,25 +702,6 @@ onMounted(() => {
   50% {
     transform: translateY(-12px);
     opacity: 1;
-  }
-}
-
-@media (max-width: 767px) {
-  .warning-item {
-    padding: 12px 16px;
-    gap: 12px;
-  }
-
-  .warning-icon {
-    font-size: 20px;
-  }
-
-  .warning-title {
-    font-size: 14px;
-  }
-
-  .warning-text {
-    font-size: 13px;
   }
 }
 </style>

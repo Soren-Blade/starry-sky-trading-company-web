@@ -330,11 +330,22 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 详见 [`src/assets/README.md`](src/assets/README.md)。要点：
 
 **设计令牌**（`assets/styles/variables.css` 的 `:root`）：品牌色、语义色（`--color-muted` /
-`--color-border` / `--color-success|warning|danger`）、渐变、阴影（含 `--shadow-card`）、
-毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
+`--color-text-secondary` / `--color-border` / `--color-success|danger`）、渐变、阴影
+（含 `--shadow-card`）、毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
+
+> **令牌必须有人用**：`:root` 当前有 41 个令牌，**没有一个是无人使用的**。
+> 定义了却没人用会稀释「可用令牌」的信号，结果是作者继续写新的硬编码值 —— 因此
+> `test/designTokens.test.js` 会把「死令牌」和「引用了未定义令牌」都判为失败。
+> 新增令牌的同时要把它用在真实组件上；组件不再需要时同步删除令牌。
+>
+> 两类**不**需要在 `variables.css` 声明的局部变量（检查器已放行）：
+> 由 `:style` 绑定注入的（如 `--animation-delay`）、由 JS 数据注入的
+> （HeroSection 的 `--size`/`--duration`/`--delay`）、以及作为可覆写出口的
+> （`--page-header-gradient`，由 `AppleId.vue` / `Hot.vue` 覆写）。
 
 > **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
-> 统一使用 `1199` / `991` / `767` / `575`。此前的 `--breakpoint-*` 变量已删除。
+> 统一使用 `1199` / `991` / `767` / `575`。此前的 `--breakpoint-*` 变量已删除，
+> 且同一个文件内**不得重复声明相同的媒体查询**（应合并为一个块）—— 两项都由测试守卫。
 
 **全局样式**（`assets/styles/global.css`，约 336 行）：基础重置、WebKit 滚动条、元素重置、
 **4 个动画关键帧**（`fadeInUp` `fadeInScale` `float` `floatRandom`）、
@@ -385,7 +396,7 @@ npm run dev        # http://localhost:5173
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
 npm run lint       # ESLint 检查
-npm test           # 单元测试（node:test，共 286 个用例）
+npm test           # 单元测试（node:test，共 295 个用例）
 npm run check      # lint + test
 ```
 
@@ -453,7 +464,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 286 个用例。
+共 295 个用例。
 
 ### 测试基础设施（无新增依赖）
 

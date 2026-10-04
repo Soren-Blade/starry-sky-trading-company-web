@@ -3,13 +3,18 @@
  *
  * 规则：组件样式优先使用这里的变量；找不到合适的就去这里新增，不要在组件里写死色值。
  * 详见 .dsh/skills/project-ui-system/SKILL.md
+ *
+ * 维护要求：**这里不应存在无人使用的令牌**。定义了却没人用会稀释「可用令牌」的信号，
+ * 结果是作者继续写新的硬编码值。新增令牌的同时要把它用在真实组件上；
+ * 组件不再需要时同步删除令牌。
+ * 本次已清理 9 个死令牌（--color-accent、--color-warning(-bg)、--gradient-light/warm、
+ * --shadow-sm/glass、--glass-effect），它们对应的值在组件里也没有等价硬编码。
  */
 :root {
   /* ── 品牌色 ───────────────────────────────── */
   --color-primary: #8a6dff;
   --color-primary-dark: #6c5ce7;
   --color-secondary: #fd79a8;
-  --color-accent: #ffeaa7;
   --color-light: #f8f9fa;
   --color-dark: #2d3436;
 
@@ -21,8 +26,6 @@
   --color-divider: #f0f0f0;
   --color-success: #15803d;
   --color-success-bg: #f0fdf4;
-  --color-warning: #b45309;
-  --color-warning-bg: #fffbeb;
   --color-danger: #c0392b;
   --color-danger-bg: #fef2f2;
   --color-surface: #ffffff;
@@ -30,24 +33,22 @@
 
   /* ── 渐变 ─────────────────────────────────── */
   --gradient-primary: linear-gradient(135deg, #8a6dff 0%, #6c5ce7 100%);
-  --gradient-light: linear-gradient(135deg, #b4a7ff 0%, #9b8dd9 100%);
-  --gradient-warm: linear-gradient(135deg, #fd79a8 0%, #ffeaa7 100%);
   --gradient-hot: linear-gradient(135deg, #fd79a8 0%, #ff7675 100%);
   --gradient-about: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
   --gradient-apple: linear-gradient(135deg, #ff9ff3 0%, #f368e0 100%);
 
   /* ── 阴影 ─────────────────────────────────── */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
   --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.2);
   --shadow-card: 0 6px 18px rgba(16, 14, 40, 0.06);
   --shadow-card-hover: 0 18px 48px rgba(16, 14, 40, 0.12);
   --shadow-primary: 0 8px 24px rgba(138, 109, 255, 0.4);
-  --shadow-glass: 0 8px 32px rgba(31, 38, 135, 0.17);
 
   /* ── 毛玻璃 ───────────────────────────────── */
-  --glass-effect: rgba(255, 255, 255, 0.7);
+  /* 注意：修改这两个令牌前先确认引用方 —— `--glass-backdrop` 被 Navbar 的
+   * `backdrop-filter` 使用；`--glass-effect` 被顶栏背景使用。 */
+  --glass-effect: rgba(255, 255, 255, 0.95);
   --glass-backdrop: blur(10px);
 
   /* ── 圆角 ─────────────────────────────────── */

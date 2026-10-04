@@ -39,22 +39,33 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
 
 `:root` 下集中定义设计令牌，分类如下（完整清单见文件本身）：
 
-| 类别 | 示例 |
+| 类别 | 令牌 |
 | --- | --- |
-| 品牌色 | `--color-primary`、`--color-primary-dark`、`--color-secondary`、`--color-accent`、`--color-light`、`--color-dark` |
-| 语义色 | `--color-muted`、`--color-text-secondary`、`--color-border`、`--color-divider`、`--color-success` / `--color-warning` / `--color-danger`（含 `*-bg`） |
+| 品牌色 | `--color-primary`、`--color-primary-dark`、`--color-secondary`、`--color-light`、`--color-dark` |
+| 语义色 | `--color-muted`、`--color-text-secondary`、`--color-border`、`--color-border-strong`、`--color-divider`、`--color-success(-bg)`、`--color-danger(-bg)` |
 | 表面与背景 | `--color-surface`、`--color-page-bg` |
-| 渐变 | `--gradient-primary`、`--gradient-light`、`--gradient-warm`、`--gradient-hot`、`--gradient-about`、`--gradient-apple` |
-| 阴影 | `--shadow-sm/md/lg/xl`、`--shadow-card`、`--shadow-card-hover`、`--shadow-primary`、`--shadow-glass` |
+| 渐变 | `--gradient-primary`、`--gradient-hot`、`--gradient-about`、`--gradient-apple` |
+| 阴影 | `--shadow-md/lg/xl`、`--shadow-card`、`--shadow-card-hover`、`--shadow-primary` |
 | 毛玻璃 | `--glass-effect`、`--glass-backdrop` |
 | 圆角 | `--radius-sm/md/lg/xl`、`--radius-pill` |
 | 过渡 | `--transition-fast/base/slow` |
 | 布局 | `--container-max`、`--container-content`、`--container-narrow`、`--container-padding`、`--navbar-height` |
 
+**这里不应存在无人使用的令牌。** 曾经有 16 个令牌定义了却没人用，而组件里同时
+硬编码着它们的值 —— 这会稀释「可用令牌」的信号，让后续作者继续写新的硬编码值。
+`test/designTokens.test.js` 会把死令牌判为失败。已删除的令牌：
+`--color-accent`、`--color-warning(-bg)`、`--gradient-light`、`--gradient-warm`、
+`--shadow-sm`、`--shadow-glass`。
+
+**有两类局部变量不在这里声明**（由检查器放行，不要误当成漏定义）：
+- 由 `:style` 绑定注入的，如 `--animation-delay`
+- 由 JS 数据注入的，如 HeroSection 的 `--size` / `--duration` / `--delay`
+- 作为可覆写出口的，如 `--page-header-gradient`
+
 文件末尾还有 `@media (prefers-reduced-motion: reduce)` 的全局降级规则。
 
 **断点没有令牌**：CSS 自定义属性无法用于 `@media`，实际断点必须写字面量，
-统一使用 `1199px` / `991px` / `767px` / `575px`。
+统一使用 `1199px` / `991px` / `767px` / `575px`；同一文件内不得重复声明相同的媒体查询。
 
 ## global.css
 

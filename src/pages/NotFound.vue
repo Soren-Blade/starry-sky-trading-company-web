@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F8F9FA 0%, #EEE 100%);
+  background: linear-gradient(135deg, var(--color-light) 0%, #EEE 100%);
 }
 
 .not-found-container {
@@ -50,7 +50,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 60px;
   align-items: center;
-  max-width: 1000px;
+  max-width: var(--container-narrow);
   width: 100%;
   padding: 60px 20px;
 }
@@ -79,7 +79,7 @@
 
 .not-found-content p {
   font-size: 18px;
-  color: #666;
+  color: var(--color-text-secondary);
   margin: 0 0 40px 0;
   line-height: 1.6;
 }

@@ -168,7 +168,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 
 .tool-category {
   background: rgba(138, 109, 255, 0.1);
-  color: #8a6dff;
+  color: var(--color-primary);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -177,7 +177,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 
 .tool-description {
   font-size: 14px;
-  color: #666;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   margin: 0;
   display: -webkit-box;
@@ -204,7 +204,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 }
 
 .tool-btn.primary {
-  background: linear-gradient(90deg, #8a6dff, #6c5ce7);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
   color: #fff;
 }
 
@@ -214,13 +214,13 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 }
 
 .tool-btn.secondary {
-  background: #f8f9fa;
-  color: #666;
-  border: 1px solid #e9ecef;
+  background: var(--color-light);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
 
 .tool-btn.secondary:hover {
-  background: #e9ecef;
+  background: var(--color-border);
 }
 
 @media (max-width: 767px) {

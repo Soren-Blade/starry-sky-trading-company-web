@@ -141,7 +141,7 @@ const onBuy = () => emit("buy", props.product);
 }
 .fp-sub {
   font-size: 12px;
-  color: #999;
+  color: var(--color-muted);
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -149,7 +149,7 @@ const onBuy = () => emit("buy", props.product);
 }
 .fp-desc {
   font-size: 13px;
-  color: #666;
+  color: var(--color-text-secondary);
   line-height: 1.4;
   max-height: 44px;
   overflow: hidden;
@@ -184,13 +184,13 @@ const onBuy = () => emit("buy", props.product);
 }
 .meta-label {
   font-size: 12px;
-  color: #999;
+  color: var(--color-muted);
 }
 .meta-cta {
   margin-left: auto;
 }
 .cta-btn {
-  background: linear-gradient(90deg, #8a6dff, #6c5ce7);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
   color: #fff;
   border: none;
   padding: 8px 12px;

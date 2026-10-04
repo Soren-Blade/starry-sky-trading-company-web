@@ -265,7 +265,7 @@ input {
 }
 input:focus {
   box-shadow: 0 0 0 4px rgba(138, 109, 255, 0.06);
-  border-color: #8a6dff;
+  border-color: var(--color-primary);
 }
 button {
   padding: 8px 14px;
@@ -279,7 +279,7 @@ button:disabled {
   cursor: not-allowed;
 }
 button.primary {
-  background: linear-gradient(90deg,#8a6dff,#6f54ff);
+  background: linear-gradient(90deg,var(--color-primary),#6f54ff);
   color: white;
 }
 .fp-tutorial {
@@ -384,21 +384,38 @@ button.primary {
 .fp-progress { margin-top:10px; height:8px; background:#f1f5f9; border-radius:8px; overflow:hidden }
 .fp-progress-bar { height:100%; background: linear-gradient(90deg,#20c997,#12b886); width:50%; transition:width 0.3s linear }
 
-@media (max-width: 560px) {
-  .meta-row { flex-direction:column; align-items:flex-start }
-  .meta-remaining { margin-left:0 }
-  .fp-card { padding:12px }
-}
-
-@media (max-width: 560px) {
-  .actions { flex-direction:column }
-  .actions button { width:100% }
-  .fp-container { padding:16px }
-  .fp-code-value { font-size:24px }
-}
-
-/* Responsive: stack label and input on small screens */
-@media (max-width: 560px) {
+/*
+ * 小屏适配。
+ *
+ * 原先是三个完全相同的 `@media (max-width: 560px)` 块 —— 同类断点重复声明属于
+ * 应当合并的写法；本仓库统一断点为 1199 / 991 / 767 / 575，因此改用 575px。
+ *
+ * 合并时移除了一条**永远不会生效**的声明：原先第二个块写
+ * `.actions { flex-direction: column }`，而第三个块写
+ * `.fp-row.actions { flex-direction: row }` —— 后者选择器更具体（两个类），
+ * 优先级更高，必然覆盖前者。这里按第三个块的意图（横排 + 换行）保留。
+ */
+@media (max-width: 575px) {
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .meta-remaining {
+    margin-left: 0;
+  }
+  .fp-card {
+    padding: 12px;
+  }
+  .actions button {
+    width: 100%;
+  }
+  .fp-container {
+    padding: 16px;
+  }
+  .fp-code-value {
+    font-size: 24px;
+  }
+  /* Stack label and input on small screens */
   .fp-row {
     flex-direction: column;
     align-items: stretch;
@@ -407,6 +424,7 @@ button.primary {
     min-width: auto;
     margin-bottom: 6px;
   }
+  /* 比 .actions 更具体，因此这里的横排是实际生效的布局 */
   .fp-row.actions {
     display: flex;
     gap: 8px;

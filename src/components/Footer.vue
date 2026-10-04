@@ -67,7 +67,7 @@
     #1a1f23 50%,
     #2D3436 100%
   );
-  color: #ddd;
+  color: var(--color-border-strong);
   margin-top: 120px;
   position: relative;
   overflow: hidden;
@@ -249,13 +249,16 @@
   }
 }
 
-@media (max-width: 1024px) {
+/*
+ * 小屏适配。
+ * 合并说明：原先是两个相邻的 `@media (max-width: 991px)` 块，
+ * 选择器（.footer-bottom-container / .footer-section）不重叠，合并后层叠结果不变。
+ */
+@media (max-width: 991px) {
   .footer-bottom-container {
     gap: 15px;
   }
-}
 
-@media (max-width: 991px) {
   .footer-section {
     max-width: 100%;
   }

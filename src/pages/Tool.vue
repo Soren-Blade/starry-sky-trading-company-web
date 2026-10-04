@@ -206,7 +206,7 @@ onMounted(() => {
 <style scoped>
 .tool-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8f9fa 0%, #f1f2f4 100%);
+  background: linear-gradient(180deg, var(--color-light) 0%, #f1f2f4 100%);
   padding: 80px 0 56px;
 }
 
@@ -237,7 +237,7 @@ onMounted(() => {
 }
 
 .page-description {
-  color: #666;
+  color: var(--color-text-secondary);
   font-size: 16px;
   margin: 0;
 }
@@ -298,24 +298,24 @@ onMounted(() => {
   gap: 6px;
   padding: 8px 16px;
   background: #fff;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--color-border);
   border-radius: 25px;
   font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .favorites-btn:hover {
-  border-color: #fd79a8;
-  color: #fd79a8;
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
   transform: translateY(-1px);
 }
 
 .favorites-btn.active {
-  background: linear-gradient(90deg, #fd79a8, #e84393);
-  border-color: #fd79a8;
+  background: linear-gradient(90deg, var(--color-secondary), #e84393);
+  border-color: var(--color-secondary);
   color: #fff;
   box-shadow: 0 4px 12px rgba(253, 121, 168, 0.3);
 }
@@ -334,24 +334,24 @@ onMounted(() => {
   gap: 6px;
   padding: 10px 16px;
   background: #fff;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--color-border);
   border-radius: 25px;
   font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .filter-tab:hover {
-  border-color: #8a6dff;
-  color: #8a6dff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   transform: translateY(-1px);
 }
 
 .filter-tab.active {
-  background: linear-gradient(90deg, #8a6dff, #6c5ce7);
-  border-color: #8a6dff;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+  border-color: var(--color-primary);
   color: #fff;
   box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
 }
