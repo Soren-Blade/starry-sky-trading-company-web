@@ -136,11 +136,69 @@ test('放大镜内嵌进搜索框：同一个按钮，展开后落在输入框�
 })
 
 test('展开后按钮自身的外观让位给外框（否则框里还有一个方按钮）', () => {
-  assert.match(
-    NAVBAR_SOURCE,
-    /\.navbar-search\.search-open \.search-toggle,\s*\n\s*\.navbar-search\.search-open \.search-toggle:hover \{[\s\S]*?background: transparent/,
-    '展开态必须连 :hover 一起盖住，否则鼠标在按钮上时又会画出一个方底'
+  const openAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-toggle {')
+  assert.ok(openAt > -1, '应有展开态的按钮规则')
+  const body = NAVBAR_SOURCE.slice(openAt, NAVBAR_SOURCE.indexOf('}', openAt))
+  assert.match(body, /background: transparent/)
+  assert.match(body, /border-color: transparent/)
+
+  // 悬停态必须单独覆盖：否则鼠标停在按钮上时 .u-icon-btn:hover 又会画出一个方底
+  const hoverAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-toggle:hover {')
+  assert.ok(hoverAt > -1, '展开态必须连 :hover 一起盖住')
+  const hoverBody = NAVBAR_SOURCE.slice(hoverAt, NAVBAR_SOURCE.indexOf('}', hoverAt))
+  assert.match(hoverBody, /background: transparent/)
+})
+
+test('提交与 Escape 之后收起：closeSearch 同时释放状态与焦点', () => {
+  // 只改状态不清焦点的话，界面已收起但键盘输入仍打进看不见的框里
+  const closeAt = NAVBAR_SOURCE.indexOf('const closeSearch = () => {')
+  assert.ok(closeAt > -1)
+  const body = NAVBAR_SOURCE.slice(closeAt, NAVBAR_SOURCE.indexOf('\n}', closeAt))
+
+  assert.match(body, /searchOpen\.value = false/)
+  assert.match(body, /searchBarRef\.value\?\.blur\(\)/, '必须把焦点也移走')
+})
+
+// ── 交互方式：点击展开，悬停不展开 ─────────────────────────
+
+test('悬停**不再**展开：模板里没有任何 mouseenter / mouseleave', () => {
+  const searchBlock = NAVBAR_SOURCE.slice(
+    NAVBAR_SOURCE.indexOf('class="navbar-search"') - 200,
+    NAVBAR_SOURCE.indexOf('</div>', NAVBAR_SOURCE.indexOf('<SearchBar'))
   )
+
+  assert.equal(/@mouseenter/.test(searchBlock), false, '悬停展开已按要求去掉')
+  assert.equal(/@mouseleave/.test(searchBlock), false)
+  // 整个文件里都不该残留（避免别处又挂上）
+  assert.equal(/@mouseenter/.test(NAVBAR_SOURCE), false)
+})
+
+test('点击图标切换展开与收起', () => {
+  assert.match(NAVBAR_SOURCE, /@click="toggleSearch"/, '图标按钮应绑定切换')
+
+  const toggleAt = NAVBAR_SOURCE.indexOf('const toggleSearch = async () => {')
+  assert.ok(toggleAt > -1)
+  const body = NAVBAR_SOURCE.slice(toggleAt, NAVBAR_SOURCE.indexOf('\n}', toggleAt))
+
+  assert.match(body, /if \(searchOpen\.value\) \{[\s\S]*?closeSearch\(\)/, '已展开时应收起')
+  assert.match(body, /searchOpen\.value = true/, '收起时应展开')
+  assert.match(body, /searchBarRef\.value\?\.focus\(\)/, '展开时把光标送进输入框')
+})
+
+test('键盘 Tab 进来也展开（收起态宽度为 0，不展开就是往看不见的框里打字）', () => {
+  assert.match(NAVBAR_SOURCE, /@focusin="handleSearchFocusIn"/)
+  const at = NAVBAR_SOURCE.indexOf('const handleSearchFocusIn = () => {')
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
+  assert.match(body, /searchOpen\.value = true/)
+})
+
+test('焦点只在这块**之内**移动时不收起（否则「再点一次收起」会被 focusout 抢先关掉）', () => {
+  const at = NAVBAR_SOURCE.indexOf('const handleSearchFocusOut = (event) => {')
+  assert.ok(at > -1)
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
+
+  assert.match(body, /searchRoot\.value\?\.contains\(event\.relatedTarget\)/, '必须判断新焦点是否仍在这块内')
+  assert.match(body, /!event\.relatedTarget/, 'relatedTarget 为 null（点了页面空白）也要收起')
 })
 
 test('聚焦高亮画在外框上（内层输入框的描边已抹掉，否则看不见聚焦态）', () => {
@@ -166,16 +224,6 @@ test('顶栏只画一个放大镜（SearchBar 自带的那个要让位）', asyn
   assert.match(NAVBAR_SOURCE, /:show-icon="false"/)
   const magnifiers = countMatches(html, /🔍/g)
   assert.equal(magnifiers, 1, `放大镜应只有一个，实际 ${magnifiers} 个`)
-})
-
-test('提交与 Escape 之后收起：closeSearch 同时释放状态与焦点', () => {
-  // 只改状态不清焦点的话，界面已收起但键盘输入仍打进看不见的框里
-  const closeAt = NAVBAR_SOURCE.indexOf('const closeSearch = () => {')
-  assert.ok(closeAt > -1)
-  const body = NAVBAR_SOURCE.slice(closeAt, NAVBAR_SOURCE.indexOf('}', closeAt))
-
-  assert.match(body, /releaseSearch\(\)/)
-  assert.match(body, /searchBarRef\.value\?\.blur\(\)/, '必须把焦点也移走')
 })
 
 // ── 工具页版式 ─────────────────────────────────────────────

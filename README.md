@@ -85,7 +85,6 @@ starry-sky-trading-company-web/
     │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
     │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
     │   ├── useToast/index.js             # 提示框门面（notify.success/warning/error/info）
-    │   ├── useHoverDisclosure/index.js   # 「悬停或聚焦即展开」的展开态（顶栏搜索用；含触屏补发 mouseenter 的处理）
     │   └── useSimpleTimeFormatter/index.js # 时间格式化与时区转换
     ├── pages/                    # 路由目标页面（见 §4）
     ├── router/
@@ -429,7 +428,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索（点击展开，图标内嵌进框）**、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
@@ -573,7 +572,6 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message? }` |
 | `useOpenTool` | `openTool(tool)` | 打开外部工具：地址校验、弹窗被拦截的提示、复用已开窗口（同一工具点两次不会开出两个标签页） |
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
-| `useHoverDisclosure` | `open` / `onEnter` / `onLeave` / `onFocusIn` / `onFocusOut` / `reveal()` / `close()` | 「悬停或聚焦即展开」的展开态（顶栏搜索）。展开 = 悬停中**或**焦点在内部 —— 只看悬停会在「打完字把鼠标移开」时把输入框抽走；触屏补发的 `mouseenter` 由 `canHover` 判断挡掉，否则手机上关不掉 |
 | `useBootScreen` | `visible` / `start()` / `finish()` | 首屏遮罩的三个时间闸（延迟出现 / 最短停留 / 最长等待），计时器可注入以便用假时钟测 |
 | `useRouteLoading` | `loading`（只读） / `markRouteLoading()` / `markRouteLoaded()` | 路由是否在切换（顶部进度条）。用开关而不是计数器：重定向会再触发一次 `beforeEach`，计数器会漂移 |
 | `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表 |
@@ -900,7 +898,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 660 个用例）
+npm test             # 单元测试（node:test，共 650 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -993,8 +991,7 @@ test/
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
-├── hoverDisclosure.test.js           # 「悬停或聚焦即展开」的两条易错分支：移开鼠标但仍有焦点、触屏补发的 mouseenter
-├── navbarSearch.test.js              # 顶栏搜索收成图标后的接线（只有一个输入框/一个放大镜、图标内嵌进框、不参与布局）+ 工具页计数去重
+├── navbarSearch.test.js              # 顶栏搜索：点击展开（悬停不展开）、图标内嵌进框、焦点只在本块内移动时不收起
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
@@ -1019,7 +1016,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 660 个用例。
+共 650 个用例。
 
 ### 主题契约测试
 
@@ -1208,7 +1205,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（660 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（650 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

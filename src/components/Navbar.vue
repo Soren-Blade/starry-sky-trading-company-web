@@ -21,7 +21,7 @@
 
       <div class="navbar-actions">
         <!--
-          搜索收成一个图标：悬停展开、点击展开并把光标落进输入框。
+          搜索收成一个图标：**点击**展开（悬停不再展开），展开后光标直接落进输入框。
 
           展开后放大镜**内嵌在搜索框左侧** —— 它是同一个按钮，只是从
           「独立的图标按钮」变成「输入框的左前缀」：外层 .search-field 负责
@@ -29,18 +29,17 @@
           因此视觉上始终只有一个放大镜，也没有单独的「搜索」提交按钮
           （回车 / 手机键盘的搜索键都能提交）。
 
-          展开状态由 JS 的 searchOpen 驱动（而不是 :hover / :focus-within 伪类），
-          因为图标按钮需要 aria-expanded 如实反映状态 —— 伪类做不到。
+          展开状态由 JS 驱动而不是 :hover / :focus-within 伪类：
+          一是悬停展开本身已经去掉，二是图标按钮需要 aria-expanded
+          如实反映状态，而伪类做不到。
 
-          「鼠标移开就收起」有个必须处理的组合：用户点开输入框、打了字、
-          然后把鼠标移开 —— 此时焦点还在输入框里，绝不能让搜索框消失。
-          因此展开状态 = 悬停中 **或** 焦点在内部。
+          收起有三种途径：再点一次图标、按 Escape、焦点离开整块（点了别处）。
+          提交之后也会收起 —— 结果已经在页面上了，留着只是占地方。
         -->
         <div
+          ref="searchRoot"
           class="navbar-search"
           :class="{ 'search-open': searchOpen }"
-          @mouseenter="handleSearchEnter"
-          @mouseleave="handleSearchLeave"
           @focusin="handleSearchFocusIn"
           @focusout="handleSearchFocusOut"
           @keydown.esc="closeSearch"
@@ -55,7 +54,7 @@
               class="u-icon-btn search-toggle"
               :aria-label="PRODUCT_GRID.searchLabel"
               :aria-expanded="searchOpen"
-              @click="openSearchAndFocus"
+              @click="toggleSearch"
             >
               <span aria-hidden="true">🔍</span>
             </button>
@@ -247,7 +246,6 @@ import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
-import { useHoverDisclosure } from '@/hooks/useHoverDisclosure'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
@@ -343,37 +341,46 @@ const handleSearchSubmit = () => {
 
 // ── 搜索图标的展开 / 收起 ──────────────────────────────────────
 //
-// 展开 = 悬停中 **或** 焦点在内部，这套判定（含触屏上补发 mouseenter 的坑）
-// 收在 useHoverDisclosure 里，那边有单测。
+// 点击展开（悬停**不**展开，按要求改掉）。三件事必须一起成立，
+// 只做其中一件都会让这块变得难用：
+//   1. 点开时把光标落进输入框 —— 否则用户还得再点一次输入框
+//   2. 键盘 Tab 进来也要展开 —— 收起态宽度为 0，不展开就是往一个看不见的框里打字
+//   3. 焦点只是在**这块之内**移动（输入框 ⇄ 放大镜按钮）时不能收起 ——
+//      否则「再点一次图标收起」会先被 focusout 关掉、再被 click 打开，
+//      看起来就是「点了没反应」
 
+const searchRoot = ref(null)
 const searchBarRef = ref(null)
-const {
-  open: searchOpen,
-  onEnter: handleSearchEnter,
-  onLeave: handleSearchLeave,
-  onFocusIn: handleSearchFocusIn,
-  onFocusOut: handleSearchFocusOut,
-  reveal: revealSearch,
-  close: releaseSearch,
-} = useHoverDisclosure()
+const searchOpen = ref(false)
 
-/**
- * 收起搜索。
- *
- * 必须**同时把焦点移走**：只改状态的话，输入框仍然握着 DOM 焦点，
- * 但界面已经收起 —— 此时敲键盘会打进一个看不见的框里。
- * 提交与 Escape 都走这里。
- */
 const closeSearch = () => {
-  releaseSearch()
+  searchOpen.value = false
+  // 收起时同时把焦点移走：只改状态的话，界面已收起而键盘输入仍打进看不见的框里。
+  // 元素本来就未聚焦时 blur() 是空操作，不会再触发 focusout，因此不会递归。
   searchBarRef.value?.blur()
 }
 
-/** 点图标：展开，并把光标直接落进输入框（不用再点一次输入框） */
-const openSearchAndFocus = async () => {
-  revealSearch()
+/** 点图标：展开则收起，收起则展开并把光标送进输入框 */
+const toggleSearch = async () => {
+  if (searchOpen.value) {
+    closeSearch()
+    return
+  }
+  searchOpen.value = true
   await nextTick()
   searchBarRef.value?.focus()
+}
+
+/** 键盘 Tab 进到这块里（输入框或按钮）：展开。鼠标悬停不参与 */
+const handleSearchFocusIn = () => {
+  searchOpen.value = true
+}
+
+const handleSearchFocusOut = (event) => {
+  // relatedTarget 为 null 表示焦点落到了不可聚焦的地方（例如点了页面空白）
+  if (!event.relatedTarget || !searchRoot.value?.contains(event.relatedTarget)) {
+    closeSearch()
+  }
 }
 
 /**
@@ -615,6 +622,7 @@ onUnmounted(() => {
   transition:
     width var(--transition-surface),
     height var(--transition-surface),
+    padding-left var(--transition-surface),
     background-color var(--transition-interactive),
     border-color var(--transition-interactive),
     box-shadow var(--transition-interactive);
@@ -623,14 +631,21 @@ onUnmounted(() => {
 .navbar-search.search-open .search-field {
   /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
    * 同时不超过视口 —— 窄屏上也不会把框顶出屏幕。 */
-  width: min(calc(var(--input-height) * 9), calc(100vw - var(--space-unit) * 6));
+  width: min(calc(var(--input-height) * 9), calc(var(--space-unit) * 30), calc(100vw - var(--space-unit) * 6));
   height: var(--input-height);
+  /* 让内嵌的放大镜与描边之间留出呼吸：图标按钮自身的内边距会把字形推到
+   * 紧贴左边框的位置，看着像被挤住了 */
+  padding-left: calc(var(--space-unit) * 0.5);
   background: var(--bg-surface-2);
   border-color: var(--stroke-color);
+  /* 它是浮在顶栏之上的一层，给一点抬升阴影；
+   * 否则与导航栏同底，展开后看着像被压扁在栏里 */
+  box-shadow: var(--shadow-float);
 }
 
 /* 聚焦态画在**外框**上：输入框自己的描边已经抹掉，
- * 否则聚焦高亮只会出现在内层那个没有边框的输入框上、看不出来 */
+ * 否则聚焦高亮只会出现在内层那个没有边框的输入框上、看不出来。
+ * 放在展开规则之后，焦点环才盖得住上面那层抬升阴影。 */
 .navbar-search.search-open .search-field:focus-within {
   border-color: var(--input-focus-border);
   box-shadow: var(--input-focus-shadow);
@@ -641,14 +656,24 @@ onUnmounted(() => {
 }
 
 /* 展开后按钮外观让位给外框：它此时是输入框的左前缀，不是一个独立按钮。
- * 选择器比 .u-icon-btn / .u-icon-btn:hover 都更具体，因此能盖住。 */
-.navbar-search.search-open .search-toggle,
+ * 选择器比 .u-icon-btn / .u-icon-btn:hover 都更具体，因此能盖住。
+ *
+ * 颜色用次级文字色而不是强调色：它此刻是输入框的装饰前缀，
+ * 跟着占位文字同一层级才像「一个搜索框」；强调色会让它看着又像一个按钮，
+ * 与右侧真正可点的图标抢注意力。悬停时才提亮，提示它仍可点击收起。 */
+.navbar-search.search-open .search-toggle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  /* 展开后它仍是可点击的（再点一次收起），所以指针不能写成 text */
+  cursor: pointer;
+  transform: none;
+}
+
 .navbar-search.search-open .search-toggle:hover {
   background: transparent;
   border-color: transparent;
   color: var(--accent);
-  cursor: text;
-  transform: none;
 }
 
 /* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
