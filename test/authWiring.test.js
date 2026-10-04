@@ -133,3 +133,31 @@ test('刷新逻辑与 request 实例同模块（避免循环依赖）', () => {
     'useRefreshToken 不应再直接 import request 实例（会形成循环依赖）'
   )
 })
+
+test('refreshToken 只能有一个实现，且 api 聚合时不得被覆盖', () => {
+  // 曾经 api/ask/user.js 也导出一个 refreshToken（不带 refresh token，必然 401），
+  // 而 api/index.js 用 `...user` 展开时它**排在前面**，
+  // 会覆盖后面 request.js 的正确实现。
+  const askUser = read('src/api/ask/user.js')
+
+  assert.equal(
+    /function\s+refreshToken\s*\(/.test(askUser),
+    false,
+    'api/ask/user.js 不应再定义 refreshToken —— 它会覆盖 request.js 里的正确实现'
+  )
+})
+
+test('api/ask/user.js 的导出不得与 request.js 的同名导出冲突', () => {
+  const askUser = read('src/api/ask/user.js')
+  const request = read('src/api/request.js')
+
+  const requestExports = [...request.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1])
+  const askUserFns = [...askUser.matchAll(/^\s*(?:async\s+)?function\s+(\w+)/gm)].map((m) => m[1])
+
+  const collisions = askUserFns.filter((n) => requestExports.includes(n))
+  assert.deepEqual(
+    collisions,
+    [],
+    `api/ask/user.js 与 api/request.js 存在同名导出，聚合时会互相覆盖：${collisions.join(', ')}`
+  )
+})

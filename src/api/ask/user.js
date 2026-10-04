@@ -23,14 +23,17 @@ function register(payload) {
     return request.post(`${baseURL}/register`, payload)
 }
 
-// 刷新 token（一般由 request.js 的拦截器自动调用；这里导出便于手动排查）
-function refreshToken() {
-    return request.post(`${baseURL}/refreshToken`, {})
-}
+// 说明：这里**故意没有** refreshToken。
+//
+// 曾经有过一个 `request.post('/user/refreshToken', {})` 的实现，但它不带
+// refresh token（请求拦截器只会填 access token），而服务端要求令牌 type 为
+// 'refresh'，因此调用它必然 401。更糟的是 api/index.js 用 `...user` 展开时，
+// 这个名字会**覆盖**掉 request.js 里正确的 refreshToken 实现。
+//
+// 唯一实现见 src/api/request.js 的 refreshToken（单飞 + 正确携带 refresh token）。
 
 export default {
     visitorLogin,
     login,
     register,
-    refreshToken,
 }
