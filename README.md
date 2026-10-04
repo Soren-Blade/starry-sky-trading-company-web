@@ -66,10 +66,12 @@ starry-sky-trading-company-web/
     │   └── index.js              # COLORS / NAV_MENU / BREAKPOINTS / 动画时长 / 标签色
     ├── hooks/
     │   ├── useToken/index.js             # localStorage 读写 token
-    │   ├── useRefreshToken/index.js      # 刷新 token（单飞 promise）
-    │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动
+    │   ├── useRefreshToken/index.js      # 刷新 token（再导出 @/api/request 的单飞实现）
+    │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动（含引用计数）
     │   ├── useClass/index.js             # 按 class 字段对工具分组
     │   ├── useEmoji/index.js             # emoji → 渐变背景（映射表 + 生成器类）
+    │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
+    │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
     │   └── useSimpleTimeFormatter/index.js # 时间格式化与时区转换
     ├── pages/                    # 路由目标页面（见 §4）
     ├── router/
@@ -324,6 +326,12 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类，并附带每个分类的图标、数量、最热门工具、是否含新工具 |
 | `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表和一个 `EmojiGradientGenerator` 单例类；绝大部分导出尚未被使用 |
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
+| `useKamiDisplay` | `getStatusText` / `getStatusColor` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与配色用 `lookupOr` 查表以避开原型链；工具 id 兼容数字与字符串（后端 bigint 返回字符串）。状态映射与筛选下拉选项同源，避免两处错位 |
+| `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated`。`activate()` 返回 `{ success, reason, message }`，`reason` 区分 `empty_tool`/`empty_code`/`server`/`thrown`/`ok`，且**不向外抛异常** |
+
+> `useKamiActivation` 有一条与其他 hook 不同的约定：**激活成功后若列表刷新失败，
+> 仍报告成功**（文案附「请手动刷新」）。因为卡密在服务端已经生效，
+> 报失败会诱导用户重复激活。
 
 ## 9. 样式体系
 
@@ -405,7 +413,7 @@ npm run dev        # http://localhost:5173
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
 npm run lint       # ESLint 检查
-npm test           # 单元测试（node:test，共 295 个用例）
+npm test           # 单元测试（node:test，共 341 个用例）
 npm run check      # lint + test
 ```
 
@@ -473,7 +481,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 295 个用例。
+共 341 个用例。
 
 ### 测试基础设施（无新增依赖）
 
@@ -525,7 +533,7 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 | 组件渲染 | 需要 jsdom（或在 CI 里用真实浏览器）；当前加载器不渲染 SFC |
 | `hooks/useBodyScroll` | 依赖 DOM 尺寸测量 |
 
-已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、
+已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、`useKamiDisplay`、`useKamiActivation`、
 四个 store（`user` / `shop` / `tool` / `kami`），以及跨仓库的接口契约。
 
 > 测试基础设施（`test/loaders/alias.mjs`、`test/setup.js`）模拟了 Vite 的解析规则；

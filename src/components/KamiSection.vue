@@ -93,11 +93,10 @@
                 aria-label="按状态筛选"
                 @change="reload(1)"
               >
-                <option value="all">全部状态</option>
-                <option value="unused">未使用</option>
-                <option value="used">已使用</option>
-                <option value="expired">已过期</option>
-                <option value="disabled">已禁用</option>
+                <!-- 选项来自 useKamiDisplay，与状态文案/配色同源，避免两处各写一份 -->
+                <option v-for="opt in statusFilterOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
               </select>
             </div>
           </div>
@@ -187,8 +186,16 @@ import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
 import { useToolStore } from '@/stores/tool'
 import api from '@/api/index'
-import { formatISOTime } from '@/hooks/useSimpleTimeFormatter'
-import { lookupOr } from '@/utils/safeLookup.js'
+import { useKamiActivation } from '@/hooks/useKamiActivation'
+import {
+  KAMI_TABLE_COLUMNS,
+  STATUS_FILTER_OPTIONS,
+  formatCardDate,
+  getStatusColor,
+  getStatusText,
+  resolveToolName,
+  toToolOptions,
+} from '@/hooks/useKamiDisplay'
 import SectionHeader from '@/components/SectionHeader.vue'
 
 const userStore = useUserStore()
@@ -200,77 +207,21 @@ const { toolData } = storeToRefs(toolStore)
 
 const activeTab = ref('list')
 const statusFilter = ref('all')
-const activateCode = ref('')
-const selectedToolId = ref('')
-const activationResult = ref(null)
-const activating = ref(false)
 
 // 游客也能拿到 userInfo，但卡密是账号资产，因此以「已用账号登录」为准
 const canUseKami = computed(() => userStore.isLoggedIn && Boolean(userStore.userId))
 
-// 工具选项：toolData.tools 是扁平数组
-const toolOptions = computed(() => {
-  const tools = Array.isArray(toolData.value?.tools) ? toolData.value.tools : []
-  return tools.map((tool) => ({
-    value: String(tool.id),
-    label: tool.tool_name || tool.display_name || `工具 ${tool.id}`,
-  }))
-})
+/** 工具列表（可能尚未加载，统一兜底为空数组） */
+const tools = computed(() => (Array.isArray(toolData.value?.tools) ? toolData.value.tools : []))
 
-const tableColumns = [
-  { title: '卡密名称', dataIndex: 'card_name', key: 'card_name', width: 150 },
-  { title: '面值', dataIndex: 'card_value', key: 'card_value', width: 100 },
-  { title: '卡号', dataIndex: 'card_no_display', key: 'card_no_display', width: 150 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '有效期至', dataIndex: 'valid_until', key: 'valid_until', width: 170 },
-  { title: '使用日期', dataIndex: 'used_at', key: 'used_at', width: 170 },
-  { title: '已关联工具', dataIndex: 'tool_id', key: 'tool_id', width: 180 },
-  { title: '操作', key: 'action', width: 120, align: 'center' },
-]
+const toolOptions = computed(() => toToolOptions(tools.value))
 
-/** 时间格式化：交给统一的 hook，避免 Invalid Date 渲染成 NaN */
-const formatDate = (value) => formatISOTime(value, 'YYYY-MM-DD HH:mm') || '—'
+const tableColumns = KAMI_TABLE_COLUMNS
+const statusFilterOptions = STATUS_FILTER_OPTIONS
 
-const STATUS_TEXT = {
-  unused: '未使用',
-  used: '已使用',
-  expired: '已过期',
-  disabled: '已禁用',
-}
+const formatDate = formatCardDate
 
-const STATUS_COLOR = {
-  unused: 'blue',
-  used: 'green',
-  expired: 'red',
-  disabled: 'default',
-}
-
-// 用自有属性查找：status 来自后端，若它恰好等于 'toString' 这类原型链属性名，
-// `STATUS_TEXT[status]` 会返回函数而不是文案（server 侧曾出现过同类缺陷）。
-const getStatusText = (status) => lookupOr(STATUS_TEXT, status, status || '未知')
-
-const getStatusColor = (status) => lookupOr(STATUS_COLOR, status, 'default')
-
-const getToolName = (toolId) => {
-  if (!toolId) return null
-  const tools = Array.isArray(toolData.value?.tools) ? toolData.value.tools : []
-  const tool = tools.find((t) => Number(t.id) === Number(toolId))
-  return tool?.tool_name || tool?.display_name || null
-}
-
-const copyCardNo = async (card) => {
-  // 列表接口只返回**脱敏**卡号（见 server 端 kamiApi：完整 card_no 会导致掩码失效）。
-  // 因此这里复制到的是 "****1234" 这类值 —— 按钮文案必须如实说明，
-  // 否则用户会以为复制到了可用于激活的完整卡号。
-  const text = card.card_no_display
-  if (!text) return
-  try {
-    await navigator.clipboard.writeText(text)
-    message.success('已复制脱敏卡号（含掩码，仅用于核对）')
-  } catch {
-    message.error('复制失败，请手动选择复制')
-  }
-}
+const getToolName = (toolId) => resolveToolName(tools.value, toolId)
 
 /** 统一取数入口：走 store action，参数由 api 层包成 axios config */
 const reload = async (page = 1) => {
@@ -288,37 +239,32 @@ const reload = async (page = 1) => {
 const handlePaginationChange = (page) => reload(page)
 
 const goActivate = () => {
+  activation.clearResult()
   activeTab.value = 'activate'
 }
 
-const handleActivate = async () => {
-  if (!selectedToolId.value) {
-    activationResult.value = { success: false, message: '请选择工具' }
-    return
-  }
-  if (!activateCode.value.trim()) {
-    activationResult.value = { success: false, message: '请输入卡密' }
-    return
-  }
+// 激活流程的状态与提交逻辑抽到 @/hooks/useKamiActivation（可单独测试）
+const activation = useKamiActivation({
+  activateCard: (payload) => api.activateCard(payload),
+  getUserId: () => userStore.userId,
+  onActivated: () => reload(1),
+})
 
-  activating.value = true
+const { activateCode, selectedToolId, activationResult, activating } = activation
+
+const handleActivate = () => activation.activate()
+
+const copyCardNo = async (card) => {
+  // 列表接口只返回**脱敏**卡号（见 server 端 kamiApi：完整 card_no 会导致掩码失效）。
+  // 因此这里复制到的是 "****1234" 这类值 —— 按钮文案必须如实说明，
+  // 否则用户会以为复制到了可用于激活的完整卡号。
+  const text = card.card_no_display
+  if (!text) return
   try {
-    const resp = await api.activateCard({
-      card_no: activateCode.value.trim(),
-      user_id: userStore.userId,
-      tool_id: Number(selectedToolId.value),
-    })
-    activationResult.value = resp
-
-    if (resp?.success) {
-      activateCode.value = ''
-      selectedToolId.value = ''
-      await reload(1)
-    }
-  } catch (err) {
-    activationResult.value = { success: false, message: err.message || '激活失败' }
-  } finally {
-    activating.value = false
+    await navigator.clipboard.writeText(text)
+    message.success('已复制脱敏卡号（含掩码，仅用于核对）')
+  } catch {
+    message.error('复制失败，请手动选择复制')
   }
 }
 
