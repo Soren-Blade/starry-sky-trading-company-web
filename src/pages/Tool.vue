@@ -1,5 +1,8 @@
 <template>
   <div class="tool-page">
+    <!-- 页头：文案与其它页面同源（constants/content.js 的 PAGES） -->
+    <PageHeader v-bind="PAGES.tools" />
+
     <div class="page-container">
       <!-- 分类过滤器 -->
       <div class="category-filter">
@@ -7,11 +10,12 @@
           <button
             v-for="category in toolData.classes"
             :key="category.class"
-            class="filter-tab"
-            :class="{ active: activeCategory === category.class }"
+            type="button"
+            class="u-chip filter-tab"
+            :class="{ 'u-chip--active': activeCategory === category.class }"
             @click="toolStore.setActiveCategory(category.class)"
           >
-            <span class="tab-icon">{{ category.icon }}</span>
+            <span class="tab-icon" aria-hidden="true">{{ category.icon }}</span>
             <span class="tab-label">{{ category.class_name }}</span>
           </button>
         </div>
@@ -22,20 +26,20 @@
               id="tool-search"
               v-model="searchQuery"
               type="search"
-              placeholder="搜索工具..."
-              class="search-input"
+              :placeholder="TOOL_PAGE.searchPlaceholder"
+              class="u-input search-input"
             />
             <span class="search-icon" aria-hidden="true">🔍</span>
           </div>
           <button
             type="button"
-            class="favorites-btn"
-            :class="{ active: showFavorites }"
+            class="u-chip favorites-btn"
+            :class="{ 'u-chip--active': showFavorites }"
             :aria-pressed="showFavorites"
             @click="toggleFavorites"
           >
             <span class="favorites-icon" aria-hidden="true">❤️</span>
-            <span class="favorites-text">已收藏</span>
+            <span class="favorites-text">{{ TOOL_PAGE.favorites }}</span>
           </button>
         </div>
       </div>
@@ -43,18 +47,17 @@
       <!-- 工具网格 -->
       <div class="tools-grid">
         <ToolCard
-          v-for="tool in filteredTools"
+          v-for="(tool, index) in filteredTools"
           :key="tool.id"
           :tool="tool"
           :is-favorited="favoriteTools.has(Number(tool.id))"
+          :style="{ '--i': index }"
           @open-tool="handleOpenTool"
           @toggle-favorite="handleToggleFavorite"
         />
-        <div v-if="toolsLoading" class="empty-note">正在加载工具…</div>
-        <div v-else-if="toolsError" class="empty-note error">工具加载失败：{{ toolsError }}</div>
-        <div v-else-if="filteredTools.length === 0" class="empty-note">
-          该分类下暂无工具
-        </div>
+        <div v-if="toolsLoading" class="empty-note">{{ TOOL_PAGE.loading }}</div>
+        <div v-else-if="toolsError" class="empty-note error">{{ TOOL_PAGE.errorPrefix }}{{ toolsError }}</div>
+        <div v-else-if="filteredTools.length === 0" class="empty-note">{{ TOOL_PAGE.empty }}</div>
       </div>
     </div>
   </div>
@@ -65,7 +68,10 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { message } from 'ant-design-vue'
 import ToolCard from '@/components/ToolCard.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { useToolStore } from '@/stores/tool'
+// 页面文案集中在 constants，改文案只碰一个文件
+import { PAGES, TOOL_PAGE } from '@/constants/index.js'
 
 const toolStore = useToolStore()
 const { toolData, activeCategory, toolsLoading, toolsError } = storeToRefs(toolStore)
@@ -143,7 +149,7 @@ const handleOpenTool = (tool) => {
   const url = tool?.tool_path
 
   if (!url || typeof url !== 'string') {
-    message.warning('该工具暂未配置跳转地址')
+    message.warning(TOOL_PAGE.missingPath)
     return
   }
 
@@ -156,7 +162,7 @@ const handleOpenTool = (tool) => {
   try {
     absoluteUrl = new URL(url, window.location.origin).href
   } catch {
-    message.error('工具地址无效')
+    message.error(TOOL_PAGE.invalidPath)
     return
   }
 
@@ -176,7 +182,7 @@ const handleOpenTool = (tool) => {
 
   const win = window.open(url, '_blank')
   if (!win) {
-    message.warning('浏览器拦截了新窗口，请允许本站弹出窗口')
+    message.warning(TOOL_PAGE.popupBlocked)
     return
   }
   openedWindows.set(url, win)
@@ -188,10 +194,10 @@ const handleToggleFavorite = (tool) => {
 
   if (favoriteTools.value.has(id)) {
     favoriteTools.value.delete(id)
-    message.success('已取消收藏')
+    message.success(TOOL_PAGE.removedFavorite)
   } else {
     favoriteTools.value.add(id)
-    message.success('已收藏')
+    message.success(TOOL_PAGE.addedFavorite)
   }
   // Set 是响应式 ref 的内部可变对象，需触发一次更新
   favoriteTools.value = new Set(favoriteTools.value)
@@ -205,239 +211,129 @@ onMounted(() => {
 
 <style scoped>
 .tool-page {
-  min-height: 100vh;
-  background: linear-gradient(180deg, var(--color-light) 0%, #f1f2f4 100%);
-  padding: 80px 0 56px;
+  width: 100%;
+  /* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
+  padding: var(--section-gap) 0;
+  /* 页面底色由 body 的 --bg-page 承担，页面不再自带浅色渐变底 */
+  background: transparent;
 }
 
 .page-container {
-  max-width: 1280px;
+  max-width: var(--container-content);
   margin: 0 auto;
-  padding: 0 20px;
-}
-
-.page-header {
-  text-align: center;
-  margin-bottom: 48px;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 36px;
-  font-weight: 800;
-  color: var(--color-text-primary);
-  margin-bottom: 12px;
-}
-
-.title-icon {
-  font-size: 32px;
-}
-
-.page-description {
-  color: var(--color-text-secondary);
-  font-size: 16px;
-  margin: 0;
+  padding: 0 var(--container-padding);
 }
 
 .category-filter {
-  margin-bottom: 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: calc(var(--space-unit) * 2.5);
+  margin-bottom: calc(var(--space-unit) * 4);
 }
 
 .filter-tabs {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: var(--space-unit);
+}
+
+/* 分类 tab 与「已收藏」胶囊的外观（含选中态）来自 .u-chip / .u-chip--active，
+   这里只放大 emoji 图标，使其与标签文字比例协调 */
+.tab-icon,
+.favorites-icon {
+  font-size: var(--fs-body);
+  line-height: 1;
 }
 
 .filter-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
 .search-box {
   position: relative;
   display: flex;
   align-items: center;
+  width: calc(var(--space-unit) * 25);
 }
 
+/* 输入框视觉来自 .u-input，这里只给它右侧放大镜让位 */
 .search-input {
-  width: 200px;
-  padding: 8px 34px 8px 12px;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  font-size: 14px;
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.search-input:focus {
-  border-color: var(--color-primary);
+  padding-right: calc(var(--space-unit) * 4.5);
 }
 
 /* 搜索是即时的（由 computed 完成），图标仅作提示 */
 .search-icon {
   position: absolute;
-  right: 12px;
-  font-size: 14px;
+  right: calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
   pointer-events: none;
-}
-
-/* .visually-hidden 已抽取到 global.css，供各组件复用 */
-
-.favorites-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.favorites-btn:hover {
-  border-color: var(--color-secondary);
-  color: var(--color-secondary);
-  transform: translateY(-1px);
-}
-
-.favorites-btn.active {
-  background: linear-gradient(90deg, var(--color-secondary), #e84393);
-  border-color: var(--color-secondary);
-  color: var(--color-on-primary);
-  box-shadow: 0 4px 12px rgba(253, 121, 168, 0.3);
-}
-
-.favorites-icon {
-  font-size: 16px;
-}
-
-.favorites-text {
-  font-weight: 600;
-}
-
-.filter-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 25px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.filter-tab:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  transform: translateY(-1px);
-}
-
-.filter-tab.active {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
-  box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
-}
-
-.tab-icon {
-  font-size: 16px;
 }
 
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
+  /* 卡片最小宽度用间距单位表达（40 个基础单位），随主题基础单位一起缩放 */
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 40), 1fr));
+  gap: var(--grid-gap);
 }
 
 .empty-note {
   grid-column: 1 / -1;
   text-align: center;
-  color: var(--color-text-tertiary);
-  padding: 48px 20px;
-  background: rgba(250, 250, 250, 0.7);
-  border-radius: var(--radius-md);
-  font-size: 16px;
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2.5);
+  font-size: var(--fs-body);
 }
 
 .empty-note.error {
-  color: var(--color-danger);
-  background: var(--color-danger-bg);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger);
 }
 
 @media (max-width: 1199px) {
   .tools-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 35), 1fr));
   }
 }
 
 @media (max-width: 767px) {
   .tool-page {
-    padding: 60px 0 40px;
-  }
-
-  .page-title {
-    font-size: 28px;
-  }
-
-  .title-icon {
-    font-size: 24px;
-  }
-
-  .page-description {
-    font-size: 14px;
+    padding: calc(var(--section-gap) * 0.5) 0;
   }
 
   .category-filter {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: var(--card-gap);
   }
 
   .filter-tabs {
     justify-content: center;
-    gap: 6px;
-  }
-
-  .filter-tab {
-    padding: 8px 12px;
-    font-size: 13px;
+    gap: calc(var(--space-unit) * 0.75);
   }
 
   .filter-actions {
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-unit);
   }
 
-  .search-input {
-    width: 150px;
-  }
-
-  .favorites-btn {
-    padding: 6px 12px;
-    font-size: 13px;
+  /* 搜索框占满剩余宽度，与「已收藏」并排 */
+  .search-box {
+    flex: 1;
+    width: auto;
+    min-width: 0;
   }
 
   .tools-grid {
-    /* keep at least two cards per row on small screens */
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
+    /* 小屏至少保持一行两张卡片 */
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 22.5), 1fr));
+    gap: var(--card-gap);
   }
 }
 </style>

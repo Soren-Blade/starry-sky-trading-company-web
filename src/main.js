@@ -8,11 +8,20 @@ import { message } from 'ant-design-vue'
 import router from './router/index.js'
 import App from './App.vue'
 import { setAuthExpiredHandler } from './api/request.js'
+import { useThemeStore } from './stores/theme.js'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
+
+// ── 样式主题 ────────────────────────────────────────────────────
+// 必须在 app.mount() 之前同步执行：主题令牌是写到 <html> 的行内样式上的，
+// 放到组件的 onMounted 里会让用户先看到默认主题、再闪一下切换（FOUC）。
+// 这里显式传入 pinia 实例，因为此刻还没有组件上下文。
+useThemeStore(pinia).init()
+
 app.mount('#app')
 
 // ── 登录态失效的处理 ────────────────────────────────────────────

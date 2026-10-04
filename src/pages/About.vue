@@ -1,9 +1,7 @@
 <template>
   <div class="about-page">
-    <div class="page-header">
-      <h1>关于我们</h1>
-      <p>了解星辰商行的故事</p>
-    </div>
+    <!-- 页头改用共享组件：结构与样式在 global.css 的 .page-header，页面不再手写一份 -->
+    <PageHeader v-bind="PAGES.about" />
 
     <div class="about-container">
       <section class="about-section">
@@ -18,22 +16,22 @@
         <h2>我们的核心价值</h2>
         <div class="values-grid">
           <div class="value-card">
-            <div class="value-icon">✨</div>
+            <div class="value-icon" aria-hidden="true">✨</div>
             <h3>品质优先</h3>
             <p>每一件商品都经过严格筛选，确保品质与美学的完美结合</p>
           </div>
           <div class="value-card">
-            <div class="value-icon">⚡</div>
+            <div class="value-icon" aria-hidden="true">⚡</div>
             <h3>高效服务</h3>
             <p>快速配送、贴心售后，让您的购物体验更加轻松</p>
           </div>
           <div class="value-card">
-            <div class="value-icon">💫</div>
+            <div class="value-icon" aria-hidden="true">💫</div>
             <h3>创新体验</h3>
             <p>不断创新购物方式，为用户提供更好的体验</p>
           </div>
           <div class="value-card">
-            <div class="value-icon">❤️</div>
+            <div class="value-icon" aria-hidden="true">❤️</div>
             <h3>用户至上</h3>
             <p>以用户需求为中心，打造温暖的购物社区</p>
           </div>
@@ -43,10 +41,10 @@
       <section class="about-section">
         <h2>联系我们</h2>
         <div class="contact-info">
-          <p>📍 地址：中国 北京市 朝阳区</p>
-          <p>📞 电话：400-800-8888</p>
-          <p>✉️ 邮箱：service@starrysky.com</p>
-          <p>🕐 服务时间：9:00 - 22:00</p>
+          <p><span aria-hidden="true">📍</span> 地址：中国 北京市 朝阳区</p>
+          <p><span aria-hidden="true">📞</span> 电话：400-800-8888</p>
+          <p><span aria-hidden="true">✉️</span> 邮箱：service@starrysky.com</p>
+          <p><span aria-hidden="true">🕐</span> 服务时间：9:00 - 22:00</p>
         </div>
       </section>
     </div>
@@ -54,146 +52,126 @@
 </template>
 
 <script setup>
-// About page component
+import PageHeader from '@/components/PageHeader.vue'
+import { PAGES } from '@/constants/index.js'
 </script>
 
 <style scoped>
+/* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
 .about-page {
   width: 100%;
-  padding-top: 70px;
-}
-
-.page-header {
-  text-align: center;
-  padding: 60px 20px;
-  background: var(--gradient-about);
-  color: white;
-}
-
-.page-header h1 {
-  font-size: 48px;
-  margin: 0 0 16px 0;
-  font-weight: 800;
-}
-
-.page-header p {
-  font-size: 18px;
-  margin: 0;
-  opacity: 0.9;
 }
 
 .about-container {
   max-width: var(--container-narrow);
   margin: 0 auto;
-  padding: 80px 20px;
+  padding: var(--section-gap) var(--container-padding);
 }
 
 .about-section {
-  margin-bottom: 80px;
+  margin-bottom: calc(var(--section-gap) * 0.75);
+}
+
+.about-section:last-child {
+  margin-bottom: 0;
 }
 
 .about-section h2 {
-  font-size: 36px;
-  font-weight: 700;
-  margin-bottom: 30px;
-  color: var(--color-dark);
-  border-bottom: 3px solid var(--color-primary);
-  padding-bottom: 15px;
   display: inline-block;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+  /* 结构性分隔线统一 1px：粗线在直角/玻璃主题下会显得突兀 */
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 3);
 }
 
 .about-section p {
-  font-size: 16px;
-  line-height: 1.8;
-  color: var(--color-text-secondary);
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .values-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 30px;
-  margin-top: 30px;
+  gap: calc(var(--grid-gap) * 2);
+  margin-top: calc(var(--grid-gap) * 2);
 }
 
+/* 原先的紫粉渐变底改为令牌表面色 + 边框，五套主题下都能成立 */
 .value-card {
-  padding: 30px;
-  background: linear-gradient(135deg, rgba(138, 109, 255, 0.1) 0%, rgba(253, 121, 168, 0.1) 100%);
-  border-radius: var(--radius-lg);
+  padding: calc(var(--card-padding) * 1.5);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
   text-align: center;
-  transition: all 0.3s ease-in-out;
+  transition:
+    transform var(--transition-surface),
+    border-color var(--transition-surface),
+    box-shadow var(--transition-surface);
 }
 
 .value-card:hover {
-  transform: translateY(-8px);
-  box-shadow: var(--shadow-lg);
+  transform: var(--card-hover-transform);
+  border-color: var(--card-hover-border);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .value-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
   display: block;
+  font-size: var(--fs-h1);
+  margin-bottom: var(--card-gap);
 }
 
 .value-card h3 {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 12px 0;
-  color: var(--color-dark);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+  margin: 0 0 calc(var(--space-unit) * 1.5);
 }
 
 .value-card p {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .contact-info {
-  font-size: 16px;
-  line-height: 2;
-  color: var(--color-text-secondary);
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
 }
 
 .contact-info p {
-  margin: 8px 0;
+  margin: var(--space-unit) 0;
 }
 
 @media (max-width: 767px) {
-  .page-header {
-    padding: 40px 16px;
-  }
-
-  .page-header h1 {
-    font-size: 32px;
-  }
-
-  .page-header p {
-    font-size: 14px;
-  }
-
   .about-container {
-    padding: 40px 16px;
+    padding: calc(var(--section-gap) * 0.5) var(--container-padding);
   }
 
-  .about-section h2 {
-    font-size: 28px;
+  .about-section {
+    margin-bottom: calc(var(--section-gap) * 0.5);
   }
 
   .values-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: var(--grid-gap);
+    margin-top: var(--grid-gap);
   }
 
   .value-card {
-    padding: 20px;
+    padding: var(--card-padding);
   }
 
   .value-icon {
-    font-size: 40px;
-  }
-
-  .value-card h3 {
-    font-size: 18px;
+    font-size: var(--fs-h2);
   }
 }
 </style>

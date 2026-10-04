@@ -42,19 +42,19 @@
 
     <div class="card-actions">
       <button
-        class="action-btn copy-btn"
+        class="action-btn u-cta"
         :aria-label="`复制账号 ${appleId.apple_id || ''}`"
         @click.stop="copyToClipboard(appleId.apple_id)"
       >
-        📋 复制账号
+        <span aria-hidden="true">📋</span> 复制账号
       </button>
       <button
         v-if="appleId.password"
-        class="action-btn copy-btn"
+        class="action-btn u-cta"
         aria-label="复制密码"
         @click.stop="copyToClipboard(appleId.password)"
       >
-        🔑 复制密码
+        <span aria-hidden="true">🔑</span> 复制密码
       </button>
     </div>
   </div>
@@ -130,159 +130,151 @@ const copyToClipboard = async (text) => {
 </script>
 
 <style scoped>
-/* 外壳（背景/圆角/阴影/hover 位移）统一来自 global.css 的 .ui-card，
-   这里只保留苹果 ID 卡特有的边框处理 */
+/* 外壳来自 global.css 的 .ui-card，这里只用令牌重申边框，
+   避免将来改动 .ui-card 时这张卡静默失去边界 */
 .apple-id-card {
-  border: 1px solid var(--color-border-contrast);
+  border-color: var(--border);
 }
 
+/* 卡头用次级表面 + 分隔线表达层级。
+   原先的品红渐变属于规范外的装饰，已删除 —— 卡片身份靠排版而非渐变 */
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  padding-bottom: calc(var(--space-unit) * 1.5);
+  border-bottom: 1px solid var(--border);
 }
 
+/* 数据源徽标比卡头再亮一档，保证与状态徽标同处一行时能分辨 */
 .source-badge {
-  font-size: 12px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 8px;
-  border-radius: 12px;
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-indicator {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 12px;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  border-radius: var(--radius-chip);
 }
 
 .status-indicator.active {
-  background: rgba(72, 187, 120, 0.9);
+  color: var(--success);
+  background: var(--success-bg);
 }
 
 .status-indicator.inactive {
-  background: rgba(229, 62, 62, 0.9);
+  color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .status-indicator.unknown {
-  background: rgba(160, 174, 192, 0.9);
+  color: var(--text-muted);
+  background: var(--bg-soft);
 }
 
+/* 行间距交给卡片的 gap，比逐行 margin 更好随密度缩放 */
 .card-body {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
 }
 
 .id-info {
   display: flex;
-  margin-bottom: 12px;
-  align-items: center;
-}
-
-.id-info:last-child {
-  margin-bottom: 0;
+  gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
 }
 
 .id-label {
-  min-width: 80px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-muted-dark);
-  margin-right: 12px;
+  flex-shrink: 0;
+  min-width: calc(var(--space-unit) * 10);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
 }
 
+/* 账号/密码串较长，优先截断而不是把布局撑破 */
 .id-value {
   flex: 1;
-  font-size: 14px;
-  color: var(--color-text-soft-dark);
-  word-break: break-all;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .password-field {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space-unit));
 }
 
+/* 掩码点用等宽字体才等距，同时避免泄密时长度一眼可估 */
 .masked {
-  font-family: 'Courier New', monospace;
-  letter-spacing: 2px;
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-label);
 }
 
 .toggle-password {
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: calc(var(--space-unit) * 0.25);
+  font-size: var(--fs-body);
+  border-radius: var(--radius-btn);
   cursor: pointer;
-  font-size: 16px;
-  padding: 2px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--transition-interactive);
 }
 
 .toggle-password:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--bg-soft);
 }
 
+/* 操作区是卡片的收尾块：抬到次级表面并加一条分隔线 */
 .card-actions {
-  padding: 16px 20px;
-  background: #f7fafc;
-  border-top: 1px solid var(--color-border-contrast);
   display: flex;
-  gap: 8px;
+  gap: calc(var(--space-unit));
+  padding-top: calc(var(--space-unit) * 1.5);
+  background: var(--bg-surface-2);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
+/* 复制按钮复用 .u-cta（底色/圆角/hover 位移都随主题），
+   这里只给触控目标一个高度下限 */
 .action-btn {
   flex: 1;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
+  min-height: calc(var(--space-unit) * 5.5);
 }
 
-.copy-btn {
-  background: var(--gradient-indigo);
-  color: white;
-}
-
-.copy-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-/* 响应式设计 */
+/* 小屏维持 id 行不换行 + 省略号截断（原行为保留） */
 @media (max-width: 767px) {
-  .card-header {
-    padding: 12px 16px;
-  }
-
-  .card-body {
-    padding: 16px;
-  }
-
-  .card-actions {
-    padding: 12px 16px;
-    flex-direction: row; /* keep buttons side-by-side */
-  }
-
-  /* force info rows to stay inline and truncate long text */
   .id-info {
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
     flex-wrap: nowrap;
+    gap: calc(var(--space-unit) * 0.5);
   }
 
   .id-label {
     min-width: auto;
-    margin-right: 4px;
     white-space: nowrap;
   }
 
@@ -290,6 +282,13 @@ const copyToClipboard = async (text) => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* 更窄时两个复制按钮并排会把文案压到换行，改为纵向堆叠 */
+@media (max-width: 575px) {
+  .card-actions {
+    flex-direction: column;
   }
 }
 </style>

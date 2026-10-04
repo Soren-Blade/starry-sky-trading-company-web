@@ -1,29 +1,30 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import {
-  animationUtils,
-  styleUtils,
-  responsiveUtils,
-  domUtils,
-  formatUtils,
-  debounce,
-  throttle,
-  generateId,
-} from '../src/utils/index.js'
+import { domUtils, formatUtils, throttle } from '../src/utils/index.js'
 
 // 说明：这些工具函数不依赖 Vue，可以在纯 Node 下运行。
 // 需要 DOM 的部分（window/document）自行用最小桩替代。
+//
+// 本文件原先还覆盖 animationUtils / styleUtils / responsiveUtils / generateId /
+// debounce / domUtils.getScrollPercent —— 这些工具在生产代码里**没有任何调用方**
+// （配色与动画早已改由设计令牌 + CSS 关键帧承担，用 JS 拼样式字符串只会制造
+// 第二份事实来源），已随实现一起删除。
 
-test('formatPrice：两位小数并带货币符号', () => {
+test('formatPrice：默认两位小数并带人民币符号', () => {
   assert.equal(formatUtils.formatPrice(89), '¥89.00')
   assert.equal(formatUtils.formatPrice(0), '¥0.00')
   assert.equal(formatUtils.formatPrice(12.345), '¥12.35')
 })
 
-test('formatRating：保留一位小数', () => {
-  assert.equal(formatUtils.formatRating(4.256), '4.3')
-  assert.equal(formatUtils.formatRating(5), '5.0')
+test('formatPrice：货币描述来自主题（technical-monochrome 用 $）', () => {
+  assert.equal(formatUtils.formatPrice(89, { prefix: '$' }), '$89.00')
+  assert.equal(formatUtils.formatPrice(89, { prefix: '$', decimals: 0 }), '$89')
+  // 非法入参必须兜底，不能把 undefined 拼进价格
+  assert.equal(formatUtils.formatPrice(89, { prefix: null, decimals: 'x' }), '¥89.00')
+  assert.equal(formatUtils.formatPrice(undefined), '¥0.00')
+  assert.equal(formatUtils.formatPrice('abc'), '¥0.00')
+  assert.equal(formatUtils.formatPrice('12.5'), '¥12.50')
 })
 
 test('formatReviewCount：按量级使用 k / 万 后缀', () => {
@@ -32,68 +33,48 @@ test('formatReviewCount：按量级使用 k / 万 后缀', () => {
   assert.equal(formatUtils.formatReviewCount(1500), '1.5k')
   assert.equal(formatUtils.formatReviewCount(10000), '1.0万')
   assert.equal(formatUtils.formatReviewCount(123456), '12.3万')
-})
-
-test('staggerDelay：按索引线性递增', () => {
-  assert.equal(animationUtils.staggerDelay(0), '0s')
-  assert.equal(animationUtils.staggerDelay(2, 0.15), '0.3s')
-})
-
-test('getAnimationClass：组合类名，可关闭 stagger', () => {
-  assert.equal(animationUtils.getAnimationClass('fadeInUp', 2), 'animate-in animate-fadeInUp stagger-2')
-  assert.equal(animationUtils.getAnimationClass('fadeInUp', 2, false), 'animate-in animate-fadeInUp')
-})
-
-test('getGradient：生成线性渐变字符串', () => {
-  assert.equal(styleUtils.getGradient('#000', '#fff', 90), 'linear-gradient(90deg, #000 0%, #fff 100%)')
-})
-
-test('getShadow：未知级别回退到 md', () => {
-  assert.equal(styleUtils.getShadow('not-a-level'), styleUtils.getShadow('md'))
-})
-
-test('getTransition：数组形式拼接多个属性', () => {
-  assert.equal(
-    styleUtils.getTransition(['color', 'opacity'], 0.2, 'linear'),
-    'color 0.2s linear, opacity 0.2s linear'
-  )
-})
-
-test('getColumns：按宽度给出栅格列数', () => {
-  assert.equal(responsiveUtils.getColumns(1280), 4)
-  assert.equal(responsiveUtils.getColumns(1024), 3)
-  assert.equal(responsiveUtils.getColumns(800), 2)
-  assert.equal(responsiveUtils.getColumns(400), 1)
-})
-
-test('generateId：每次调用都不相同', () => {
-  const a = generateId()
-  const b = generateId()
-  assert.equal(typeof a, 'string')
-  assert.notEqual(a, b)
-})
-
-test('debounce：只在停止调用后执行一次', async () => {
-  let calls = 0
-  const fn = debounce(() => { calls += 1 }, 20)
-  fn(); fn(); fn()
-  assert.equal(calls, 0, '防抖窗口内不应执行')
-  await new Promise((r) => { setTimeout(r, 50) })
-  assert.equal(calls, 1)
+  assert.equal(formatUtils.formatReviewCount(null), '0', '缺失值兜底为 0 而不是 NaN')
+  assert.equal(formatUtils.formatReviewCount('abc'), '0')
 })
 
 test('throttle：窗口内只执行一次', () => {
   let calls = 0
-  const fn = throttle(() => { calls += 1 }, 50)
-  fn(); fn(); fn()
+  const fn = throttle(() => {
+    calls += 1
+  }, 50)
+  fn()
+  fn()
+  fn()
   assert.equal(calls, 1)
 })
 
-test('getScrollPercent：无法计算时返回 0 而不是 NaN', () => {
-  // 纯 Node 下没有 document，这里注入一个「高度为 0」的最小桩
-  globalThis.window = { scrollY: 0, innerHeight: 0, addEventListener() {}, removeEventListener() {} }
-  globalThis.document = { documentElement: { scrollHeight: 0 } }
-  assert.equal(domUtils.getScrollPercent(), 0)
-  delete globalThis.window
-  delete globalThis.document
+test('throttle：窗口结束后可再次执行，且透传参数与 this', async () => {
+  const seen = []
+  const fn = throttle((...args) => seen.push(args), 20)
+  fn('a')
+  await new Promise((r) => {
+    setTimeout(r, 40)
+  })
+  fn('b')
+  assert.deepEqual(seen, [['a'], ['b']])
+})
+
+test('domUtils.smoothScroll：选择器与元素两种入参都不抛错', () => {
+  const scrolled = []
+  globalThis.document = {
+    querySelector: (selector) => ({
+      scrollIntoView: (options) => scrolled.push({ selector, options }),
+    }),
+  }
+  try {
+    domUtils.smoothScroll('.target')
+    domUtils.smoothScroll({ scrollIntoView: (options) => scrolled.push({ element: options }) })
+    // 选择器没匹配到元素时不应抛错
+    globalThis.document.querySelector = () => null
+    assert.doesNotThrow(() => domUtils.smoothScroll('.missing'))
+  } finally {
+    delete globalThis.document
+  }
+  assert.equal(scrolled.length, 2)
+  assert.equal(scrolled[0].selector, '.target')
 })

@@ -1,217 +1,247 @@
 <template>
   <div
-    class="fp-card ui-card ui-card-interactive"
+    class="product-card ui-card ui-card-interactive u-enter"
     role="link"
     tabindex="0"
-    :aria-label="`查看商品 ${product.main_title || product.name}`"
+    :aria-label="`查看商品 ${title}`"
     @click="onGoDetail"
     @keydown.enter.prevent="onGoDetail"
     @keydown.space.prevent="onGoDetail"
   >
-    <div class="fp-media ui-card-media">
-      <img
-        :src="product.main_image_url || product.image"
-        :alt="product.main_title || product.name"
-      />
+    <div class="ui-card-media">
+      <img :src="product.main_image_url || product.image" :alt="title" />
+      <span v-if="isOut" class="product-flag">{{ PRODUCT_GRID.soldOut }}</span>
     </div>
 
-    <div class="fp-body">
-      <div class="fp-head-row">
-        <div>
-          <div class="fp-title" :title="product.main_title || product.name">
-            {{ product.main_title || product.name }}
-          </div>
-          <div class="fp-sub">
-            {{
-              product.sub_title ||
-              product.author ||
-              product.seller ||
-              "星辰商行"
-            }}
-          </div>
-        </div>
-        <div class="fp-price">{{ formatPrice(product.price) }}</div>
+    <div class="ui-card-body">
+      <div class="product-head">
+        <h3 class="product-title" :title="title">{{ title }}</h3>
+        <span class="product-price">{{ priceText }}</span>
       </div>
 
-      <div class="fp-meta">
-        <div class="meta-item">
-          <div class="meta-num">
-            {{
-              formatReviewCount(
-                product.viewCount ??
-                  product.reviewCount ??
-                  product.view_count ??
-                  0
-              )
-            }}
-          </div>
-          <div class="meta-label">浏览</div>
-        </div>
-        <div class="meta-item">
-          <div class="meta-num">
-            {{
-              formatReviewCount(
-                product.sales_count ?? product.sales ?? product.sold ?? 0
-              )
-            }}
-          </div>
-          <div class="meta-label">销量</div>
-        </div>
-        <div class="meta-item">
-          <div class="meta-num" :class="{ out: isOut }">
-            {{ product.stock_quantity ?? 0 }}
-          </div>
-          <!-- stock_status 来自后端计算，这里做缺失兜底，避免直接取 .message 崩溃 -->
-          <div class="meta-label">{{ stockLabel }}</div>
-        </div>
+      <p class="product-sub" :title="subtitle">{{ subtitle }}</p>
 
-        <div class="meta-cta">
-          <button
-            class="cta-btn"
-            :disabled="isOut"
-            :class="{ disabled: isOut }"
-            :aria-label="isOut ? '该商品缺货' : `购买 ${product.main_title || product.name}`"
-            @click.stop="onBuy"
-          >
-            {{ isOut ? "缺货" : "购买" }}
-          </button>
+      <dl class="product-meta">
+        <div class="product-stat">
+          <dt class="product-stat-label">{{ PRODUCT_GRID.viewsLabel }}</dt>
+          <dd class="product-stat-value">{{ formatReviewCount(views) }}</dd>
         </div>
+        <div class="product-stat">
+          <dt class="product-stat-label">{{ PRODUCT_GRID.salesLabel }}</dt>
+          <dd class="product-stat-value">{{ formatReviewCount(sales) }}</dd>
+        </div>
+        <div class="product-stat">
+          <dt class="product-stat-label">{{ stockLabel }}</dt>
+          <dd class="product-stat-value" :class="{ out: isOut }">{{ stockQuantity }}</dd>
+        </div>
+      </dl>
+
+      <div class="product-foot">
+        <button
+          type="button"
+          class="u-cta product-buy"
+          :disabled="isOut"
+          :aria-label="isOut ? '该商品缺货' : `购买 ${title}`"
+          @click.stop="onBuy"
+        >
+          {{ isOut ? PRODUCT_GRID.soldOut : PRODUCT_GRID.buy }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from "vue";
-import { formatUtils } from "@/utils";
+/**
+ * 商品卡
+ *
+ * 外壳来自 global.css 的 `.ui-card` / `.ui-card-media` / `.ui-card-body`，
+ * 价格与货币符号来自主题（`useThemeStore().pricePrefix`）——
+ * technical-monochrome 用 `$`，其余用 `¥`。这是「文字/排版变动要同步数据层」
+ * 的落点：货币不再写死在格式化函数里。
+ */
+import { computed } from 'vue'
+import { formatUtils } from '@/utils/index.js'
+import { PRODUCT_GRID } from '@/constants/index.js'
+import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps({
   product: { type: Object, required: true },
-});
-const emit = defineEmits(["go-detail", "buy"]);
+})
+const emit = defineEmits(['go-detail', 'buy'])
 
-const formatReviewCount = formatUtils.formatReviewCount;
-const formatPrice = formatUtils.formatPrice;
+const themeStore = useThemeStore()
 
-const parseStockRaw = (p) =>
-  p.stock_quantity ?? p.stock ?? p.stockCount ?? p.stock_count ?? null;
-const parseStockNumber = (p) => {
-  const raw = parseStockRaw(p);
-  if (raw == null) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-};
+const formatReviewCount = formatUtils.formatReviewCount
+
+const title = computed(
+  () => props.product.main_title || props.product.name || props.product.product_name || '商品'
+)
+
+const subtitle = computed(
+  () =>
+    props.product.sub_title ||
+    props.product.author ||
+    props.product.seller ||
+    PRODUCT_GRID.defaultSeller
+)
+
+const priceText = computed(() =>
+  formatUtils.formatPrice(props.product.price, {
+    prefix: themeStore.pricePrefix,
+    decimals: themeStore.priceDecimals,
+  })
+)
+
+const views = computed(
+  () =>
+    props.product.viewCount ??
+    props.product.reviewCount ??
+    props.product.view_count ??
+    0
+)
+
+const sales = computed(
+  () => props.product.sales_count ?? props.product.sales ?? props.product.sold ?? 0
+)
+
+const stockQuantity = computed(() => props.product.stock_quantity ?? 0)
 
 const isOut = computed(() => {
-  const n = parseStockNumber(props.product);
-  if (n === 0) return true;
-  if (n > 0) return false;
-  if (
-    "is_in_stock" in props.product &&
-    typeof props.product.is_in_stock === "boolean"
-  )
-    return !props.product.is_in_stock;
-  return false;
-});
+  const raw = props.product.stock_quantity ?? props.product.stock ?? null
+  if (raw == null) return false
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return false
+  if (n === 0) return true
+  if (n > 0) return false
+  if (typeof props.product.is_in_stock === 'boolean') return !props.product.is_in_stock
+  return false
+})
 
 // stock_status 由后端计算，缺失时兜底，避免模板直接取 .message 抛错
-const stockLabel = computed(() => props.product.stock_status?.message || "库存");
+const stockLabel = computed(() => props.product.stock_status?.message || PRODUCT_GRID.stockLabel)
 
-const onGoDetail = () => emit("go-detail", props.product);
-const onBuy = () => emit("buy", props.product);
+const onGoDetail = () => emit('go-detail', props.product)
+const onBuy = () => emit('buy', props.product)
 </script>
 
 <style scoped>
-/* 外壳（背景/圆角/阴影/hover 位移）来自 global.css 的 .ui-card 与 .ui-card-media，
-   这里只保留商品卡特有的内部布局 */
-.fp-body {
-  padding: 16px 16px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.fp-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fp-sub {
-  font-size: 12px;
-  color: var(--color-muted);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fp-desc {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  line-height: 1.4;
-  max-height: 44px;
-  overflow: hidden;
+.product-card {
+  height: 100%;
 }
 
-.fp-head-row {
+.product-flag {
+  position: absolute;
+  top: calc(var(--space-unit) * 1.5);
+  left: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit));
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-chip);
+}
+
+.product-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-}
-.fp-price {
-  font-size: 20px;
-  color: #000000;
-  padding: 6px 10px;
-  border-radius: 10px;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
-.fp-meta {
+.product-title {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 价格：等宽字体强化数据感；mono 主题还带代码块底色 */
+.product-price {
+  flex-shrink: 0;
+  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.75);
+  font-family: var(--font-price);
+  font-size: var(--fs-price);
+  font-weight: var(--fw-price);
+  line-height: 1.2;
+  color: var(--price-color);
+  background: var(--price-bg);
+  border-radius: var(--radius-chip);
+}
+
+.product-sub {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-meta {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: calc(var(--space-unit) * 2);
+  margin: 0;
+}
+
+.product-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+
+.product-stat-label {
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+}
+
+.product-stat-value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.product-stat-value.out {
+  color: var(--danger);
+}
+
+.product-foot {
+  display: flex;
+  justify-content: flex-end;
   margin-top: auto;
 }
-.meta-item {
-  display: flex;
-  flex-direction: column;
-}
-.meta-num {
-  font-weight: 700;
-  color: #111;
-}
-.meta-label {
-  font-size: 12px;
-  color: var(--color-muted);
-}
-.meta-cta {
-  margin-left: auto;
-}
-.cta-btn {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  color: var(--color-on-primary);
-  border: none;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.cta-btn.disabled,
-.cta-btn:disabled {
-  background: linear-gradient(90deg, #e0e0e6, #d8d6e8);
-  color: #9a98a8;
-  cursor: not-allowed;
+
+.product-buy {
+  min-width: calc(var(--space-unit) * 9);
 }
 
-.meta-num.out {
-  color: #d9534f;
-  font-weight: 800;
-}
+@media (max-width: 575px) {
+  .product-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(var(--space-unit) * 0.5);
+  }
 
-/* @media (max-width:767px) {
-  .fp-head-row { flex-direction:column; align-items:flex-start; }
-  .fp-price { align-self:flex-end; margin-top:8px; }
-} */
+  .product-foot {
+    justify-content: flex-start;
+  }
+
+  .product-buy {
+    width: 100%;
+  }
+}
 </style>

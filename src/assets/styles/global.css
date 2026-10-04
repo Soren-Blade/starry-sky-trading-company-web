@@ -1,4 +1,20 @@
-/* variables.css 由 main.js 单独引入，这里不再 @import，避免 :root 重复输出 */
+/*
+ * 全局样式层
+ * ============================================================================
+ *
+ * 只做三件事：
+ *   1. 基础重置（元素级）—— 不设置任何具体视觉值，全部走令牌；
+ *   2. 共享结构类 —— .ui-card / .ui-card-media / .ui-card-body / .u-cta / .u-btn /
+ *      .u-chip / .u-input / .section-header / .page-header，避免每个组件各抄一份；
+ *   3. 共享动效 —— 入场（含 scroll-driven reveal）与主题自带的背景网格。
+ *
+ * 具体视觉值一律来自 variables.css（名册 + 兜底）与 theme/presets.js（五套取值）。
+ * 这里出现硬编码色值即视为缺陷。
+ */
+
+/* ────────────────────────────────────────────────────────────
+ * 1. 基础重置
+ * ──────────────────────────────────────────────────────────── */
 
 * {
   margin: 0;
@@ -6,21 +22,50 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
-  /* 中文界面需要显式声明 CJK 字体，否则跨平台观感不一致 */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', Roboto, 'Helvetica Neue',
-    Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, var(--color-light) 0%, #eeeeee 100%);
-  color: var(--color-dark);
-  line-height: 1.6;
+  transition: background-color var(--transition-surface), color var(--transition-surface);
+}
+
+/* 背景层：
+ *   ::before = 主题自带的渐变网格（仅 glass 有内容，由 --mesh-animation 驱动）
+ *   ::after  = 用户自定义背景图（主题弹窗写入 --bg-media）
+ * 两层都用 fixed + 负 z-index，保证不参与文档流、不挡交互。 */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: -2;
+  background: var(--bg-mesh);
+  animation: var(--mesh-animation);
+}
+
+body::after {
+  z-index: -1;
+  background-image: var(--bg-media);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-media-opacity);
 }
 
 #app {
@@ -35,16 +80,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-light);
+  background: var(--bg-page);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary-dark);
+  background: var(--accent);
 }
 
 /* 按钮重置 */
@@ -52,35 +97,55 @@ button {
   border: none;
   cursor: pointer;
   font-family: inherit;
+  font-size: inherit;
   background: none;
   padding: 0;
+  color: inherit;
 }
 
 /* 链接重置 */
 a {
   color: inherit;
   text-decoration: none;
-  transition: color var(--transition-base);
+  transition: color var(--transition-interactive);
 }
 
 a:hover {
-  color: var(--color-primary);
+  color: var(--accent);
 }
 
 /* 输入框重置 */
-input, textarea {
+input,
+textarea,
+select {
   font-family: inherit;
+  font-size: inherit;
   border: none;
   outline: none;
+  background: none;
+  color: inherit;
 }
 
-input::placeholder {
-  color: #999;
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
 }
 
 /* 列表重置 */
-ul, ol {
+ul,
+ol {
   list-style: none;
+}
+
+/* 标题默认继承主题排版，避免各组件反复声明 */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-heading);
+  line-height: 1.2;
+  color: var(--text-primary);
 }
 
 /* 图片优化 */
@@ -91,83 +156,13 @@ img {
   -webkit-user-drag: none;
 }
 
-/* 通用容器类 .container 已删除：各页面/组件均使用自己的 xxx-container（见 project-ui-system Skill） */
-/* 动画库 */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes floatRandom {
-  0% {
-    transform: translateY(0) translateX(0);
-  }
-  25% {
-    transform: translateY(-20px) translateX(5px);
-  }
-  50% {
-    transform: translateY(-10px) translateX(-5px);
-  }
-  75% {
-    transform: translateY(-25px) translateX(10px);
-  }
-  100% {
-    transform: translateY(0) translateX(0);
-  }
-}
-
-/* 工具类
- *
- * 说明：原先这里有一批无人使用的工具类（.text-gradient、.glass-effect、.glass-dark、
- * .shadow-lg、.shadow-xl、.rounded-card、.text-truncate、.text-truncate-2、
- * .user-select-none、.container），已删除 —— 各组件都用自己的 scoped 样式实现，
- * 保留它们只会掩盖「哪里是真正的样式来源」。
- * 新增全局工具类前请先确认确有多处复用，并同步 assets/README.md。
- */
-
-/* 响应式隐藏。
- * 说明：.hide-mobile 的规则已并入本文件末尾的 `@media (max-width: 767px)` 块 ——
- * 同一断点不再重复声明（见 .dsh/skills/project-ui-system 的断点纪律）。
- * 与之互补的 .show-mobile 仍写在下面，使用 min-width 写法。 */
-@media (min-width: 768px) {
-  .show-mobile {
-    display: none !important;
-  }
-}
-
-/* 焦点管理（统一一处，避免重复声明） */
+/* 焦点管理（统一一处） */
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* 仅供屏幕阅读器阅读（跨组件复用，替代各处自建的同名类） */
+/* 仅供屏幕阅读器阅读 */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -180,91 +175,118 @@ img {
   border: 0;
 }
 
-/* ────────────────────────────────────────────────────────────
- * 共享区块头 / 页面头
- * 由 SectionHeader.vue 与 PageHeader.vue 使用，替代原先被复制
- * 4-5 份的组件内样式。各页面如需换主题色，覆写对应 CSS 变量即可。
- * ──────────────────────────────────────────────────────────── */
-.section-header {
-  text-align: center;
-  margin-bottom: 80px;
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 48px;
-  font-weight: 800;
-  margin-bottom: 16px;
-  letter-spacing: -1px;
-  color: var(--color-dark);
-}
-
-.title-icon {
-  display: inline-block;
-  font-size: 48px;
-  animation: float 3s ease-in-out infinite;
-}
-
-.section-description {
-  font-size: 18px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-.page-header {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--color-on-primary);
-  background: var(--page-header-gradient, var(--gradient-primary));
-}
-
-.page-header h1 {
-  font-size: 48px;
-  margin: 0 0 16px 0;
-  font-weight: 800;
-}
-
-.page-header p {
-  font-size: 18px;
-  margin: 0;
-  opacity: 0.9;
-}
-
-@media (max-width: 1199px) {
-  .section-header {
-    margin-bottom: 60px;
+@media (min-width: 768px) {
+  .show-mobile {
+    display: none !important;
   }
 }
 
 /* ────────────────────────────────────────────────────────────
- * 共享卡片外壳
- * 原先 ProductCard / ToolCard / AppleIdCard 各自实现同一套外壳，
- * 这里收敛为单一来源；各卡片只需保留自身的内部布局样式。
+ * 2. 共享动效
+ *
+ * enterUp 的起点由 --enter-shift / --enter-scale 决定，因此同一套关键帧
+ * 可以表达规范里五种不同的入场方式（位移渐显 / 缩放弹性 / 纯淡入）。
  * ──────────────────────────────────────────────────────────── */
+
+@keyframes enterUp {
+  from {
+    opacity: 0;
+    transform: translateY(var(--enter-shift)) scale(var(--enter-scale));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 装饰性浮动（由 --decor-animation 引用；不需要动效的主题该令牌为 none） */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* 背景渐变网格缓慢流动：20s 循环，位移 ±5% */
+@keyframes meshFlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0) scale(1.15);
+  }
+}
+
+/* 列表/卡片依次入场：--i 为序号（运行时注入），间隔来自 --stagger-step */
+.u-enter {
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
+  animation-delay: calc(var(--i, 0) * var(--stagger-step));
+}
+
+/*
+ * 滚动驱动的渐显（scroll-driven animation）。
+ *
+ * 放在 @supports 内：不支持 `animation-timeline` 的浏览器不会解析到这条规则，
+ * 内容保持可见（而不是被 fill-mode 固定在 opacity:0）。
+ */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .scroll-reveal {
+      animation-name: enterUp;
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 3. 共享卡片外壳
+ *
+ * 结构约定：.ui-card（内边距 + 圆角 + 边框/阴影）> .ui-card-media + .ui-card-body
+ * 各卡片组件只保留自身的内部布局，不再重复实现外壳。
+ * ──────────────────────────────────────────────────────────── */
+
 .ui-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  position: relative;
   display: flex;
   flex-direction: column;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  gap: var(--card-gap);
+  padding: var(--card-padding);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
+  transition:
+    transform var(--transition-surface),
+    border-color var(--transition-surface),
+    box-shadow var(--transition-surface),
+    backdrop-filter var(--transition-surface),
+    -webkit-backdrop-filter var(--transition-surface);
 }
 
 .ui-card:hover {
-  transform: translateY(-8px);
+  transform: var(--card-hover-transform);
+  border-color: var(--card-hover-border);
   box-shadow: var(--shadow-card-hover);
+  backdrop-filter: var(--effect-backdrop-hover);
+  -webkit-backdrop-filter: var(--effect-backdrop-hover);
 }
 
-/* 卡片内的媒体区：固定比例 + 图片裁切 + hover 轻微放大 */
+/* 媒体区：固定比例 + 图片裁切 + hover 轻微放大 */
 .ui-card-media {
   position: relative;
   padding-bottom: 58%;
-  background: #f2f2f6;
+  background: var(--bg-surface-2);
+  border-radius: var(--radius-media);
   overflow: hidden;
 }
 
@@ -274,65 +296,266 @@ img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  transition: transform var(--transition-slow);
+  transition: transform var(--transition-surface);
 }
 
 .ui-card:hover .ui-card-media img {
-  transform: scale(1.04);
+  transform: scale(var(--media-hover-scale));
 }
 
-/* 焦点可见：整卡可点击时的键盘反馈 */
+/* 卡片正文：撑满剩余高度，便于把操作区压到底部 */
+.ui-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.25);
+  flex: 1;
+  min-width: 0;
+}
+
 .ui-card-interactive {
   cursor: pointer;
 }
 
+/* 整卡可点击时的键盘反馈 */
 .ui-card-interactive:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ui-card:hover {
-    transform: none;
-  }
+/* ────────────────────────────────────────────────────────────
+ * 4. 共享按钮 / 标签 / 输入框
+ *
+ * .u-cta 是「主转化按钮」：在 neo-brutalism 下它自动变成
+ * 3px 黑边 + 零模糊硬阴影 + 按压位移的粗野主义 CTA —— 差异全部来自令牌。
+ * ──────────────────────────────────────────────────────────── */
 
-  .ui-card:hover .ui-card-media img {
-    transform: none;
+.u-cta,
+.u-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.75);
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  border-radius: var(--radius-btn);
+  white-space: nowrap;
+}
+
+.u-cta {
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border: var(--cta-border-width) solid var(--cta-border-color);
+  border-radius: var(--radius-cta);
+  box-shadow: var(--shadow-cta);
+  transition:
+    background-color var(--transition-cta),
+    border-color var(--transition-cta),
+    color var(--transition-cta),
+    box-shadow var(--transition-cta),
+    transform var(--transition-cta);
+}
+
+/* 文字色显式写回：`a:hover`（元素+伪类）优先级高于 `.u-cta`，
+ * 链接型的 CTA 否则会在 hover 时把文字染成强调色、压在强调色底上看不清 */
+.u-cta:hover:not(:disabled) {
+  color: var(--text-on-accent);
+  background: var(--accent-strong);
+  box-shadow: var(--shadow-cta-hover);
+  transform: var(--cta-hover-transform);
+}
+
+.u-cta:active:not(:disabled) {
+  box-shadow: var(--shadow-cta-active);
+  transform: var(--cta-active-transform);
+}
+
+/* 大号 CTA：粗野主义规范给的是 20px 40px，这里用间距单位表达，
+ * 因此 technical-monochrome 的 4px 基础单位会自动收紧成 10px 20px。 */
+.u-cta--lg {
+  padding: calc(var(--space-unit) * 2.5) calc(var(--space-unit) * 5);
+  font-size: var(--fs-body);
+}
+
+.u-btn {
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  transition:
+    border-color var(--transition-interactive),
+    color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+.u-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.u-cta:disabled,
+.u-btn:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  border-color: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 胶囊筛选标签 / 状态徽标 */
+.u-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  transition:
+    border-color var(--transition-interactive),
+    color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+/* 排除选中态：选中胶囊本身就是强调底 + 反白字，
+ * 再套一层 hover 文字色会变成「强调色文字压在强调色底上」 */
+button.u-chip:hover:not(.u-chip--active) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.u-chip--active {
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 输入框 / 搜索框 */
+.u-input {
+  width: 100%;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  transition:
+    border-color var(--transition-interactive),
+    box-shadow var(--transition-interactive);
+}
+
+.u-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 5. 共享区块头 / 页面头
+ *
+ * 由 SectionHeader.vue 与 PageHeader.vue 使用。各页面不再重复声明，
+ * 也不再逐页覆写渐变 —— 规范要求克制，页面头统一为主题表面。
+ * ──────────────────────────────────────────────────────────── */
+
+.section-header {
+  text-align: center;
+  margin-bottom: var(--section-gap);
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 1.5);
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+  margin-bottom: calc(var(--space-unit) * 2);
+}
+
+.title-icon {
+  display: inline-block;
+  font-size: var(--fs-h2);
+  animation: var(--decor-animation);
+}
+
+.section-description {
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.page-header {
+  position: relative;
+  text-align: center;
+  padding: calc(var(--section-gap) * 0.55) var(--container-padding)
+    calc(var(--section-gap) * 0.5);
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  margin: 0 0 calc(var(--space-unit) * 2);
+  color: var(--text-primary);
+}
+
+.page-header p {
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* 标题下的一道强调线：给页面头身份感，又不引入渐变 */
+.page-header::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 56px;
+  height: 2px;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 6. 响应式
+ * 统一断点：575 / 767 / 991 / 1199（与 variables.css 末尾的文档注释一致）
+ * ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1199px) {
+  .section-header {
+    margin-bottom: calc(var(--section-gap) * 0.75);
   }
 }
 
 @media (max-width: 767px) {
-  /* 响应式隐藏（与下方 .show-mobile 的 min-width 写法互补） */
   .hide-mobile {
     display: none !important;
   }
 
-  .section-header {
-    margin-bottom: 40px;
-  }
-
-  .section-title {
-    font-size: 32px;
-  }
-
-  .title-icon {
-    font-size: 32px;
-  }
-
-  .section-description {
-    font-size: 16px;
+  .u-cta--lg {
+    width: 100%;
   }
 
   .page-header {
-    padding: 40px 16px;
-  }
-
-  .page-header h1 {
-    font-size: 32px;
-  }
-
-  .page-header p {
-    font-size: 14px;
+    padding: calc(var(--section-gap) * 0.4) 16px;
   }
 }

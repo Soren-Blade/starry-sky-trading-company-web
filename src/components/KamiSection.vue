@@ -4,21 +4,25 @@
       <!-- header（共享组件，样式在 global.css） -->
       <SectionHeader icon="🎴" title="卡密管理" description="查看并激活你的卡密" />
 
-      <!-- tabs -->
+      <!-- tabs：外观来自 global.css 的 .u-chip / .u-chip--active -->
       <div class="tab-bar">
         <button
           type="button"
-          :class="{ active: activeTab === 'list' }"
+          class="u-chip"
+          :class="{ 'u-chip--active': activeTab === 'list' }"
+          :aria-pressed="activeTab === 'list'"
           @click="activeTab = 'list'"
         >
-          📋 我的卡密
+          <span aria-hidden="true">📋</span> 我的卡密
         </button>
         <button
           type="button"
-          :class="{ active: activeTab === 'activate' }"
+          class="u-chip"
+          :class="{ 'u-chip--active': activeTab === 'activate' }"
+          :aria-pressed="activeTab === 'activate'"
           @click="activeTab = 'activate'"
         >
-          ✨ 激活卡密
+          <span aria-hidden="true">✨</span> 激活卡密
         </button>
       </div>
 
@@ -34,7 +38,7 @@
           <div class="activate-card">
             <h3>激活新卡密</h3>
             <div class="activate-form">
-              <select v-model="selectedToolId" class="tool-select" aria-label="选择工具">
+              <select v-model="selectedToolId" class="tool-select u-input" aria-label="选择工具">
                 <option value="">请选择工具</option>
                 <option v-for="tool in toolOptions" :key="tool.value" :value="tool.value">
                   {{ tool.label }}
@@ -43,14 +47,14 @@
               <input
                 v-model="activateCode"
                 type="text"
-                class="activate-input"
+                class="activate-input u-input"
                 placeholder="请粘贴卡密号..."
                 aria-label="卡密号"
                 @keyup.enter="handleActivate"
               />
               <button
                 type="button"
-                class="activate-btn"
+                class="activate-btn u-cta"
                 :disabled="!selectedToolId || !activateCode.trim() || activating"
                 :aria-busy="activating"
                 @click="handleActivate"
@@ -65,7 +69,9 @@
             >
               {{ activationResult.message }}
             </p>
-            <p class="activate-tips">⚡ 激活后可在"我的卡密"中查看详情</p>
+            <p class="activate-tips">
+              <span aria-hidden="true">⚡</span> 激活后可在"我的卡密"中查看详情
+            </p>
           </div>
         </div>
 
@@ -78,7 +84,7 @@
             <div class="toolbar-right">
               <button
                 type="button"
-                class="refresh-btn"
+                class="refresh-btn u-btn"
                 :disabled="loading"
                 title="刷新卡密列表"
                 @click="reload(1)"
@@ -151,7 +157,7 @@
 
               <span v-else-if="column.key === 'tool_id'">
                 <span v-if="getToolName(record.tool_id)" class="tool-badge">
-                  🔧 {{ getToolName(record.tool_id) }}
+                  <span aria-hidden="true">🔧</span> {{ getToolName(record.tool_id) }}
                 </span>
                 <span v-else class="empty-small">未绑定工具</span>
               </span>
@@ -165,7 +171,7 @@
                   aria-label="复制脱敏卡号，仅用于核对"
                   @click="copyCardNo(record)"
                 >
-                  📋
+                  <span aria-hidden="true">📋</span>
                 </button>
               </div>
 
@@ -299,11 +305,13 @@ watch(
 </script>
 
 <style scoped>
+/* 区块底色交给 body 的 --bg-page（页面级），组件不再自绘渐变 */
 .kami-section {
   position: relative;
   width: 100%;
-  padding: 48px 0 60px;
-  background: linear-gradient(180deg, var(--color-light) 0%, #f1f2f4 100%);
+  /* 段落节奏从 --section-gap 派生，随主题密度（density）缩放 */
+  padding: calc(var(--section-gap) * 0.5) 0 calc(var(--section-gap) * 0.6);
+  background: transparent;
 }
 
 .section-container {
@@ -312,215 +320,152 @@ watch(
   padding: 0 var(--container-padding);
 }
 
-/* 区块头样式已抽到 global.css（.section-header 系列） */
+/* 区块头样式已抽到 global.css（.section-header 系列），组件内不再声明 */
 
-/* Notice */
+/* ── 未登录提示 ─────────────────────────────────────────────── */
+
 .notice-card {
-  max-width: 520px;
+  max-width: calc(var(--container-narrow) / 2);
   margin: 0 auto;
-  padding: 32px;
+  padding: calc(var(--space-unit) * 4);
   text-align: center;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
 
 .notice-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-dark);
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-unit);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
 }
 
 .notice-desc {
-  font-size: 14px;
-  color: var(--color-text-secondary);
   margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
-/* Tabs */
+/* ── 页签 ───────────────────────────────────────────────────── */
+
 .tab-bar {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 40px;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 5);
 }
 
-.tab-bar button {
-  padding: 10px 24px;
-  border: 2px solid transparent;
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: var(--transition-base);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+/* 页签外观全部来自共享类 .u-chip / .u-chip--active，
+   这里只把「筛选小标签」的尺寸撑到可点区域的大小 */
+.tab-bar .u-chip {
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2.5);
+  font-size: var(--fs-sm);
 }
 
-.tab-bar button:hover {
-  background: var(--color-divider);
-}
+/* ── 激活卡密 ───────────────────────────────────────────────── */
 
-.tab-bar button.active {
-  background: var(--gradient-primary);
-  color: var(--color-on-primary);
-  box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
-}
-
-/* Activate */
 .activate-container {
   display: flex;
   justify-content: center;
-  padding: 20px;
+  padding: calc(var(--space-unit) * 2.5);
 }
 
 .activate-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  box-shadow: var(--shadow-lg);
-  max-width: 500px;
   width: 100%;
+  max-width: calc(var(--container-narrow) / 2);
+  padding: calc(var(--space-unit) * 5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
 
 .activate-card h3 {
-  font-size: 20px;
-  color: var(--color-dark);
-  margin: 0 0 24px 0;
+  margin: 0 0 calc(var(--space-unit) * 3);
+  font-size: var(--fs-h3);
+  color: var(--text-primary);
 }
 
 .activate-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 2);
 }
 
-.tool-select,
-.activate-input {
-  padding: 10px 14px;
-  border: 1px solid var(--color-border, var(--color-border));
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  transition: var(--transition-fast);
-  background: var(--color-surface);
-  color: var(--color-dark);
+/* 表单控件复用 .u-input（边框、圆角、焦点环都随主题）；
+   卡片与输入框同为表面色时只靠 1px 边框分界，因此输入区退一档次级表面 */
+.activate-form .u-input {
+  background: var(--bg-surface-2);
 }
 
-.tool-select:focus,
-.activate-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(138, 109, 255, 0.1);
-}
+/* .activate-btn 复用 .u-cta：底色、圆角、悬停位移与 disabled 样式都由共享类给全 */
 
-.activate-btn {
-  padding: 10px 28px;
-  background: var(--gradient-primary);
-  color: var(--color-on-primary);
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-weight: 600;
-  transition: var(--transition-fast);
-}
-
-.activate-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(138, 109, 255, 0.4);
-}
-
-.activate-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* 激活结果：成功 / 失败各带语义底，颜色不是唯一信号 */
+.success-msg,
+.error-msg {
+  margin: 0;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
+  font-size: var(--fs-sm);
+  border-radius: var(--radius-btn);
 }
 
 .success-msg {
-  color: var(--color-success);
-  margin: 0;
-  font-size: 14px;
+  color: var(--success);
+  background: var(--success-bg);
 }
 
-.error-msg,
-.error-banner {
-  color: var(--color-danger);
-  margin: 0;
-  font-size: 14px;
-}
-
-.error-banner {
-  padding: 10px 16px;
-  background: #fee;
-  border-bottom: 1px solid var(--color-error-border);
+.error-msg {
+  color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .activate-tips {
-  color: var(--color-muted, var(--color-muted));
-  font-size: 13px;
-  margin: 16px 0 0 0;
+  margin: calc(var(--space-unit) * 2) 0 0;
+  font-size: var(--fs-sm);
   text-align: center;
+  color: var(--text-muted);
 }
 
-/* List */
+/* ── 卡密列表 ───────────────────────────────────────────────── */
+
 .list-container {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-elevated);
   overflow: hidden;
-  box-shadow: var(--shadow-lg);
 }
 
 .list-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--color-divider);
+  padding: var(--card-padding);
+  border-bottom: 1px solid var(--divider);
 }
 
 .toolbar-left {
-  font-size: 14px;
-  color: var(--color-text-secondary);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 .card-count {
-  font-weight: 600;
-  color: var(--color-dark);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
 }
 
 .toolbar-right {
   display: flex;
-  gap: 12px;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
-.refresh-btn {
-  padding: 6px 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-  transition: var(--transition-fast);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: #f0f5ff;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+/* .refresh-btn 复用 .u-btn：边框取 --border-strong，悬停走 --accent + --bg-soft，
+   disabled 的底色、文字与光标也由共享类给全。这里只保留它独有的旋转图标 */
 .loading-icon {
-  animation: kami-spin 1s linear infinite;
+  animation: kami-spin calc(var(--enter-duration) * 2) linear infinite;
 }
 
 @keyframes kami-spin {
@@ -532,122 +477,154 @@ watch(
   }
 }
 
+/* 状态筛选：与 .u-input 同构，但按工具栏的尺寸收紧一档 */
 .status-select {
-  padding: 6px 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 6px;
-  background: var(--color-surface);
+  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
   cursor: pointer;
-  font-size: 14px;
-  color: var(--color-dark);
+  transition: border-color var(--transition-interactive);
 }
 
+.status-select:hover {
+  border-color: var(--accent);
+}
+
+/* 列表错误横幅：语义底 + 语义字色，不再用固定的浅红 */
+.error-banner {
+  margin: 0;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-bottom: 1px solid var(--danger);
+}
+
+/* ── 表格（ant-design-vue 覆盖：沿用 :deep() 提高特异性，不用强制优先级）── */
+
 :deep(.kami-ant-table) {
-  font-size: 14px;
+  font-size: var(--fs-sm);
+}
+
+/* antd 自带的白底与深色文字会和主题表面冲突，交还给令牌 */
+:deep(.kami-ant-table .ant-table) {
+  color: var(--text-primary);
+  background: transparent;
 }
 
 :deep(.kami-ant-table .ant-table-thead > tr > th) {
-  background-color: var(--color-light);
-  font-weight: 600;
-  color: var(--color-dark);
-  border-bottom: 2px solid #e0e0e0;
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+  background-color: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border);
 }
 
 :deep(.kami-ant-table .ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--color-divider);
-  padding: 12px 16px;
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+  border-bottom: 1px solid var(--divider);
 }
 
 :deep(.kami-ant-table .ant-table-tbody > tr:hover > td) {
-  background-color: #fafafa;
+  background-color: var(--bg-soft);
 }
 
 :deep(.kami-ant-table .ant-pagination) {
-  margin-top: 16px;
-  padding: 0 16px 16px;
+  margin-top: calc(var(--space-unit) * 2);
+  padding: 0 calc(var(--space-unit) * 2) calc(var(--space-unit) * 2);
+  color: var(--text-secondary);
 }
+
+/* ── 单元格内容 ─────────────────────────────────────────────── */
 
 .card-name {
-  color: var(--color-text-primary);
-  font-weight: 600;
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
 }
 
+/* 卡密数值是纯数字串：等宽字体便于逐位核对 */
 .card-value {
-  color: var(--color-primary-dark);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-heading);
+  color: var(--accent);
 }
 
 .muted {
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
 }
 
 .permanent {
-  color: var(--color-success);
-  font-weight: 500;
+  color: var(--success);
+  font-weight: var(--fw-label);
 }
 
 .empty {
-  color: #bbb;
+  color: var(--text-muted);
 }
 
 .empty-small {
-  color: #bbb;
-  font-size: 12px;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
 }
 
 .card-no-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-unit);
 }
 
+/* 脱敏卡号按「代码片段」处理：等宽 + 次级表面 + 边框 */
 .card-no-display {
-  font-family: Monaco, 'Courier New', monospace;
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.75);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
 }
 
 .copy-icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
-  opacity: 0.6;
-  transition: opacity var(--transition-fast);
+  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  border-radius: var(--radius-btn);
+  transition: color var(--transition-interactive);
 }
 
 .copy-icon-btn:hover {
-  opacity: 1;
+  color: var(--accent);
 }
 
+/* 关联工具徽标：强调色柔和底 + 强调色文字，不再写死一套蓝色 */
 .tool-badge {
-  display: inline-block;
-  background: linear-gradient(135deg, #f0f5ff 0%, #e6f4ff 100%);
-  color: #0050b3;
-  padding: 6px 14px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid #b5d8ff;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
 }
 
-/* Responsive */
-@media (max-width: 767px) {
-  .section-title {
-    font-size: 28px;
-  }
+/* ── 响应式（统一断点 767）──────────────────────────────────── */
 
-  .title-icon {
-    font-size: 28px;
+@media (max-width: 767px) {
+  .tab-bar {
+    gap: var(--space-unit);
+    margin-bottom: calc(var(--space-unit) * 3);
   }
 
   .list-toolbar {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: calc(var(--space-unit) * 1.5);
   }
 
   .toolbar-right {
@@ -659,7 +636,7 @@ watch(
   }
 
   .activate-card {
-    padding: 24px;
+    padding: calc(var(--space-unit) * 3);
   }
 
   .activate-btn {

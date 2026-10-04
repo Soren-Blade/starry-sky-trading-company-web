@@ -2,7 +2,6 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { lookup, lookupOr, hasOwn, createBareMap } from '../src/utils/safeLookup.js'
-import { animationUtils, styleUtils } from '../src/utils/index.js'
 import { classifyToolsByClass } from '../src/hooks/useClass/index.js'
 import { loadAppModule } from './setup.js'
 
@@ -106,28 +105,32 @@ test('createBareMap：不污染全局 Object.prototype', () => {
 })
 
 // ── 真实调用点 ─────────────────────────────────────────────────
+//
+// 说明：原先这里用 `styleUtils.getShadow`（utils/index.js）当真实调用点，
+// 但那个工具在生产代码里没有任何调用方，已随本次重构删除。
+// 现在真实调用点是 useEmoji（见 emojiProtoSafety.test.js）、
+// useClass 与 useKamiDisplay —— 都是**上线的**查表路径。
 
-test('styleUtils.getShadow：原型链属性名回退到 md', () => {
-  const md = styleUtils.getShadow('md')
+test('useClass 的图标查表：原型链属性名回退到默认图标而不是取到函数', () => {
   for (const key of PROTO_KEYS) {
-    const value = styleUtils.getShadow(key)
-    assert.equal(typeof value, 'string', `getShadow(${JSON.stringify(key)}) 应返回字符串`)
-    assert.equal(value, md, `应回退到 md，实际 ${value}`)
-    assert.equal(value.includes('function'), false)
+    const result = classifyToolsByClass([{ id: 1, class: key, tool_name: 'T', sort_order: 1 }])
+    const bucket = result.classes.find((c) => c.class === key)
+    assert.ok(bucket, `应生成 ${key} 分类`)
+    // 分类名与图标都必须来自 classNames / classIcons 的**自有属性**：
+    // 查表若沿原型链，这里会拿到 Object.prototype 上的函数
+    assert.equal(bucket.class_name, key, `class_name(${key}) 应是原始字符串`)
+    assert.equal(typeof bucket.icon, 'string', `icon(${key}) 必须是字符串`)
+    assert.equal(bucket.icon.includes('function'), false)
+    assert.ok(Array.isArray(result.classified[key]), 'classified 应按下标存数组')
   }
 })
 
-test('styleUtils.getShadow：正常档位不受影响', () => {
-  for (const level of ['sm', 'md', 'lg', 'xl', 'glass']) {
-    const value = styleUtils.getShadow(level)
-    assert.equal(typeof value, 'string')
-    assert.match(value, /^0 \d+px/, `${level} 应返回阴影值`)
+test('useKamiDisplay 的状态查表：原型链属性名返回字符串而不是函数', async () => {
+  const { getStatusText, getStatusColor } = await loadAppModule('/hooks/useKamiDisplay/index.js')
+  for (const key of PROTO_KEYS) {
+    assert.equal(typeof getStatusText(key), 'string', `getStatusText(${JSON.stringify(key)})`)
+    assert.equal(typeof getStatusColor(key), 'string', `getStatusColor(${JSON.stringify(key)})`)
   }
-})
-
-test('animationUtils 仍可正常导入（确认未误改导出）', () => {
-  assert.equal(typeof animationUtils.getAnimationClass, 'function')
-  assert.equal(typeof animationUtils.staggerDelay, 'function')
 })
 
 test('classifyToolsByClass：class 为原型链属性名时不产生函数型 class_name', () => {

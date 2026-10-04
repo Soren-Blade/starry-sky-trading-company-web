@@ -27,9 +27,50 @@ export const useShopStore = defineStore('shop', {
         },
         loading: false,
         error: null,
+        /**
+         * 商品搜索关键词（导航栏搜索栏写入）。
+         *
+         * 放在数据层而不是组件里：搜索栏与商品网格分处两个组件，
+         * 关键词若留在组件内就需要事件层层透传；更重要的是「什么算匹配」
+         * 属于数据规则，只能有一处定义（见 getters.filteredProducts）。
+         */
+        searchKeyword: '',
     }),
 
+    getters: {
+        /**
+         * 按关键词过滤后的商品列表。
+         * 不区分大小写，命中标题/副标题/作者/卖家/分类任一字段即可。
+         */
+        filteredProducts: (state) => {
+            const keyword = String(state.searchKeyword || '').trim().toLowerCase()
+            if (!keyword) return state.shopInfo
+
+            return state.shopInfo.filter((product) => {
+                if (!product || typeof product !== 'object') return false
+                const fields = [
+                    product.main_title,
+                    product.sub_title,
+                    product.name,
+                    product.product_name,
+                    product.author,
+                    product.seller,
+                    product.category_name,
+                    product.class_name,
+                ]
+                return fields.some(
+                    (field) => field != null && String(field).toLowerCase().includes(keyword)
+                )
+            })
+        },
+    },
+
     actions: {
+        /** 写入搜索关键词（空串表示不过滤） */
+        setSearchKeyword(keyword) {
+            this.searchKeyword = typeof keyword === 'string' ? keyword : ''
+        },
+
         /** 获取分类（树形） */
         async getCategories() {
             try {

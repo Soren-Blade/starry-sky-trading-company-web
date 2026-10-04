@@ -5,7 +5,13 @@
 
       <div class="field">
         <label class="fp-label" for="secret">请输入双重密钥 (2FA Secret Key, Base32格式)：</label>
-        <input id="secret" v-model="secret" placeholder="例如：JBSWY3DPEHPK3PXP" aria-label="2FA 密钥（Base32）" />
+        <input
+          id="secret"
+          v-model="secret"
+          class="u-input"
+          placeholder="例如：JBSWY3DPEHPK3PXP"
+          aria-label="2FA 密钥（Base32）"
+        />
         <div class="helper">示例密钥为演示用，点击下方"演示密钥"可复制。</div>
       </div>
 
@@ -15,8 +21,8 @@
           浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
           :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
         -->
-        <button class="primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
-        <button @click="copyCode" :disabled="!code">复制当前验证码</button>
+        <button class="u-cta" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
+        <button class="u-btn" @click="copyCode" :disabled="!code">复制当前验证码</button>
       </div>
 
       <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
@@ -57,7 +63,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="fp-tutorial">
       <!-- 一个页面只应有一个 h1；这里是次级说明区块，用 h2 -->
       <h2>2FA工具说明</h2>
@@ -219,217 +225,252 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .fp-page-2fa {
-  padding-top: 80px;
+  /* 顶栏占位由 App.vue 的 .main-content 统一负责，页面不再声明顶部内边距 */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 18px;
+  gap: calc(var(--space-unit) * 2.25);
+  padding: var(--section-gap) var(--container-padding);
   background: transparent;
 }
+
 .fp-container {
-  max-width: 640px;
+  /* 窄内容列：取 --container-narrow 的 64%，与改造前的 640px 一致。
+     不写成 calc(var(--space-unit) * 80)：4px 基础单位的主题下会缩到 320px 挤坏表单。 */
+  max-width: calc(var(--container-narrow) * 0.64);
   width: 100%;
-  background: var(--color-surface);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 6px 18px rgba(23, 23, 23, 0.06);
+  padding: var(--panel-padding);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
+
 h1 {
-  margin: 0 0 18px 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  margin: 0 0 calc(var(--space-unit) * 2.25);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
   text-align: center;
 }
-.fp-row {
-  margin: 12px 0;
-  display: flex;
-  gap: 12px;  
-}
-.fp-row.actions {
-  justify-content: flex-start;
-}
-.fp-label {
-  min-width: 160px;
-  color: #444;
-  font-weight: 600;
-}
-input {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #e6e6e6;
-  background: var(--color-surface);
-  outline: none;
-}
-input:focus {
-  box-shadow: 0 0 0 4px rgba(138, 109, 255, 0.06);
-  border-color: var(--color-primary);
-}
-button {
-  padding: 8px 14px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: #f3f4f6;
-  cursor: pointer;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.primary {
-  background: var(--gradient-accent-violet);
-  color: white;
-}
-.fp-tutorial {
-  margin-top: 0;
-  padding: 16px;
-  max-width: 640px;
-  width: 100%;
-  background: var(--color-surface);
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(23, 23, 23, 0.04);
-}
-.fp-tutorial h2 { margin: 8px 0; font-size:16px }
-.fp-tutorial-body p { white-space:pre-line; color:#444; line-height:1.6; margin:8px 0 }
-.fp-tutorial-body p span { font-weight:600; color:var(--color-text-primary) }
-.fp-demo-key { margin-top:10px; display:flex; gap:8px; align-items:center }
-.link-like { background:transparent; border:none; color: var(--color-primary-dark); cursor:pointer; padding:6px 8px; border-radius:6px }
-.link-like:hover { background:rgba(111,84,255,0.06) }
-.key-inline { background: linear-gradient(90deg,#fff,#fff); border:1px solid #ededff; color: var(--color-primary-dark); padding:4px 8px; border-radius:6px; cursor:pointer }
-.key-inline:hover { background:rgba(111,84,255,0.04) }
-.demo-link { color: var(--color-primary-dark) }
 
-/* layout improvements */
-.field { display:block; margin-bottom:12px; width: 100%; }
-.field .fp-label { display:block; margin-bottom:8px; font-size:14px }
-.field input { width:100%; font-size:14px }
-.field .helper { margin-top:6px; color:#777; font-size:13px; }
-.actions { display:flex; gap:10px; margin-top:10px; justify-content: center;}
-.actions button { min-width:160px }
+.field {
+  display: block;
+  width: 100%;
+  margin-bottom: calc(var(--space-unit) * 1.5);
+}
+
+.field .fp-label {
+  display: block;
+  margin-bottom: var(--space-unit);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+}
+
+/* 输入框本体视觉（底色 / 边框 / 圆角 / 聚焦环）来自 .u-input */
+
+.field .helper {
+  margin-top: calc(var(--space-unit) * 0.75);
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+}
+
+.actions {
+  display: flex;
+  gap: calc(var(--space-unit) * 1.25);
+  margin-top: calc(var(--space-unit) * 1.25);
+  justify-content: center;
+}
+
+.actions .u-cta,
+.actions .u-btn {
+  min-width: calc(var(--space-unit) * 20);
+}
+
 .fp-code-area {
-  margin-top: 18px;
+  margin-top: calc(var(--space-unit) * 2.25);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  gap: 8px;
-}
-
-.fp-code {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
-  border: 1px solid #eef3ff;
-  box-shadow: 0 6px 18px rgba(18, 38, 63, 0.06);
-}
-
-.fp-code-value {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  color: #0b1a2b;
-  background: transparent;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Noto Mono', monospace;
-}
-
-.fp-countdown {
-  font-size: 13px;
-  color: #6b7280;
-  background: #f5f7fb;
-  padding: 6px 8px;
-  border-radius: 8px;
-}
-
-.fp-note {
-  margin-top: 8px;
-  color: #b00020;
-  font-size: 13px;
-  text-align: center;
-}
-
-.secure-warning {
-  margin: 0 0 16px;
-  padding: 12px 16px;
-  background: var(--color-danger-bg, #fef2f2);
-  border: 1px solid var(--color-error-border);
-  border-radius: var(--radius-sm, 8px);
-  text-align: left;
-  line-height: 1.6;
+  gap: var(--space-unit);
 }
 
 /* Card-style container inside the main container */
 .fp-card {
   width: 100%;
-  background: var(--color-surface);
-  border: 1px solid #e6eef9;
-  border-radius: 8px;
-  padding: 14px 16px;
-  box-shadow: 0 2px 6px rgba(11, 26, 43, 0.04);
+  padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
 
-.fp-meta { display: flex; flex-direction: column; gap: 10px }
-.meta-row { display:flex; align-items:center; gap:12px }
-.meta-label { min-width:90px; color:#344054; font-weight:600 }
-.meta-value { color:#0b1a2b; font-weight:700 }
-.meta-code { color:#0b8a3a; font-size:20px; letter-spacing:2px }
-.meta-remaining { margin-left: auto; color:#6b7280; font-size:13px }
+.fp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.25);
+}
 
-.fp-progress { margin-top:10px; height:8px; background:#f1f5f9; border-radius:8px; overflow:hidden }
-.fp-progress-bar { height:100%; background: linear-gradient(90deg,#20c997,#12b886); width:50%; transition:width 0.3s linear }
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+.meta-label {
+  min-width: calc(var(--space-unit) * 11.25);
+  color: var(--text-secondary);
+  font-weight: var(--fw-label);
+}
+
+.meta-value {
+  color: var(--text-primary);
+  font-weight: var(--fw-price);
+}
+
+/* 验证码是这一页的主角：等宽字体 + 价格档字号 + 主题强调色 */
+.meta-code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-price);
+  font-weight: var(--fw-price);
+  letter-spacing: var(--tracking-label);
+  color: var(--accent);
+}
+
+.meta-remaining {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+}
+
+.fp-progress {
+  margin-top: calc(var(--space-unit) * 1.25);
+  height: var(--space-unit);
+  background: var(--bg-surface);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.fp-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--transition-surface);
+}
+
+/* 错误提示：先声明 .fp-note，再声明 .secure-warning，
+   两者优先级相同，靠后的一条在同时命中时生效 */
+.fp-note {
+  margin-top: var(--space-unit);
+  color: var(--danger);
+  font-size: var(--fs-label);
+  text-align: center;
+}
+
+.secure-warning {
+  margin: 0 0 calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  text-align: left;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-panel);
+}
+
+.fp-tutorial {
+  /* 与 .fp-container 同宽，两卡片左对齐 */
+  max-width: calc(var(--container-narrow) * 0.64);
+  width: 100%;
+  padding: var(--panel-padding);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
+}
+
+.fp-tutorial h2 {
+  margin: var(--space-unit) 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.fp-tutorial-body p {
+  white-space: pre-line;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  margin: var(--space-unit) 0;
+}
+
+.fp-tutorial-body p span {
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+/* 演示密钥：可点击的等宽内联按钮，用次级表面 + 边框表达「可点」 */
+.key-inline {
+  padding: calc(var(--space-unit) * 0.5) var(--space-unit);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-interactive),
+    color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+.key-inline:hover {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
 
 /*
- * 小屏适配。
+ * 小屏适配（统一断点 575，与 global.css 末尾的断点体系一致）。
  *
- * 原先是三个完全相同的 `@media (max-width: 560px)` 块 —— 同类断点重复声明属于
- * 应当合并的写法；本仓库统一断点为 1199 / 991 / 767 / 575，因此改用 575px。
- *
- * 合并时移除了一条**永远不会生效**的声明：原先第二个块写
- * `.actions { flex-direction: column }`，而第三个块写
- * `.fp-row.actions { flex-direction: row }` —— 后者选择器更具体（两个类），
- * 优先级更高，必然覆盖前者。这里按第三个块的意图（横排 + 换行）保留。
+ * 原来三段重复的小屏媒体查询已合并到这一处；其中「标签与输入框竖排」
+ * 的意图由 `.fp-label` 的 display:block + 输入框 width:100% 直接满足，
+ * 「按钮横排并换行」由 .actions 的默认横排 + 这里的 flex-wrap 满足。
  */
 @media (max-width: 575px) {
   .meta-row {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .meta-remaining {
     margin-left: 0;
   }
+
   .fp-card {
-    padding: 12px;
+    padding: calc(var(--space-unit) * 1.5);
   }
-  .actions button {
-    width: 100%;
+
+  .fp-container,
+  .fp-tutorial {
+    padding: var(--card-padding);
   }
-  .fp-container {
-    padding: 16px;
-  }
-  .fp-code-value {
-    font-size: 24px;
-  }
-  /* Stack label and input on small screens */
-  .fp-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .fp-label {
-    min-width: auto;
-    margin-bottom: 6px;
-  }
-  /* 比 .actions 更具体，因此这里的横排是实际生效的布局 */
-  .fp-row.actions {
-    display: flex;
-    gap: 8px;
-    flex-direction: row;
+
+  .actions {
     flex-wrap: wrap;
+  }
+
+  .actions .u-cta,
+  .actions .u-btn {
+    width: 100%;
   }
 }
 </style>

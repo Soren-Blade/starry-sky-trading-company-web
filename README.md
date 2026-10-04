@@ -60,33 +60,37 @@ starry-sky-trading-company-web/
     │       └── kami.js           # /kamiApi
     ├── assets/
     │   ├── styles/
-    │   │   ├── variables.css     # CSS 变量（色彩、渐变、阴影、圆角、过渡）
-    │   │   └── global.css        # 全局重置、滚动条、动画关键帧、工具类
-    │   └── README.md             # assets 目录说明
-    ├── components/               # 区块与卡片组件（见 §6）
+    │   │   ├── variables.css     # 设计令牌名册（+ 默认主题 tech-minimal 的兜底值）
+    │   │   └── global.css        # 重置、共享结构类（.ui-card/.u-cta/...）、共享动效
+    │   └── README.md             # assets 目录说明与令牌清单
+    ├── components/               # 区块、卡片与弹窗组件（见 §6）
     ├── constants/
-    │   └── index.js              # COLORS / NAV_MENU / BREAKPOINTS / 动画时长 / 标签色
+    │   ├── index.js              # 常量出口（只 re-export content.js）
+    │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / FOOTER / 主题弹窗
     ├── hooks/
     │   ├── useToken/index.js             # localStorage 读写 token
     │   ├── useRefreshToken/index.js      # 刷新 token（再导出 @/api/request 的单飞实现）
     │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动（含引用计数）
     │   ├── useClass/index.js             # 按 class 字段对工具分组
-    │   ├── useEmoji/index.js             # emoji → 渐变背景（映射表 + 生成器类）
+    │   ├── useEmoji/index.js             # emoji → 渐变色（分类卡底纹用）
     │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
     │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
     │   └── useSimpleTimeFormatter/index.js # 时间格式化与时区转换
     ├── pages/                    # 路由目标页面（见 §4）
     ├── router/
-    │   └── index.js              # 路由表 + 标题守卫
+    │   └── index.js              # 路由表 + 标题守卫 + 鉴权守卫
     ├── stores/                   # Pinia store（见 §5）
     │   ├── user.js
     │   ├── shop.js
     │   ├── tool.js
-    │   └── kami.js
-    ├── utils/
-    │   └── index.js              # 动画/样式/响应式/DOM/格式化工具 + debounce/throttle
-    └── __tests__/
-        └── imports.test.js       # 非测试：仅导入与 console.log（见 §10）
+    │   ├── kami.js
+    │   └── theme.js              # 设计风格：切换、单项自定义、持久化、写入 :root
+    ├── theme/                    # 设计风格（样式体系的运行时层）
+    │   ├── presets.js            # 五套风格的完整令牌取值 + 可调项定义
+    │   ├── compose.js            # 预设 + 单项自定义 → 最终令牌表（纯函数）
+    │   └── color.js              # 解析/压暗/转 rgba/缩放 px 的小工具
+    └── utils/
+        └── index.js              # throttle / domUtils.smoothScroll / formatUtils
 ```
 
 ---
@@ -101,19 +105,26 @@ import './assets/styles/global.css'
 import 'ant-design-vue/dist/reset.css'
 
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
+
+// 主题必须在首屏渲染之前同步落到 <html>：
+// 放到组件的 onMounted 里会让用户先看到默认主题、再闪一下切换（FOUC）。
+useThemeStore(pinia).init()
+
 app.mount('#app')
 ```
 
 `App.vue` 提供全局骨架：
 
-- `<Navbar />` 固定顶栏（含登录/注册入口与用户下拉菜单）
-- `<main><router-view /></main>` 路由出口
+- `<Navbar />` 固定顶栏（品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉）
+- `<main class="main-content"><router-view /></main>` 路由出口；
+  `padding-top: var(--navbar-height)` 在这里统一给出，**各页面不再自己写顶栏占位**
 - `<Footer />` 页脚
 - 右下角"回到顶部"悬浮按钮（滚动超过 300px 出现，用 `throttle` 节流）
 
-> `App.vue` 里 `useShopStore()` 已实例化，但驱动商品/分类数据的 `shopStore.init()` 被注释掉了，因此首页的分类与热门商品区块目前拿不到数据。
+`App.vue` 的 `onMounted` 里并行调用 `userStore.init()` 与 `shopStore.init()`。
 
 ---
 
@@ -179,10 +190,13 @@ app.mount('#app')
 | --- | --- |
 | `shopClass` | 商品分类 |
 | `shopInfo` | 商品列表 |
+| `searchKeyword` | 商品搜索关键词（导航栏搜索栏写入） |
+| `filteredProducts` | **getter**：按 `searchKeyword` 过滤后的商品列表。匹配规则只此一处 —— 搜索栏与商品网格分处两个组件，规则不能各写一份 |
 | `pagination` | 分页信息 |
+| `setSearchKeyword(kw)` | 写入搜索关键词（空串表示不过滤） |
 | `getCategories()` | 以 `{ tree: true }` 调 `/class/getCategories` |
 | `getProducts()` | 以 `{ in_stock: 'all' }` 调 `/shop/getProducts` |
-| `init()` | 依次调用上面两个（用逗号表达式，无返回值） |
+| `init()` | 并行调用上面两个，并在 `finally` 里收尾 `loading` |
 
 ### `tool.js` — `useToolStore`
 
@@ -194,6 +208,30 @@ app.mount('#app')
 | `appleIds` | 共享 Apple ID 数据，实际是 `{ nanoCloud, fangQiangNan }` 对象 |
 | `fetchTools()` / `fetchAppleIds()` / `setActiveCategory()` / `init()` | 见 server README 的 `/toolApi` 接口说明 |
 
+### `theme.js` — `useThemeStore`
+
+设计风格的运行时状态。**这里不写任何设计数值**（数值在 `src/theme/presets.js`）。
+
+| 成员 | 说明 |
+| --- | --- |
+| `themeId` | 当前风格 id，默认 `tech-minimal` |
+| `custom` | 单项自定义值（字号缩放、间距密度、圆角缩放、强调色、字体族、背景图与其不透明度） |
+| `theme` / `themeList` | 当前主题元数据 / 可选主题列表（供弹窗渲染） |
+| `pricePrefix` / `priceDecimals` | 当前主题的货币描述（technical-monochrome 是 `$`），供 `formatUtils.formatPrice` 使用 |
+| `tokens` | getter：`composeTokens(themeId, custom)` 的合成结果 |
+| `customizedKeys` / `isCustomized` | 哪几项被改过 |
+| `panelOpen` | 主题弹窗开关（导航栏按钮与弹窗共享同一状态） |
+| `init()` | 从 `localStorage` 恢复并写入 `:root`；由 `main.js` 在 mount 前调用 |
+| `setTheme(id)` | 整体切换风格 |
+| `setCustom(key, v)` / `resetCustomField(key)` / `resetCustom()` / `resetAll()` | 单项修改与三种粒度的还原 |
+| `apply()` | 把合成后的令牌写成 `<html>` 的行内自定义属性 + `data-theme` + `color-scheme` |
+| `openPanel` / `closePanel` / `togglePanel` | 弹窗开关 |
+
+> 走行内样式而不是切 class 的原因：单项自定义的取值来自用户输入（任意强调色、
+> 任意字号），无法预先穷举成 CSS 类；行内自定义属性也天然优先于 `variables.css`
+> 的 `:root` 兜底值。`apply()` 用能力检测（`style.setProperty` 是否存在）
+> 而不是 `typeof document` 来兼容 SSR 与测试桩。
+
 ### `kami.js` — `useKamiStore`
 
 | 成员 | 说明 |
@@ -203,8 +241,7 @@ app.mount('#app')
 | `filters` | `status` / `card_type` / `tool_id`（仅声明，未被读写） |
 | `fetchUserKamis(userId, opts)` | 调 `GET /kamiApi/getUserCards/:user_id`，写入列表与分页 |
 
-> `KamiSection.vue` 目前自己在组件内实现了取数逻辑并直接改 store 状态，`fetchUserKamis` 未被调用。
-> `stores/home.js` 是一个未被任何地方引用、且没有 import `defineStore` 的空文件。
+> `KamiSection.vue` 通过 `kamiStore.fetchUserKamis` 取数并就地读 `pagination`。
 
 ---
 
@@ -214,19 +251,21 @@ app.mount('#app')
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏。Logo、`NAV_MENU` 渲染的导航、移动端汉堡菜单、登录/注册按钮（游客与未登录都显示）、用户头像下拉（个人中心 / 我的收藏 / 订单管理 / 卡密管理 / 退出登录，前三项为 TODO）。身份初始化由 `App.vue` 统一负责，此处不再重复请求 |
-| `Footer.vue` | 页脚：站点信息、链接分组、版权 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、搜索栏（≥992px）、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉（抽屉内含搜索栏）。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`）。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
+| `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
+| `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
 | `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。模态约定见下 |
 | `SectionHeader.vue` | **区块头**（icon + title + description）。样式定义在 `global.css` 的 `.section-header` 系列，供各 Section 组件复用 |
-| `PageHeader.vue` | **页面头**（title + subtitle）。渐变通过 CSS 变量 `--page-header-gradient` 在页面上覆写 |
+| `PageHeader.vue` | **页面头**（title + subtitle）。样式统一在 `global.css` 的 `.page-header`，各页面不再逐页覆写渐变 |
 
 ### 区块
 
 | 组件 | 说明 |
 | --- | --- |
-| `HeroSection.vue` | 首屏 hero，渐变背景 + CTA 按钮，含浮动装饰与入场动画 |
-| `CategoriesSection.vue` | 商品分类网格，卡片背景由 `getEmojiGradient(category.icon_url)` 生成 |
-| `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.shopInfo`，含加载 / 错误 / 空三种状态 |
+| `HeroSection.vue` | 首屏 hero：eyebrow / 标题 / 副标题 / 双 CTA / 特性行 + 一个表面面板。**没有**随机星点、浮动 emoji 与光斑 —— 规范排除装饰性渐变与夸张动画 |
+| `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；`getEmojiGradient(category.icon_url)` 只作为 16% 透明度的底纹出现，不铺满整卡 |
+| `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.filteredProducts`（含搜索过滤），含加载 / 错误 / 空三种状态 |
 | `AppleIdSection.vue` | 汇总两个数据源的 Apple ID；加载与错误状态取自 `toolStore.appleIdsLoading` / `appleIdsError` |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
 
@@ -340,45 +379,84 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 ## 9. 样式体系
 
-详见 [`src/assets/README.md`](src/assets/README.md)。要点：
+全站支持**五套可切换的设计风格**，并且每套风格都完全由设计令牌驱动。
+令牌清单与用法见 [`src/assets/README.md`](src/assets/README.md)。
 
-**设计令牌**（`assets/styles/variables.css` 的 `:root`）：品牌色、文字层级
-（`--color-text-primary` → `secondary` → `tertiary` → `muted` → `muted-light`）、
-边框与分割、状态色（`--color-success|danger|error`）、表面与背景
-（`--color-surface` / `--color-on-primary`）、渐变、阴影（含 `--shadow-card`）、
-毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
+### 9.1 五套风格
 
-> **`#fff` 有两个令牌，不可互换**：`background` 用 `--color-surface`；
-> 位于渐变/主色背景**之上**的文字用 `--color-on-primary`（后者在白底上不可见）。
+| id | 名称 | 底色 | 强调色 | 特点 |
+| --- | --- | --- | --- | --- |
+| `tech-minimal`（默认） | Tech Minimal 暗色科技极简 | `#0a0a0a` | `#3b82f6` | 无阴影、1px 边框分层；标题 Inter 600-700；价格 JetBrains Mono；卡片 12px / 按钮 8px；入场 translateY 12px，60ms 递增 |
+| `liquid-glass` | Liquid Glass Commerce 液态玻璃·电商 | 紫粉渐变网格 | `#6366f1` | 半透明面板 + `backdrop-filter: blur(16px) saturate(180%)`（悬停 24px）；卡片 20px / 面板 24px / 按钮 14px / 搜索栏全胶囊；入场 scale 0.96 带弹性；背景网格 20s 流动 |
+| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Century Gothic；卡片 20px / 小卡 16px / 按钮 10px / 搜索框 24px；网格 gap 14px |
+| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 克制基底 + 关键转化点的粗野主义 CTA：3px 黑边、`6px 6px 0 #000` 硬阴影、悬停 `3px 3px 0` + `translate(3px,3px)`、激活归零位移 6px、`0.1s linear` 即时过渡；标题压缩大写 |
+| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；全部 4-6px 圆角；基础间距单位 4px；价格 `$` 前缀 + `#141414` 代码块底色；悬停仅边框变绿，无缩放无位移 |
 
-> **不要再为一次性色值新增令牌**：目前仍有约 79 处硬编码，其中 63 个色值只出现 1 次。
-> 判断标准是「同一色值在第二个组件出现时才提升为令牌」—— 否则会制造
-> 「定义了没人用」的令牌，而那正是导致作者继续写硬编码的根源。
+### 9.2 令牌的三层结构
 
-> **令牌必须有人用**：`:root` 当前有 54 个令牌，**没有一个是无人使用的**。
-> 定义了却没人用会稀释「可用令牌」的信号，结果是作者继续写新的硬编码值 —— 因此
-> `test/designTokens.test.js` 会把「死令牌」和「引用了未定义令牌」都判为失败。
-> 新增令牌的同时要把它用在真实组件上；组件不再需要时同步删除令牌。
->
-> 两类**不**需要在 `variables.css` 声明的局部变量（检查器已放行）：
-> 由 `:style` 绑定注入的（如 `--animation-delay`）、由 JS 数据注入的
-> （HeroSection 的 `--size`/`--duration`/`--delay`）、以及作为可覆写出口的
-> （`--page-header-gradient`，由 `AppleId.vue` / `Hot.vue` 覆写）。
+| 层 | 文件 | 职责 |
+| --- | --- | --- |
+| 名册与兜底 | `assets/styles/variables.css` | 令牌**名** + 默认主题的值；JS 执行前的首屏兜底 |
+| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源） |
+| 合成与应用 | `src/theme/compose.js` + `src/stores/theme.js` | 叠加「单项自定义」并把结果写到 `:root` |
 
-> **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
-> 统一使用 `1199` / `991` / `767` / `575`。此前的 `--breakpoint-*` 变量已删除，
-> 且同一个文件内**不得重复声明相同的媒体查询**（应合并为一个块）—— 两项都由测试守卫。
+`main.js` 在 `app.mount()` **之前**调用 `useThemeStore(pinia).init()`，
+把令牌同步写到 `<html>` 的行内样式上 —— 放到 `onMounted` 会让用户先看到默认主题闪一下。
 
-**全局样式**（`assets/styles/global.css`，约 336 行）：基础重置、WebKit 滚动条、元素重置、
-**4 个动画关键帧**（`fadeInUp` `fadeInScale` `float` `floatRandom`）、
-**共享结构类**（`.section-header` 系列、`.page-header`、`.ui-card` 系列、
-`.visually-hidden`、`.hide-mobile`/`.show-mobile`）、`:focus-visible`。
+### 9.3 切换与单项自定义
 
-**加载方式**：`main.js` 依次 `import` `variables.css` → `global.css` → antd reset。
-`global.css` **不再** `@import variables.css`（此前导致 `:root` 输出两次）。
+导航栏右侧的 🎨 图标按钮打开弹窗（`ThemeSwitcher.vue`），两个页签：
 
-**组件样式**：全部 `<style scoped>`，通过 `var(--token)` 引用。antd 表格等需穿透时用 `:deep()`
-（见 `KamiSection.vue`）。
+- **整体风格**：五套风格整体切换（含色板预览、当前项标记）。
+- **单项修改**：字号缩放 / 间距密度 / 圆角缩放 / 强调色 / 字体族 / 页面背景图与不透明度。
+  强调色会**自动派生**悬停色（压暗 18%）、柔和底色（转 rgba）与「强调色之上的文字色」
+  （按相对亮度决定黑或白），因此换个品牌色不会出现看不清的按钮文字。
+
+控件由 `theme/presets.js` 的 `CUSTOM_FIELDS` 数据驱动渲染 ——
+**新增一个可调项只需加一条描述，不用改组件模板**。
+
+选择保存在 `localStorage` 的 `SSTC_THEME_PREF`，刷新后保留。
+
+### 9.4 与数据层的联动
+
+风格会改变价格的表现形式（`technical-monochrome` 用 `$` 前缀），
+因此货币信息属于**数据层**而不是模板：
+
+- `theme/presets.js` 每套主题声明 `price: { prefix, decimals }`；
+- `useThemeStore()` 暴露 `pricePrefix` / `priceDecimals`；
+- `formatUtils.formatPrice(price, currency)` 接受货币描述，默认值与旧行为一致（`¥` / 两位小数）；
+- `ProductCard.vue` 从 store 取货币再格式化，**不在模板里写货币符号**。
+
+同理，商品搜索的匹配规则放在 `shopStore` 的 `filteredProducts` getter 里，
+搜索栏（导航栏）与商品网格（区块）共用同一份规则。
+
+### 9.5 共享结构类与动效
+
+`global.css` 提供（新增前请先确认确有多处复用）：
+
+- `.section-header` / `.section-title` / `.title-icon` / `.section-description` — 区块头
+- `.page-header` — 页面头
+- `.ui-card` / `.ui-card-media` / `.ui-card-body` / `.ui-card-interactive` — 卡片外壳
+- `.u-cta`（`--lg` 大号）/ `.u-btn` / `.u-chip` / `.u-input` — 按钮、标签、输入框
+- `.u-enter` — 入场动效，配 `:style="{ '--i': index }"` 做错峰
+- `.visually-hidden` / `.hide-mobile` / `.show-mobile`
+
+动效全部由令牌参数化：`enterUp` 关键帧的起点取自 `--enter-shift` / `--enter-scale`，
+延迟步长取自 `--stagger-step`，装饰性浮动由 `--decor-animation` 开关。
+此外 `.scroll-reveal` 用 scroll-driven animation（`animation-timeline: view()`）
+实现滚动渐显，**包在 `@supports` 内**，不支持的浏览器内容保持可见。
+`variables.css` 末尾有 `prefers-reduced-motion: reduce` 的全局降级。
+
+### 9.6 硬编码与断点纪律
+
+- 组件样式**只允许消费令牌**。需要新色值/新字号时，先在 `variables.css` 登记语义化令牌，
+  再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。
+- **不许有死令牌**：`test/designTokens.test.js` 会把「定义了没人用」和
+  「引用了未定义令牌」都判为失败；判定「有人用」时会排除 `variables.css` 与整个
+  `src/theme/`（那是写出令牌名的地方）。
+- **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
+  统一使用 `1199` / `991` / `767` / `575`（`min-width` 互补写法用 `768`）。
+  同一文件内**不得重复声明相同的媒体查询**。
 
 **设计规范的单一来源**：`.dsh/skills/project-ui-system/SKILL.md`。
 
@@ -435,7 +513,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 378 个用例）
+npm test             # 单元测试（node:test，共 404 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
 npm run verify       # lint + test + build + verify:dev
@@ -512,7 +590,7 @@ test/
 ├── loaders/
 │   └── alias.mjs                     # 解析钩子：@/ 别名、省略扩展名、antd 测试替身
 ├── setup.js                          # 公共设施：Storage 桩、浏览器桩、import.meta.env
-├── utils.test.js                     # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
+├── utils.test.js                     # src/utils 的纯函数（价格/计数格式化、节流、平滑滚动）
 ├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
@@ -525,14 +603,29 @@ test/
 ├── useKamiDisplay.test.js            # 卡密展示层纯函数（状态文案/配色、工具名、日期）
 ├── useKamiActivation.test.js         # 卡密激活流程（校验、服务端失败、异常、activating 复位）
 ├── designTokens.test.js              # 设计令牌卫生（无死令牌、断点白名单、无重复媒体查询）
+├── themeContract.test.js             # 主题契约：五套预设 ↔ 令牌名册一致、合成不产出空令牌、规范数值守卫
 ├── constSafety.test.js               # 静态检查「对 const 绑定赋值」
 ├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
-├── renderComponents.test.js          # 组件渲染（SSR）：23 个 .vue 全部渲染、无警告/插值事故
+├── renderComponents.test.js          # 组件渲染（SSR）：全部 .vue 渲染、无警告/插值事故
 ├── renderKamiData.test.js            # 注入真实 store 数据渲染：逐格断言 8 列内容与状态分支
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 378 个用例。
+共 404 个用例。
+
+### 主题契约测试
+
+`themeContract.test.js` 是新样式体系的安全网，覆盖三类只有"打开浏览器点一遍"才容易发现的缺陷：
+
+1. **名册 ↔ 预设一致**：`variables.css` 登记的每个令牌，五套主题都必须给出取值（反之亦然）。
+   漏一处，该令牌在某个主题下会静默落回别的主题的值。
+2. **合成不产出空令牌**：五套主题 × 极端自定义组合（字号 85%~130%、密度 80%~130%、
+   圆角 0~200%、`NaN`/负数/超范围）逐个走 `assertTokenContract`，任何缺失/空串都会失败。
+3. **规范数值守卫**：把五套规范里写死的数字（`#0a0a0a`、`--radius-card: 20px`、
+   `6px 6px 0 #000000`、`--space-unit: 4px` …）逐条断言，防止后续"凭手感改数值"。
+
+此外还覆盖了强调色派生（自动压暗 + 反白/反黑文字）、背景图 URL 白名单
+（`javascript:` 被丢弃、引号/换行被剔除）、缩放只作用于对应令牌组等行为。
 
 ### 测试基础设施（无新增依赖）
 
@@ -590,7 +683,7 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 `renderComponents.test.js` 用 `@vue/server-renderer` **在 Node 里真正执行**组件的 setup 与
 render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` 是 `vue` 自身的依赖。
 
-- 组件清单**自动发现**（遍历 `src/**/*.vue`），当前 23 个组件全部纳入
+- 组件清单**自动发现**（遍历 `src/**/*.vue`），当前 25 个组件全部纳入
 - `test/render.mjs` 提供 `renderComponent()` 与 `createRenderEnv()`：
   后者注册 `router-link`/`router-view` 桩、11 个 `a-*` antd 组件桩、
   以及 5 个带必需 props 的子组件包装 —— 目的是**去掉噪音**，
@@ -692,7 +785,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（378 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（404 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

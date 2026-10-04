@@ -2,17 +2,19 @@
   <div class="not-found-page">
     <div class="not-found-container">
       <div class="not-found-content">
-        <div class="not-found-icon">404</div>
-        <h1>页面未找到</h1>
-        <p>抱歉，您访问的页面不存在或已被删除</p>
-        
-        <router-link to="/" class="back-home-btn">
-          <span>返回首页</span>
-          <span class="arrow">→</span>
+        <!-- 大号 404 只是视觉符号，标题由下面的 h1 承担，避免重复播报 -->
+        <div class="not-found-icon" aria-hidden="true">404</div>
+        <h1>{{ PAGES.notFound.title }}</h1>
+        <p>{{ PAGES.notFound.subtitle }}</p>
+
+        <!-- 主 CTA 复用 .u-cta：底色 / 圆角 / hover 位移与阴影全部走令牌 -->
+        <router-link to="/" class="u-cta u-cta--lg back-home-btn">
+          <span>{{ PAGES.notFound.backHome }}</span>
+          <span class="arrow" aria-hidden="true">→</span>
         </router-link>
 
         <div class="suggestions">
-          <h3>您可能想查看：</h3>
+          <h3>{{ PAGES.notFound.suggestionsTitle }}</h3>
           <ul>
             <li><router-link to="/categories">商品分类</router-link></li>
             <li><router-link to="/hot">热门推荐</router-link></li>
@@ -21,7 +23,8 @@
         </div>
       </div>
 
-      <div class="not-found-illustration">
+      <!-- 装饰性插画：仅 emoji，对屏幕阅读器隐藏 -->
+      <div class="not-found-illustration" aria-hidden="true">
         <div class="floating-star">⭐</div>
         <div class="floating-diamond">💎</div>
         <div class="floating-sparkle">✨</div>
@@ -31,249 +34,226 @@
 </template>
 
 <script setup>
-// Not Found page component
+import { PAGES } from '@/constants/index.js'
 </script>
 
 <style scoped>
 .not-found-page {
   width: 100%;
-  min-height: 100vh;
-  padding-top: 70px;
+  /* 垂直居中要扣掉固定顶栏的高度（顶栏占位本身由 App.vue 的 .main-content 负责） */
+  min-height: calc(100vh - var(--navbar-height));
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-page-soft);
+  /* 页面底色由 body 的 --bg-page / 主题背景层承担，此处保持透明 */
+  background: transparent;
 }
 
 .not-found-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 60px;
+  gap: calc(var(--section-gap) * 0.6);
   align-items: center;
   max-width: var(--container-narrow);
   width: 100%;
-  padding: 60px 20px;
+  padding: var(--section-gap) var(--container-padding);
 }
 
 .not-found-content {
   text-align: left;
 }
 
+/* 原先用 background-clip 做渐变文字，主题化后直接用强调色，无渐变也不会失义 */
 .not-found-icon {
-  font-size: 120px;
-  font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 20px;
+  font-size: var(--fs-display);
+  font-weight: var(--fw-display);
+  color: var(--accent);
   line-height: 1;
+  margin-bottom: calc(var(--space-unit) * 2.5);
 }
 
 .not-found-content h1 {
-  font-size: 48px;
-  font-weight: 800;
-  color: var(--color-dark);
-  margin: 0 0 16px 0;
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+  margin: 0 0 calc(var(--space-unit) * 2);
 }
 
 .not-found-content p {
-  font-size: 18px;
-  color: var(--color-text-secondary);
-  margin: 0 0 40px 0;
-  line-height: 1.6;
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+  line-height: var(--leading-body);
+  margin: 0 0 calc(var(--section-gap) * 0.4);
 }
 
+/* .u-cta 已负责主按钮的视觉、hover 与文字色（含链接型 CTA 的 hover 锁定），
+   这里只补页内间距与箭头微动效 */
 .back-home-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 32px;
-  background: var(--gradient-primary);
-  color: white;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s ease-in-out;
-  margin-bottom: 40px;
-}
-
-.back-home-btn:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(138, 109, 255, 0.4);
+  margin-bottom: calc(var(--section-gap) * 0.4);
 }
 
 .back-home-btn .arrow {
-  transition: transform 0.3s ease-in-out;
+  transition: transform var(--transition-interactive);
 }
 
 .back-home-btn:hover .arrow {
-  transform: translateX(4px);
+  transform: translateX(calc(var(--space-unit) * 0.5));
 }
 
 .suggestions {
-  padding: 24px;
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  padding: var(--panel-padding);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
 }
 
 .suggestions h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-dark);
-  margin: 0 0 12px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-primary);
+  margin: 0 0 calc(var(--space-unit) * 1.5);
 }
 
 .suggestions ul {
-  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-unit);
 }
 
 .suggestions a {
-  font-size: 14px;
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: all 0.3s ease-in-out;
-  padding: 8px 0;
-  border-bottom: 2px solid transparent;
+  display: inline-block;
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  padding: var(--space-unit) 0;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color var(--transition-interactive),
+    padding-left var(--transition-interactive);
 }
 
 .suggestions a:hover {
-  border-bottom-color: var(--color-primary);
-  padding-left: 4px;
+  border-bottom-color: var(--accent);
+  padding-left: calc(var(--space-unit) * 0.5);
 }
 
 .not-found-illustration {
   position: relative;
-  height: 300px;
+  height: calc(var(--space-unit) * 37.5);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* 浮动动效来自 --decor-animation：不需要装饰动效的主题该令牌为 none */
 .floating-star,
 .floating-diamond,
 .floating-sparkle {
   position: absolute;
-  font-size: 80px;
-  animation: float 3s ease-in-out infinite;
+  font-size: var(--fs-display);
+  animation: var(--decor-animation);
 }
 
 .floating-star {
-  top: 20px;
-  left: 30px;
-  animation-delay: 0s;
+  top: calc(var(--space-unit) * 2.5);
+  left: calc(var(--space-unit) * 3.75);
 }
 
 .floating-diamond {
-  top: 150px;
-  right: 40px;
-  font-size: 60px;
-  animation-delay: 1s;
+  top: calc(var(--space-unit) * 18.75);
+  right: calc(var(--space-unit) * 5);
+  font-size: var(--fs-h1);
+  /* 用统一错峰步长表达原来的 1s 延迟，避免魔法数字 */
+  animation-delay: calc(var(--stagger-step) * 16);
 }
 
 .floating-sparkle {
-  bottom: 40px;
+  bottom: calc(var(--space-unit) * 5);
   left: 50%;
-  font-size: 50px;
-  animation-delay: 0.5s;
+  font-size: var(--fs-h2);
+  animation-delay: calc(var(--stagger-step) * 8);
 }
 
 @media (max-width: 991px) {
   .not-found-container {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: calc(var(--section-gap) * 0.4);
   }
 
   .not-found-icon {
-    font-size: 100px;
+    font-size: var(--fs-h1);
   }
 
   .not-found-content h1 {
-    font-size: 36px;
+    font-size: var(--fs-h2);
   }
 
   .not-found-illustration {
-    height: 200px;
+    height: calc(var(--space-unit) * 25);
   }
 
   .floating-star,
   .floating-diamond,
   .floating-sparkle {
-    font-size: 60px;
+    font-size: var(--fs-h1);
   }
 
   .floating-diamond {
-    font-size: 50px;
+    font-size: var(--fs-h2);
   }
 
   .floating-sparkle {
-    font-size: 40px;
+    font-size: var(--fs-h3);
   }
 }
 
 @media (max-width: 767px) {
-  .not-found-page {
-    padding-top: 56px;
-  }
-
   .not-found-container {
-    padding: 40px 16px;
-    gap: 30px;
+    padding: calc(var(--section-gap) * 0.4) var(--container-padding);
+    gap: calc(var(--space-unit) * 3.75);
   }
 
   .not-found-icon {
-    font-size: 80px;
+    font-size: var(--fs-h2);
   }
 
   .not-found-content h1 {
-    font-size: 28px;
+    font-size: var(--fs-h3);
   }
 
   .not-found-content p {
-    font-size: 14px;
-    margin-bottom: 30px;
+    font-size: var(--fs-sm);
+    margin-bottom: calc(var(--space-unit) * 3.75);
   }
 
   .back-home-btn {
-    width: 100%;
-    justify-content: center;
-    margin-bottom: 30px;
+    margin-bottom: calc(var(--space-unit) * 3.75);
   }
 
   .suggestions {
-    padding: 16px;
-  }
-
-  .suggestions h3 {
-    font-size: 12px;
-  }
-
-  .suggestions a {
-    font-size: 13px;
+    padding: var(--card-padding);
   }
 
   .not-found-illustration {
-    height: 150px;
+    height: calc(var(--space-unit) * 18.75);
   }
 
   .floating-star,
   .floating-diamond,
   .floating-sparkle {
-    font-size: 40px;
+    font-size: var(--fs-h2);
   }
 
   .floating-diamond {
-    font-size: 32px;
+    font-size: var(--fs-h3);
   }
 
   .floating-sparkle {
-    font-size: 24px;
+    font-size: var(--fs-body);
   }
 }
 </style>

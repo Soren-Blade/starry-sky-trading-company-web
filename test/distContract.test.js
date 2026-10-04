@@ -57,22 +57,40 @@ if (!BUILT) {
   })
 
   test('设计令牌完整进入 CSS', () => {
+    // 令牌契约换成了「主题化」命名（--color-primary → --accent 等）。
+    // 这里抽查各层级的代表令牌，确认 variables.css 与 global.css 都进了产物。
     const tokens = [
-      '--color-primary',
-      '--color-on-primary',
-      '--color-surface',
-      '--color-text-primary',
-      '--gradient-indigo',
-      '--gradient-page-soft',
-      '--radius-xl',
+      '--bg-page',
+      '--bg-surface',
+      '--accent',
+      '--text-primary',
+      '--border',
+      '--radius-card',
+      '--radius-cta',
       '--shadow-card',
+      '--shadow-cta',
+      '--card-padding',
+      '--font-display',
+      '--fs-h1',
+      '--effect-backdrop',
+      '--enter-shift',
     ]
     const missing = tokens.filter((t) => !allCss.includes(t))
     assert.deepEqual(missing, [], `以下令牌未进入产物 CSS：\n  ${missing.join('\n  ')}`)
   })
 
   test('已删除的死令牌不得残留在产物里', () => {
-    const removed = ['--color-accent', '--color-warning', '--gradient-warm', '--shadow-glass']
+    const removed = [
+      '--color-accent',
+      '--color-warning',
+      '--gradient-warm',
+      '--shadow-glass',
+      // 本轮重构删除的旧令牌（令牌名册已整体更换）
+      '--color-primary',
+      '--gradient-page-soft',
+      '--radius-xl',
+      '--glass-backdrop',
+    ]
     const present = removed.filter((t) => allCss.includes(t))
     assert.deepEqual(present, [], `以下令牌已删除但仍出现在产物中：\n  ${present.join('\n  ')}`)
   })

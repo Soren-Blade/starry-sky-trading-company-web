@@ -42,6 +42,7 @@
             <input
               id="login-username"
               v-model="loginForm.username"
+              class="u-input"
               type="text"
               placeholder="请输入用户名/邮箱/手机号"
               required
@@ -53,6 +54,7 @@
             <input
               id="login-password"
               v-model="loginForm.password"
+              class="u-input"
               type="password"
               placeholder="请输入密码"
               required
@@ -69,7 +71,7 @@
 
           <button
             type="submit"
-            class="submit-btn"
+            class="submit-btn u-cta"
             :disabled="loading"
             :aria-busy="loading"
           >
@@ -80,10 +82,10 @@
           <div class="divider">或者</div>
 
           <div class="social-login">
-            <button type="button" class="social-btn wechat">
+            <button type="button" class="social-btn u-btn">
               <span>微信登录</span>
             </button>
-            <button type="button" class="social-btn qq">
+            <button type="button" class="social-btn u-btn">
               <span>QQ登录</span>
             </button>
           </div>
@@ -96,6 +98,7 @@
             <input
               id="register-username"
               v-model="registerForm.username"
+              class="u-input"
               type="text"
               placeholder="请输入用户名"
               required
@@ -107,6 +110,7 @@
             <input
               id="register-email"
               v-model="registerForm.email"
+              class="u-input"
               type="email"
               placeholder="请输入邮箱地址"
               required
@@ -118,6 +122,7 @@
             <input
               id="register-password"
               v-model="registerForm.password"
+              class="u-input"
               type="password"
               placeholder="请输入密码"
               required
@@ -129,6 +134,7 @@
             <input
               id="register-confirm"
               v-model="registerForm.confirmPassword"
+              class="u-input"
               type="password"
               placeholder="请再次输入密码"
               required
@@ -144,7 +150,7 @@
 
           <button
             type="submit"
-            class="submit-btn"
+            class="submit-btn u-cta"
             :disabled="loading"
             :aria-busy="loading"
           >
@@ -363,245 +369,201 @@ const switchTab = (tab) => {
 </script>
 
 <style scoped>
+/*
+ * 弹窗样式全部由设计令牌驱动，五套主题下自动成立。
+ * 结构：遮罩（--scrim）→ 面板（--bg-elevated + --radius-panel + --shadow-elevated）
+ *       → 页签（--divider + --accent 指示条）→ 表单（复用 .u-input / .u-cta / .u-btn）
+ */
+
+/* 遮罩：用 --scrim 而不是主题表面色 —— 浅色主题下也要压暗背景才分得出层级 */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset: 0;
   z-index: 2000;
-  animation: fadeIn 0.3s ease-in-out;
-  overflow: hidden;
+  display: flex;
+  padding: var(--container-padding);
+  background: var(--scrim);
+  /* 内容高于视口时由遮罩自己滚动，避免小屏上提交按钮被裁掉 */
+  overflow-y: auto;
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
+/* 面板：表面/边框/圆角/阴影全走令牌。
+ * --effect-backdrop 在玻璃主题下是模糊，其余主题为 none，不会残留模糊层。 */
 .modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 420px;
-  padding: 40px;
   position: relative;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease-in-out;
+  /* margin: auto 比 flex 居中更稳：内容超高时可滚动到顶部而不是被截断 */
+  margin: auto;
+  width: 100%;
+  /* 面板宽度取窄内容区的 42%（默认 420px），主题切换与密度微调都不会让它跳动 */
+  max-width: calc(var(--container-narrow) * 0.42);
+  padding: calc(var(--panel-padding) * 1.5);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-elevated);
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* 关闭按钮：命中区 2em（随 --fs-h3 缩放，默认约 40px） */
 .close-btn {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  font-size: 24px;
-  color: var(--color-muted);
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  top: calc(var(--space-unit) * 1.25);
+  right: calc(var(--space-unit) * 1.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 2em;
+  height: 2em;
+  font-size: var(--fs-h3);
+  color: var(--text-muted);
+  border-radius: var(--radius-btn);
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive);
 }
 
 .close-btn:hover {
-  color: var(--color-primary);
-  transform: scale(1.1);
+  color: var(--accent);
+  background: var(--bg-soft);
 }
 
+/* 页签：顶部留出关闭按钮的位置，避免可点区域互相压住 */
 .modal-tabs {
   display: flex;
-  gap: 0;
-  margin-bottom: 30px;
-  border-bottom: 2px solid #EEE;
+  margin: calc(var(--space-unit) * 2) 0 calc(var(--space-unit) * 3);
+  border-bottom: 1px solid var(--divider);
 }
 
 .tab-btn {
-  flex: 1;
-  padding: 12px;
-  background: none;
-  border: none;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-muted);
-  cursor: pointer;
   position: relative;
-  transition: color 0.3s ease-in-out;
+  flex: 1;
+  padding: calc(var(--space-unit) * 1.5) var(--space-unit);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  transition: color var(--transition-interactive);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
 }
 
 .tab-btn.active {
-  color: var(--color-primary);
+  color: var(--accent);
 }
 
+/* 选中态用一道强调色实线，取代已删除的主渐变 */
 .tab-btn.active::after {
   content: '';
   position: absolute;
-  bottom: -2px;
-  left: 0;
   right: 0;
-  height: 2px;
-  background: var(--gradient-primary);
+  bottom: -1px;
+  left: 0;
+  height: calc(var(--space-unit) * 0.25);
+  background: var(--accent);
 }
 
-.tab-content {
-  animation: fadeInScale 0.3s ease-in-out;
-}
-
+/* 表单在页签切换时会被重建，因此这条入场动画每次切换都会重放 */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--card-gap);
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-unit);
 }
 
 .form-group label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-dark);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  color: var(--text-secondary);
 }
 
-.form-group input {
-  padding: 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.3s ease-in-out;
-  background: white;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(138, 109, 255, 0.1);
-}
+/* 输入框整体复用 .u-input：表面色 / 边框 / 圆角 / focus 焦点环都随主题 */
 
 .form-options {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  justify-content: space-between;
+  gap: var(--space-unit);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 .checkbox {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(var(--space-unit) * 0.75);
   cursor: pointer;
   user-select: none;
 }
 
+/* 勾选框尺寸用 em 跟随字号（含主题弹窗里的「全局字号」微调） */
 .checkbox input {
-  width: 16px;
-  height: 16px;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
   cursor: pointer;
 }
 
 .checkbox input:checked {
-  accent-color: var(--color-primary);
+  accent-color: var(--accent);
 }
 
 .checkbox span {
-  color: var(--color-dark);
+  color: var(--text-secondary);
 }
 
-.checkbox a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.checkbox a:hover {
-  text-decoration: underline;
-}
-
+.checkbox a,
 .forgot-password {
-  color: var(--color-primary);
-  text-decoration: none;
-  transition: all 0.2s ease-in-out;
+  color: var(--accent);
+  transition: color var(--transition-interactive);
 }
 
+.checkbox a:hover,
 .forgot-password:hover {
+  color: var(--accent-strong);
   text-decoration: underline;
 }
 
+/* 主 CTA 复用 .u-cta：底色 / 圆角 / 悬停位移 / 粗野主义硬阴影都由令牌决定 */
 .submit-btn {
-  padding: 12px;
-  background: var(--gradient-primary);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease-in-out;
-  margin-top: 8px;
-}
-
-.submit-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(138, 109, 255, 0.4);
-}
-
-.submit-btn:active {
-  transform: translateY(0);
-}
-
-/* 按钮加载样式 */
-.submit-btn[disabled] {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+  width: 100%;
+  margin-top: var(--space-unit);
+  font-size: var(--fs-body);
 }
 
 .spinner {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  border: calc(var(--space-unit) * 0.25) solid var(--accent-soft);
+  border-top-color: var(--text-on-accent);
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: var(--color-on-primary);
   animation: spin 0.8s linear infinite;
-  vertical-align: middle;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .divider {
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 14px;
   position: relative;
-  margin: 20px 0;
+  margin: calc(var(--space-unit) * 2) 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .divider::before,
@@ -609,9 +571,9 @@ const switchTab = (tab) => {
   content: '';
   position: absolute;
   top: 50%;
-  width: calc(50% - 20px);
+  width: calc(50% - var(--space-unit) * 2.5);
   height: 1px;
-  background: var(--color-border-strong);
+  background: var(--divider);
 }
 
 .divider::before {
@@ -625,116 +587,73 @@ const switchTab = (tab) => {
 .social-login {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
+/* 微信 / QQ 统一成 .u-btn 风格：令牌体系里没有第三方品牌色的位置 */
 .social-btn {
-  padding: 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 8px;
-  background: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  width: 100%;
 }
 
-.social-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.social-btn.wechat {
-  color: #09B981;
-  border-color: #D1FAE5;
-  background: var(--color-success-bg);
-}
-
-.social-btn.qq {
-  color: #3B82F6;
-  border-color: #DBEAFE;
-  background: #F0F9FF;
+.error-message,
+.success-message {
+  margin-top: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
+  text-align: center;
+  border-radius: var(--radius-btn);
 }
 
 .error-message {
-  margin-top: 16px;
-  padding: 12px;
-  background: #FEE;
-  color: #C33;
-  border: 1px solid var(--color-error-border);
-  border-radius: 8px;
-  font-size: 14px;
-  text-align: center;
-  animation: shake 0.3s ease-in-out;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  animation: shake var(--enter-duration) var(--enter-ease) both;
 }
 
 .success-message {
-  margin-top: 16px;
-  padding: 12px;
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border: 1px solid #BBF7D0;
-  border-radius: 8px;
-  font-size: 14px;
-  text-align: center;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid var(--success);
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
+
   25% {
     transform: translateX(-5px);
   }
+
   75% {
     transform: translateX(5px);
   }
 }
 
-/* 响应式 */
+/* 响应式：只收一档密度，字号与间距继续由令牌缩放 */
 @media (max-width: 575px) {
   .modal-content {
-    width: 90%;
-    max-width: 320px;
-    padding: 20px 16px;
+    padding: var(--panel-padding);
   }
 
   .modal-tabs {
-    margin-bottom: 16px;
+    margin: calc(var(--space-unit) * 1.5) 0 calc(var(--space-unit) * 2);
   }
 
   .tab-btn {
-    font-size: 13px;
-    padding: 10px 8px;
-  }
-
-  .form-group input {
-    font-size: 14px;
-    padding: 10px;
+    padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 0.5);
+    font-size: var(--fs-sm);
   }
 
   .form-options {
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
   }
 
   .social-login {
-    gap: 8px;
-  }
-
-  .social-btn {
-    font-size: 12px;
-    padding: 8px;
-  }
-
-  .submit-btn {
-    font-size: 14px;
-    padding: 10px;
+    gap: var(--space-unit);
   }
 }
 </style>

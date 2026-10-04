@@ -33,6 +33,17 @@ function stylePartsOf(file, text) {
   return [text]
 }
 
+/**
+ * 令牌定义层。
+ *
+ * `src/theme/**` 与 `variables.css` 一样，是**写出令牌名与取值**的地方，
+ * 不是消费令牌的地方。若把它们计入「使用次数」，
+ * 每个令牌都会因为「在预设里被定义过」而显得有人用 —— 死令牌检查会假通过。
+ */
+const TOKEN_LAYER_DIR = `${path.sep}theme${path.sep}`
+const isTokenDefinition = (file) =>
+  path.basename(file) === 'variables.css' || file.includes(TOKEN_LAYER_DIR)
+
 /** 去掉 CSS 注释，避免注释里提到的示例/历史说明被当作真实声明 */
 function stripCssComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '')
@@ -48,11 +59,11 @@ function definedTokens() {
   return [...new Set(names)]
 }
 
-/** 每个令牌在「除 variables.css 以外」的文件里被引用的次数 */
+/** 每个令牌在「除令牌定义层以外」的文件里被引用的次数 */
 function usageCounts(tokens, files) {
   const counts = Object.fromEntries(tokens.map((t) => [t, 0]))
   for (const file of files) {
-    if (path.basename(file) === 'variables.css') continue
+    if (isTokenDefinition(file)) continue
     const text = read(file)
     for (const token of tokens) {
       // 用 \b 边界，避免 --shadow-md 命中 --shadow-md-hover 之类
@@ -72,11 +83,8 @@ function usageCounts(tokens, files) {
  * 把它们当成漏定义的令牌会让检查失去信号价值。
  */
 const RUNTIME_SCOPED_VARS = [
-  '--animation-delay', // CategoriesSection 通过 :style 绑定设置
-  '--delay', // HeroSection 的星点动画参数（来自 JS 数据）
-  '--duration', // 同上
-  '--size', // 同上
-  '--page-header-gradient', // PageHeader 的可覆写出口，AppleId.vue / Hot.vue 覆写
+  // 列表/卡片序号，组件用 :style="{ '--i': index }" 注入，供 .u-enter 计算错峰延迟
+  '--i',
 ]
 
 /** 统一断点（见 variables.css 末尾的文档注释与 project-ui-system Skill） */
@@ -175,11 +183,16 @@ test('CSS 自定义属性不得出现在 @media 条件里（无效写法）', ()
 
 // ── 字体与加载 ─────────────────────────────────────────────────
 
-test('global.css 含中文字体栈（避免中文走系统默认字体）', () => {
-  const global = read(path.join(SRC, 'assets', 'styles', 'global.css'))
+test('字体令牌含中文字体栈（避免中文走系统默认字体）', () => {
+  // 字体栈随令牌一起从 global.css 迁到了 variables.css（global.css 只消费 var(--font-*)），
+  // 因此这里改为检查令牌定义处，语义不变：中文必须有显式的 CJK 字体兜底。
+  const vars = read(VARS)
   for (const family of ['PingFang SC', 'Microsoft YaHei']) {
-    assert.ok(global.includes(family), `字体栈应包含 ${family}`)
+    assert.ok(vars.includes(family), `字体令牌应包含 ${family}`)
   }
+  // 同时确认 global.css 真的消费了字体令牌，而不是各自另写一套字体族
+  const global = read(path.join(SRC, 'assets', 'styles', 'global.css'))
+  assert.match(global, /font-family:\s*var\(--font-body\)/, 'global.css 应消费 --font-body')
 })
 
 test('variables.css 只被 main.js 引入一次（避免 :root 重复输出）', () => {
@@ -197,10 +210,20 @@ test('variables.css 只被 main.js 引入一次（避免 :root 重复输出）',
 
 test('令牌提取器能从 variables.css 取到令牌（防止检查器失效导致假通过）', () => {
   const tokens = definedTokens()
-  assert.ok(tokens.length > 20, `应提取到大量令牌，实际 ${tokens.length}`)
-  assert.ok(tokens.includes('--color-primary'), '应包含 --color-primary')
-  assert.ok(tokens.includes('--radius-md'), '应包含 --radius-md')
+  assert.ok(tokens.length > 60, `应提取到大量令牌，实际 ${tokens.length}`)
+  for (const name of ['--bg-page', '--accent', '--text-primary', '--radius-card', '--fs-body']) {
+    assert.ok(tokens.includes(name), `应包含 ${name}`)
+  }
   assert.equal(tokens.some((t) => t === '--'), false, '不应提取出空令牌名')
+})
+
+test('令牌定义层被排除在「使用次数」之外（防止预设文件让死令牌假通过）', () => {
+  const themeFile = path.join(SRC, 'theme', 'presets.js')
+  const varsFile = VARS
+  const componentFile = path.join(SRC, 'components', 'ProductCard.vue')
+  assert.equal(isTokenDefinition(themeFile), true, 'theme/ 属于令牌定义层')
+  assert.equal(isTokenDefinition(varsFile), true, 'variables.css 属于令牌定义层')
+  assert.equal(isTokenDefinition(componentFile), false, '组件不属于令牌定义层')
 })
 
 test('检查器能识别出注释里的断点不算真实断点（防止误报）', () => {

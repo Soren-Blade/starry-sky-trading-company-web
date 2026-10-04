@@ -20,6 +20,9 @@ const handleShopClick = () => {
 </script>
 
 <style scoped>
+/* 首页壳只负责装配三个区块：
+   底色由 body 的 --bg-page 承担，顶栏占位由 App.vue 的 .main-content 承担，
+   区块各自的上下留白在区块内部（.section-header / .section-container）。 */
 .home-page {
   width: 100%;
 }

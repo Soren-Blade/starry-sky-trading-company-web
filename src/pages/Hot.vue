@@ -1,6 +1,6 @@
 <template>
   <div class="hot-page">
-    <PageHeader title="热门推荐" subtitle="精选热销商品，享受优质生活" />
+    <PageHeader v-bind="PAGES.hot" />
     <HotProductsSection />
   </div>
 </template>
@@ -8,13 +8,13 @@
 <script setup>
 import PageHeader from '@/components/PageHeader.vue'
 import HotProductsSection from '@/components/HotProductsSection.vue'
+import { PAGES } from '@/constants/index.js'
 </script>
 
 <style scoped>
+/* 顶栏占位由 App.vue 的 .main-content 统一负责。
+   页面头统一走主题表面（global.css 的 .page-header），不再逐页覆写渐变变量。 */
 .hot-page {
   width: 100%;
-  padding-top: var(--navbar-height);
-  /* 通过变量给共享的 .page-header 换主题色 */
-  --page-header-gradient: var(--gradient-hot);
 }
 </style>

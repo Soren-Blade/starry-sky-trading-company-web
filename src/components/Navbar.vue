@@ -1,30 +1,17 @@
 <template>
-  <!-- 导航栏容器，根据滚动状态添加样式类 -->
+  <!-- 导航栏容器，根据滚动状态显示底部分隔线 -->
   <header class="navbar" :class="{ 'navbar-scrolled': isScrolled }">
-    <div class="navbar-container">
-      <!-- Logo 区域 -->
-      <div class="navbar-logo">
-        <span class="logo-icon" aria-hidden="true">⭐</span>
-        <span class="logo-text">星辰商行</span>
-      </div>
+    <div class="navbar-inner">
+      <!-- Logo -->
+      <router-link to="/home" class="navbar-logo" @click="handleMenuClick">
+        <span class="logo-icon" aria-hidden="true">{{ SITE.logo }}</span>
+        <span class="logo-text">{{ SITE.name }}</span>
+      </router-link>
 
-      <!-- 移动端菜单切换按钮（汉堡菜单） -->
-      <button
-        class="menu-toggle show-mobile"
-        :class="{ active: menuOpen }"
-        @click="toggleMenu"
-        aria-label="切换导航菜单"
-        :aria-expanded="menuOpen"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-
-      <!-- 导航菜单 -->
-      <nav class="navbar-menu" :class="{ active: menuOpen }">
+      <!-- 桌面端导航（≥768px） -->
+      <nav class="navbar-menu hide-below-768" :aria-label="SITE.name">
         <ul class="menu-list">
-          <li v-for="item in navMenu" :key="item.id" class="menu-item">
+          <li v-for="item in navMenu" :key="item.id">
             <router-link :to="item.path" class="menu-link" @click="handleMenuClick">
               {{ item.label }}
             </router-link>
@@ -32,35 +19,91 @@
         </ul>
       </nav>
 
-      <!-- 未登录（含游客）显示登录入口 -->
-      <button v-if="!isLoggedIn" class="auth-btn login-btn" @click="openLoginModal">
-        登录/注册
-      </button>
+      <!-- 桌面端搜索栏（≥992px） -->
+      <div class="navbar-search hide-below-992">
+        <SearchBar
+          v-model="keyword"
+          :label="PRODUCT_GRID.searchPlaceholder"
+          :placeholder="PRODUCT_GRID.searchPlaceholder"
+          :submit-label="'搜索'"
+          @submit="handleSearchSubmit"
+        />
+      </div>
 
-      <!-- 已登录：用户头像与下拉菜单 -->
-      <div v-else class="navbar-actions">
-        <div class="user-menu-container">
-          <button class="user-avatar-btn" @click="toggleUserMenu" aria-label="打开用户菜单">
+      <div class="navbar-actions">
+        <!-- 样式主题切换（图标按钮 + 弹窗） -->
+        <ThemeSwitcher />
+
+        <!-- 未登录（含游客）显示登录入口 -->
+        <button v-if="!isLoggedIn" type="button" class="u-cta navbar-auth" @click="openLoginModal">
+          登录 / 注册
+        </button>
+
+        <!-- 已登录：用户头像与下拉菜单 -->
+        <div v-else class="navbar-user">
+          <button
+            type="button"
+            class="user-avatar-btn"
+            :aria-label="`打开用户菜单（${nickname || '未设置昵称'}）`"
+            :aria-expanded="userMenuOpen"
+            @click="toggleUserMenu"
+          >
             <img :src="avatarUrl" :alt="nickname || '用户头像'" />
           </button>
 
           <div v-if="userMenuOpen" class="user-dropdown">
             <div class="user-info">
               <p class="user-name">{{ nickname || '未设置昵称' }}</p>
-              <p class="created_time">{{ toDate(userInfo.created_at) }}</p>
+              <p class="user-since">注册于 {{ toDate(userInfo.created_at) }}</p>
             </div>
             <div class="dropdown-divider"></div>
-            <button class="dropdown-item" @click="handleMyProfile">个人中心</button>
-            <button class="dropdown-item" @click="handleMyFavorites">我的收藏</button>
-            <button class="dropdown-item" @click="handleMyOrders">订单管理</button>
+            <button type="button" class="dropdown-item" @click="handleMyProfile">个人中心</button>
+            <button type="button" class="dropdown-item" @click="handleMyFavorites">我的收藏</button>
+            <button type="button" class="dropdown-item" @click="handleMyOrders">订单管理</button>
             <router-link class="dropdown-item" to="/user/kami" @click="handleMyKami">
               卡密管理
             </router-link>
             <div class="dropdown-divider"></div>
-            <button class="dropdown-item logout" @click="handleLogout">退出登录</button>
+            <button type="button" class="dropdown-item logout" @click="handleLogout">
+              退出登录
+            </button>
           </div>
         </div>
+
+        <!-- 移动端菜单切换按钮 -->
+        <button
+          type="button"
+          class="menu-toggle show-mobile"
+          :class="{ active: menuOpen }"
+          :aria-expanded="menuOpen"
+          aria-label="切换导航菜单"
+          @click="toggleMenu"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
       </div>
+    </div>
+
+    <!-- 移动端抽屉（含搜索栏，桌面端的搜索栏在小屏收起） -->
+    <div class="navbar-drawer show-mobile" :class="{ active: menuOpen }">
+      <div class="drawer-search">
+        <SearchBar
+          v-model="keyword"
+          :label="PRODUCT_GRID.searchPlaceholder"
+          :placeholder="PRODUCT_GRID.searchPlaceholder"
+          :submit-label="'搜索'"
+          @submit="handleSearchSubmit"
+        />
+      </div>
+      <ul class="drawer-list">
+        <li v-for="item in navMenu" :key="item.id">
+          <router-link :to="item.path" class="drawer-link" @click="handleMenuClick">
+            {{ item.label }}
+          </router-link>
+        </li>
+      </ul>
     </div>
 
     <!-- 登录/注册模态框 -->
@@ -73,29 +116,42 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+/**
+ * 顶部导航
+ *
+ * 组成：品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉。
+ *
+ * 两个刻意的结构决定：
+ *   1. **毛玻璃写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
+ *      `backdrop-filter` 会让元素成为 fixed 后代的包含块 —— 写在导航栏上时，
+ *      登录弹窗与样式弹窗会被「钉」在导航栏内部（glass 主题下尤其明显）。
+ *   2. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
+ *      关键词留在组件里就得层层透传事件；匹配规则也只应有一处定义。
+ */
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useShopStore } from '@/stores/shop'
 import { throttle } from '@/utils/index.js'
 import LoginModal from './LoginModal.vue'
-import { NAV_MENU } from '@/constants/index.js'
+import SearchBar from './SearchBar.vue'
+import ThemeSwitcher from './ThemeSwitcher.vue'
+import { NAV_MENU, PRODUCT_GRID, SITE } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
-// ============ 状态管理 ============
-
 const userStore = useUserStore()
+const shopStore = useShopStore()
 const route = useRoute()
 const router = useRouter()
+
 // isLoggedIn 是 getter：只有 user_type === 'registered' 才为 true，
 // 游客也会拿到 token，但不应被当作已登录。
 const { isLoggedIn, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
 
-// 说明：这里**不再**引入 useBodyScroll。
-// 早期版本只取了 enableScroll 并在关闭登录弹窗时调用它，但 Navbar 自己
-// 从未调用 disableScroll —— 属于「无主释放」。滚动锁现在由 useBodyScroll
-// 内部引用计数管理，登录弹窗（LoginModal）是唯一的持有者，
-// 它的卸载回调会自行释放，无需外部再解锁。
+// 说明：这里**不**引入 useBodyScroll。
+// 滚动锁由 useBodyScroll 内部引用计数管理，LoginModal / ThemeSwitcher 是持有者，
+// 它们的卸载与关闭回调会自行释放，无需外部再解锁。
 
 const isScrolled = ref(false)
 const menuOpen = ref(false)
@@ -103,13 +159,15 @@ const userMenuOpen = ref(false)
 const showLoginModal = ref(false)
 const navMenu = NAV_MENU
 
-// ============ 滚动 ============
+/** 搜索关键词：双向绑定到数据层，商品网格据此过滤 */
+const keyword = computed({
+  get: () => shopStore.searchKeyword,
+  set: (value) => shopStore.setSearchKeyword(value),
+})
 
 const handleScroll = throttle(() => {
   isScrolled.value = window.scrollY > 50
 }, 100)
-
-// ============ 菜单控制 ============
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
@@ -123,7 +181,16 @@ const toggleUserMenu = () => {
   userMenuOpen.value = !userMenuOpen.value
 }
 
-// ============ 登录相关 ============
+/**
+ * 提交搜索：若当前页面不展示商品网格，则跳到热门推荐页，
+ * 否则原地过滤（关键词已通过 v-model 实时写入 store）。
+ */
+const handleSearchSubmit = () => {
+  menuOpen.value = false
+  if (route.name !== 'Home' && route.name !== 'Hot') {
+    router.push({ name: 'Hot' })
+  }
+}
 
 const openLoginModal = () => {
   showLoginModal.value = true
@@ -146,9 +213,7 @@ const handleCloseLoginModal = () => {
   showLoginModal.value = false
 }
 
-// ============ 用户菜单项 ============
 // 个人中心 / 我的收藏 / 订单管理 尚未实现，仅关闭菜单
-
 const handleMyProfile = () => {
   userMenuOpen.value = false
 }
@@ -171,19 +236,22 @@ const handleLogout = async () => {
   menuOpen.value = false
 }
 
-// 点击菜单外部时关闭用户下拉与移动端菜单
+/**
+ * 点击菜单外部时关闭用户下拉与移动端抽屉。
+ *
+ * 抽屉的判定刻意不用「不在 .navbar 内」：主题切换按钮在抽屉之外、
+ * 却在 .navbar 之内，用 .navbar 判断会导致点主题按钮时抽屉不收起。
+ */
 const closeMenusOnClickOutside = (event) => {
-  if (!event.target.closest('.navbar-actions')) {
-    userMenuOpen.value = false
-  }
-  if (!event.target.closest('.navbar')) {
-    menuOpen.value = false
-  }
+  const target = event.target
+  const within = (selector) =>
+    typeof target?.closest === 'function' && Boolean(target.closest(selector))
+
+  if (!within('.navbar-user')) userMenuOpen.value = false
+  if (!within('.navbar-drawer') && !within('.menu-toggle')) menuOpen.value = false
 }
 
-// ============ 生命周期 ============
 // 身份初始化由 App.vue 统一负责（userStore.init()），此处不重复请求。
-
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
   document.addEventListener('click', closeMenusOnClickOutside)
@@ -196,254 +264,243 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ============ 导航栏主容器 ============ */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 1000;
-  background: var(--glass-effect);
-  backdrop-filter: var(--glass-backdrop);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  transition: var(--transition-base);
-  box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--transition-surface);
 }
 
+/* 表面与毛玻璃层。
+ * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释）。 */
+.navbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-nav);
+  backdrop-filter: var(--nav-backdrop);
+  -webkit-backdrop-filter: var(--nav-backdrop);
+}
+
+/* 滚动态只强化分隔线，不加阴影 —— 五套规范里导航都不靠投影建立层级 */
 .navbar-scrolled {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.98);
+  border-bottom-color: var(--border);
 }
 
-.navbar-container {
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
+.navbar-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  max-width: var(--container-max);
   height: var(--navbar-height);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
 }
 
-/* ============ Logo ============ */
+/* ── Logo ───────────────────────────────────────────────── */
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
+  gap: calc(var(--space-unit));
   flex-shrink: 0;
 }
 
 .logo-icon {
-  font-size: 28px;
-  animation: float 3s ease-in-out infinite;
+  font-size: 22px;
+  line-height: 1;
+  animation: var(--decor-animation);
 }
 
 .logo-text {
-  font-size: 20px;
-  font-weight: 700;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: 0.5px;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 
-/* ============ 导航菜单 ============ */
+.navbar-logo:hover .logo-text {
+  color: var(--accent);
+}
+
+/* ── 主导航 ─────────────────────────────────────────────── */
 .navbar-menu {
-  display: flex;
-  align-items: center;
   flex: 1;
-  margin: 0 40px;
+  min-width: 0;
 }
 
 .menu-list {
-  margin: 0;
   display: flex;
   align-items: center;
-  gap: 0;
-  list-style: none;
-}
-
-.menu-item {
-  position: relative;
+  gap: calc(var(--space-unit) * 0.5);
 }
 
 .menu-link {
-  display: block;
-  padding: 8px 16px;
-  color: var(--color-dark);
-  font-weight: 500;
   position: relative;
-  transition: color var(--transition-base);
+  display: block;
+  padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-secondary);
+  border-radius: var(--radius-btn);
+  transition: color var(--transition-interactive);
+}
+
+.menu-link:hover {
+  color: var(--text-primary);
 }
 
 .menu-link::after {
   content: '';
   position: absolute;
-  bottom: 5px;
   left: 50%;
+  bottom: 2px;
   width: 0;
   height: 2px;
-  background: var(--gradient-primary);
+  background: var(--accent);
   transform: translateX(-50%);
-  transition: width var(--transition-base);
+  transition: width var(--transition-interactive);
 }
 
-.menu-link:hover {
-  color: var(--color-primary);
+.menu-link:hover::after,
+.menu-link.router-link-active::after {
+  width: calc(100% - var(--space-unit) * 2.5);
 }
 
-.menu-link:hover::after {
-  width: 30px;
+.menu-link.router-link-active {
+  color: var(--text-primary);
 }
 
-/* ============ 用户操作区 ============ */
+/* ── 搜索栏 ─────────────────────────────────────────────── */
+.navbar-search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+/* ── 操作区 ─────────────────────────────────────────────── */
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: calc(var(--space-unit));
+  margin-left: auto;
   flex-shrink: 0;
 }
 
-.login-btn,
-.auth-btn {
-  padding: 10px 24px;
-  background: var(--gradient-primary);
-  color: var(--color-on-primary);
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  transition: var(--transition-base);
-  cursor: pointer;
+.navbar-auth {
+  white-space: nowrap;
 }
 
-.login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary);
-}
-
-/* ============ 用户菜单 ============ */
-.user-menu-container {
+/* ── 用户菜单 ───────────────────────────────────────────── */
+.navbar-user {
   position: relative;
 }
 
 .user-avatar-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  display: block;
+  width: 36px;
+  height: 36px;
   overflow: hidden;
-  cursor: pointer;
-  border: 2px solid var(--color-primary);
-  transition: var(--transition-base);
-  padding: 0;
-  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--transition-interactive);
+}
+
+.user-avatar-btn:hover {
+  border-color: var(--accent);
 }
 
 .user-avatar-btn img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-}
-
-.user-avatar-btn:hover {
-  transform: scale(1.05);
-  box-shadow: var(--shadow-primary);
 }
 
 .user-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + var(--space-unit));
   right: 0;
-  margin-top: 12px;
-  width: 240px;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  width: 220px;
   overflow: hidden;
-  animation: fadeInScale var(--transition-base);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-elevated);
+  animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
 .user-info {
-  padding: 16px;
-  text-align: center;
-  background: linear-gradient(
-    135deg,
-    rgba(138, 109, 255, 0.1) 0%,
-    rgba(253, 121, 168, 0.1) 100%
-  );
+  padding: calc(var(--space-unit) * 1.5);
+  background: var(--bg-soft);
 }
 
 .user-name {
-  font-weight: 600;
-  color: var(--color-dark);
-  margin-bottom: 4px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+  margin: 0 0 calc(var(--space-unit) * 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.created_time {
-  font-size: 14px;
-  color: var(--color-muted);
+.user-since {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
   margin: 0;
 }
 
 .dropdown-divider {
   height: 1px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--divider);
 }
 
 .dropdown-item {
   display: block;
   width: 100%;
-  padding: 12px 16px;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
   text-align: left;
-  background: none;
-  border: none;
-  color: var(--color-dark);
-  cursor: pointer;
-  font-size: 14px;
-  text-decoration: none;
-  transition: var(--transition-fast);
+  color: var(--text-primary);
+  transition: background-color var(--transition-interactive), color var(--transition-interactive);
 }
 
 .dropdown-item:hover {
-  background: rgba(138, 109, 255, 0.08);
-  color: var(--color-primary);
-  padding-left: 20px;
+  background: var(--bg-soft);
+  color: var(--accent);
 }
 
 .dropdown-item.logout {
-  color: var(--color-error);
+  color: var(--danger);
 }
 
-.dropdown-item.logout:hover {
-  background: rgba(255, 107, 107, 0.08);
-  color: var(--color-error);
-}
-
-/* ============ 移动端菜单 ============ */
+/* ── 移动端抽屉 ─────────────────────────────────────────── */
 .menu-toggle {
   display: none;
   flex-direction: column;
   gap: 5px;
   width: 28px;
-  height: 24px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  z-index: 1001;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .menu-toggle span {
-  width: 28px;
+  display: block;
+  width: 100%;
   height: 2px;
-  background: var(--color-dark);
+  background: var(--text-primary);
   border-radius: 2px;
-  transition: var(--transition-base);
+  transition: transform var(--transition-interactive), opacity var(--transition-interactive);
 }
 
 .menu-toggle.active span:nth-child(1) {
-  transform: rotate(45deg) translateY(11px);
+  transform: translateY(7px) rotate(45deg);
 }
 
 .menu-toggle.active span:nth-child(2) {
@@ -451,150 +508,97 @@ onUnmounted(() => {
 }
 
 .menu-toggle.active span:nth-child(3) {
-  transform: rotate(-45deg) translateY(-11px);
+  transform: translateY(-7px) rotate(-45deg);
 }
 
-/* ============ 响应式 ============ */
-@media (max-width: 1199px) {
-  .navbar-container {
-    height: 60px;
+.navbar-drawer {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  right: 0;
+  max-height: calc(100vh - var(--navbar-height));
+  overflow-y: auto;
+  padding: calc(var(--space-unit) * 2) var(--container-padding) calc(var(--space-unit) * 3);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-8px);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform var(--transition-surface),
+    opacity var(--transition-surface),
+    visibility var(--transition-surface);
+}
+
+.navbar-drawer.active {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer-search {
+  margin-bottom: calc(var(--space-unit) * 2);
+}
+
+.drawer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-link {
+  display: block;
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit));
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.drawer-link.router-link-active {
+  color: var(--accent);
+}
+
+/* ── 响应式 ─────────────────────────────────────────────── */
+@media (max-width: 991px) {
+  .hide-below-992 {
+    display: none;
+  }
+
+  .navbar-inner {
+    gap: calc(var(--space-unit) * 1.5);
     padding: 0 16px;
-  }
-
-  .navbar-menu {
-    margin: 0 20px;
-  }
-
-  .logo-text {
-    font-size: 18px;
-  }
-
-  .menu-link {
-    padding: 8px 12px;
   }
 }
 
 @media (max-width: 767px) {
-  .navbar-container {
-    height: 56px;
-  }
-
-  .navbar-logo {
-    gap: 6px;
-    order: 0;
-  }
-
-  .logo-icon {
-    font-size: 24px;
-  }
-
-  .logo-text {
-    font-size: 16px;
+  .hide-below-768 {
+    display: none;
   }
 
   .menu-toggle {
     display: flex;
-    order: -1;
   }
 
-  .navbar-actions,
-  .auth-btn {
-    order: 1;
-  }
-
-  .navbar-menu {
-    order: 2;
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 0;
-    background: var(--color-surface);
-    flex-direction: column;
-    margin: 0;
-    padding: 16px 0;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-    max-height: calc(100vh - 56px);
-    overflow-y: auto;
-    transform: translateX(-100%);
-    transition: transform var(--transition-base);
-    z-index: 999;
-  }
-
-  .navbar-menu.active {
-    transform: translateX(0);
-  }
-
-  .menu-list {
-    flex-direction: column;
-    width: 100%;
-    gap: 0;
-  }
-
-  .menu-item {
-    width: 100%;
-  }
-
-  .menu-link {
-    display: block;
-    padding: 12px 20px;
-    border-left: 4px solid transparent;
-    transition: var(--transition-base);
-  }
-
-  .menu-link::after {
-    display: none;
-  }
-
-  .menu-link:hover {
-    background: rgba(138, 109, 255, 0.08);
-    border-left-color: var(--color-primary);
-    padding-left: 24px;
-  }
-
-  .navbar-actions {
-    gap: 8px;
-  }
-
-  .login-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-  }
-
-  .user-avatar-btn {
-    width: 40px;
-    height: 40px;
-  }
-
-  .user-dropdown {
-    width: 200px;
+  .logo-text {
+    font-size: var(--fs-body);
+    font-weight: var(--fw-heading);
   }
 }
 
 @media (max-width: 575px) {
-  .navbar-container {
-    height: 52px;
+  .navbar-inner {
+    gap: var(--space-unit);
+    padding: 0 12px;
   }
 
-  .logo-text {
-    font-size: 14px;
+  .logo-icon {
+    font-size: 18px;
   }
 
-  .navbar-actions {
-    gap: 4px;
-  }
-
-  .login-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-
-  .user-avatar-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .user-dropdown {
-    width: 180px;
+  .navbar-auth {
+    padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.25);
+    font-size: var(--fs-label);
   }
 }
 </style>

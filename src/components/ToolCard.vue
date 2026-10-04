@@ -1,6 +1,6 @@
 <template>
-  <div class="tool-card ui-card">
-    <div class="tool-media ui-card-media">
+  <div class="tool-card ui-card u-enter">
+    <div class="ui-card-media">
       <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
       <div v-else class="tool-icon" aria-hidden="true">{{ tool.icon }}</div>
       <div v-if="tool.is_new" class="tool-new-badge">新</div>
@@ -17,10 +17,10 @@
       </button>
     </div>
 
-    <div class="tool-body">
+    <div class="ui-card-body">
       <div class="tool-header">
         <h3 class="tool-title">{{ tool.tool_name }}</h3>
-        <div class="tool-category">{{ tool.class_name }}</div>
+        <div class="tool-category u-chip">{{ tool.class_name }}</div>
       </div>
 
       <p class="tool-description">{{ tool.description }}</p>
@@ -28,7 +28,7 @@
       <!-- Collection count moved to media section as badge -->
 
       <div class="tool-actions">
-        <button class="tool-btn primary" @click.stop="onOpenTool">打开工具</button>
+        <button class="tool-btn u-cta" @click.stop="onOpenTool">打开工具</button>
       </div>
     </div>
   </div>
@@ -47,138 +47,130 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 </script>
 
 <style scoped>
-/* 外壳（背景/圆角/阴影/hover 位移）来自 global.css 的 .ui-card，
-   这里只保留工具卡特有的内部布局 */
+/* 外壳（表面/边框/圆角/阴影/hover 位移 + 毛玻璃）来自 global.css 的 .ui-card，
+   正文与媒体区同样复用共享类，这里只保留工具卡特有的内部布局。
+   整卡不可点击（入口是「打开工具」按钮），因此消掉指针暗示 */
 .tool-card {
   cursor: default;
 }
 
-.tool-card .tool-btn {
-  cursor: pointer;
-}
-
-.tool-media {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+/* 媒体区没有图片时退化为图标：居中由共享类提供，这里只给 hover 缩放，
+   缩放幅度走令牌，保证与有图卡片在同一主题下动作一致 */
 .tool-icon {
-  font-size: 48px;
+  font-size: var(--fs-h1);
+  transition: transform var(--transition-surface);
 }
 
 .tool-card:hover .tool-icon {
-  transform: scale(1.1);
+  transform: scale(var(--media-hover-scale));
 }
 
+/* 「新」标记：与 ProductCard 的缺货标记同源（语义色 + 柔和底 + 细边），
+   不再自造渐变；backdrop-filter 交给令牌，非玻璃主题该令牌为 none */
 .tool-new-badge {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: linear-gradient(135deg, var(--color-error), var(--color-error-dark));
-  color: var(--color-on-primary);
-  padding: 6px 10px;
-  border-radius: 16px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(12px);
-  animation: pulse 2s infinite;
+  top: calc(var(--space-unit) * 1.5);
+  left: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-chip);
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
 }
 
+/* 圆形按钮：用 padding 撑出尺寸下限（不写死宽高，否则 mono 主题的 4px
+   基础单位会显得过大）。0.75 倍单位让最紧凑的 mono 主题也有 24px 触控目标 */
 .favorite-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  top: calc(var(--space-unit) * 1.5);
+  right: calc(var(--space-unit) * 1.5);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: calc(var(--space-unit) * 0.75);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.favorite-count {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: linear-gradient(135deg, var(--color-error), var(--color-error-dark));
-  color: var(--color-on-primary);
-  border-radius: 50%;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
-  border: 2px solid var(--color-surface);
-  animation: bounceIn 0.5s ease-out;
+  transition:
+    background-color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    transform var(--transition-interactive);
 }
 
 .favorite-btn:hover {
-  transform: scale(1.1);
-  background: rgba(255, 255, 255, 1);
+  border-color: var(--accent);
+  transform: var(--cta-hover-transform);
 }
 
 .favorite-btn.active {
-  background: rgba(253, 121, 168, 0.9);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .favorite-icon {
-  font-size: 16px;
+  font-size: var(--fs-h3);
 }
 
-.tool-body {
-  padding: 16px;
+/* 数量徽标压在圆形按钮的右上角：边框取卡片表面色，
+   与卡片背景连成一体而不需要额外的描边令牌 */
+.favorite-count {
+  position: absolute;
+  top: calc(var(--space-unit) * -1);
+  right: calc(var(--space-unit) * -1);
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--space-unit) * 2.5);
+  height: calc(var(--space-unit) * 2.5);
+  padding: 0 calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text-on-accent);
+  background: var(--accent);
+  border: 2px solid var(--bg-surface);
+  border-radius: var(--radius-pill);
 }
 
 .tool-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
 .tool-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0;
   flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* 分类标签复用 .u-chip，这里只保证长分类名不换行（标题才是可压缩的一侧） */
 .tool-category {
-  background: rgba(138, 109, 255, 0.1);
-  color: var(--color-primary);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .tool-description {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
   margin: 0;
   display: -webkit-box;
   line-clamp: 2;
@@ -187,87 +179,30 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   overflow: hidden;
 }
 
+/* margin-top: auto 把操作区压到卡片底部，卡片等高时按钮在同一水平线 */
 .tool-actions {
   display: flex;
-  gap: 8px;
   margin-top: auto;
 }
 
+/* u-cta 提供底色/圆角/悬停位移与粗野主义主题下的 3px 黑边，
+   这里只负责铺满操作区宽度 */
 .tool-btn {
   flex: 1;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  width: 100%;
 }
 
-.tool-btn.primary {
-  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  color: var(--color-on-primary);
-}
-
-.tool-btn.primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
-}
-
-.tool-btn.secondary {
-  background: var(--color-light);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-}
-
-.tool-btn.secondary:hover {
-  background: var(--color-border);
-}
-
+/* 窄卡片下标题与分类并排会互相挤压，改为上下排列 */
 @media (max-width: 767px) {
   .tool-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .tool-rating {
-    align-self: flex-end;
-  }
-
-  .tool-actions {
-    flex-direction: column;
+    gap: calc(var(--space-unit) * 0.5);
   }
 
   .tool-new-badge {
-    top: 12px;
-    left: 12px;
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
-  }
-}
-
-@keyframes bounceIn {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
+    top: calc(var(--space-unit));
+    left: calc(var(--space-unit));
   }
 }
 </style>

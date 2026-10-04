@@ -1,191 +1,67 @@
 /**
- * 动画工具函数
+ * 通用工具
+ *
+ * 说明：本文件原先还导出 animationUtils / styleUtils / responsiveUtils /
+ * applyAnimationStyle / generateId / debounce —— 六者**均无人引用**：
+ * 动画与配色早已改由设计令牌 + CSS 关键帧承担（见 assets/styles/global.css），
+ * 用 JS 拼渐变/阴影字符串只会制造第二份事实来源。已删除。
+ *
+ * 保留的三个都有人在用：
+ *   - `throttle`            Navbar / App 的滚动监听
+ *   - `domUtils.smoothScroll` Hero 的「了解更多」锚点滚动
+ *   - `formatUtils`         商品卡片的价格与计数展示
  */
 
-import { lookup } from './safeLookup.js'
-
-export const animationUtils = {
-  // 创建交错延迟的动画
-  staggerDelay: (index, baseDelay = 0.1) => {
-    return `${index * baseDelay}s`;
-  },
-
-  // 创建随机延迟
-  randomDelay: (min = 0, max = 1) => {
-    return `${Math.random() * (max - min) + min}s`;
-  },
-
-  // 获取动画类名
-  getAnimationClass: (type = 'fadeInUp', index = 0, stagger = true) => {
-    const classes = ['animate-in'];
-    classes.push(`animate-${type}`);
-    if (stagger) {
-      classes.push(`stagger-${index}`);
-    }
-    return classes.join(' ');
-  },
-};
-
-/**
- * 样式工具函数
- */
-export const styleUtils = {
-  // 生成渐变背景
-  getGradient: (colorStart = '#8A6DFF', colorEnd = '#6C5CE7', angle = 135) => {
-    return `linear-gradient(${angle}deg, ${colorStart} 0%, ${colorEnd} 100%)`;
-  },
-
-  // 获取阴影
-  getShadow: (intensity = 'md') => {
-    const shadows = {
-      sm: '0 2px 8px rgba(0, 0, 0, 0.08)',
-      md: '0 4px 16px rgba(0, 0, 0, 0.12)',
-      lg: '0 8px 24px rgba(0, 0, 0, 0.15)',
-      xl: '0 12px 32px rgba(0, 0, 0, 0.2)',
-      glass: '0 8px 32px rgba(31, 38, 135, 0.17)',
-    };
-    // 用自有属性查找：shadows['toString'] 会取到 Object.prototype.toString（函数），
-    // 直接拼进 CSS 会产生非法值。
-    return lookup(shadows, intensity, shadows.md);
-  },
-
-  // 生成过渡样式
-  getTransition: (properties = 'all', duration = 0.3, timing = 'ease-in-out') => {
-    if (Array.isArray(properties)) {
-      return properties
-        .map((prop) => `${prop} ${duration}s ${timing}`)
-        .join(', ');
-    }
-    return `${properties} ${duration}s ${timing}`;
-  },
-};
-
-/**
- * 响应式工具函数
- */
-export const responsiveUtils = {
-  // 获取列数
-  getColumns: (windowWidth) => {
-    if (windowWidth >= 1200) return 4;
-    if (windowWidth >= 992) return 3;
-    if (windowWidth >= 768) return 2;
-    return 1;
-  },
-
-  // 检查是否是移动端
-  isMobile: () => {
-    return window.innerWidth < 768;
-  },
-
-  // 检查是否是平板
-  isTablet: () => {
-    return window.innerWidth >= 768 && window.innerWidth < 1200;
-  },
-
-  // 检查是否是桌面端
-  isDesktop: () => {
-    return window.innerWidth >= 1200;
-  },
-};
-
-/**
- * DOM工具函数
- */
-export const domUtils = {
-  // 平滑滚动
-  smoothScroll: (target) => {
-    if (typeof target === 'string') {
-      const element = document.querySelector(target);
-      element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  },
-
-  // 检查元素是否在视口中
-  isInViewport: (element) => {
-    const rect = element.getBoundingClientRect();
-    return (
-      rect.top >= 0 &&
-      rect.left >= 0 &&
-      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-    );
-  },
-
-  // 获取滚动百分比
-  getScrollPercent: () => {
-    const scrollTop = window.scrollY;
-    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-    return docHeight === 0 ? 0 : (scrollTop / docHeight) * 100;
-  },
-};
-
-/**
- * 格式化工具函数
- */
-export const formatUtils = {
-  // 格式化价格
-  formatPrice: (price) => {
-    return `¥${price.toFixed(2)}`;
-  },
-
-  // 格式化评分
-  formatRating: (rating) => {
-    return rating.toFixed(1);
-  },
-
-  // 格式化评论数
-  formatReviewCount: (count) => {
-    if (count >= 10000) {
-      return `${(count / 10000).toFixed(1)}万`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
-    }
-    return count.toString();
-  },
-};
-
-/**
- * 动画应用工具
- */
-export const applyAnimationStyle = (element, animation, duration = 0.4) => {
-  element.style.animation = `${animation} ${duration}s ease-in-out forwards`;
-};
-
-/**
- * 生成随机ID
- */
-export const generateId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
-/**
- * 防抖函数
- */
-export const debounce = (func, wait) => {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-};
-
-/**
- * 节流函数
- */
+/** 滚动节流 */
 export const throttle = (func, limit) => {
-  let inThrottle;
+  let inThrottle
   return function (...args) {
     if (!inThrottle) {
-      func.apply(this, args);
-      inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
     }
-  };
-};
+  }
+}
+
+/** DOM 工具 */
+export const domUtils = {
+  /** 平滑滚动到选择器或元素 */
+  smoothScroll: (target) => {
+    if (typeof target === 'string') {
+      document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  },
+}
+
+/**
+ * 展示层格式化
+ *
+ * 价格必须带货币信息，而货币由**主题**决定（technical-monochrome 用 `$`），
+ * 因此 `formatPrice` 接受一个货币描述对象，默认值与主站一致（¥ / 两位小数）。
+ * 调用方应从 `useThemeStore()` 取 `pricePrefix` / `priceDecimals` 传入，
+ * 不要在各组件里各写一个符号。
+ */
+export const formatUtils = {
+  /**
+   * @param {number|string} price 价格
+   * @param {{ prefix?: string, decimals?: number }} [currency] 货币描述
+   */
+  formatPrice: (price, currency = {}) => {
+    const prefix = typeof currency.prefix === 'string' ? currency.prefix : '¥'
+    const decimals = Number.isInteger(currency.decimals) ? currency.decimals : 2
+    const value = Number(price)
+    return `${prefix}${(Number.isFinite(value) ? value : 0).toFixed(decimals)}`
+  },
+
+  /** 计数：按量级使用 k / 万 后缀 */
+  formatReviewCount: (count) => {
+    const value = Number(count)
+    if (!Number.isFinite(value)) return '0'
+    if (value >= 10000) return `${(value / 10000).toFixed(1)}万`
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`
+    return String(value)
+  },
+}

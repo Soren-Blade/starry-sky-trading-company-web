@@ -1,14 +1,26 @@
 <!DOCTYPE html>
-<html lang="">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="星辰商行 —— 精选商品与共享账号资源。">
     <title>星辰商行</title>
+
+    <!--
+      五套设计风格用到的字体族。刻意只发一个请求，并用 display=swap：
+      网络不可用时浏览器会退回 variables.css / theme/presets.js 里写好的
+      系统字体栈（含中文 CJK 字体），不会出现空白文字。
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Sans:wght@500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+    >
   </head>
   <body>
     <div id="app"></div>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script> -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
