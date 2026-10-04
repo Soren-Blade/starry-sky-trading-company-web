@@ -280,6 +280,9 @@ const requests = axios.create({
 })
 ```
 
+> `baseURL` 在 **dev 下为空字符串**（请求走相对路径 → Vite 代理 → 后端，同源无 CORS），
+> 生产构建时注入 `.env.production` 里的绝对地址。详见 §10 与 §11。
+
 **请求拦截器**：每次请求从 localStorage 读取最新 token 并注入 `Authorization: Bearer <token>`。
 （不能在 `axios.create` 时求值 —— 那样拿到的永远是模块加载时的 `null`。）
 
@@ -385,10 +388,19 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 | 文件 | 变量 | 值 |
 | --- | --- | --- |
-| `.env.development` | `VITE_API_BASE_URL` | `http://localhost:8080` |
+| `.env.development` | `VITE_API_BASE_URL` | 空（`''`）—— 请求走相对路径，由 Vite 代理转发 |
+| `.env.development` | `VITE_API_TARGET` | 未设置 —— 代理目标回退到 `http://localhost:8080` |
 | `.env.production` | `VITE_API_BASE_URL` | `https://starry-sky-trading-company-server.vercel.app` |
 
 Vite 只把 `VITE_` 前缀的变量注入客户端（`import.meta.env.VITE_*`）。
+
+> **开发环境为什么留空**：`baseURL` 为空时 axios 发相对路径，请求与页面**同源**，
+> 由 `vite.config.js` 的 `server.proxy` 转发到后端 —— 与前端跑在哪个端口无关，也没有预检。
+> 若改成绝对地址 `http://localhost:8080`，就变成跨源请求，必须依赖后端的 `CORS_ORIGINS`
+> 白名单放行，而本地 Vite 端口是**会漂移**的（5173 被占用时自动退到 5174、5175……）：
+> 实测过白名单只写 5173、前端跑在 5174 时，预检拿不到
+> `Access-Control-Allow-Origin`，登录与列表接口全部 `Network Error`。
+> 需要直连别的后端时设 `VITE_API_TARGET`（`vite.config.js` 优先读它）。
 
 > 这两个文件**已被 git 跟踪**（`.gitignore` 只忽略 `*.local`），当前内容是公开 URL、不含凭据。
 
@@ -403,11 +415,19 @@ npm run dev        # http://localhost:5173
 
 需要后端同时运行在 8080（见 [server README](../starry-sky-trading-company-server/README.md)）。
 
+**dev 的 API 请求走代理，不走 CORS**：`.env.development` 的 `VITE_API_BASE_URL` 为空，
+axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**前端跑在哪个端口都无所谓**
+（5173 被占用时 Vite 自动退到 5174、5175……，`strictPort: false`），也不需要后端 CORS 白名单配合。
+
 `vite.config.js` 已为 `/user/login`、`/user/register`、`/user/visitorLogin`、`/user/refreshToken`、
 `/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/userBackend`、`/health` 配置了开发代理，
 默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
 由于 `/user` 下既有后端接口也有前端路由（`/user/kami` 是页面），代理只列了四个具体接口而非 `/user` 前缀 ——
-**新增后端接口时若前缀不是上述之一，需要同步在这里加代理规则**。
+**新增后端接口时若前缀不是上述之一，需要同步在这里加代理规则**，否则该接口在 dev 下会 404
+（打到 dev server 自己，不会转发给后端）。
+
+> 只有「刻意把 `VITE_API_BASE_URL` 设成 `http://localhost:8080`（直连、跨源）」时才需要后端
+> 的 `CORS_ORIGINS` 放行；那份白名单在 server 仓库的 `.env` 里，且支持 `/正则/` 条目以覆盖端口漂移。
 
 其他脚本：
 

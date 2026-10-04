@@ -378,3 +378,56 @@ test('刷新请求自身返回 401 时不会再触发新一轮刷新（__isRefre
     server.close()
   }
 })
+
+// ── 刷新地址必须带前导斜杠（baseURL 为空时是相对地址）──────────────
+//
+// 真实回归：dev 下把 VITE_API_BASE_URL 改成空（走 Vite 代理）之后，
+// 刷新请求写的 `'user/refreshToken'` 会被 axios 原样透传，
+// 浏览器按**当前文档路径**解析 —— 在 /user/kami 上变成
+// /user/user/refreshToken，不命中任何代理规则，刷新必然失败 → 静默登出（已修）。
+test('源码断言：request.js 里的请求地址必须带前导斜杠', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { fileURLToPath } = await import('node:url')
+  const { dirname, join } = await import('node:path')
+
+  const srcPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'api', 'request.js')
+  const src = readFileSync(srcPath, 'utf8')
+
+  const matches = [...src.matchAll(/url:\s*(['"`])([^'"`]+)\1/g)]
+  assert.ok(matches.length > 0, '应在 request.js 中找到请求 url 字面量')
+
+  for (const [, , url] of matches) {
+    assert.ok(
+      url.startsWith('/'),
+      `绝对路径必须带前导斜杠，否则 baseURL 为空时会按当前文档路径解析：${JSON.stringify(url)}`
+    )
+  }
+
+  const urls = matches.map((m) => m[2])
+  assert.ok(
+    urls.includes('/user/refreshToken'),
+    `刷新地址应为 /user/refreshToken，实际找到 ${JSON.stringify(urls)}`
+  )
+})
+
+test('axios 相对地址的解析：空 baseURL 下地址原样透传（回归成因）', async () => {
+  const { default: axios } = await import('axios')
+
+  const empty = axios.create({ baseURL: '' })
+  const absolute = axios.create({ baseURL: 'http://127.0.0.1:9' })
+
+  // 对照组：这正是回归的成因 —— 不带前导斜杠时得到相对地址，
+  // 浏览器会拿它和当前页面路径拼接（/user/kami → /user/user/refreshToken）
+  assert.equal(empty.getUri({ url: 'user/refreshToken' }), 'user/refreshToken')
+  assert.equal(empty.getUri({ url: '/user/refreshToken' }), '/user/refreshToken')
+
+  // baseURL 非空时两种写法都指向同一个后端路径（所以改造前不会暴露该缺陷）
+  assert.equal(absolute.getUri({ url: 'user/refreshToken' }), 'http://127.0.0.1:9/user/refreshToken')
+  assert.equal(absolute.getUri({ url: '/user/refreshToken' }), 'http://127.0.0.1:9/user/refreshToken')
+})
+
+// 注：这里**不能**再补一条「空 baseURL 下刷新请求真的发到了 /user/refreshToken」的集成用例 ——
+// Node 里的 axios 没有 document base，相对地址根本无法解析（实测请求根本不发出、
+// 直接落到错误处理器）。也就是说该缺陷只在浏览器里成立，而这恰恰是它当初能溜过
+// 378 个用例的原因。上面两条（源码字面量 + axios 解析语义）是 Node 环境下能给出的
+// 最强守卫；真实浏览器侧的保障由 `npm run verify:dev` 的代理转发断言承担。

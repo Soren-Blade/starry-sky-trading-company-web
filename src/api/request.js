@@ -68,7 +68,10 @@ export function refreshToken() {
 
     inflight = requests({
         method: 'post',
-        url: 'user/refreshToken',
+        // 必须带前导斜杠：baseURL 在 dev 下为空，此时 axios 原样透传该地址，
+        // 浏览器按**当前文档路径**解析相对地址 —— 在 /user/kami 上会变成
+        // /user/user/refreshToken（不命中任何代理规则 → 404 → 静默登出）。
+        url: '/user/refreshToken',
         headers: {
             // 后端同时兼容 "Bearer <token>" 与裸 token，这里统一带上前缀
             Authorization: `Bearer ${refresh}`,
