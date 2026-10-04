@@ -133,9 +133,13 @@ async function tryRefreshAndReplay(config) {
         return requests.request(retryConfig)
     }
 
-    // 刷新失败：清理凭据并通知上层跳转登录
+    // 刷新失败。只有在「本来持有会话」时才算登录态失效：
+    // 匿名访客（从未拿到过 token）遇到 401 不是会话过期，触发跳转会把
+    // 深链访问悄悄带回首页 —— 调用方自己会拿到失败结果并给出提示即可。
+    const hadSession = Boolean(getRefreshToken() || getAccessToken())
+
     clearTokens()
-    if (typeof onAuthExpired === 'function') {
+    if (hadSession && typeof onAuthExpired === 'function') {
         onAuthExpired()
     }
     return null

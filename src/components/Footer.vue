@@ -157,16 +157,22 @@ import { SITE, FOOTER } from '@/constants/content.js';
   font-size: var(--icon-btn-icon-size);
   color: var(--text-footer);
   background: var(--bg-soft);
+  /* 描边取 currentColor（= --text-footer）：页脚底色五套各不相同
+   * （深底 / 浅底 / 深蓝），只有跟着页脚文字色走才能保证圆钮始终可见 ——
+   * 截图里 tech-minimal 的圆钮原本几乎和页脚糊在一起。 */
+  border: var(--stroke-width) solid currentColor;
   border-radius: var(--radius-pill);
   transition:
     background-color var(--transition-interactive),
     color var(--transition-interactive),
+    border-color var(--transition-interactive),
     transform var(--transition-interactive);
 }
 
 .social-link:hover {
   color: var(--text-on-accent);
   background: var(--accent);
+  border-color: var(--accent);
   transform: translateY(calc(var(--space-unit) * -0.5));
 }
 

@@ -14,20 +14,13 @@
         <div class="rail-group">
           <p class="rail-label">分类</p>
           <div class="rail-list">
-            <!-- 「全部」不是后端分类，但计数可由工具总数直接得出，避免它孤零零没有数字 -->
+            <!--
+              「全部」不再手写：classifyToolsByClass 已经合成了一条 class:'all'、
+              class_name:'全部工具' 的条目（含图标与总数）。此前模板里另有一个硬编码的
+              「全部」按钮，于是左轨出现两条等价条目（截图已确认）。
+            -->
             <button
-              type="button"
-              class="rail-item"
-              :class="{ 'rail-item--active': activeCategory === 'all' }"
-              :aria-pressed="activeCategory === 'all'"
-              @click="toolStore.setActiveCategory('all')"
-            >
-              <span class="rail-icon" aria-hidden="true">🧰</span>
-              <span class="rail-name">全部</span>
-              <span class="rail-count">{{ filteredTools.length }}</span>
-            </button>
-            <button
-              v-for="category in toolData.classes"
+              v-for="category in railClasses"
               :key="category.class"
               type="button"
               class="rail-item"
@@ -70,8 +63,13 @@
               class="u-input"
             />
           </div>
-          <!-- 当前筛选说明：只有一个可切换的筛选态，用短横线占位避免文案区跳动 -->
-          <p class="toolbar-note">{{ showFavorites ? TOOL_PAGE.favorites : '—' }}</p>
+          <!-- 工具条右侧：显示当前筛选结果数，避免留一个无意义的占位符 -->
+          <p class="toolbar-note">
+            <template v-if="showFavorites">
+              {{ TOOL_PAGE.favorites }} · {{ filteredTools.length }}
+            </template>
+            <template v-else>共 {{ filteredTools.length }} 个工具</template>
+          </p>
         </div>
 
         <div class="tools-grid">
@@ -115,6 +113,18 @@ const { toolData, activeCategory, toolsLoading, toolsError } = storeToRefs(toolS
 
 const searchQuery = ref('')
 const showFavorites = ref(false)
+
+/**
+ * 左轨的分类列表。
+ *
+ * 后端有一批 `class` 为空字符串的工具，`classifyToolsByClass` 会为它们生成一个
+ * 「空 class」桶（class_name 取工具自身的 class_name，形如「全部工具」）——
+ * 于是左轨会同时出现「全部」（前端合成的 all 桶）与「全部工具」（后端空桶），
+ * 两个条目含义相同、计数也相同。这里把空 class 桶滤掉，只保留真实分类。
+ */
+const railClasses = computed(() =>
+  (toolData.value.classes || []).filter((item) => String(item.class || '').trim() !== '')
+)
 
 // 收藏为本地偏好（尚无后端接口），持久化到 localStorage 以便刷新后保留
 const FAVORITES_KEY = 'SSTC_TOOL_FAVORITES'
@@ -467,7 +477,6 @@ onMounted(() => {
 .workspace-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
   background: var(--bg-surface-2);
@@ -476,14 +485,16 @@ onMounted(() => {
 }
 
 /* 搜索框的定位与输入区让位来自 .u-search / .u-search-icon / .u-input，
-   这里只负责它在工具条里占多宽 */
+ * 这里只负责它在工具条里占多宽：可伸缩但有上限，把工具条的横向空间用满
+ * （此前固定 320px，右侧留出一大片空白）。 */
 .toolbar-search {
-  max-width: calc(var(--space-unit) * 40);
+  flex: 1;
+  max-width: calc(var(--input-height) * 14);
 }
 
 .toolbar-note {
   flex-shrink: 0;
-  margin: 0;
+  margin: 0 0 0 auto;
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   letter-spacing: var(--tracking-label);
@@ -607,9 +618,32 @@ onMounted(() => {
   }
 
   .workspace-rail {
-    /* 单栏后是一块横向面板，内边距按 ×0.8 收 */
+    /* 单栏后是一块横向面板，内边距按 ×0.8 收。
+     * 这里改回纵向：分类换行后需要整行宽度，「已收藏」另起一行，
+     * 否则 width:100% 的按钮会在横向 flex 里溢出面板右边缘。 */
+    flex-direction: column;
+    align-items: stretch;
     padding: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
     gap: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  }
+
+  /* 手机上分类改成**换行**而不是横向隐藏滚动：
+   * 991 档的横滚条在 500px 截图里会把最后一个分类从中间裁断，
+   * 且滚动条是隐藏的，用户看不出还能滑。 */
+  .rail-group {
+    flex: none;
+    width: 100%;
+  }
+
+  .rail-list {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: calc(var(--space-unit) * 0.75);
+  }
+
+  /* 换行后「已收藏」独占一行，不再挤压分类 */
+  .rail-favorites {
+    width: 100%;
   }
 
   .rail-item {

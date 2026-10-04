@@ -79,20 +79,25 @@ router.afterEach((to) => {
   document.title = to.meta.title || '星辰商行'
 })
 
-// 路由守卫 - 需要账号登录的页面
-// 游客也会拿到 token 与 userInfo，因此不能用「有 userInfo」判断，
-// 必须看 user_type 是否为 registered（即 userStore.isLoggedIn）。
+// 路由守卫 - 任何页面都先确保身份就绪，再判断是否需要账号登录。
+//
+// 身份必须**先于路由组件挂载**完成：商品/工具/卡密等接口都要鉴权，而组件在
+// onMounted 里立刻发请求。若此时还没有游客 token，请求会 401 → 刷新失败 →
+// 触发「登录态失效」回调 → 被 `router.replace({ name: 'Home' })` 带回首页，
+// 表现就是深链访问任何页面都静默变成首页（实测冷启动访问 /tool 会渲染成首页）。
+//
+// 初始化本身是幂等的（user.js 的 init() 用共享 Promise 合并并发调用），
+// 而 App.vue 在 onMounted 里已经先发起了一次，所以这里通常只是等那个 Promise。
 // 这里懒加载 store，避免 router 与 store 的循环依赖。
 router.beforeEach(async (to) => {
-  if (!to.meta.requiresAuth) return true
-
   const { useUserStore } = await import('@/stores/user')
   const userStore = useUserStore()
 
-  // 首屏可能仍在初始化身份，等一次
   if (!userStore.initialized) {
     await userStore.init()
   }
+
+  if (!to.meta.requiresAuth) return true
 
   if (userStore.isLoggedIn) return true
 

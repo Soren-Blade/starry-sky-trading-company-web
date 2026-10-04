@@ -406,6 +406,12 @@ img {
 .u-search-icon {
   position: absolute;
   left: var(--input-padding-x);
+  /* 固定成 --input-icon-size 宽并居中：emoji 的字形宽度通常大于字号，
+   * 不留这个盒子会让图标视觉上贴住占位文字（截图已确认）。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--input-icon-size);
   font-size: var(--input-icon-size);
   line-height: 1;
   pointer-events: none;

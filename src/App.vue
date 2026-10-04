@@ -50,15 +50,17 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('scroll', handleScroll)
 
-  // 身份初始化（游客登录或复用本地 token）与商品数据初始化。
-  // 两者互不依赖，并行执行；失败不阻塞页面渲染。
+  // 身份初始化（游客登录或复用本地 token）必须**先于**商品数据初始化。
   //
-  // 主题初始化**不在这里**：它必须在首屏渲染前完成，见 main.js ——
-  // 放到 onMounted 会让用户先看到默认主题闪一下。
-  userStore.init()
+  // 这里此前是并行执行的，注释还写着「两者互不依赖」—— 实际上商品接口要鉴权，
+  // 冷启动（新浏览器、无 token）时两者赛跑：商品请求往往先发出，于是 401 →
+  // 刷新 token 也失败 → 触发 main.js 的「登录态失效」回调 → `router.replace({name:'Home'})`。
+  // 结果是**深链访问任何页面都会被悄悄带回首页**（实测 /tool 会渲染成首页）。
+  // 串行之后商品请求一定带着刚拿到的游客 token 发出。
+  await userStore.init()
   shopStore.init()
 })
 

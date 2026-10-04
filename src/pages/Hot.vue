@@ -14,10 +14,11 @@
 
         <p class="rank-description">{{ PAGES.hot.description }}</p>
 
-        <!-- 计数：大字是装饰性排版，语义由「共 N 件」承担，避免朗读两遍 -->
-        <p class="rank-total">
+        <!-- 计数：大字做视觉重音，下面只跟一个量词标签（不再重复「共 N 件」） -->
+        <p class="rank-total" role="status">
           <span class="rank-total-value" aria-hidden="true">{{ hitCount }}</span>
-          <span class="rank-total-label">共 {{ hitCount }} 件</span>
+          <span class="rank-total-label">件在榜</span>
+          <span class="visually-hidden">共 {{ hitCount }} 件商品在榜</span>
         </p>
       </div>
     </header>

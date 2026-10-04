@@ -549,7 +549,9 @@ onMounted(() => {
 
 .data-source-section {
   padding: var(--card-padding-lg);
-  background: var(--bg-surface);
+  /* 面板用「次级表面」、卡片用 .ui-card 的「表面」：
+   * 两者同为 --bg-surface 时卡片会融进面板里（截图已确认边界消失）。 */
+  background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);

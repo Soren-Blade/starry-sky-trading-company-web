@@ -151,8 +151,14 @@ const handleBuy = (product) => {
   min-width: 0;
 }
 
-/* 主推位：跨两列（bento 的 400px 大卡在这一档） */
+/* 主推位：只有 bento 的规范定义了「大卡片 400px」，因此只有该主题跨两列。
+ * 其余主题跨两列会变成一张 620×200 的横幅：图片被拉成 3:1、正文留出大片空白
+ * （1440px 截图已确认）。 */
 .products-cell--featured {
+  grid-column: span 1;
+}
+
+:root[data-theme='bento-editorial'] .products-cell--featured {
   grid-column: span 2;
 }
 
@@ -203,8 +209,10 @@ const handleBuy = (product) => {
     grid-template-columns: 1fr;
   }
 
-  /* 单列时主推位不再跨列，否则会把栅格撑破 */
-  .products-cell--featured {
+  /* 单列时主推位不再跨列，否则会把栅格撑破。
+   * 必须连 bento 的高特异性选择器一起覆盖，否则会盖不住上面那条 :root[...] 规则。 */
+  .products-cell--featured,
+  :root[data-theme='bento-editorial'] .products-cell--featured {
     grid-column: span 1;
   }
 }

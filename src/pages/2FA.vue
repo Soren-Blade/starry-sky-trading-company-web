@@ -353,9 +353,12 @@ onBeforeUnmount(() => {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--space-unit) * 1.25);
   margin-top: calc(var(--space-unit) * 2);
-  justify-content: center;
+  /* 左对齐：面板内其余内容（标题、输入框、辅助说明）都从左侧起排，
+   * 只有按钮居中会在视觉上「断开」这条基线（截图已确认）。 */
+  justify-content: flex-start;
 }
 
 /* 两个按钮等宽：视觉重量对称，窄屏换行后也不参差 */
