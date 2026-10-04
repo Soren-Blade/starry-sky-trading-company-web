@@ -1,191 +1,93 @@
-# Assets 目录结构说明
+# assets 目录说明
 
-## 文件组织
+> 本文档此前与代码严重脱节（描述过 `images/`、`fonts/` 目录、`.container` 类、
+> 10 个关键帧等）。现已按当前代码重写。
+> **设计令牌与组件模式的单一来源是 `.dsh/skills/project-ui-system/SKILL.md`**，
+> 本文只说明 `src/assets/` 这个目录本身。
+
+## 目录构成
 
 ```
 src/assets/
-├── styles/                 # 样式文件 (CSS)
-│   ├── variables.css      # CSS变量定义 (色彩、阴影、动画等)
-│   └── global.css         # 全局样式 (重置、工具类、动画库)
-├── images/                # 图片资源
-│   ├── logos/            # Logo和品牌图
-│   ├── icons/            # 图标
-│   └── backgrounds/      # 背景图
-├── fonts/                 # 字体文件
-│   └── (待扩展)          # TTF、WOFF、WOFF2等字体格式
-└── (其他静态资源)
+└── styles/
+    ├── variables.css   # 设计令牌（:root）
+    └── global.css      # 重置、共享结构类、动画库
 ```
 
-## 导入方式
+**不存在** `images/`、`fonts/` 目录，也没有任何 `@font-face` 声明。
 
-### 全局样式导入 (main.js)
-```javascript
-import './assets/styles/global.css'
+- 图片资源统一使用外链 URL（如 `product.main_image_url`），不放在本目录
+- 字体走系统字体栈，`global.css` 的 `body` 规则里显式声明了中文字体
+  （`PingFang SC` / `Hiragino Sans GB` / `Microsoft YaHei` / `Noto Sans SC`）
+
+## 引入方式
+
+`main.js` 依次引入三份样式：
+
+```js
+import './assets/styles/variables.css'   // 设计令牌
+import './assets/styles/global.css'      // 全局样式
+import 'ant-design-vue/dist/reset.css'   // antd 重置
 ```
 
-### 组件内样式 (Vue Single File Component)
-```vue
-<style scoped>
-  /* 使用CSS变量 */
-  color: var(--color-primary);
-  background: var(--gradient-primary);
-</style>
-```
+**不要**在 `global.css` 里再 `@import './variables.css'` —— 那会让 `:root` 被输出两次。
 
-### 图片引入方式
+组件样式一律写在各自的 `<style scoped>` 中，并用 `var(--token)` 引用令牌，
+不要重复引入全局样式。
 
-#### 方式1: 直接路径
-```vue
-<img src="@/assets/images/logo.png" alt="Logo" />
-```
+## variables.css
 
-#### 方式2: 导入后引用
-```vue
-<script setup>
-import logoImg from '@/assets/images/logo.png'
-</script>
+`:root` 下集中定义设计令牌，分类如下（完整清单见文件本身）：
 
-<template>
-  <img :src="logoImg" alt="Logo" />
-</template>
-```
+| 类别 | 示例 |
+| --- | --- |
+| 品牌色 | `--color-primary`、`--color-primary-dark`、`--color-secondary`、`--color-accent`、`--color-light`、`--color-dark` |
+| 语义色 | `--color-muted`、`--color-text-secondary`、`--color-border`、`--color-divider`、`--color-success` / `--color-warning` / `--color-danger`（含 `*-bg`） |
+| 表面与背景 | `--color-surface`、`--color-page-bg` |
+| 渐变 | `--gradient-primary`、`--gradient-light`、`--gradient-warm`、`--gradient-hot`、`--gradient-about`、`--gradient-apple` |
+| 阴影 | `--shadow-sm/md/lg/xl`、`--shadow-card`、`--shadow-card-hover`、`--shadow-primary`、`--shadow-glass` |
+| 毛玻璃 | `--glass-effect`、`--glass-backdrop` |
+| 圆角 | `--radius-sm/md/lg/xl`、`--radius-pill` |
+| 过渡 | `--transition-fast/base/slow` |
+| 布局 | `--container-max`、`--container-content`、`--container-narrow`、`--container-padding`、`--navbar-height` |
 
-## CSS变量说明
+文件末尾还有 `@media (prefers-reduced-motion: reduce)` 的全局降级规则。
 
-### 颜色变量
-- `--color-primary`: 主色调 (#8A6DFF)
-- `--color-primary-dark`: 深主色 (#6C5CE7)
-- `--color-secondary`: 辅助色 (#FD79A8)
-- `--color-accent`: 强调色 (#FFEAA7)
-- `--color-light`: 浅色 (#F8F9FA)
-- `--color-dark`: 深色 (#2D3436)
+**断点没有令牌**：CSS 自定义属性无法用于 `@media`，实际断点必须写字面量，
+统一使用 `1199px` / `991px` / `767px` / `575px`。
 
-### 渐变变量
-- `--gradient-primary`: 主渐变
-- `--gradient-light`: 浅色渐变
-- `--gradient-warm`: 温暖渐变
+## global.css
 
-### 阴影变量
-- `--shadow-sm`: 细微阴影
-- `--shadow-md`: 中等阴影
-- `--shadow-lg`: 较强阴影
-- `--shadow-xl`: 强烈阴影
-- `--shadow-glass`: 玻璃拟态阴影
+1. **基础重置**：盒模型、`html/body` 尺寸、字体栈、页面背景色
+2. **滚动条样式**：WebKit 定制（Firefox 走默认）
+3. **元素重置**：按钮、链接、输入框、列表、图片
+4. **动画库**（4 个关键帧，均有实际引用）：`fadeInUp`、`fadeInScale`、`float`、`floatRandom`
+5. **共享结构类**（跨组件复用；新增前请先确认确有多处使用）：
+   - `.section-header` / `.section-title` / `.title-icon` / `.section-description` — 区块头，配 `SectionHeader.vue`
+   - `.page-header` — 页面头，配 `PageHeader.vue`；渐变经 `--page-header-gradient` 覆写
+   - `.ui-card` / `.ui-card-media` / `.ui-card-interactive` — 卡片外壳
+   - `.visually-hidden` — 仅屏幕阅读器可见
+   - `.hide-mobile` / `.show-mobile` — 响应式显示切换
+6. **焦点管理**：`:focus-visible` 统一样式
 
-### 圆角变量
-- `--radius-sm`: 8px
-- `--radius-md`: 12px
-- `--radius-lg`: 16px
-- `--radius-xl`: 24px
+## 已删除的类与关键帧（不要再引用）
 
-### 过渡时间变量
-- `--transition-fast`: 0.2s
-- `--transition-base`: 0.3s
-- `--transition-slow`: 0.4s
+| 名称 | 原因 |
+| --- | --- |
+| `.container` | 无人使用；各页面/组件用自己的 `xxx-container`（`.section-container`、`.page-container` 等） |
+| `.text-gradient` | 无人使用；`Navbar.vue` 有自己的 scoped 实现 |
+| `.glass-effect`、`.glass-dark` | 无人使用（`--glass-effect` 变量仍保留） |
+| `.shadow-lg`、`.shadow-xl` | 无人使用（同名变量仍保留） |
+| `.rounded-card`、`.text-truncate`、`.text-truncate-2`、`.user-select-none` | 无人使用 |
+| `@keyframes fadeInDown`、`glow`、`slideIn`、`slideInRight`、`shimmer` | 无人引用 |
+| `@keyframes pulse` | 组件各自的 scoped `pulse`（`AppleIdSection.vue`、`ToolCard.vue`）与全局无关 |
 
-## 全局样式包含内容
+`global.css` 因此从 430 行减到约 336 行。
 
-### global.css 导入
-- `variables.css` - CSS变量定义
+## 改动约定
 
-### global.css 定义
-1. **基础重置**
-   - 元素默认样式重置
-   - HTML/Body基础设置
-   - 字体配置
-
-2. **全局滚动条样式**
-   - 自定义WebKit滚动条
-
-3. **元素重置**
-   - 按钮重置
-   - 链接重置
-   - 输入框重置
-   - 列表重置
-   - 图片优化
-
-4. **响应式容器**
-   - 不同屏幕尺寸的.container类
-
-5. **动画库** (9种关键帧)
-   - fadeInUp
-   - fadeInDown
-   - fadeInScale
-   - float
-   - floatRandom
-   - glow
-   - slideIn
-   - slideInRight
-   - shimmer
-   - pulse
-
-6. **工具类**
-   - .text-gradient - 文本渐变
-   - .glass-effect - 毛玻璃效果
-   - .glass-dark - 深色玻璃
-   - .shadow-lg/.shadow-xl - 阴影
-   - .rounded-card - 圆角卡片
-   - .text-truncate - 文本截断
-   - .text-truncate-2 - 2行截断
-   - .user-select-none - 禁用选择
-   - .hide-mobile/.show-mobile - 响应式隐藏
-
-7. **焦点管理**
-   - :focus-visible 样式
-
-## 文件导入检查清单
-
-### ✅ 已检查的文件
-
-#### main.js
-- ✅ 导入全局样式: `import './assets/styles/global.css'`
-- ✅ 导入Ant Design重置: `import 'ant-design-vue/dist/reset.css'`
-- ✅ 导入Pinia: `createPinia()`
-- ✅ 导入Router: `createRouter()` from `./router/index.js`
-- ✅ 导入App组件: `App from './App.vue'`
-
-#### App.vue
-- ✅ 无CSS导入 (全局样式通过main.js注入)
-- ✅ 导入utility: `throttle from '@/utils/index.js'`
-- ✅ 导入components: `Navbar`, `Footer`
-- ✅ 导入router: `router-view`
-
-#### 其他所有Vue组件
-- ✅ 样式定义在 `<style scoped>` 中
-- ✅ 使用CSS变量
-- ✅ 不重复导入全局样式
-
-## 最佳实践
-
-1. **不在组件中重复导入全局样式**
-   - 全局样式已在main.js中导入
-
-2. **使用CSS变量而不是硬编码颜色**
-   ```css
-   /* ❌ 不推荐 */
-   color: #8A6DFF;
-   
-   /* ✅ 推荐 */
-   color: var(--color-primary);
-   ```
-
-3. **图片资源放在assets/images中**
-   - 便于管理和版本控制
-   - 使用@别名引入
-
-4. **字体文件放在assets/fonts中**
-   - 如需要@font-face声明，在variables.css或专门的fonts.css中定义
-
-5. **始终使用相对路径或@别名**
-   ```javascript
-   // ✅ 推荐
-   import '@/assets/styles/global.css'
-   
-   // ❌ 避免
-   import '../../../assets/styles/global.css'
-   ```
-
----
-
-**最后更新**: 2024年11月29日
-**维护者**: 星辰商行技术团队
+1. **先用令牌，再写值**。需要新令牌就去 `variables.css` 加，不要在组件里写死色值。
+2. **组件样式放 `<style scoped>`**；确需跨组件复用的结构才提到 `global.css`。
+3. **不要把整块 `<style>` 复制粘贴**（`Navbar.vue` 曾重复一整份，已删除）。
+4. **scoped 样式不要跨组件选子组件的内部类名**（因 scoped 隔离永远匹配不到）。
+5. 改完记得同步本文档与 `starry-sky-trading-company-web/README.md` 的样式体系章节。
