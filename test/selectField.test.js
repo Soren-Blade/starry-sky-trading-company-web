@@ -211,6 +211,8 @@ test('接线：KamiSection 用登录态渲染时，两处下拉都是 SelectFiel
 
 test('接线：三个文件的模板契约（SSR 覆盖不到的两种分支用源码级断言兜底）', () => {
   const read = (name) => fs.readFileSync(path.join(WEB_ROOT, 'src', 'components', name), 'utf8')
+  /** 去掉模板注释：「换掉原生 <select>」这类说明文字不算残留（与 designTokens 里的做法一致） */
+  const stripHtmlComments = (text) => text.replace(/<!--[\s\S]*?-->/g, '')
 
   const kami = read('KamiSection.vue')
   assert.match(kami, /import SelectField from '@\/components\/SelectField\.vue'/, 'KamiSection 必须显式导入')
@@ -218,7 +220,7 @@ test('接线：三个文件的模板契约（SSR 覆盖不到的两种分支用�
   assert.match(kami, /:options="toolOptions"/, '选项仍来自后端工具列表')
   assert.match(kami, /v-model="statusFilter"[\s\S]*@update:model-value="reload\(1\)"/,
     'v-model 必须写在 @update:model-value 之前：编译器按书写顺序合并处理函数，反过来会拿旧状态去请求')
-  assert.doesNotMatch(kami, /<select/, 'KamiSection 不应再残留原生 select')
+  assert.doesNotMatch(stripHtmlComments(kami), /<select/, 'KamiSection 不应再残留原生 select')
 
   // ThemeSwitcher 的「字体族」在弹窗的第二个页签里，而弹窗是 Teleport 出来的 ——
   // SSR 只渲染默认页签，因此这条分支只能靠源码契约把关
@@ -230,7 +232,7 @@ test('接线：三个文件的模板契约（SSR 覆盖不到的两种分支用�
   assert.match(theme, /:options="field\.options"/, '选项仍由 CUSTOM_FIELDS 驱动')
   assert.match(theme, /@update:model-value="themeStore\.setCustom\(field\.key, \$event\)"/,
     '$event 现在是值本身，setCustom 的入参不变')
-  assert.doesNotMatch(theme, /<select/, 'ThemeSwitcher 不应再残留原生 select')
+  assert.doesNotMatch(stripHtmlComments(theme), /<select/, 'ThemeSwitcher 不应再残留原生 select')
 })
 
 // ── 3. 客户端：面板结构 / ARIA / 键盘 ──────────────────────────
