@@ -164,30 +164,42 @@ test('聚焦环整体淡入：box-shadow 必须与 border-color 一起过渡', (
   assert.match(body, /box-shadow var\(--transition-interactive\)/)
 })
 
-test('框内**任何一帧都不允许溢出**：不能有会瞬间变化的 gap', () => {
-  // 踩过两次同一个根因，因此这条测试直接守住机制：
-  // gap 不在过渡列表里，展开时会瞬间 0 → 10px，而宽度是慢慢长的。
-  // 第一帧可用内容宽只有「图标格 − 2×描边」= 38px，而需要
-  // 输入框(0) + gap(10) + 按钮(38) = 48px —— 溢出 10px，按钮压不动，
-  // 被 overflow 从右边裁掉：放大镜在开头几帧先被切一刀再归位。
-  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
-  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
+test('放大镜绝对定位贴框右缘：位置与宽度动画**数学上无关**', () => {
+  // 用户报「点一下图标闪一下，然后展开」。按钮此前是框的 flex 子元素，
+  // 它的位置与尺寸取决于框**正在变化的宽度** —— 任何一帧的排版细节
+  // （首帧溢出、被裁、重排）都会表现在按钮上。
+  // 拿出来绝对定位之后，框的右缘固定、按钮贴右缘，宽度怎么变它都不动。
+  const at = NAVBAR_SOURCE.indexOf('.navbar-search .search-field .search-toggle {')
+  assert.ok(at > -1)
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('}', at))
 
+  assert.match(body, /position: absolute/, '按钮必须脱离文档流')
+  assert.match(body, /right: 0/, '贴右缘才能与宽度动画无关')
+  assert.match(body, /top: 50%/)
+  assert.match(body, /transform: translateY\(-50%\)/, '垂直居中不能丢')
+  assert.equal(/flex-shrink/.test(body), false, '已经脱离文档流，不再需要 flex 属性')
+})
+
+test('框里不设 gap、也不用 flex 排版（任何按状态切换的间距都会在首帧溢出）', () => {
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}')).replace(/\/\*[\s\S]*?\*\//g, '')
+
+  assert.equal(/(^|\s)gap:/.test(body), false, '不能有 gap')
   assert.equal(
-    /(^|\s)gap:/.test(body.replace(/\/\*[\s\S]*?\*\//g, '')),
+    /display: flex/.test(body),
     false,
-    '框里不能有 gap：它会在展开的第一帧造成溢出'
+    '按钮已脱离文档流，框里只剩输入区一个流内元素，不需要 flex',
   )
   assert.equal(
     /\.navbar-search:not\(\.search-open\) \.search-field/.test(NAVBAR_SOURCE),
     false,
-    '不应再有「收起态把 gap 归零」这类按状态切换间距的规则'
+    '不应再有「按状态切换间距」这类规则'
   )
 
-  // 间距改由输入框自己的 padding 提供
-  const inputAt = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-input) {')
-  const inputBody = NAVBAR_SOURCE.slice(inputAt, NAVBAR_SOURCE.indexOf('}', inputAt))
-  assert.match(inputBody, /padding-right: var\(--input-padding-x\)/, '文字与放大镜之间要靠它留白')
+  // 间距改由输入区右侧内边距提供，文字不会钻到放大镜底下
+  const formAt = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-search) {')
+  const formBody = NAVBAR_SOURCE.slice(formAt, NAVBAR_SOURCE.indexOf('}', formAt))
+  assert.match(formBody, /padding-right: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2\)/)
 })
 
 test('框用 overflow: clip 而不是 hidden（hidden 仍可被程序滚动，聚焦会横向位移）', () => {

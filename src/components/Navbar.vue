@@ -641,20 +641,10 @@ onUnmounted(() => {
   position: absolute;
   top: 50%;
   right: 0;
-  display: flex;
-  align-items: center;
   /*
-   * ⚠ 这里**刻意不设 gap**。
-   *
-   * 曾经写过 `gap: var(--input-icon-gap)` + 收起态 `gap: 0` 的覆盖。问题是
-   * gap 不在过渡列表里，展开时会**瞬间**从 0 跳到 10px，而宽度是慢慢长的：
-   * 展开的第一帧可用内容宽只有「图标格 − 2×描边」= 38px，而需要
-   * 输入框(0) + gap(10) + 按钮(38) = 48px —— 溢出 10px，按钮压不动，
-   * 于是被 overflow 从右边裁掉，放大镜在开头几帧先被切一刀再归位。
-   * 这和「图标不居中」是同一个根因，只是发生在动画过程中。
-   *
-   * 现在两个状态都没有 gap：间距由输入框自己的 padding-right
-   * （--input-padding-x）提供，占宽恒为「按钮宽 ≤ 可用宽」，任何一帧都不溢出。
+   * 框里**只有一个参与文档流的子元素**（输入区），放大镜是绝对定位的
+   * —— 见下方 .search-toggle 的说明。因此这里不需要 flex 排版，
+   * 也不需要 gap：任何「按状态切换间距」的写法都会在动画首帧造成溢出。
    */
   width: var(--icon-btn-size);
   /* 与左右邻居（主题 / 购物车 / 头像）逐值相同的图标按钮外观 */
@@ -708,21 +698,33 @@ onUnmounted(() => {
   box-shadow: var(--input-focus-shadow);
 }
 
-/* 按钮**永远不画自己的底与描边**，盒子统一由外框承担：
- *   - 收起时若两层都画，框的内容宽是「图标格 − 2×描边」，
- *     而按钮是图标格宽 —— 描边会错位 1px、并在右侧被裁掉（粗野主题 2px 更明显）
- *   - 展开时若还画着，框里就多出一个方按钮
- * 尺寸也相应缩到内容盒大小，字形才会在图标格里真正居中。
+/* 放大镜：**绝对定位贴框的右缘**，不参与文档流。
+ *
+ * 这是为了彻底消灭「点击时图标闪一下」这类问题。此前按钮是框的 flex 子元素，
+ * 它的位置与尺寸取决于框**正在变化的宽度** —— 于是任何一帧的排版细节
+ * （首帧溢出、被裁、重排）都会表现在按钮上，表现为闪动或抖动。
+ *
+ * 拿出来之后：框的右缘是固定的（right: 0 且外层宽度恒定），按钮贴右缘，
+ * 于是它的位置**在数学上与宽度动画无关** —— 宽度怎么变它都不动，
+ * 也不可能被裁（它始终落在内边距盒之内）。
+ *
+ * 同时满足「展开前后按钮位置不变」：右缘对齐，向左侧生长的是输入区。
+ *
+ * 按钮**永远不画自己的底与描边**（盒子统一由外框承担）：收起时若两层都画，
+ * 描边会错位 1px 并在右侧被裁掉（粗野主题 2px 更明显）；展开时若还画着，
+ * 框里就多出一个方按钮。尺寸取内容盒大小，字形才在外框里真正居中。
  * 写到三层选择器，确保压得过 .u-icon-btn 自身的 width/height/color。 */
 .navbar-search .search-field .search-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
   width: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
   height: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
-  flex-shrink: 0;
   color: inherit;
   background: transparent;
   border-color: transparent;
   cursor: pointer;
-  transform: none;
+  transform: translateY(-50%);
 }
 
 .navbar-search .search-field .search-toggle:hover {
@@ -731,16 +733,18 @@ onUnmounted(() => {
 }
 
 /* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
- * 图标也让位（放大镜就是外面那个按钮） */
+ * 图标也让位（放大镜就是外面那个按钮）。
+ * 右侧留出「按钮宽 + 一点间距」，文字才不会钻到放大镜底下。 */
 .search-field :deep(.u-search) {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   min-width: 0;
-  width: auto;
+  padding-right: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
 }
 
 .search-field :deep(.u-input) {
   height: 100%;
-  /* 左侧留白由输入框自己给；右侧的 padding-right 同时承担
+  /* 左侧留白由输入框自己给；右侧的 padding-right 承担
    * 「文字与放大镜之间的间距」——因此外层不需要 gap */
   padding-left: var(--input-padding-x);
   padding-right: var(--input-padding-x);
