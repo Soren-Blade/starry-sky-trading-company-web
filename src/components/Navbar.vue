@@ -19,18 +19,50 @@
         </ul>
       </nav>
 
-      <!-- 桌面端搜索栏（≥992px） -->
-      <div class="navbar-search hide-below-992">
-        <SearchBar
-          v-model="keyword"
-          :label="PRODUCT_GRID.searchPlaceholder"
-          :placeholder="PRODUCT_GRID.searchPlaceholder"
-          submit-label="搜索"
-          @submit="handleSearchSubmit"
-        />
-      </div>
-
       <div class="navbar-actions">
+        <!--
+          搜索收成一个图标：悬停展开、点击展开并把光标落进输入框。
+          放在操作区里与其它图标按钮同一组 —— 间距、尺寸、悬停态都由
+          .navbar-actions 统一给，不再单独占一段排版。
+
+          展开/收缩由 JS 的 searchOpen 驱动（而不是 :hover / :focus-within 伪类），
+          因为图标按钮需要 aria-expanded 如实反映状态 —— 伪类做不到。
+
+          「鼠标移开就收起」有个必须处理的组合：用户点开输入框、打了字、
+          然后把鼠标移开 —— 此时焦点还在输入框里，绝不能让搜索框消失。
+          因此展开状态 = 悬停中 **或** 焦点在内部。
+        -->
+        <div
+          class="navbar-search"
+          :class="{ 'search-open': searchOpen }"
+          @mouseenter="handleSearchEnter"
+          @mouseleave="handleSearchLeave"
+          @focusin="handleSearchFocusIn"
+          @focusout="handleSearchFocusOut"
+          @keydown.esc="closeSearch"
+        >
+          <button
+            type="button"
+            class="u-icon-btn search-toggle"
+            :aria-label="PRODUCT_GRID.searchLabel"
+            :aria-expanded="searchOpen"
+            @click="openSearchAndFocus"
+          >
+            <span aria-hidden="true">🔍</span>
+          </button>
+
+          <div class="search-pop">
+            <SearchBar
+              ref="searchBarRef"
+              v-model="keyword"
+              :label="PRODUCT_GRID.searchLabel"
+              :placeholder="PRODUCT_GRID.searchPlaceholder"
+              submit-label="搜索"
+              @submit="handleSearchSubmit"
+            />
+          </div>
+        </div>
+
         <!-- 样式主题切换（图标按钮 + 弹窗） -->
         <ThemeSwitcher />
 
@@ -169,17 +201,8 @@
       </div>
     </div>
 
-    <!-- 移动端抽屉（含搜索栏，桌面端的搜索栏在小屏收起） -->
+    <!-- 移动端抽屉（导航入口；搜索已统一收到顶栏的图标里） -->
     <div class="navbar-drawer" :class="{ active: menuOpen }">
-      <div class="drawer-search">
-        <SearchBar
-          v-model="keyword"
-          :label="PRODUCT_GRID.searchPlaceholder"
-          :placeholder="PRODUCT_GRID.searchPlaceholder"
-          submit-label="搜索"
-          @submit="handleSearchSubmit"
-        />
-      </div>
       <ul class="drawer-list">
         <li v-for="item in navMenu" :key="item.id">
           <router-link :to="item.path" class="drawer-link" @click="handleMenuClick">
@@ -206,7 +229,7 @@
  *   3. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
  *      关键词留在组件里就得层层透传事件；匹配规则也只应有一处定义。
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
@@ -215,6 +238,7 @@ import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import { useHoverDisclosure } from '@/hooks/useHoverDisclosure'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
@@ -301,9 +325,46 @@ const toggleUserMenu = () => {
  */
 const handleSearchSubmit = () => {
   menuOpen.value = false
+  // 收起搜索框：结果已经在页面上了，留着展开只是占地方
+  closeSearch()
   if (route.name !== 'Home' && route.name !== 'Hot') {
     router.push({ name: 'Hot' })
   }
+}
+
+// ── 搜索图标的展开 / 收起 ──────────────────────────────────────
+//
+// 展开 = 悬停中 **或** 焦点在内部，这套判定（含触屏上补发 mouseenter 的坑）
+// 收在 useHoverDisclosure 里，那边有单测。
+
+const searchBarRef = ref(null)
+const {
+  open: searchOpen,
+  onEnter: handleSearchEnter,
+  onLeave: handleSearchLeave,
+  onFocusIn: handleSearchFocusIn,
+  onFocusOut: handleSearchFocusOut,
+  reveal: revealSearch,
+  close: releaseSearch,
+} = useHoverDisclosure()
+
+/**
+ * 收起搜索。
+ *
+ * 必须**同时把焦点移走**：只改状态的话，输入框仍然握着 DOM 焦点，
+ * 但界面已经收起 —— 此时敲键盘会打进一个看不见的框里。
+ * 提交与 Escape 都走这里。
+ */
+const closeSearch = () => {
+  releaseSearch()
+  searchBarRef.value?.blur()
+}
+
+/** 点图标：展开，并把光标直接落进输入框（不用再点一次输入框） */
+const openSearchAndFocus = async () => {
+  revealSearch()
+  await nextTick()
+  searchBarRef.value?.focus()
 }
 
 /**
@@ -500,12 +561,57 @@ onUnmounted(() => {
   transform: scaleX(1);
 }
 
-/* ── 搜索栏：吸收剩余空间，因此导航项与操作区之间不再有一个大空洞 ── */
+/* ── 搜索：收起是一个图标，展开是一段浮在顶栏上的输入框 ──────────
+ *
+ * 展开的输入框是**绝对定位的浮层**，不占据文档流。
+ *
+ * 为什么不做成撑开布局的普通元素：顶栏一行里已经有 Logo、主导航、
+ * 主题 / 搜索 / 购物车 / 账号 / 汉堡五组图标。展开 320px 的输入框若参与布局，
+ * 1024px 与手机宽度下总宽直接超出视口，菜单会被挤变形甚至溢出。
+ * 浮层则完全不影响相邻元素，展开与收起都只有淡入淡出。
+ *
+ * 输入框留在 DOM 里（不是 v-if）：一来键盘用户 Tab 过来就能展开，
+ * 二来避免每次收展都重建输入框、丢掉已输入的内容。
+ */
 .navbar-search {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: calc(var(--input-height) * 12);
-  margin-left: calc(var(--space-unit) * 2);
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.search-toggle {
+  flex-shrink: 0;
+}
+
+/* 收起态宽度为 0。刻意**不用** visibility: hidden —— 那样键盘 Tab 到
+ * 输入框时无法聚焦，也就展不开。 */
+.search-pop {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 1;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition:
+    width var(--transition-surface),
+    opacity var(--transition-interactive);
+}
+
+.navbar-search.search-open .search-pop {
+  /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
+   * 同时不超过视口 —— 手机上窄屏也不会把浮层顶出屏幕。
+   * 收窄时用 --space-unit 让两侧各留一点边距。 */
+  width: min(calc(var(--input-height) * 8), calc(100vw - var(--space-unit) * 6));
+  opacity: 1;
+}
+
+/* 内层表单保持展开宽度：浮层宽度收到 0 时靠 overflow 裁掉，
+ * 而不是把输入框压扁（压扁会看到文字被挤成一团，不像「收起来了」） */
+.search-pop :deep(.u-search) {
+  min-width: calc(var(--input-height) * 8);
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */
@@ -710,10 +816,6 @@ onUnmounted(() => {
   visibility: visible;
 }
 
-.drawer-search {
-  margin-bottom: calc(var(--space-unit) * 2);
-}
-
 .drawer-list {
   display: flex;
   flex-direction: column;
@@ -749,21 +851,14 @@ onUnmounted(() => {
     font-size: calc(var(--nav-link-size) * 0.92);
   }
 
-  .navbar-search {
-    margin-left: var(--space-unit);
-  }
-
   .navbar-actions {
     gap: var(--space-unit);
   }
 }
 
 @media (max-width: 991px) {
-  .hide-below-992 {
-    display: none;
-  }
-
-  /* 搜索栏收起后，菜单贴住 Logo，操作区推到最右 */
+  /* 主导航收进抽屉后，操作区推到最右（搜索图标现在也在操作区里，
+   * 因此这里不再需要给 .navbar-search 留任何位置） */
   .navbar-menu {
     margin-right: auto;
   }

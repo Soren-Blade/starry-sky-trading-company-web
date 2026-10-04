@@ -4,6 +4,7 @@
     <span class="u-search-icon" aria-hidden="true">🔍</span>
     <input
       :id="inputId"
+      ref="inputRef"
       class="u-input"
       type="search"
       autocomplete="off"
@@ -26,7 +27,7 @@
  * 只负责输入与提交，不直接读写 store —— 过滤逻辑属于数据层
  * （`stores/shop.js` 的 `searchKeyword` / `filteredProducts`）。
  */
-import { useId } from 'vue'
+import { useId, ref } from 'vue'
 
 defineProps({
   modelValue: { type: String, default: '' },
@@ -40,6 +41,20 @@ defineEmits(['update:modelValue', 'submit'])
 
 // 页面上可能同时存在桌面端与移动端两个实例，id 必须唯一
 const inputId = `search-bar-${useId()}`
+
+const inputRef = ref(null)
+
+/**
+ * 把焦点送进输入框 / 从输入框移走。
+ *
+ * 顶栏的搜索收成一个图标之后，点图标要能直接把光标落进输入框
+ * （而不是「展开后还得再点一次输入框」），因此必须暴露这两个方法 ——
+ * 输入框在子组件内部，父组件拿不到原生元素。
+ */
+defineExpose({
+  focus: () => inputRef.value?.focus(),
+  blur: () => inputRef.value?.blur(),
+})
 </script>
 
 <style scoped>

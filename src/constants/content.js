@@ -178,6 +178,8 @@ export const PRODUCT_GRID = {
   loading: '正在加载商品…',
   empty: '暂无商品可展示',
   errorPrefix: '商品加载失败：',
+  /** 搜索图标按钮的无障碍名（图标型按钮必须有 aria-label） */
+  searchLabel: '搜索',
   searchPlaceholder: '搜索商品或分类',
   searchEmpty: (keyword) => `没有找到与「${keyword}」相关的商品`,
   soldOut: '缺货',

@@ -1,4 +1,4 @@
-﻿# starry-sky-trading-company-web
+# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -85,6 +85,7 @@ starry-sky-trading-company-web/
     │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
     │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
     │   ├── useToast/index.js             # 提示框门面（notify.success/warning/error/info）
+    │   ├── useHoverDisclosure/index.js   # 「悬停或聚焦即展开」的展开态（顶栏搜索用；含触屏补发 mouseenter 的处理）
     │   └── useSimpleTimeFormatter/index.js # 时间格式化与时区转换
     ├── pages/                    # 路由目标页面（见 §4）
     ├── router/
@@ -133,7 +134,7 @@ app.mount('#app')
 
 `App.vue` 提供全局骨架：
 
-- `<Navbar />` 固定顶栏（品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉）
+- `<Navbar />` 固定顶栏（品牌 + 主导航 + **收成图标的搜索** + 样式主题切换 + 账号入口 + 移动端抽屉）
 - `<main class="main-content"><router-view /></main>` 路由出口；
   `padding-top: var(--navbar-height)` 在这里统一给出，**各页面不再自己写顶栏占位**
 - `<Footer />` 页脚
@@ -271,7 +272,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
-| `Tool.vue` | 工具页：分类 tab + 搜索框 + "已收藏"筛选 + `ToolCard` 网格 |
+| `Tool.vue` | 工具页：左侧分类轨（**≤991 单栏时分类换行，不做隐藏滚动条的横滚条**）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
@@ -322,7 +323,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | --- | --- |
 | `shopClass` | 商品分类树 |
 | `shopInfo` | 商品列表（`getProducts` 默认拉 `limit: 100`） |
-| `searchKeyword` | 商品搜索关键词（导航栏搜索栏写入） |
+| `searchKeyword` | 商品搜索关键词（顶栏搜索图标展开后写入） |
 | `filteredProducts` | **getter**：按 `searchKeyword` 过滤后的商品列表。匹配规则只此一处 |
 | `pagination` | 分页信息 |
 | `setSearchKeyword(kw)` | 写入搜索关键词（空串表示不过滤） |
@@ -428,8 +429,8 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、搜索栏（≥992px）、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉（抽屉内含搜索栏）。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
-| `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`）。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
 | `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。「忘记密码」与新窗口「微信/QQ 登录」都指向 `HelpModal`（如实说明第三方登录尚未接入）。模态约定见下 |
@@ -572,6 +573,9 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message? }` |
 | `useOpenTool` | `openTool(tool)` | 打开外部工具：地址校验、弹窗被拦截的提示、复用已开窗口（同一工具点两次不会开出两个标签页） |
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
+| `useHoverDisclosure` | `open` / `onEnter` / `onLeave` / `onFocusIn` / `onFocusOut` / `reveal()` / `close()` | 「悬停或聚焦即展开」的展开态（顶栏搜索）。展开 = 悬停中**或**焦点在内部 —— 只看悬停会在「打完字把鼠标移开」时把输入框抽走；触屏补发的 `mouseenter` 由 `canHover` 判断挡掉，否则手机上关不掉 |
+| `useBootScreen` | `visible` / `start()` / `finish()` | 首屏遮罩的三个时间闸（延迟出现 / 最短停留 / 最长等待），计时器可注入以便用假时钟测 |
+| `useRouteLoading` | `loading`（只读） / `markRouteLoading()` / `markRouteLoaded()` | 路由是否在切换（顶部进度条）。用开关而不是计数器：重定向会再触发一次 `beforeEach`，计数器会漂移 |
 | `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表 |
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
 | `useToast` | `notify.success/warning/error/info` | 提示框门面，供组件内外统一调用（路由守卫与 store action 也用它） |
@@ -757,8 +761,9 @@ Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版�
 | 问题 | 根因 | 修法 |
 | --- | --- | --- |
 | Logo 与下方内容左右错位 20px | 导航用 `--container-max`(1320)，商品/工具/卡密区块用 `--container-content`(1280) | 令牌层只留 `--container-max`，全站一条装订线 |
-| 导航链接会压到搜索栏上 | `.navbar-menu` 曾是 `flex: 1`（basis 0）+ `min-width: 0`，而 `.menu-list` 不换行 → 宽度不足时菜单盒被压到 0，链接溢出 | 菜单改 `flex: none` 不参与伸缩，改由搜索栏吸收剩余空间；`≤1199` 再收一档密度 |
-| 导航项与操作区之间是一个大空洞 | 菜单 `flex: 1` 吃掉了全部剩余空间 | 搜索栏改为可伸缩（`flex: 1 1 auto`，上限 `--input-height * 12`），空洞被搜索栏填满 |
+| 导航链接会压到搜索栏上 | `.navbar-menu` 曾是 `flex: 1`（basis 0）+ `min-width: 0`，而 `.menu-list` 不换行 → 宽度不足时菜单盒被压到 0，链接溢出 | 菜单改 `flex: none` 不参与伸缩；`≤1199` 再收一档密度 |
+| 导航项与操作区之间是一个大空洞 | 菜单 `flex: 1` 吃掉了全部剩余空间 | 曾把搜索栏改成可伸缩来填满空洞。**后来搜索收成了一个图标（浮层展开，不参与布局）**，空洞由 `navbar-actions` 的 `margin-left: auto` 解决 |
+| 展开 320px 的搜索框会把顶栏顶出屏幕 | 搜索框若参与文档流，1024px 与手机上 Logo + 菜单 + 五组图标的总宽会超视口 | 展开态改为**绝对定位浮层**（`right: 0` + 宽度 `min(输入框高度 × 8, 100vw - 边距)`），相邻元素不再被推挤 |
 | 底边那一像素没有背景/模糊 | `::before` 的 `inset: 0` 只覆盖 padding box，边框区域露出页面内容 | 边框移到 `::before` 上，背景 + 模糊 + 边框同层铺满整高 |
 | 菜单项可点区域只有约 21px | `.menu-link` 是 `padding: 4px 0` | 改为整条通高（tab 式），下划线落在导航栏底边上 |
 
@@ -895,7 +900,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 619 个用例）
+npm test             # 单元测试（node:test，共 647 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -988,6 +993,8 @@ test/
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
+├── hoverDisclosure.test.js           # 「悬停或聚焦即展开」的两条易错分支：移开鼠标但仍有焦点、触屏补发的 mouseenter
+├── navbarSearch.test.js              # 顶栏搜索收成图标后的接线（只有一个输入框、可访问名、浮层不参与布局）+ 工具页计数去重
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
 ├── render.mjs                        # 渲染辅助：编译 .vue + SSR 渲染 + 环境桩
@@ -1011,7 +1018,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 619 个用例。
+共 647 个用例。
 
 ### 主题契约测试
 
@@ -1200,7 +1207,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（619 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（647 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

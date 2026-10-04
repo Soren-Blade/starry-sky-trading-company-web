@@ -1,11 +1,10 @@
 <template>
   <div class="tool-page">
-    <!-- 开场：眉标 + 大标题 + 说明 + 计数（PageHeader 已删除，页面自己排版） -->
+    <!-- 开场：眉标 + 大标题 + 说明（计数只在工具条里出现一次，见下） -->
     <header class="workspace-head">
       <p class="workspace-eyebrow">{{ PAGES.tools.eyebrow }}</p>
       <h1 class="workspace-title">{{ PAGES.tools.title }}</h1>
       <p class="workspace-desc">{{ PAGES.tools.description }}</p>
-      <span class="u-tag u-tag--accent workspace-count">{{ filteredTools.length }} 个工具</span>
     </header>
 
     <!-- 工作台两栏：左侧竖排筛选轨 + 右侧工具区 -->
@@ -280,10 +279,9 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-/* 计数：外观全部来自 .u-tag / .u-tag--accent，这里只让它自己占一行 */
-.workspace-count {
-  margin-top: calc(var(--space-unit) * 0.5);
-}
+/* 计数只在工具条里出现一次（.toolbar-note）。
+ * 开场里曾另有一个同样取 filteredTools.length 的标签 —— 同一个数字在
+ * 一屏里出现两遍，且它离被计数的网格更远。 */
 
 /* ── 两栏 ─────────────────────────────────────────────────────── */
 
@@ -330,8 +328,13 @@ onMounted(() => {
 .rail-list {
   display: flex;
   flex-direction: column;
-  /* 分类多到超出视口时轨内自滚，吸顶面板不会被拉出屏幕 */
-  max-height: calc(var(--space-unit) * 40);
+  /* 分类多到超出视口时轨内自滚，吸顶面板不会被拉出屏幕。
+   *
+   * 上限按**条目高度**而不是 var(--space-unit) * n 表达：后者会随主题密度漂移
+   * （「技术单色」的 --space-unit 是 4px，同样的 40 个单位只有 160px，
+   * 6 个分类就会滚起来、少显示两个）。这与本文件开头「控件内部节奏一律取
+   * 组件尺寸令牌」的约定也一致。 */
+  max-height: calc(var(--dropdown-item-height) * 8);
   overflow-y: auto;
 }
 
@@ -507,7 +510,7 @@ onMounted(() => {
   }
 }
 
-/* ── 991：两栏变单栏，左轨退化为横向可滚动的筛选条 ─────────────── */
+/* ── 991：两栏变单栏，左轨变成一块横向面板 ─────────────────────── */
 
 @media (max-width: 991px) {
   .workspace-body {
@@ -515,30 +518,29 @@ onMounted(() => {
     gap: calc(var(--section-gap) * 0.5);
   }
 
+  /* 分类**换行**而不是横向隐藏滚动。
+   *
+   * 原来 768–991 这一档是 overflow-x: auto 且滚动条隐藏：最后一个分类会被
+   * 从中间裁断，而用户看不出还能滑。≤767 当初正是为此改成换行的
+   * （见下方 767 档的说明），这里把同一个判断提到整个单栏区间 ——
+   * 顺带删掉了与 767 档重复的那几条规则。 */
   .workspace-rail {
     position: static;
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: calc(var(--space-unit) * 2);
   }
 
   .rail-group {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
   }
 
-  /* 横排时分类在轨内横向滚动（滚动条隐藏，触屏与 Shift+滚轮仍可用） */
   .rail-list {
     flex-direction: row;
-    gap: var(--space-unit);
+    flex-wrap: wrap;
+    row-gap: calc(var(--space-unit) * 0.75);
     max-height: none;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-
-  .rail-list::-webkit-scrollbar {
-    display: none;
+    overflow: visible;
   }
 
   .rail-item {
@@ -552,9 +554,9 @@ onMounted(() => {
     content: none;
   }
 
+  /* 换行后「已收藏」独占一行，不再挤压分类 */
   .rail-favorites {
-    width: auto;
-    flex-shrink: 0;
+    width: 100%;
   }
 }
 
@@ -579,44 +581,15 @@ onMounted(() => {
     font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 
-  .workspace-count {
-    /* --tag-height 是「文字行高 + 微小余量」，×0.9 会把中文裁掉；
-       计数的字号与内边距在这里只按内边距系数收 */
-    padding: calc(var(--tag-padding-y) * var(--mobile-padding-scale))
-      calc(var(--tag-padding-x) * var(--mobile-padding-scale));
-  }
-
   .workspace-body {
     gap: calc(var(--section-gap) * var(--mobile-section-scale));
   }
 
+  /* 单栏后的横向面板内边距按 ×0.8 收。
+   * 方向与分类换行已在 991 档统一处理，这里只做移动端的尺寸缩放。 */
   .workspace-rail {
-    /* 单栏后是一块横向面板，内边距按 ×0.8 收。
-     * 这里改回纵向：分类换行后需要整行宽度，「已收藏」另起一行，
-     * 否则 width:100% 的按钮会在横向 flex 里溢出面板右边缘。 */
-    flex-direction: column;
-    align-items: stretch;
     padding: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
     gap: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
-  }
-
-  /* 手机上分类改成**换行**而不是横向隐藏滚动：
-   * 991 档的横滚条在 500px 截图里会把最后一个分类从中间裁断，
-   * 且滚动条是隐藏的，用户看不出还能滑。 */
-  .rail-group {
-    flex: none;
-    width: 100%;
-  }
-
-  .rail-list {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    row-gap: calc(var(--space-unit) * 0.75);
-  }
-
-  /* 换行后「已收藏」独占一行，不再挤压分类 */
-  .rail-favorites {
-    width: 100%;
   }
 
   .rail-item {
