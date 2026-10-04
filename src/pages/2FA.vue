@@ -82,12 +82,16 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { message } from 'ant-design-vue'
+import { createKeyCache, isCryptoAvailable } from '@/utils/totp.js'
+
 const secret = ref("");
 const code = ref("");
 const countdown = ref(30);
 const error = ref("");
 
-let keyCache = null;
+// TOTP 算法在 @/utils/totp.js（可用 RFC 6238 官方向量验证）；
+// 这里只保留交互逻辑与密钥缓存。
+const keyCache = createKeyCache();
 let intervalId = null;
 // 已触发的计算序号，用于丢弃过期的异步结果
 let computeSeq = 0;
@@ -98,81 +102,12 @@ const hasSecret = computed(() => secret.value.trim().length > 0);
  * WebCrypto 的 crypto.subtle 只在安全上下文（HTTPS 或 localhost）可用。
  * 非安全上下文下 importKey 会抛异常，原先会被当成「密钥格式错误」误导用户。
  */
-const cryptoAvailable = typeof crypto !== 'undefined' && Boolean(crypto.subtle);
+const cryptoAvailable = isCryptoAvailable();
 
-function base32ToBytes(input) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  const clean = input.replace(/=+$/g, "").replace(/\s+/g, "").toUpperCase();
-  const bytes = [];
-  let bits = 0;
-  let value = 0;
-  for (let i = 0; i < clean.length; i++) {
-    const idx = alphabet.indexOf(clean[i]);
-    if (idx === -1) throw new Error("无效的 Base32 字符");
-    value = (value << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((value >> bits) & 0xff);
-    }
-  }
-  return new Uint8Array(bytes);
-}
-
-function intToBytes(num) {
-  const bytes = new Uint8Array(8);
-  for (let i = 7; i >= 0; i--) {
-    bytes[i] = num & 0xff;
-    num = num >> 8;
-  }
-  return bytes;
-}
-
-async function importKey(raw) {
-  // crypto.subtle 在非安全上下文（HTTP 且非 localhost）下不可用
-  if (!cryptoAvailable) {
-    const err = new Error('当前页面不是安全上下文，浏览器禁用了 WebCrypto。请通过 HTTPS 或 localhost 访问。');
-    err.name = 'MissingSecureContext';
-    throw err;
-  }
-  return await crypto.subtle.importKey(
-    "raw",
-    raw,
-    { name: "HMAC", hash: { name: "SHA-1" } },
-    false,
-    ["sign"]
-  );
-}
-
-async function hmacSha1(key, data) {
-  const sig = await crypto.subtle.sign("HMAC", key, data);
-  return new Uint8Array(sig);
-}
-
-function truncate(hmac) {
-  const offset = hmac[hmac.length - 1] & 0x0f;
-  const binary =
-    ((hmac[offset] & 0x7f) << 24) |
-    ((hmac[offset + 1] & 0xff) << 16) |
-    ((hmac[offset + 2] & 0xff) << 8) |
-    (hmac[offset + 3] & 0xff);
-  return binary;
-}
-
-async function computeTOTP(secretBase32, digits = 6, step = 30) {
-  const secretBytes = base32ToBytes(secretBase32);
-  if (!keyCache || keyCache.rawSecret !== secretBase32) {
-    const cryptoKey = await importKey(secretBytes);
-    keyCache = { cryptoKey, rawSecret: secretBase32 };
-  }
-
-  const counter = Math.floor(Date.now() / 1000 / step);
-  const counterBytes = intToBytes(counter);
-  const hmac = await hmacSha1(keyCache.cryptoKey, counterBytes);
-  const bin = truncate(hmac);
-  const otp = (bin % Math.pow(10, digits)).toString().padStart(digits, "0");
-  return { otp, counter };
-}
+// 说明：Base32 解码、计数器编码、HMAC-SHA1、动态截断与 TOTP 计算
+// 已抽到 @/utils/totp.js —— 这段算法有明确标准（RFC 6238 / RFC 4226），
+// 必须能用官方测试向量验证；留在本文件里只能靠正则提取函数来测。
+// 本文件只保留交互逻辑。
 
 async function updateCode() {
   if (!hasSecret.value) {
@@ -184,7 +119,7 @@ async function updateCode() {
   const seq = ++computeSeq;
   try {
     error.value = "";
-    const { otp } = await computeTOTP(secret.value);
+    const { otp } = await keyCache.compute(secret.value);
     if (seq !== computeSeq) return; // 已有更新的计算，丢弃本次结果
     code.value = otp;
   } catch (e) {
@@ -261,7 +196,11 @@ async function copyCode() {
 }
 
 watch(secret, async () => {
-  keyCache = null;
+  // keyCache 是 createKeyCache() 返回的对象（const），切换密钥时必须调用它的 clear()。
+  // 早期版本写的是 `keyCache = null` —— 那是旧实现的遗留（当时 keyCache 是可重新赋值的
+  // 模块级变量），改成 const 后会抛 TypeError: Assignment to constant variable，
+  // 导致用户一输入密钥页面就崩。
+  keyCache.clear();
   await updateCode();
 });
 
