@@ -207,6 +207,18 @@ const emojiGradientMap = {
 };
 
 /**
+ * 把任意输入规整成可查询的 emoji 字符串
+ * 后端字段可能为 null/undefined/数字，直接 .trim() 会抛 TypeError。
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeEmoji(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value !== 'string') return String(value).trim();
+  return value.trim();
+}
+
+/**
  * Emoji 渐变背景生成器
  */
 class EmojiGradientGenerator {
@@ -238,7 +250,9 @@ class EmojiGradientGenerator {
       opacity = 1
     } = options;
 
-    const cleanEmoji = emoji.trim();
+    // 调用方（如 CategoriesSection）直接透传后端字段，icon_url 可能为 null，
+    // 这里做兜底，避免 emoji.trim() 抛 TypeError 导致整块渲染失败。
+    const cleanEmoji = normalizeEmoji(emoji);
     let gradientConfig = this.gradientMap[cleanEmoji];
     
     // 如果未找到且允许使用默认
@@ -270,7 +284,7 @@ class EmojiGradientGenerator {
    * @returns {Object} emoji详细信息
    */
   getEmojiInfo(emoji) {
-    const cleanEmoji = emoji.trim();
+    const cleanEmoji = normalizeEmoji(emoji);
     const config = this.gradientMap[cleanEmoji] || this.gradientMap['default'];
     
     return {

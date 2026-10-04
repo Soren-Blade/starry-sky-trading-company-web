@@ -394,10 +394,27 @@ npm test
 test/
 ├── utils.test.js                     # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
 ├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
-└── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
+├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
+├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
+└── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 51 个用例。
+共 74 个用例。
+
+### 接口契约测试
+
+`api-contract.test.js` 会**静态解析两端源码**（不启动服务、不连数据库），断言：
+
+1. 前端 `src/api/ask/*.js` 里调用的每个「方法 + 路径」在 server 的 `src/router/*` 中都有对应路由
+2. 不存在同名路径但方法不一致的情况
+3. 12 个关键接口（登录/注册/刷新/用户信息/商品/分类/工具/卡密/探活）显式存在
+4. 解析器自检 —— 解析结果数量低于阈值即失败，避免正则失效导致「假通过」
+
+动态段会归一化后比较（前端 `${userId}` 与后端 `:user_id` 视为同一段）。
+该测试会读取 `../starry-sky-trading-company-server/src`，因此**两个仓库需要保持并列的目录结构**；
+server 源码缺失时断言会直接失败，不会静默跳过。
+
+> 注意：它只校验「路径与方法」，**不校验请求体/响应字段的形状**。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。
@@ -415,10 +432,9 @@ test/
 | --- | --- |
 | `stores/*` | 需要 Pinia 容器（`setActivePinia`） |
 | `hooks/useToken`、`useBodyScroll` | 依赖 localStorage / DOM |
-| `hooks/useEmoji` | 纯函数，可直接测（下一步候选） |
 | 组件渲染 | 需要 `@vue/test-utils` + jsdom |
 
-若要提升覆盖，优先补 `hooks/useEmoji/index.js` —— 它是纯函数，无需引入新依赖。
+纯函数模块（`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`）已全部覆盖。
 
 ---
 
