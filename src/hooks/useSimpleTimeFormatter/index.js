@@ -1,9 +1,11 @@
 // simpleTimeFormatter.js
+// 注意：插件的导入路径显式带 .js 后缀。Vite 能解析无后缀形式，但原生 ESM（例如
+// node --test 直接跑源码）要求完整路径，补齐后该模块在两种环境下都能加载。
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/zh-cn';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+import relativeTime from 'dayjs/plugin/relativeTime.js';
+import 'dayjs/locale/zh-cn.js';
 
 // 启用必要的插件
 // relativeTime 必须在这里静态注册：原先在 getRelativeTime 里用动态 import() 注册，
@@ -18,13 +20,18 @@ dayjs.locale('zh-cn');
  * @param {string} isoString - ISO时间字符串，如：2025-12-01T02:10:10.602Z
  * @param {string} format - 格式化模板，默认：YYYY-MM-DD HH:mm:ss
  * @param {string} timezone - 时区，默认：Asia/Shanghai
- * @returns {string} 格式化后的时间
+ * @returns {string} 格式化后的时间；输入非法时返回空串
  */
 export function formatISOTime(isoString, format = 'YYYY-MM-DD HH:mm:ss', timezone = 'Asia/Shanghai') {
   if (!isoString) return '';
-  
+
+  const date = dayjs(isoString);
+  // dayjs 遇到非法输入不会抛异常，而是产出 Invalid Date，format() 会返回字符串
+  // 'Invalid Date'。原先只靠 try/catch 兜底，非法值会原样渲染到界面上。
+  if (!date.isValid()) return '';
+
   try {
-    return dayjs(isoString).tz(timezone).format(format);
+    return date.tz(timezone).format(format);
   } catch (error) {
     console.error('时间格式化失败:', error.message);
     return '';
@@ -38,9 +45,10 @@ export function formatISOTime(isoString, format = 'YYYY-MM-DD HH:mm:ss', timezon
  */
 export function parseISOTime(isoString) {
   if (!isoString) return null;
-  
+
   try {
     const date = dayjs(isoString);
+    if (!date.isValid()) return null;
     const beijingTime = date.tz('Asia/Shanghai');
     
     return {
