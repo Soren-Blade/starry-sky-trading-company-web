@@ -50,35 +50,71 @@
           </span>
         </router-link>
 
-        <!-- 未登录（含游客）显示登录入口 -->
-        <button v-if="!isLoggedIn" type="button" class="u-btn-primary" @click="openLoginModal">
-          登录 / 注册
+        <!--
+          无身份（退出登录 / 退出游客之后）才显示登录入口。
+          游客**不再**走这一支：他有头像、有昵称、也有要退出的身份，
+          把他当成「未登录」会让他既看不到自己是谁，也找不到退出入口。
+        -->
+        <button v-if="!hasIdentity" type="button" class="u-btn-primary" @click="openLoginModal">
+          {{ AUTH.loginCta }}
         </button>
 
-        <!-- 已登录：头像与下拉菜单 -->
+        <!-- 有身份（游客或注册用户）：头像与下拉菜单 -->
         <div v-else class="navbar-user">
           <button
             type="button"
             class="user-avatar-btn"
-            :aria-label="`打开用户菜单（${nickname || '未设置昵称'}）`"
+            :aria-label="identityLabel"
             :aria-expanded="userMenuOpen"
             @click="toggleUserMenu"
           >
             <span class="u-avatar">
-              <img :src="avatarUrl" :alt="nickname || '用户头像'" />
+              <!-- 没有头像地址时退化成一个字形，而不是渲染空 src
+                   （空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
+              <img v-if="avatarUrl" :src="avatarUrl" :alt="nickname || '用户头像'" />
+              <span v-else class="avatar-fallback" aria-hidden="true">👤</span>
             </span>
+            <!-- 游客标记直接压在头像上：不展开菜单也能一眼看出当前不是正式账号 -->
+            <span v-if="isGuest" class="guest-mark" aria-hidden="true">游</span>
           </button>
 
           <div v-if="userMenuOpen" class="u-dropdown user-dropdown">
             <div class="user-info">
-              <p class="user-name">{{ nickname || '未设置昵称' }}</p>
-              <p class="user-since">注册于 {{ toDate(userInfo.created_at) }}</p>
+              <p class="user-name">
+                <span class="user-name-text">{{ nickname || '未设置昵称' }}</span>
+                <span v-if="isGuest" class="u-tag u-tag--warning user-badge">
+                  {{ AUTH.guestBadge }}
+                </span>
+              </p>
+              <p class="user-since">
+                {{ isGuest ? AUTH.guestSince : AUTH.registeredSince }}
+                {{ toDate(userInfo.created_at) }}
+              </p>
             </div>
+
+            <!--
+              游客提醒。文案必须与真实能力一致（见 constants 里的说明）：
+              游客能浏览公开内容，但下单 / 卡密 / 收藏都要正式账号。
+            -->
+            <p v-if="isGuest" class="guest-note" role="status">{{ AUTH.guestNote }}</p>
+
             <div class="u-dropdown-divider"></div>
+
+            <!-- 游客的登录入口放在最上面：这是这个面板里最该被点的一项 -->
+            <button
+              v-if="isGuest"
+              type="button"
+              class="u-dropdown-item guest-login"
+              @click="openLoginModal"
+            >
+              {{ AUTH.loginCta }}
+            </button>
+
             <!--
               下拉项一律用 <router-link>，不要用「button 里包 router-link」——
-              那是嵌套交互元素，键盘与读屏都会出问题（此前卡密管理项就是这么写的）。
-              需要先关菜单的场景由 @click 统一处理。
+              那是嵌套交互元素，键盘与读屏都会出问题。
+              游客点这些会被路由守卫拦下并弹出登录弹窗（requiresAuth），
+              这正好起到「登录后能解锁什么」的提示作用。
             -->
             <router-link class="u-dropdown-item" to="/user/profile" @click="handleMenuClick">
               个人中心
@@ -87,14 +123,14 @@
               我的收藏
             </router-link>
             <router-link class="u-dropdown-item" to="/user/orders" @click="handleMenuClick">
-              订单管理
+              我的订单
             </router-link>
             <router-link class="u-dropdown-item" to="/user/kami" @click="handleMenuClick">
               卡密管理
             </router-link>
             <div class="u-dropdown-divider"></div>
             <button type="button" class="u-dropdown-item logout" @click="handleLogout">
-              退出登录
+              {{ isGuest ? AUTH.guestLogout : AUTH.logout }}
             </button>
           </div>
         </div>
@@ -161,7 +197,7 @@ import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
-import { NAV_MENU, PRODUCT_GRID, SITE } from '@/constants/index.js'
+import { NAV_MENU, PRODUCT_GRID, SITE, AUTH } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 
 const userStore = useUserStore()
@@ -170,9 +206,25 @@ const cartStore = useCartStore()
 const route = useRoute()
 const router = useRouter()
 
-// isLoggedIn 是 getter：只有 user_type === 'registered' 才为 true，
-// 游客也会拿到 token，但不应被当作已登录。
-const { isLoggedIn, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
+// isGuest 用于游客标记与文案；顶栏的「显示头像还是登录按钮」判断走的是
+// hasIdentity（游客也算有身份），因此这里不需要 isLoggedIn。
+const { isGuest, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
+
+/**
+ * 是否有身份（游客也算）。
+ *
+ * 与 `isLoggedIn` 是两个不同的问题，顶栏两处判断都基于这一条：
+ *   - 有身份  → 显示头像与下拉菜单（游客也显示，他需要看到自己是谁、也需要能退出）
+ *   - 无身份  → 显示「登录 / 注册」按钮（只有刚退出之后才会出现这种状态）
+ */
+const hasIdentity = computed(() => Boolean(userStore.userId))
+
+/** 头像按钮的无障碍名：把身份一并读出来，读屏用户同样能知道自己是游客 */
+const identityLabel = computed(() => {
+  const who = nickname.value || '未设置昵称'
+  const role = isGuest.value ? AUTH.guestBadge : '已登录'
+  return `打开用户菜单（${who}，${role}）`
+})
 
 // 说明：这里**不**引入 useBodyScroll。
 // 滚动锁由 useModalA11y / useBodyScroll 内部引用计数管理，弹窗组件是持有者，
@@ -239,6 +291,15 @@ const handleLogout = async () => {
   await userStore.logout()
   userMenuOpen.value = false
   menuOpen.value = false
+
+  // 退出后如果没有身份，停留在「需要登录」的页面上只会看到空数据或反复失败
+  // （订单页、个人中心、卡密页、购物车都要正式账号）。把这些页面送回首页，
+  // 公开页面则原地不动 —— 用户在 /hot 上退出时不该被莫名弹走。
+  if (route.meta?.requiresAuth || route.name === 'Cart') {
+    router.push({ name: 'Home' }).catch(() => {
+      /* 跳转失败不影响退出本身 */
+    })
+  }
 }
 
 /**
@@ -432,6 +493,7 @@ onUnmounted(() => {
 }
 
 .user-avatar-btn {
+  position: relative;
   display: block;
   border-radius: var(--avatar-radius);
   transition: opacity var(--transition-interactive);
@@ -439,6 +501,39 @@ onUnmounted(() => {
 
 .user-avatar-btn:hover {
   opacity: 0.85;
+}
+
+/* 无头像地址时的退化字形：尺寸跟随 .u-avatar 的令牌 */
+.avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: var(--fs-label);
+  line-height: 1;
+  background: var(--bg-soft);
+}
+
+/* 游客标记：压在头像右下角的小圆片。
+ * 用警告色（而不是强调色）—— 它表达的是「这不是正式账号」，
+ * 与状态徽标同族的语义，不该抢走强调色在导航里的唯一地位。 */.guest-mark {
+  position: absolute;
+  right: calc(var(--space-unit) * -0.5);
+  bottom: calc(var(--space-unit) * -0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 2);
+  height: calc(var(--space-unit) * 2);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  color: var(--text-on-accent);
+  background: var(--warning);
+  /* 描边取顶栏表面色，让圆片与底下的头像分开 */
+  border: var(--stroke-width) solid var(--bg-nav);
+  border-radius: var(--radius-pill);
 }
 
 .user-dropdown {
@@ -451,14 +546,41 @@ onUnmounted(() => {
   padding: calc(var(--space-unit) * 1.5) var(--dropdown-item-padding-x);
 }
 
+/* 昵称与「游客」徽标同一行：徽标不参与压缩，昵称过长时省略 */
 .user-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
   font-size: var(--fs-sm);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
   margin: 0 0 calc(var(--space-unit) * 0.5);
+}
+
+.user-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-badge {
+  flex-shrink: 0;
+}
+
+/* 游客提醒：可换行的说明段落，不是一行省略的标签 */
+.guest-note {
+  margin: 0;
+  padding: 0 var(--dropdown-item-padding-x) calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+/* 游客面板里的「登录 / 注册」：与其它下拉项同高，但用强调色标出这是主行动 */
+.u-dropdown-item.guest-login {
+  color: var(--accent);
+  font-weight: var(--fw-heading);
 }
 
 .user-since {

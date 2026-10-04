@@ -16,7 +16,7 @@ installDomStub()
 const { createPinia, setActivePinia } = await import('pinia')
 const { useUserStore } = await loadAppModule('/stores/user.js')
 const api = (await loadAppModule('/api/index.js')).default
-const { setAccessToken, setRefreshToken, getAccessToken, setTokensFromHeaders } =
+const { setAccessToken, setRefreshToken, getAccessToken, getRefreshToken, setTokensFromHeaders } =
   await loadAppModule('/hooks/useToken/index.js')
 
 /** 用 stub 替换 api 上的方法，返回恢复函数 */
@@ -384,43 +384,95 @@ test('init：重复调用时第二次立即返回（initializing 守卫）', asy
 })
 
 // ── logout ─────────────────────────────────────────────────
+//
+// 语义变更：退出后进入**无身份**状态（顶栏显示「登录 / 注册」），
+// 而不是立刻又建一个游客。原先 `await this.init()` 会马上拿到新游客，
+// 于是「退出」之后看到的还是一张头像，用户永远等不到登录按钮。
 
-test('logout：清理凭据与用户状态，并回到游客身份', async () => {
+test('logout：清空凭据与身份，并进入无身份状态（不再自动建游客）', async () => {
   const store = freshStore()
   setAccessToken('a')
   setRefreshToken('r')
   store.userInfo = REGISTERED
 
+  let visitorCalls = 0
   const restore = stubApi({
     getUserInfo: async () => ({ success: true, data: GUEST }),
-    visitorLogin: async () => ({ success: true }),
+    visitorLogin: async () => {
+      visitorCalls += 1
+      return { success: true }
+    },
   })
   try {
     await store.logout()
+
     assert.equal(getAccessToken(), null, 'access token 应被清空')
-    assert.equal(store.isGuest, true, '退出后应回到游客身份')
+    assert.equal(getRefreshToken(), null, 'refresh token 应被清空')
+    assert.deepEqual(store.userInfo, {}, '身份应被清空')
+    assert.equal(store.userId, null, '无身份 —— 顶栏据此显示登录按钮')
+    assert.equal(store.isGuest, false)
     assert.equal(store.isLoggedIn, false)
+    assert.equal(visitorCalls, 0, '退出后不应自动再建一个游客身份')
   } finally {
     restore()
   }
 })
 
-test('logout：清空 userInfo 后才重新 init', async () => {
+test('logout：必须保持 initialized=true，否则路由守卫会立刻再 init 出游客', async () => {
   const store = freshStore()
   store.userInfo = REGISTERED
+  store.initialized = true
 
-  const seen = []
+  let visitorCalls = 0
   const restore = stubApi({
-    getUserInfo: async () => {
-      seen.push(JSON.stringify(store.userInfo))
-      return { success: true, data: GUEST }
+    visitorLogin: async () => {
+      visitorCalls += 1
+      return { success: true }
     },
-    visitorLogin: async () => ({ success: true }),
+    getUserInfo: async () => ({ success: true, data: GUEST }),
   })
   try {
     await store.logout()
-    // 第一次 getUserInfo 针对的是清空后的状态
-    assert.equal(seen[0], '{}')
+
+    assert.equal(store.initialized, true, '置回 false 会让下一次导航重新 init，退出就白做了')
+    assert.equal(store.initPromise, null, '应清空进行中的初始化，让「退出后主动登录」能再初始化')
+
+    // 路由守卫的写法：if (!initialized) await init()
+    if (!store.initialized) await store.init()
+    assert.equal(visitorCalls, 0, '守卫不应重新建立游客')
+  } finally {
+    restore()
+  }
+})
+
+test('logout：游客退出后同样进入无身份状态', async () => {
+  const store = freshStore()
+  store.userInfo = { ...GUEST }
+  setAccessToken('guest-a')
+  setRefreshToken('guest-r')
+
+  const restore = stubApi({ visitorLogin: async () => ({ success: true }) })
+  try {
+    await store.logout()
+
+    assert.equal(store.userId, null)
+    assert.equal(store.isGuest, false)
+    assert.equal(getRefreshToken(), null)
+  } finally {
+    restore()
+  }
+})
+
+test('logout：清空登录弹窗状态（退出后不该还留着弹窗）', async () => {
+  const store = freshStore()
+  store.userInfo = REGISTERED
+  store.openLoginModal()
+
+  const restore = stubApi({ visitorLogin: async () => ({ success: true }) })
+  try {
+    assert.equal(store.loginModalOpen, true)
+    await store.logout()
+    assert.equal(store.loginModalOpen, false)
   } finally {
     restore()
   }

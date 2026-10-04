@@ -107,9 +107,21 @@
             </div>
           </div>
 
+          <!-- 无身份：Apple ID 列表走 JWT 保护的 /toolApi/getAppleIds，
+               照常请求只会拿到 401 并显示「加载失败」，不如直接给出登录引导。
+               刻意**不复用** .error-container —— 那是危险色面板，
+               「还没登录」不是错误，用红色会误导用户以为出故障了。 -->
+          <div v-if="!hasIdentity" class="identity-container">
+            <p class="identity-title">{{ AUTH.needIdentityTitle }}</p>
+            <p class="identity-hint">{{ AUTH.needIdentityHint }}</p>
+            <button class="u-btn-primary" type="button" @click="userStore.openLoginModal()">
+              {{ AUTH.loginCta }}
+            </button>
+          </div>
+
           <!-- 加载状态：区块级加载态走共享类 .u-loading-block + .u-spinner，
                原先自绘的渐变圆环与三点跳动动效不属于规范动效，已删除 -->
-          <div v-if="loading" class="u-loading-block" role="status">
+          <div v-else-if="loading" class="u-loading-block" role="status">
             <span class="u-spinner" aria-hidden="true"></span>
             <p class="loading-text">正在加载苹果ID列表</p>
           </div>
@@ -183,13 +195,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
+import { useUserStore } from '@/stores/user'
 import AppleIdCard from '@/components/AppleIdCard.vue'
+import { AUTH } from '@/constants/index.js'
 
 const toolStore = useToolStore()
+const userStore = useUserStore()
 // loading / error 统一由 store 提供：原先组件内的 error 永远不会被赋值
 // （store 的 fetchAppleIds 吞掉异常并返回 false，组件的 catch 收不到），
 // 导致失败时只显示空态、重试按钮不可达。
 const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs(toolStore)
+
+/** 列表走 JWT 保护的接口，无身份时不发请求，改为给出登录引导 */
+const hasIdentity = computed(() => Boolean(userStore.userId))
 
 const showGuide = ref(false)
 
@@ -200,8 +218,9 @@ const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || [])
 // 获取苹果ID列表（重试按钮复用同一入口）
 const fetchAppleIds = () => toolStore.fetchAppleIds()
 
-// 组件挂载时获取数据
+// 组件挂载时获取数据（无身份时跳过，避免一个必然 401 的请求）
 onMounted(() => {
+  if (!hasIdentity.value) return
   fetchAppleIds()
 })
 </script>
@@ -541,6 +560,32 @@ onMounted(() => {
 }
 
 /* .error-container 里的重试按钮就是 .u-btn-primary，组件内不再复写 */
+
+/* ── 「还没有身份」的引导面板 ────────────────────────────────
+ * 与错误面板同构，但用中性表面而非危险色：这不是故障，
+ * 只是需要用户先登录（或刷新页面拿一个游客身份）。 */
+.identity-container {
+  padding: calc(var(--section-gap) * 0.4) var(--card-padding);
+  text-align: center;
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.identity-title {
+  margin: 0 0 calc(var(--space-unit));
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.identity-hint {
+  max-width: 52ch;
+  margin: 0 auto calc(var(--space-unit) * 2);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
 
 /* ── 数据源区块 ───────────────────────────────────────────────
  * 区块是「装卡片的容器」，所以用面板档令牌：

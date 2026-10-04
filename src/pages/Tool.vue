@@ -83,7 +83,14 @@
             @toggle-favorite="handleToggleFavorite"
           />
           <!-- 加载 / 错误 / 空态：加载走共享的 .u-loading-block，另两态共用同一块占位 -->
-          <div v-if="toolsLoading" class="u-loading-block" role="status">
+          <div v-if="!hasIdentity" class="empty-note">
+            <p class="empty-title">{{ AUTH.needIdentityTitle }}</p>
+            <p class="empty-hint">{{ AUTH.needIdentityHint }}</p>
+            <button type="button" class="u-btn-primary" @click="userStore.openLoginModal()">
+              {{ AUTH.loginCta }}
+            </button>
+          </div>
+          <div v-else-if="toolsLoading" class="u-loading-block" role="status">
             <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
             <span>{{ TOOL_PAGE.loading }}</span>
           </div>
@@ -105,15 +112,27 @@ import { storeToRefs } from 'pinia'
 import ToolCard from '@/components/ToolCard.vue'
 import { useToolStore } from '@/stores/tool'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useUserStore } from '@/stores/user'
 import { useOpenTool } from '@/hooks/useOpenTool'
 import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
-import { PAGES, TOOL_PAGE } from '@/constants/index.js'
+import { AUTH, PAGES, TOOL_PAGE } from '@/constants/index.js'
 
 const toolStore = useToolStore()
 const favoriteStore = useFavoriteStore()
+const userStore = useUserStore()
 const { toolData, activeCategory, toolsLoading, toolsError } = storeToRefs(toolStore)
 const { openTool } = useOpenTool()
+
+/**
+ * 工具列表来自 JWT 保护的 `/toolApi/getTools`，因此**必须先有身份**。
+ *
+ * 正常访问时用户总会有身份（新访客由 App.vue 的 init 自动建游客）；
+ * 只有「刚退出登录 / 退出游客、还没登录」这一种情况例外。
+ * 那时不能照常发请求 —— 401 会让页面显示「工具加载失败：token已失效或已过期」，
+ * 用户看到的是一个坏掉的页面而不是一条该走的路。
+ */
+const hasIdentity = computed(() => Boolean(userStore.userId))
 
 const searchQuery = ref('')
 const showFavorites = ref(false)
@@ -190,6 +209,7 @@ const handleToggleFavorite = async (tool) => {
 }
 
 onMounted(() => {
+  if (!hasIdentity.value) return
   toolStore.init()
   // 收藏与工具列表并行取；失败不影响工具网格
   favoriteStore.load()
@@ -458,6 +478,19 @@ onMounted(() => {
   background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
+}
+
+/* 「需要一个身份」这一态的排版：标题 + 说明 + 按钮 */
+.empty-title {
+  margin: 0 0 calc(var(--space-unit));
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+.empty-hint {
+  max-width: 52ch;
+  margin: 0 auto calc(var(--space-unit) * 2);
+  line-height: var(--leading-body);
 }
 
 .empty-note--error {

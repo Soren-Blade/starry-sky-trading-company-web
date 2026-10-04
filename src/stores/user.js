@@ -191,15 +191,39 @@ export const useUserStore = defineStore('user', {
             }
         },
 
-        /** 退出登录：清理凭据与状态，并回到游客身份 */
+        /**
+         * 退出登录 / 退出游客身份。
+         *
+         * 退出后进入**无身份**状态（顶栏显示「登录 / 注册」按钮），
+         * 而不是立刻又建一个游客。
+         *
+         * 为什么不能再 `await this.init()`：init 会走 visitorLogin 立刻拿到一个新的
+         * 游客身份，于是 `userInfo.id` 马上又有值 —— 用户点「退出」之后看到的还是
+         * 一张头像（只是昵称变了），既没有退出反馈，也永远等不到登录按钮。
+         *
+         * 两点必须留意：
+         *   1. `initialized` 保持 true。路由守卫的写法是
+         *      `if (!initialized) await init()`，置回 false 会在下一次导航时
+         *      重新 init 出游客，退出同样白做。
+         *   2. `initPromise` 清空，让「退出后主动登录」这条路径能正常再初始化。
+         *
+         * 无身份状态下 JWT 保护的读接口会 401，此时 request 层**不会**触发
+         * 「登录态失效」回调（它只在「本来持有会话」时才触发），
+         * 因此不会出现跳转首页的意外。需要身份的页面各自给出登录引导。
+         */
         async logout() {
+            const wasGuest = this.isGuest
+
             clearTokens()
             this.userInfo = {}
-            this.initialized = false
             this.loginModalOpen = false
-            notify.success('已退出登录')
-            // 退出后重新以游客身份初始化，保证卡密等需登录功能给出正确提示
-            await this.init()
+            this.initPromise = null
+            // 关键：**不**置回 false，见上方说明
+            this.initialized = true
+            // 退出后没有身份，任何「进行中的初始化」都不该再往里写 userInfo
+            this.initializing = false
+
+            notify.success(wasGuest ? '已退出游客身份' : '已退出登录')
         },
 
         /**

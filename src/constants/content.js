@@ -295,7 +295,13 @@ export const CATEGORY_PAGE = {
   countLabel: (n) => `${n} 件商品`,
 }
 
-/** 登录弹窗补充文案 */
+/**
+ * 登录弹窗与身份文案
+ *
+ * `guest*` 一组是**游客态**的文案。游客是这个应用的默认身份（后端按 IP 自动建档，
+ * 好让需要鉴权的只读接口能跑），因此顶栏必须如实地把「你是谁」告诉用户，
+ * 而不是把他当成未登录 —— 否则用户既看不到自己的头像，也找不到退出的入口。
+ */
 export const AUTH = {
   rememberMe: '记住我',
   rememberHint: '勾选后关掉浏览器再打开仍是登录态，有效期 7 天；不勾选则只在本次浏览器会话内有效。',
@@ -312,6 +318,21 @@ export const AUTH = {
   contactIntro: '以下方式都可以找到我们：',
   agreePrefix: '我同意',
   and: '和',
+
+  loginCta: '登录 / 注册',
+  guestBadge: '游客',
+  /** 游客身份的说明。必须与真实能力一致：游客只能浏览公开内容 */
+  guestNote: '当前是游客身份，仅能浏览公开内容。登录 / 注册后可下单、管理卡密与收藏。',
+  guestSince: '游客身份创建于',
+  registeredSince: '注册于',
+  guestLogout: '退出游客身份',
+  logout: '退出登录',
+  /** 退出后落回无身份状态时的提示 */
+  loggedOutGuest: '已退出游客身份',
+  loggedOut: '已退出登录',
+  /** 需要身份才能看的页面（工具 / 共享 Apple ID）在无身份时的引导 */
+  needIdentityTitle: '登录后即可查看',
+  needIdentityHint: '这部分内容需要身份才能读取。可以直接登录 / 注册，或刷新页面获取一个游客身份。',
 }
 
 /** 工具页 */

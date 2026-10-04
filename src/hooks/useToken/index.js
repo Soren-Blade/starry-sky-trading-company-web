@@ -26,16 +26,35 @@ const REMEMBER_KEY = 'SSTC_REMEMBER_ME'
 /** 上次成功登录用的账号标识（用户名 / 邮箱 / 手机号），仅在勾选「记住我」时保存 */
 const IDENTIFIER_KEY = 'SSTC_LAST_IDENTIFIER'
 
-function safeGet(storage, key) {
+/**
+ * 读取本地存储。
+ *
+ * 存储对象本身必须在 **try 内部**取：`localStorage` 这个标识符有两种情况会直接抛错 ——
+ *   1. 环境里根本没有它（Node / SSR / 组件渲染测试）；
+ *   2. 浏览器禁用了存储（隐私模式、第三方 Cookie 被拦）时，**访问 `window.localStorage`
+ *      本身就抛 SecurityError**，而不是等到调用它的方法才抛。
+ * 因此不能写成 `safeGet(localStorage, key)` 那种形式 —— 那样 `localStorage` 的求值在 try 之外。
+ *
+ * 这个区别是在把 token 读取提到组件 setup（LoginModal 读「记住我」偏好）之后才暴露的：
+ * 渲染测试直接报 `ReferenceError: localStorage is not defined`。
+ *
+ * @param {'localStorage'|'sessionStorage'} name
+ * @param {string} key
+ * @returns {string|null}
+ */
+function readStorage(name, key) {
     try {
-        return storage.getItem(key)
+        return globalThis[name]?.getItem(key) ?? null
     } catch {
         return null
     }
 }
 
-function safeSet(storage, key, value) {
+/** 写入本地存储（值为空时删除该键）。同上，存储对象在 try 内取；不可写时静默降级。 */
+function writeStorage(name, key, value) {
     try {
+        const storage = globalThis[name]
+        if (!storage) return
         if (value) storage.setItem(key, value)
         else storage.removeItem(key)
     } catch {
@@ -44,15 +63,15 @@ function safeSet(storage, key, value) {
 }
 
 export function getAccessToken() {
-    return safeGet(localStorage, ACCESS_KEY)
+    return readStorage('localStorage', ACCESS_KEY)
 }
 
 export function setAccessToken(token) {
-    safeSet(localStorage, ACCESS_KEY, token)
+    writeStorage('localStorage', ACCESS_KEY, token)
 }
 
 export function getRefreshToken() {
-    return safeGet(sessionStorage, REFRESH_KEY) || safeGet(localStorage, REFRESH_KEY)
+    return readStorage('sessionStorage', REFRESH_KEY) || readStorage('localStorage', REFRESH_KEY)
 }
 
 /**
@@ -72,28 +91,28 @@ export function getRefreshToken() {
  * 旧版遗留的那份同样会被同步成新 token，而不是留下一个失效值。
  */
 export function setRefreshToken(token) {
-    const remembered = Boolean(safeGet(localStorage, REFRESH_KEY))
+    const remembered = Boolean(readStorage('localStorage', REFRESH_KEY))
 
-    safeSet(sessionStorage, REFRESH_KEY, token)
-    safeSet(localStorage, REFRESH_KEY, remembered ? token : '')
+    writeStorage('sessionStorage', REFRESH_KEY, token)
+    writeStorage('localStorage', REFRESH_KEY, remembered ? token : '')
 }
 
 export function clearTokens() {
-    safeSet(localStorage, ACCESS_KEY, '')
-    safeSet(localStorage, REFRESH_KEY, '')
-    safeSet(sessionStorage, REFRESH_KEY, '')
+    writeStorage('localStorage', ACCESS_KEY, '')
+    writeStorage('localStorage', REFRESH_KEY, '')
+    writeStorage('sessionStorage', REFRESH_KEY, '')
 }
 
 // ── 记住我 ────────────────────────────────────────────────────────
 
 /** 复选框的默认值：上次是否勾选过 */
 export function getRememberPreference() {
-    return safeGet(localStorage, REMEMBER_KEY) === '1'
+    return readStorage('localStorage', REMEMBER_KEY) === '1'
 }
 
 /** 上次成功登录用的账号标识（没勾「记住我」时为空串） */
 export function getRememberedIdentifier() {
-    return safeGet(localStorage, IDENTIFIER_KEY) || ''
+    return readStorage('localStorage', IDENTIFIER_KEY) || ''
 }
 
 /**
@@ -111,22 +130,22 @@ export function getRememberedIdentifier() {
 export function applyRememberMe(remember, identifier) {
     const rememberIt = Boolean(remember)
 
-    safeSet(localStorage, REMEMBER_KEY, rememberIt ? '1' : '')
+    writeStorage('localStorage', REMEMBER_KEY, rememberIt ? '1' : '')
 
     // 没勾就顺手忘掉上次记住的账号 —— 否则用户取消勾选后仍会被带出账号，
     // 看上去像「取消没生效」
     if (rememberIt) {
         const value = typeof identifier === 'string' ? identifier.trim() : ''
-        safeSet(localStorage, IDENTIFIER_KEY, value)
+        writeStorage('localStorage', IDENTIFIER_KEY, value)
     } else {
-        safeSet(localStorage, IDENTIFIER_KEY, '')
+        writeStorage('localStorage', IDENTIFIER_KEY, '')
     }
 
     // 登录失败时这里拿不到 token，只记偏好、不动存储
-    const token = safeGet(sessionStorage, REFRESH_KEY) || safeGet(localStorage, REFRESH_KEY)
+    const token = readStorage('sessionStorage', REFRESH_KEY) || readStorage('localStorage', REFRESH_KEY)
     if (!token) return
 
-    safeSet(localStorage, REFRESH_KEY, rememberIt ? token : '')
+    writeStorage('localStorage', REFRESH_KEY, rememberIt ? token : '')
 }
 
 /**

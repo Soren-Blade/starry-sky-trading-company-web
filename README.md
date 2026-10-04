@@ -225,16 +225,26 @@ app.mount('#app')
 | --- | --- |
 | `isLoggedIn` | 是否已登录（`user_type === 'registered'`；游客也有 token，但不算登录） |
 | `isGuest` / `userId` | 是否游客 / 当前用户 id |
+| **`hasIdentity`**（顶栏的本地 computed，非 store 成员） | **是否有身份（游客也算）**，取 `Boolean(userId)`。顶栏据此二选一：有身份 → 头像 + 用户面板；无身份 → 「登录 / 注册」按钮。它与 `isLoggedIn` 是**两个不同的问题**，混用会让游客既看不到自己的头像、也找不到退出入口（这正是改造前的状态） |
 | `userInfo` | 当前用户信息（来自 `GET /userApi/getUserInfo`） |
 | `loginModalOpen` | 登录/注册弹窗开关。**放 store 是因为拉起登录的入口不止顶栏一个** —— 下单、加购、收藏、路由守卫都要能拉起它；弹窗本体因此在 `App.vue` |
 | `init()` | 身份初始化：本地有双 token 就拉用户信息，否则调 `POST /user/visitorLogin`。并发调用共享同一个 Promise |
 | `getUserInfo()` | 拉取并合并到 `userInfo` |
-| `login(payload)` / `register(payload)` | 账号登录 / 注册，返回 `{ success, message }` |
+| `login(payload)` / `register(payload)` | 账号登录 / 注册，返回 `{ success, message }`。`payload.rememberMe` 是纯客户端偏好，会被解构掉、不发给服务端 |
 | `updateProfile(patch)` | 修改昵称/头像/性别/生日，成功后把回读结果并入 `userInfo` |
 | `uploadAvatar(image)` | 上传头像（data URL），成功后把服务端回写的相对路径并入 `userInfo` |
 | `avatarUrl` (getter) | **可直接放进 `<img src>`** 的头像地址。`avatar_url` 可能是外部 URL，也可能是后端托管的 `/uploads/...` 相对路径 —— 后者经 `resolveAssetUrl` 补上 API 基地址（否则生产环境会打到 web 域名上 404） |
 | `openLoginModal(reason)` / `closeLoginModal()` | 打开（可带一句提示）/ 关闭登录弹窗 |
-| `logout()` | 清空状态并把 localStorage 中的 token 写为空串，随后重新以游客身份初始化 |
+| `logout()` | 清空凭据与身份，进入**无身份**状态（顶栏显示登录按钮）。**刻意不再重新以游客身份初始化** —— 那会立刻拿到一个新游客，用户点「退出」后看到的还是一张头像，永远等不到登录按钮。两个必须留意的点：`initialized` 保持 `true`（置回 `false` 会让路由守卫在下一次导航时重新 init 出游客），`initPromise` 清空（让「退出后主动登录」能再初始化） |
+
+> **退出之后会怎样**：进入无身份状态后，公开页面（首页 / 分类 / 热门 / 关于 / 法务）照常可用；
+> 需要身份的两处会给出登录引导而不是报错 —— 工具页与共享 Apple ID 页的列表都来自 JWT 保护的
+> `/toolApi/*`，无身份时不发请求，直接显示「登录后即可查看」。
+>
+> **刷新页面会重新分配一个游客身份**：游客是这个应用对「没有任何 token 的访客」的默认处理
+> （否则 `/toolApi` 这类只读接口无法工作）。也就是说「退出游客」在**当前这次页面会话内**有效，
+> 刷新会回到默认的游客态。要让它跨刷新保留，需要额外持久化一个「已主动退出」标记，
+> 那会牺牲新访客的开箱体验，因此没有做。
 
 ### `shop.js` — `useShopStore`
 
@@ -815,7 +825,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 534 个用例）
+npm test             # 单元测试（node:test，共 563 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -925,10 +935,11 @@ test/
 ├── renderComponents.test.js          # 组件渲染（SSR）：全部 .vue 渲染、无警告/插值事故
 ├── renderKamiData.test.js            # 注入真实 store 数据渲染：逐格断言 8 列内容与状态分支
 ├── renderTradeData.test.js           # 注入 store 数据渲染交易页：购物车/收藏/个人中心/法务的具体内容
+├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 534 个用例。
+共 563 个用例。
 
 ### 主题契约测试
 
@@ -1075,6 +1086,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | --- | --- |
 | ✅ | 登录/注册不可用：已补 `api/ask/user.js` 的 `login`/`register` 与 `stores/user.js` 的对应 action，注册分支不再为空 |
 | ✅ | 游客被当作已登录导致登录入口消失：`isLoggedIn` 改为 getter，仅 `user_type === 'registered'` 成立 |
+| ✅ | **反过来的一刀切：游客被当作「未登录」** —— 顶栏只给一颗「登录 / 注册」按钮，于是游客看不到自己的头像与昵称，也**没有任何退出入口**（用户菜单整块是注册用户专属）。已把顶栏的判断从 `isLoggedIn` 改为 `hasIdentity`（游客也算有身份）：游客显示头像（带「游」标记）+ 用户面板（游客徽标、身份说明、登录入口、退出游客身份）；退出后进入无身份状态并显示登录按钮。另修掉 `logout()` 里「退出后立刻又建一个游客」的死循环 —— 详见 `docs/changes/2026-10-05-游客身份呈现与退出.md` |
 | ✅ | token 从未被保存：响应头统一为 `Access-Token`/`Refresh-Token`，Authorization 改由请求拦截器动态注入 |
 | ✅ | 401 刷新链路不通：刷新请求补 `Bearer `、promise 保证 settle、失败触发 `setAuthExpiredHandler` |
 | ✅ | 商品/分类不加载：`App.vue` 调用 `shopStore.init()`；store 改为数组承接 |
@@ -1116,7 +1128,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（534 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（563 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

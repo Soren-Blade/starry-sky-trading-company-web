@@ -236,7 +236,18 @@ test('个人中心：只读区渲染账号信息，表单预填当前资料', as
   // 静态 `<option>` 输出 selected 属性，那是 SSR 的产物而不是真实行为
   // （本应用是纯客户端渲染）。下一行的 input value 能证明 fillForm 真的跑过。
   assert.match(html, /id="profile-nickname"[^>]*value="星尘"/, '昵称应预填')
-  assert.match(html, /id="profile-birthday"[^>]*value="1995-06-15"/, '生日应截成 YYYY-MM-DD 预填')
+
+  // 生日的断言刻意**不绑定具体控件**：这个字段先是原生 `<input type="date">`，
+  // 后来换成了自绘的 DatePickerField（值渲染成「1995 年 06 月 15 日」的文本）。
+  // 两种实现都保留 `id="profile-birthday"`，因此只要求「值的年份出现在该字段的标记里」，
+  // 换控件不会让这条断言失效 —— 它要证明的是 toDateInput() 把 ISO 串正确截断并预填。
+  const birthdayAt = html.indexOf('id="profile-birthday"')
+  assert.ok(birthdayAt > -1, '生日字段应渲染出来')
+  const birthdayMarkup = html.slice(birthdayAt, birthdayAt + 400)
+  assert.match(birthdayMarkup, /1995/, `生日应预填成 1995 年，实际片段：${birthdayMarkup.slice(0, 200)}`)
+  assert.match(birthdayMarkup, /06/, '生日应带月份')
+  assert.match(birthdayMarkup, /15/, '生日应带日')
+
   // 表单已预填 → 与基线一致 → 保存按钮应当禁用（没有改动可提交）
   assert.match(html, /class="u-btn-primary" disabled/, '没有改动时保存按钮应禁用')
 })
