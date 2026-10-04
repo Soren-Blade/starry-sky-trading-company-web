@@ -770,15 +770,23 @@ watch(
  * （只读展示场景，README 的标记契约里写了 `aria-readonly`），把 absolute
  * 写死进去会毁掉它的第二种用法。
  *
- * width 用 100% 而不是 --datepicker-width：面板的横向位置由触发器决定，
- * 宽度跟随字段是表单里最自然的形态；--datepicker-width 仍是兜底上限。
+ * 宽度**交给套件**的 `.u-datepicker { width: var(--datepicker-width) }`。
+ *
+ * 这里曾经写的是 `width: 100%`，理由是「宽度跟随字段最自然、--datepicker-width
+ * 仍是兜底上限」——那个推理是反的：两条规则**特异性相同**（都是单类），而组件样式
+ * 注入在套件之后，于是 `width: 100%` 是**覆盖**而不是被约束，`--datepicker-width`
+ * 完全失效（真正的上限是 `max-width: 100%`）。
+ * 后果在 Profile 上很直观：字段是两列栅格里的一格，1440px 下宽 551px，
+ * 面板就被拉成 551px —— 7 列摊平、每个日期格只有 36px 却分散在 76px 的列里、
+ * `« › »` 被推到面板两端，规范设计的 280px 紧凑日历彻底走形。
  */
 .datepicker-panel {
   position: absolute;
   top: calc(100% + var(--dropdown-offset));
   left: 0;
   z-index: 20;
-  width: 100%;
+  /* max-width 保留：字段比设计宽度更窄时（窄列 / ≤575px 档）面板仍收得住，
+     单元格随列宽等比缩小 —— 这条才是「上限」。 */
   max-width: 100%;
   /* 圆角靠裁剪表达，不必回样式分片给 .u-datepicker 补 overflow */
   overflow: hidden;
