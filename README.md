@@ -227,11 +227,15 @@ app.mount('#app')
 
 ### 卡片
 
+所有卡片共用 `global.css` 里的 `.ui-card` 外壳（背景 / 圆角 / 阴影 / hover 位移），
+以及 `.ui-card-media`（媒体区固定比例 + 图片裁切 + hover 放大）。
+卡片组件本身只保留各自特有的内部布局。
+
 | 组件 | 说明 |
 | --- | --- |
-| `ProductCard.vue` | 商品卡：图片/占位、标签、评分、价格、收藏、快速预览、加购（后两者仅打印日志） |
-| `ToolCard.vue` | 工具卡：封面或 icon、分类、描述、收藏按钮（`collection_count` 展示）、"打开工具" |
-| `AppleIdCard.vue` | Apple ID 账号卡：账号、密码（可复制）、状态、地区、更新时间 |
+| `ProductCard.vue` | 商品卡：图片、标题、价格、浏览/销量/库存三个指标、购买按钮。整卡可点击（`role="link"` + Enter/Space） |
+| `ToolCard.vue` | 工具卡：封面或 icon、分类、描述、收藏按钮、"打开工具" |
+| `AppleIdCard.vue` | Apple ID 账号卡：账号、密码（可显隐、可复制）、状态、地区、更新时间 |
 
 ### 卡密与 Apple ID
 
@@ -414,9 +418,12 @@ Vercel 静态站点，构建命令为 Vite 默认流程，产物目录 `dist`（
 | ✅ | `useSimpleTimeFormatter` 的 `getRelativeTime()` 恒返回空串（插件改为静态注册） |
 | ✅ | 季度计算 `Math.ceil(month()/3)+1` 偏差 1（已改为 `Math.floor(month()/3)+1`） |
 | ✅ | `router/index.js` 无鉴权守卫（已加 `beforeEach`，`/user/kami` 标记 `requiresAuth`，登录后按 `redirect` 回跳） |
+| ✅ | 卡片外壳被复制到 3 个组件（已收敛为 `global.css` 的 `.ui-card` / `.ui-card-media`） |
+| ✅ | `ProductCard.vue` 静态容器带 `role="button"` 但无键盘处理（已改为 `role="link"` + Enter/Space） |
+| ✅ | `ProductCard.vue` 模板直接取 `product.stock_status.message` 会崩溃（已改为 computed 兜底） |
 | ⬜ | `Navbar` 的个人中心 / 我的收藏 / 订单管理仍为 TODO |
-| ⬜ | 卡片组件仍各自实现外壳；`ProductCard.vue` 静态容器带 `role="button"` 但无键盘处理 |
-| ⬜ | `ProductCard.vue` 仍硬编码商品图标/标签/评分等展示字段（后端未提供对应字段） |
+| ⬜ | 商品「标签 / 评分」等字段后端未提供，卡片已不再渲染，若需要需先扩展 `products` 表 |
+| ⬜ | 无 lint / 无测试运行器（`package.json` 仍沿用旧包名 `easy-payment-interface-test`） |
 
 **工程卫生**
 
