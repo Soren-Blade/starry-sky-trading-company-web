@@ -9,9 +9,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test --test-isolation=none test/*.test.js",
-    "lint": "eslint src test vite.config.js",
-    "lint:fix": "eslint src test vite.config.js --fix",
-    "check": "npm run lint && npm test"
+    "lint": "eslint src test scripts vite.config.js",
+    "lint:fix": "eslint src test scripts vite.config.js --fix",
+    "check": "npm run lint && npm test",
+    "verify:dev": "node scripts/verify-dev.cjs",
+    "verify": "npm run lint && npm test && npm run build && npm run verify:dev"
   },
   "engines": {
     "node": ">=18"

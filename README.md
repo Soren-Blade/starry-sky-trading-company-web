@@ -43,6 +43,8 @@ starry-sky-trading-company-web/
 ├── package.json
 ├── public/
 │   └── favicon.ico
+├── scripts/
+│   └── verify-dev.cjs            # 真实运行验证：dev server / 代理转发 / HMR 推送
 ├── README.md                     # ← 本文件
 └── src/
     ├── main.js                   # 应用入口
@@ -410,12 +412,33 @@ npm run dev        # http://localhost:5173
 其他脚本：
 
 ```bash
-npm run build      # 产出 dist/
-npm run preview    # 预览构建产物
-npm run lint       # ESLint 检查
-npm test           # 单元测试（node:test，共 350 个用例）
-npm run check      # lint + test
+npm run build        # 产出 dist/
+npm run preview      # 预览构建产物
+npm run lint         # ESLint 检查（src + test + scripts）
+npm test             # 单元测试（node:test，共 350 个用例）
+npm run check        # lint + test
+npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
+npm run verify       # lint + test + build + verify:dev
 ```
+
+### `npm run verify:dev` —— 唯一的「真实运行」验证
+
+`test/*.test.js` 直接加载 `src/` 源码，**无法证明** dev server 能起来、代理能转发、
+HMR 能推送。`scripts/verify-dev.cjs` 补上这一段：
+
+| 断言 | 说明 |
+| --- | --- |
+| vite dev 启动并就绪 | 真实拉起 `vite`，等 `ready in` 输出 |
+| `/` 返回 200 且含 HMR 客户端与入口 | 确认 dev 中间件正常 |
+| 代理 `/health` 转发到后端 | 真实后端，返回后端 JSON |
+| 代理 `POST /user/visitorLogin` 返回 token | 确认带响应头的接口也能透传 |
+| HMR WebSocket 握手 | **必须带子协议 `vite-hmr`**，否则握手失败 |
+| 改源文件后收到变更推送 | 实测收到 `custom:file-changed` 且指向该文件 |
+| 未触发整页 reload | HMR 应为局部热更新 |
+| 探测后源文件已还原 | 脚本自身保证不留残留 |
+
+> 会真实启动 vite（5173）与后端（8080），结束时自动关闭并清理临时目录。
+> 在受限沙箱中需一次性放宽权限（esbuild 要派生子进程）。
 
 **路径别名**：`@` → `./src`，在 `vite.config.js` 的 `resolve.alias` 生效；`jsconfig.json` 里有一份对应配置供编辑器解析。
 
@@ -478,6 +501,11 @@ test/
 ├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
 ├── stores.tool.test.js               # 工具 store：toolData 形状、分类产出、Apple ID 双来源
 ├── stores.kami.test.js               # 卡密 store：用户切换重置、筛选拼装、分页合并
+├── useKamiDisplay.test.js            # 卡密展示层纯函数（状态文案/配色、工具名、日期）
+├── useKamiActivation.test.js         # 卡密激活流程（校验、服务端失败、异常、activating 复位）
+├── designTokens.test.js              # 设计令牌卫生（无死令牌、断点白名单、无重复媒体查询）
+├── constSafety.test.js               # 静态检查「对 const 绑定赋值」
+├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
