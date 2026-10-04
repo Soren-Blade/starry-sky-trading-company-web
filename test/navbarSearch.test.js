@@ -141,6 +141,29 @@ test('展开宽度按图标格换算，不掺 --input-height / --space-unit 的�
   )
 })
 
+test('点击不会被 focusin 抢先展开再收起（点一下只走 click 的切换）', () => {
+  // 浏览器在 mousedown 就给按钮焦点，focusin 冒泡到 wrapper 时 click 还没发生。
+  // 若 focusin 无条件置 true，点一下会变成「mousedown 展开 → click 收起」，
+  // 净效果是闪一下又没了。因此 focusin 必须忽略来自放大镜按钮自身的焦点。
+  const at = NAVBAR_SOURCE.indexOf('const handleSearchFocusIn = (event) => {')
+  assert.ok(at > -1)
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
+
+  assert.match(body, /event\.target === searchToggleRef\.value/, '必须忽略按钮自身触发的 focusin')
+  assert.match(body, /searchOpen\.value = true/, '来自输入框的焦点仍要展开')
+
+  // 按钮上要有 ref，否则上面那句永远不成立
+  assert.match(NAVBAR_SOURCE, /ref="searchToggleRef"/)
+})
+
+test('聚焦环整体淡入：box-shadow 必须与 border-color 一起过渡', () => {
+  // 只过渡 border-color 的话外发光会瞬间出现、描边在淡入，
+  // 一个硬切一个渐变，看起来就是一次莫名的闪动。
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
+  assert.match(body, /box-shadow var\(--transition-interactive\)/)
+})
+
 test('收起态的 gap 必须归零，否则字形不居中（每个主题都整整溢出一个 gap）', () => {
   // 收起时框的内容盒 = 图标格 − 2×描边（38/42/38/40/30），
   // 而子元素占宽 = 输入框(收缩到 0) + gap + 按钮(图标格 − 2×描边)。
@@ -271,11 +294,15 @@ test('点击图标切换展开与收起', () => {
   assert.match(body, /searchBarRef\.value\?\.focus\(\)/, '展开时把光标送进输入框')
 })
 
-test('键盘 Tab 进来也展开（收起态宽度为 0，不展开就是往看不见的框里打字）', () => {
+test('键盘路径也能展开：Tab 到输入框时展开（收起态宽度为 0，不展开就是往看不见的框里打字）', () => {
   assert.match(NAVBAR_SOURCE, /@focusin="handleSearchFocusIn"/)
-  const at = NAVBAR_SOURCE.indexOf('const handleSearchFocusIn = () => {')
+  const at = NAVBAR_SOURCE.indexOf('const handleSearchFocusIn = (event) => {')
   const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
   assert.match(body, /searchOpen\.value = true/)
+
+  // 放大镜按钮是展开/收起的开关，键盘聚焦它本身不应该展开
+  // （否则 Tab 一下就把框撑开，且会与 click 的切换打架）
+  assert.match(body, /if \(event\.target === searchToggleRef\.value\) return/)
 })
 
 test('焦点只在这块**之内**移动时不收起（否则「再点一次收起」会被 focusout 抢先关掉）', () => {

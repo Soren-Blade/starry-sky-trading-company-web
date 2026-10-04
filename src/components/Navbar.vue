@@ -61,6 +61,7 @@
             />
 
             <button
+              ref="searchToggleRef"
               type="button"
               class="u-icon-btn search-toggle"
               :aria-label="PRODUCT_GRID.searchLabel"
@@ -353,6 +354,7 @@ const handleSearchSubmit = () => {
 
 const searchRoot = ref(null)
 const searchBarRef = ref(null)
+const searchToggleRef = ref(null)
 const searchOpen = ref(false)
 
 const closeSearch = () => {
@@ -373,8 +375,23 @@ const toggleSearch = async () => {
   searchBarRef.value?.focus()
 }
 
-/** 键盘 Tab 进到这块里（输入框或按钮）：展开。鼠标悬停不参与 */
-const handleSearchFocusIn = () => {
+/**
+ * 焦点进入这块时展开（键盘 Tab 过来用）。
+ *
+ * ⚠ **必须忽略来自放大镜按钮自身的 focusin。**
+ *
+ * 浏览器在 mousedown 时就会把焦点给按钮，而 focusin 冒泡到 wrapper 时
+ * click 还没发生。若这里无条件置 true，点一下就会变成：
+ *   mousedown → focusin → 展开
+ *   click     → toggleSearch 看到已展开 → 收起
+ * 净效果是「闪一下又没了」，看起来像有个莫名的动画。
+ *
+ * 忽略按钮自身之后：点按钮只走 click 的切换逻辑，展开时再把光标送进输入框；
+ * 键盘用户第一下 Tab 落在按钮上（它本来就是展开/收起的开关），
+ * 第二下 Tab 进输入框时展开，回车/Space 也仍然有效。
+ */
+const handleSearchFocusIn = (event) => {
+  if (event.target === searchToggleRef.value) return
   searchOpen.value = true
 }
 
@@ -639,7 +656,11 @@ onUnmounted(() => {
   transition:
     width var(--transition-surface),
     color var(--transition-interactive),
-    border-color var(--transition-interactive);
+    border-color var(--transition-interactive),
+    /* box-shadow 必须一起过渡：聚焦环是「描边变色 + 外发光」两件事，
+     * 只过渡 border-color 的话，外发光会**瞬间出现**而描边在淡入 ——
+     * 一个渐变一个硬切，看起来就是一次莫名的闪动。 */
+    box-shadow var(--transition-interactive);
 }
 
 .navbar-search.search-open .search-field {
