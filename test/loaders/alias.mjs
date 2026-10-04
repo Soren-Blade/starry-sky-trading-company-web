@@ -59,14 +59,16 @@ const ANTD_STUB_URL = 'sstc-test:ant-design-vue-stub'
 
 /** 在 base 上尝试补扩展名与目录 index，返回存在的文件路径 */
 function resolveLoose(base) {
+  // base 可能带查询串（测试用它做缓存破坏），先剥掉再判断文件是否存在
+  const clean = base.replace(/\?.*$/, '')
   const candidates = [
-    base,
-    `${base}.js`,
-    `${base}.mjs`,
-    `${base}.cjs`,
-    `${base}.json`,
-    resolvePath(base, 'index.js'),
-    resolvePath(base, 'index.mjs'),
+    clean,
+    `${clean}.js`,
+    `${clean}.mjs`,
+    `${clean}.cjs`,
+    `${clean}.json`,
+    resolvePath(clean, 'index.js'),
+    resolvePath(clean, 'index.mjs'),
   ]
 
   for (const candidate of candidates) {
@@ -75,11 +77,26 @@ function resolveLoose(base) {
   return null
 }
 
+/**
+ * 把解析到的文件路径转成 URL，并**保留原 specifier 上的查询串**。
+ *
+ * 为什么重要：测试用 `loadAppModule('/api/request.js?t=...')` 强制重新加载模块
+ * （该模块有模块级状态，如单飞 promise）。若解析时把 `?t=` 丢掉，
+ * Node 认为与先前导入是同一模块而直接返回缓存，强制重载失效 ——
+ * 症状是「单独跑通过、整套跑失败」。这里以「路径 + 查询串」为缓存键，
+ * 既复用同一份源码文件，又能拿到全新实例。
+ */
+function fileUrlFor(targetPath, specifier) {
+  const baseUrl = pathToFileURL(targetPath).href
+  const qIndex = specifier.indexOf('?')
+  return qIndex === -1 ? baseUrl : `${baseUrl}${specifier.slice(qIndex)}`
+}
+
 function resolveRelative(specifier, parentURL) {
   if (!parentURL?.startsWith('file:')) return null
   const base = resolvePath(dirname(fileURLToPath(parentURL)), specifier)
   const found = resolveLoose(base)
-  return found ? pathToFileURL(found).href : null
+  return found ? fileUrlFor(found, specifier) : null
 }
 
 registerHooks({
@@ -92,7 +109,7 @@ registerHooks({
     // 1) @/ 别名
     if (specifier.startsWith('@/')) {
       const found = resolveLoose(resolvePath(SRC_DIR, specifier.slice(2)))
-      if (found) return { url: pathToFileURL(found).href, shortCircuit: true }
+      if (found) return { url: fileUrlFor(found, specifier), shortCircuit: true }
     }
 
     // 2) 省略扩展名 / 目录 index 的相对导入
