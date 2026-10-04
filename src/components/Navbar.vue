@@ -23,15 +23,16 @@
         <!--
           搜索收成一个图标：**点击**展开（悬停不再展开），展开后光标直接落进输入框。
 
-          展开后放大镜**内嵌在搜索框左侧** —— 它是同一个按钮，只是从
-          「独立的图标按钮」变成「输入框的左前缀」：外层 .search-field 负责
-          输入框的底、描边、圆角与聚焦态，按钮自身的按钮外观在展开时被抹掉。
+          **放大镜在展开前后停在原地** —— 这是靠两点做到的：
+            1. 浮层 .search-field 是 `right: 0`，右边缘永远与图标格对齐；
+            2. 放大镜是浮层的**最后一个**子元素，于是它右贴浮层右缘，
+               浮层向**左**生长时它一动不动。
+          （此前放大镜是浮层的第一个子元素，浮层一展开它就被推到左边去了。）
+
+          展开后放大镜内嵌在输入框右侧，同时抹掉它自身的按钮外观 ——
+          外层 .search-field 负责输入框的底、描边、圆角与聚焦态。
           因此视觉上始终只有一个放大镜，也没有单独的「搜索」提交按钮
           （回车 / 手机键盘的搜索键都能提交）。
-
-          展开状态由 JS 驱动而不是 :hover / :focus-within 伪类：
-          一是悬停展开本身已经去掉，二是图标按钮需要 aria-expanded
-          如实反映状态，而伪类做不到。
 
           收起有三种途径：再点一次图标、按 Escape、焦点离开整块（点了别处）。
           提交之后也会收起 —— 结果已经在页面上了，留着只是占地方。
@@ -44,21 +45,11 @@
           @focusout="handleSearchFocusOut"
           @keydown.esc="closeSearch"
         >
-          <!-- 这一格始终占住图标宽度：展开的浮层是绝对定位的，
+          <!-- 这一格始终占住图标宽度：浮层是绝对定位的，
                没有它的话展开瞬间后面几个图标会整体跳一下 -->
           <span class="search-slot" aria-hidden="true"></span>
 
           <div class="search-field">
-            <button
-              type="button"
-              class="u-icon-btn search-toggle"
-              :aria-label="PRODUCT_GRID.searchLabel"
-              :aria-expanded="searchOpen"
-              @click="toggleSearch"
-            >
-              <span aria-hidden="true">🔍</span>
-            </button>
-
             <SearchBar
               ref="searchBarRef"
               v-model="keyword"
@@ -68,6 +59,16 @@
               :show-submit="false"
               @submit="handleSearchSubmit"
             />
+
+            <button
+              type="button"
+              class="u-icon-btn search-toggle"
+              :aria-label="PRODUCT_GRID.searchLabel"
+              :aria-expanded="searchOpen"
+              @click="toggleSearch"
+            >
+              <span aria-hidden="true">🔍</span>
+            </button>
           </div>
         </div>
 
@@ -577,20 +578,23 @@ onUnmounted(() => {
   transform: scaleX(1);
 }
 
-/* ── 搜索：收起是一个图标，展开后图标内嵌进搜索框 ──────────────
+/* ── 搜索：收起是一个图标，展开后输入框从图标**左侧**长出来 ──────
  *
  * 结构：.navbar-search（定位锚点）
  *         ├─ .search-slot   占位格，始终占住图标宽度
- *         └─ .search-field  绝对定位的「框」，内部是 [放大镜按钮][输入框]
+ *         └─ .search-field  绝对定位的「框」，内部是 [输入框][放大镜按钮]
  *
  * 为什么这样搭：
- *   - 展开的框是**绝对定位**的，不参与文档流。否则 1024px 与手机宽度下
+ *   - 浮层是**绝对定位**的，不参与文档流。否则 1024px 与手机宽度下
  *     Logo + 菜单 + 五组图标的总宽会超视口，把主导航挤变形。
- *     它 `right: 0` 与占位格右缘对齐、向左生长，因此永远不会顶出屏幕右边。
- *   - 收起时 .search-field 只有图标那么宽、且底与描边透明 ——
+ *   - 它 `right: 0` 与占位格右缘对齐、向**左**生长，因此永远不会顶出屏幕右边；
+ *     而放大镜是框的最后一个子元素，右贴框缘 ——
+ *     于是**展开前后放大镜一动不动**，长出来的是它左边的输入区。
+ *   - 收起时框只有图标那么宽、且底与描边透明 ——
  *     看上去就是操作区里一个普通的图标按钮。
- *   - 展开时同一个盒子长出输入框的底、描边、圆角与聚焦态，
- *     里面的放大镜原位不动，于是「按钮内嵌进了搜索框」。
+ *
+ * ⚠ 展开态**不能**给框加右内边距（或右边框），那会把放大镜往左推，
+ *   「位置不变」就破了。左侧的呼吸感由输入框自己的 padding 负责。
  */
 .navbar-search {
   position: relative;
@@ -622,7 +626,6 @@ onUnmounted(() => {
   transition:
     width var(--transition-surface),
     height var(--transition-surface),
-    padding-left var(--transition-surface),
     background-color var(--transition-interactive),
     border-color var(--transition-interactive),
     box-shadow var(--transition-interactive);
@@ -630,12 +633,10 @@ onUnmounted(() => {
 
 .navbar-search.search-open .search-field {
   /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
-   * 同时不超过视口 —— 窄屏上也不会把框顶出屏幕。 */
-  width: min(calc(var(--input-height) * 9), calc(var(--space-unit) * 30), calc(100vw - var(--space-unit) * 6));
+   * 同时不超过视口 —— 窄屏上也不会把框顶出屏幕。
+   * 刻意**不**掺 var(--space-unit) * n：那一档在紧凑主题下会把框压得很窄。 */
+  width: min(calc(var(--input-height) * 8), calc(100vw - var(--space-unit) * 6));
   height: var(--input-height);
-  /* 让内嵌的放大镜与描边之间留出呼吸：图标按钮自身的内边距会把字形推到
-   * 紧贴左边框的位置，看着像被挤住了 */
-  padding-left: calc(var(--space-unit) * 0.5);
   background: var(--bg-surface-2);
   border-color: var(--stroke-color);
   /* 它是浮在顶栏之上的一层，给一点抬升阴影；
@@ -655,10 +656,10 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* 展开后按钮外观让位给外框：它此时是输入框的左前缀，不是一个独立按钮。
+/* 展开后按钮外观让位给外框：它此时是输入框右端的图标，不是一个独立按钮。
  * 选择器比 .u-icon-btn / .u-icon-btn:hover 都更具体，因此能盖住。
  *
- * 颜色用次级文字色而不是强调色：它此刻是输入框的装饰前缀，
+ * 颜色用次级文字色而不是强调色：它此刻是输入框的装饰图标，
  * 跟着占位文字同一层级才像「一个搜索框」；强调色会让它看着又像一个按钮，
  * 与右侧真正可点的图标抢注意力。悬停时才提亮，提示它仍可点击收起。 */
 .navbar-search.search-open .search-toggle {

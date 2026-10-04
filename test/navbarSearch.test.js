@@ -119,19 +119,55 @@ test('占位格始终占住图标宽度，展开瞬间后面的图标不会跳',
   assert.match(NAVBAR_SOURCE, /<span class="search-slot" aria-hidden="true"><\/span>/)
 })
 
-test('放大镜内嵌进搜索框：同一个按钮，展开后落在输入框左侧', () => {
+test('放大镜内嵌进搜索框：同一个按钮，展开后落在输入框右端', () => {
   // 按钮与输入框必须在同一个 .search-field 里 —— 分开就变成
   // 「按钮 + 旁边另一个框」，而不是「内嵌」
   const fieldAt = NAVBAR_SOURCE.indexOf('<div class="search-field">')
-  const fieldEnd = NAVBAR_SOURCE.indexOf('</div>', NAVBAR_SOURCE.indexOf('<SearchBar', fieldAt))
+  const fieldEnd = NAVBAR_SOURCE.indexOf('</div>', NAVBAR_SOURCE.indexOf('</button>', fieldAt))
   const inner = NAVBAR_SOURCE.slice(fieldAt, fieldEnd)
 
   assert.ok(fieldAt > -1)
   assert.match(inner, /class="u-icon-btn search-toggle"/, '放大镜按钮应在 .search-field 内')
   assert.match(inner, /<SearchBar/, '输入框也应在同一个 .search-field 内')
   assert.ok(
-    inner.indexOf('search-toggle') < inner.indexOf('<SearchBar'),
-    '放大镜要排输入框之前 —— 它在左侧当前缀'
+    inner.indexOf('<SearchBar') < inner.indexOf('search-toggle'),
+    '放大镜要排在输入框**之后** —— 它是框的最后一个子元素，右贴框缘才不会随展开移动'
+  )
+})
+
+test('**展开前后放大镜位置不变**', () => {
+  // 位置不变的机制是两条，缺一不可：
+  //   1. 框右缘固定（right: 0），向左生长
+  //   2. 放大镜是框的最后一个子元素，贴住固定不动的右缘
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
+  assert.match(body, /right: 0/, '框的右缘必须固定')
+
+  // 展开态不能有任何会把按钮往左推的右侧留白
+  const openRule = NAVBAR_SOURCE.slice(
+    NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
+  )
+  const openBody = openRule.slice(0, openRule.indexOf('}'))
+  assert.equal(
+    /padding-right/.test(openBody),
+    false,
+    '展开态加右内边距会把放大镜往左推，「位置不变」就破了'
+  )
+  assert.equal(/border-right-width/.test(openBody), false)
+})
+
+test('展开宽度不掺 --space-unit 倍数（紧凑主题下会把框压得很窄）', () => {
+  const openRule = NAVBAR_SOURCE.slice(
+    NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
+  )
+  const widthLine = openRule.slice(0, openRule.indexOf('}')).match(/width: min\([^;]*;/)?.[0]
+
+  assert.ok(widthLine, '展开宽度应是一句 min(...)')
+  assert.match(widthLine, /var\(--input-height\)/)
+  assert.equal(
+    /var\(--space-unit\) \* \d+\)?,/.test(widthLine),
+    false,
+    '--space-unit 在「技术单色」主题是 4px，掺进来会让框在紧凑主题下过窄'
   )
 })
 

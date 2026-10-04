@@ -428,7 +428,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索（点击展开，图标内嵌进框）**、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦，放大镜**展开前后停在原地**：浮层右缘固定、向左生长，放大镜是浮层的最后一个子元素）、`ThemeSwitcher`、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
@@ -898,7 +898,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 650 个用例）
+npm test             # 单元测试（node:test，共 652 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -991,7 +991,7 @@ test/
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
 ├── useToken.test.js                  # token 双存储读写与响应头提取
-├── navbarSearch.test.js              # 顶栏搜索：点击展开（悬停不展开）、图标内嵌进框、焦点只在本块内移动时不收起
+├── navbarSearch.test.js              # 顶栏搜索：点击展开（悬停不展开）、**展开前后放大镜位置不变**、焦点只在本块内移动时不收起
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
@@ -1016,7 +1016,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 650 个用例。
+共 652 个用例。
 
 ### 主题契约测试
 
@@ -1205,7 +1205,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（650 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（652 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。
