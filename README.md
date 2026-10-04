@@ -392,8 +392,12 @@ npm test
 
 ```
 test/
-└── utils.test.js      # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
+├── utils.test.js                     # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
+├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
+└── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ```
+
+共 51 个用例。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。
@@ -402,16 +406,19 @@ test/
 派生常驻子进程，在受限环境下报 `spawn EPERM`；`node:test` 零依赖且可直接运行，故改用后者
 （vitest / jsdom / @vue/test-utils 已卸载）。
 
-**当前覆盖范围有限**：仅 `src/utils`。以下尚未覆盖，原因是它们导入 Vue 或需要 DOM：
+**注意**：测试直接以原生 ESM 加载 `src/` 源码，因此源码中的依赖导入必须写完整路径
+（例如 `dayjs/plugin/utc.js` 而不是 `dayjs/plugin/utc`）—— Vite 能解析无后缀形式，Node 不能。
 
-| 未覆盖 | 说明 |
+**尚未覆盖**：
+
+| 未覆盖 | 原因与说明 |
 | --- | --- |
-| `stores/*` | 需要 Pinia 容器（`setActivePinia`）；已移除的 `imports.test.js` 就因为没有它而无法做任何断言 |
-| `hooks/useClass`、`hooks/useSimpleTimeFormatter` | 前者是纯函数可直接测；后者依赖 dayjs，也接近纯函数 |
+| `stores/*` | 需要 Pinia 容器（`setActivePinia`） |
+| `hooks/useToken`、`useBodyScroll` | 依赖 localStorage / DOM |
+| `hooks/useEmoji` | 纯函数，可直接测（下一步候选） |
 | 组件渲染 | 需要 `@vue/test-utils` + jsdom |
 
-若要提升覆盖，优先补 `hooks/useClass/index.js` 与 `useSimpleTimeFormatter` —— 它们接近纯函数，
-无需引入新依赖即可测。
+若要提升覆盖，优先补 `hooks/useEmoji/index.js` —— 它是纯函数，无需引入新依赖。
 
 ---
 
