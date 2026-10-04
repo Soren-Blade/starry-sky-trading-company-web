@@ -1,7 +1,17 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-content">
-      <button class="close-btn" @click="$emit('close')" aria-label="Close modal">
+    <div
+      ref="modalRef"
+      class="modal-content"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-modal-title"
+    >
+      <h2 id="login-modal-title" class="visually-hidden">
+        {{ activeTab === 'login' ? '登录' : '注册' }}
+      </h2>
+
+      <button class="close-btn" @click="close" aria-label="关闭弹窗">
         ✕
       </button>
 
@@ -158,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useUserStore } from '@/stores/user';
 import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll';
 
@@ -166,19 +176,67 @@ const emit = defineEmits(['close', 'login-success']);
 const userStore = useUserStore();
 const { disableScroll, enableScroll } = useBodyScroll();
 
+const modalRef = ref(null);
 const activeTab = ref('login');
 const errorMessage = ref('');
 const successMessage = ref('');
 const loading = ref(false);
 
-// 模态框打开时禁用滚动
-onMounted(() => {
+/** 打开弹窗前拥有焦点的元素，关闭后归还焦点 */
+let previouslyFocused = null;
+
+/** 关闭弹窗：统一走这里，保证滚动与焦点都被恢复 */
+const close = () => {
+  emit('close');
+};
+
+/** 把 Tab 焦点限制在弹窗内 —— 弹窗是模态的，焦点不应跑到背后的页面 */
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
+    return;
+  }
+
+  if (event.key !== 'Tab' || !modalRef.value) return;
+
+  const focusable = modalRef.value.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  const list = Array.from(focusable).filter((el) => !el.disabled && el.offsetParent !== null);
+  if (list.length === 0) return;
+
+  const first = list[0];
+  const last = list[list.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+onMounted(async () => {
   disableScroll();
+
+  // 记录来源焦点，并把焦点移入弹窗（首个输入框）
+  previouslyFocused = document.activeElement;
+  await nextTick();
+  const firstInput = modalRef.value?.querySelector('input, button');
+  firstInput?.focus();
+
+  document.addEventListener('keydown', handleKeydown);
 });
 
-// 模态框关闭时恢复滚动
 onUnmounted(() => {
   enableScroll();
+  document.removeEventListener('keydown', handleKeydown);
+  // 归还焦点，避免焦点落回 body 导致键盘用户失去位置
+  if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+    previouslyFocused.focus();
+  }
 });
 
 const loginForm = ref({

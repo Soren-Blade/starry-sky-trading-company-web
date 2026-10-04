@@ -310,6 +310,19 @@ img {
   outline-offset: 2px;
 }
 
+/* 仅供屏幕阅读器阅读（跨组件复用，替代各处自建的同名类） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ────────────────────────────────────────────────────────────
  * 共享区块头 / 页面头
  * 由 SectionHeader.vue 与 PageHeader.vue 使用，替代原先被复制
