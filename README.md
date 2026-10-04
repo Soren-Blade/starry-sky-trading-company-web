@@ -437,14 +437,37 @@ npm test
 
 ```
 test/
+├── loaders/
+│   └── alias.mjs                     # 解析钩子：@/ 别名、省略扩展名、antd 测试替身
+├── setup.js                          # 公共设施：Storage 桩、浏览器桩、import.meta.env
 ├── utils.test.js                     # src/utils 的纯函数（格式化、样式、响应式、防抖节流）
 ├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
+├── useToken.test.js                  # token 双存储读写与响应头提取
+├── stores.user.test.js               # 用户 store：getters / init / login / register / logout
+├── stores.shop.test.js               # 商品分类 store：数组形状不变量、loading 复位
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 74 个用例。
+共 121 个用例。
+
+### 测试基础设施（无新增依赖）
+
+要让 `node:test` 直接跑 `src/` 里的源码，需要补掉三处 Vite 专有特性：
+
+| 特性 | 方案 |
+| --- | --- |
+| `@/` 别名、省略扩展名的导入（`./ask/user`、`@/hooks/useToken`） | `test/loaders/alias.mjs` 用 `module.registerHooks` 注册同步 resolve 钩子 |
+| `import.meta.env` | `test/setup.js` 的 load 钩子注入最小实现（源码无需为可测试而改写） |
+| `ant-design-vue` 加载期访问 `document` | 在解析层替换为测试替身（记录 `message.*` 调用后返回空函数） |
+
+> **关于 ant-design-vue**：最初是给 `document` 打桩，然后一路补
+> `getElementsByTagName` → `createElementNS` → `createComment` → `getComputedStyle`……
+> 每补一个就冒出下一个。那是**用桩去追一个 UI 库**，而不是测试被测逻辑。
+> 改为替身后，`setup.js` 的浏览器桩可以缩到极小（只剩 axios 平台探测需要的
+> `window.location`），也不再产生测试结束后的异步拒绝。
+> 若将来确需渲染组件，应引入 jsdom，而不是继续往桩里加 API。
 
 ### 接口契约测试
 
@@ -462,7 +485,8 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 > 注意：它只校验「路径与方法」，**不校验请求体/响应字段的形状**。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
-在受限环境下会被拒绝，同进程运行即可。
+在受限环境下会被拒绝，同进程运行即可。**代价是所有测试文件共享进程，因此新测试不得依赖执行顺序** ——
+各文件都自行安装所需的全局桩。
 
 **为什么不用 vitest**：曾安装并尝试，但 vitest 加载配置文件与 vite 一样要经 esbuild
 派生常驻子进程，在受限环境下报 `spawn EPERM`；`node:test` 零依赖且可直接运行，故改用后者
@@ -475,11 +499,12 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 
 | 未覆盖 | 原因与说明 |
 | --- | --- |
-| `stores/*` | 需要 Pinia 容器（`setActivePinia`） |
-| `hooks/useToken`、`useBodyScroll` | 依赖 localStorage / DOM |
-| 组件渲染 | 需要 `@vue/test-utils` + jsdom |
+| 组件渲染 | 需要 jsdom（或在 CI 里用真实浏览器）；当前加载器不渲染 SFC |
+| `stores/tool.js`、`stores/kami.js` | 依赖的接口形状更多，值得下一步补 |
+| `hooks/useBodyScroll` | 依赖 DOM 尺寸测量 |
 
-纯函数模块（`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`）已全部覆盖。
+已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、
+`stores/user`、`stores/shop`，以及跨仓库的接口契约。
 
 ---
 
