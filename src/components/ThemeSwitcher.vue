@@ -148,17 +148,21 @@
                   @input="onRangeInput(field.key, $event)"
                 />
 
-                <select
+                <!--
+                  换掉原生 <select>：它的弹出层由操作系统绘制，五套风格一套都管不到。
+                  `:id` 保留原值 —— SelectField 会把它落到触发器（button）上，
+                  上方 `<label :for>` 的关联因此照旧成立（label 可标注 button）。
+                  `$event` 是 SelectField 抛出的**值**（不是 DOM 事件），
+                  所以不再有 `.target.value` 这一跳，setCustom 的入参没有变化。
+                -->
+                <SelectField
                   v-else-if="field.type === 'select'"
                   :id="fieldId(field.key)"
-                  class="u-input"
-                  :value="themeStore.custom[field.key]"
-                  @change="themeStore.setCustom(field.key, $event.target.value)"
-                >
-                  <option v-for="option in field.options" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                  </option>
-                </select>
+                  :model-value="themeStore.custom[field.key]"
+                  :options="field.options"
+                  :aria-label="field.label"
+                  @update:model-value="themeStore.setCustom(field.key, $event)"
+                />
 
                 <div v-else-if="field.type === 'color'" class="theme-color-row">
                   <input
@@ -216,7 +220,9 @@
  *
  * 结构全部复用 global.css 的共享类（.u-icon-btn / .u-modal* / .u-tag / .u-input /
  * .u-btn-secondary），因此弹窗宽度、内边距、圆角、阴影、关闭按钮尺寸、
- * 底部按钮组间距都随五套风格自动变化（480~520px、24~28px、16~24px…）。
+ * 底部按钮组间距都随五套风格自动变化（480~520px、24~28px、16~24px…）；
+ * 其中 select 类型的字段交给 SelectField，由它消费 ui-kit-form.css §1 的下拉样式
+ * （原生 select 的弹出层由系统绘制，换风格时不会跟着变）。
  *
  * 无障碍遵循项目既有的模态约定：role=dialog + aria-modal + 隐藏标题、
  * Escape 关闭、Tab 焦点陷阱、焦点归还、滚动锁定。
@@ -226,6 +232,7 @@ import { useThemeStore } from '@/stores/theme'
 import { CUSTOM_FIELDS } from '@/theme/presets.js'
 import { THEME_PANEL } from '@/constants/content.js'
 import { useModalA11y } from '@/hooks/useModalA11y'
+import SelectField from '@/components/SelectField.vue'
 
 const themeStore = useThemeStore()
 

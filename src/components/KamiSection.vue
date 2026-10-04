@@ -23,12 +23,14 @@
             </div>
 
             <div class="activate-form">
-              <select v-model="selectedToolId" class="u-input" aria-label="选择工具">
-                <option value="">请选择工具</option>
-                <option v-for="tool in toolOptions" :key="tool.value" :value="tool.value">
-                  {{ tool.label }}
-                </option>
-              </select>
+              <!-- 工具列表来自后端且可能很长（一屏放不下几十项），因此开启搜索 -->
+              <SelectField
+                v-model="selectedToolId"
+                :options="toolOptions"
+                placeholder="请选择工具"
+                searchable
+                aria-label="选择工具"
+              />
               <input
                 ref="activateInput"
                 v-model="activateCode"
@@ -86,17 +88,22 @@
                 <span v-else aria-hidden="true">🔄</span>
                 {{ loading ? '刷新中...' : '刷新' }}
               </button>
-              <select
+              <!--
+                v-model 与 @update:model-value 的**书写顺序有意义**：编译器把两者合并成
+                同一个属性上的处理函数数组，按书写顺序执行。v-model 先赋值，reload(1)
+                读到的才是刚选中的状态 —— 反过来会拿着上一个状态去请求。
+                改状态即刷新（等价于原来的 @change），数据来源与请求参数都没动。
+
+                选项仍来自 useKamiDisplay 的 STATUS_FILTER_OPTIONS，与状态文案/配色同源，
+                避免两处各写一份。
+              -->
+              <SelectField
                 v-model="statusFilter"
-                class="status-select u-input"
+                class="status-select"
+                :options="statusFilterOptions"
                 aria-label="按状态筛选"
-                @change="reload(1)"
-              >
-                <!-- 选项来自 useKamiDisplay，与状态文案/配色同源，避免两处各写一份 -->
-                <option v-for="opt in statusFilterOptions" :key="opt.value" :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </select>
+                @update:model-value="reload(1)"
+              />
             </div>
           </div>
 
@@ -196,6 +203,7 @@ import { useKamiStore } from '@/stores/kami'
 import { useToolStore } from '@/stores/tool'
 import api from '@/api/index'
 import { useKamiActivation } from '@/hooks/useKamiActivation'
+import SelectField from '@/components/SelectField.vue'
 import {
   KAMI_TABLE_COLUMNS,
   STATUS_FILTER_OPTIONS,
@@ -466,11 +474,11 @@ watch(
 /* .refresh-btn 复用 .u-btn-secondary（描边/悬停/disabled 由共享类给全），
    加载中把 🔄 换成共享加载圈，因此组件内不再需要旋转动画 */
 
-/* 状态筛选与 .u-input 同源，只把宽度交还给工具栏（桌面按内容宽，
-   窄屏在媒体查询里撑满） */
+/* 状态筛选：类名落在 SelectField 的**根容器**上（父组件的 scoped 样式会一并作用于
+   子组件根节点），只把宽度交还给工具栏（桌面按内容宽，窄屏在媒体查询里撑满）。
+   控件本身的描边/圆角/高度由 .u-select-trigger 复用输入框令牌，不在这里复写 */
 .status-select {
   width: auto;
-  cursor: pointer;
 }
 
 /* 错误横幅夹在工具条与表格之间：横向贴满，只在上下留出与表格的间距 */

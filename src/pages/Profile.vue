@@ -140,12 +140,21 @@
             </div>
 
             <div class="u-field">
-              <label class="u-field-label" for="profile-birthday">{{ TRADE.profileBirthday }}</label>
-              <input
+              <span class="u-field-label">{{ TRADE.profileBirthday }}</span>
+              <!--
+                原生 `<input type="date">` 的弹出日历由操作系统绘制，五套主题都管不到；
+                这里换成消费 ui-kit-data.css §11 的 DatePickerField。
+                值仍是 `YYYY-MM-DD` 或空串，与原生控件的 value 同构，
+                因此 toDateInput()、isDirty 与 `patch.birthday = … || null` 都不必改。
+                面板内「未来日期」不可选（沿用脚本里已有的 today 常量作为 max）；
+                不再用 `<label for>` 关联 —— label 的 for 只对可标记元素
+                （input / select / textarea）生效，指向 button 是无效关联，
+                所以可访问名改由组件的 ariaLabel 提供。
+              -->
+              <DatePickerField
                 id="profile-birthday"
                 v-model="form.birthday"
-                class="u-input"
-                type="date"
+                :aria-label="TRADE.profileBirthday"
                 :max="today"
                 :disabled="!userStore.isLoggedIn"
               />
@@ -201,6 +210,8 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
+// 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
+import DatePickerField from '@/components/DatePickerField.vue'
 
 const userStore = useUserStore()
 const { userInfo, nickname } = storeToRefs(userStore)
