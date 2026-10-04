@@ -5,6 +5,7 @@ import {
     getRefreshToken,
     clearTokens,
 } from '@/hooks/useToken'
+import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import api from '@/api/index'
 
 /**
@@ -43,7 +44,15 @@ export const useUserStore = defineStore('user', {
         /** 当前用户 id（游客也有） */
         userId: (state) => state.userInfo?.id ?? null,
         nickname: (state) => state.userInfo?.nickname || '',
-        avatarUrl: (state) => state.userInfo?.avatar_url || '',
+        /**
+         * 头像地址（**可直接用于 `<img src>`**）。
+         *
+         * `userInfo.avatar_url` 里存的可能是外部 URL，也可能是后端自己托载的
+         * 相对路径 `/uploads/avatars/...`。后者在生产环境必须补上 API 基地址，
+         * 否则会打到 web 域名上 404。解析统一收在这个 getter 里，
+         * 让所有消费方（顶栏、个人中心）拿到的都是可直接加载的地址。
+         */
+        avatarUrl: (state) => resolveAssetUrl(state.userInfo?.avatar_url || ''),
     },
 
     actions: {
@@ -195,6 +204,33 @@ export const useUserStore = defineStore('user', {
                 return { success: false, message: result?.message || '资料更新失败' }
             } catch (error) {
                 return { success: false, message: error.message || '资料更新失败，请稍后重试' }
+            }
+        },
+
+        /**
+         * 上传头像
+         *
+         * `image` 是前端在 canvas 上缩放后编码的 data URL（见 useAvatarUpload）。
+         * 成功后服务端返回的 `avatar_url` 是**相对路径**，这里直接写回 userInfo；
+         * 需要绝对地址时由 `avatarUrl` getter 解析。
+         *
+         * @param {string} image
+         * @returns {Promise<{success: boolean, message: string, avatarUrl?: string}>}
+         */
+        async uploadAvatar(image) {
+            try {
+                const result = await api.uploadAvatar({ image })
+                if (result?.success && result.data?.avatar_url) {
+                    this.userInfo = { ...this.userInfo, avatar_url: result.data.avatar_url }
+                    return {
+                        success: true,
+                        message: result.message || '头像已更新',
+                        avatarUrl: result.data.avatar_url,
+                    }
+                }
+                return { success: false, message: result?.message || '头像上传失败' }
+            } catch (error) {
+                return { success: false, message: error.message || '头像上传失败，请稍后重试' }
             }
         },
     },

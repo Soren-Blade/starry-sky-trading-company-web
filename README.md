@@ -54,7 +54,7 @@ starry-sky-trading-company-web/
     │   ├── request.js            # axios 实例：注入 token、解析响应、401 刷新重试
     │   └── ask/                  # 按后端路由分组的接口封装
     │       ├── user.js           # /user
-    │       ├── userApi.js        # /userApi（用户信息、资料修改）
+    │       ├── userApi.js        # /userApi（用户信息、资料修改、头像上传）
     │       ├── shop.js           # /shop 与 /class（含商品详情）
     │       ├── toolApi.js        # /toolApi
     │       ├── kami.js           # /kamiApi
@@ -75,6 +75,7 @@ starry-sky-trading-company-web/
     │   ├── useRefreshToken/index.js      # 刷新 token（再导出 @/api/request 的单飞实现）
     │   ├── useBodyScroll/useBodyScroll.js# 弹窗打开时锁定页面滚动（含引用计数）
     │   ├── useModalA11y/index.js         # 模态无障碍：Escape / 焦点陷阱 / 焦点归还 / 滚动锁定
+    │   ├── useAvatarUpload/index.js      # 头像：选图 → canvas 缩到 256px → 编码 data URL
     │   ├── useProductActions/index.js    # 商品的看详情 / 加购 / 立即下单（含未登录拦截）
     │   ├── useOpenTool/index.js          # 打开外部工具（地址校验、弹窗拦截、复用已开窗口）
     │   ├── useClass/index.js             # 按 class 字段对工具分组
@@ -99,7 +100,10 @@ starry-sky-trading-company-web/
     │   ├── compose.js            # 预设 + 单项自定义 → 最终令牌表（纯函数）
     │   └── color.js              # 解析/压暗/转 rgba/缩放 px 的小工具
     └── utils/
-        └── index.js              # throttle / domUtils.smoothScroll / formatUtils
+        ├── index.js              # throttle / domUtils.smoothScroll / formatUtils
+        ├── assetUrl.js           # 后端静态资源地址解析（/uploads/... → API 基地址）
+        ├── avatarFile.js         # 头像纯函数：文件校验、等比缩放尺寸、data URL 体积
+        └── clipboard.js          # 剪贴板写入（两级策略 + 失败提示）
 ```
 
 ---
@@ -199,7 +203,7 @@ app.mount('#app')
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
 | `Tool.vue` | 工具页：分类 tab + 搜索框 + "已收藏"筛选 + `ToolCard` 网格 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
-| `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、头像、性别、生日） |
+| `Profile.vue` | 左只读账号信息 / 右可编辑资料（头像上传、头像地址、昵称、性别、生日） |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板 + 联系备注 + 状态时间线 + 动作行 |
@@ -227,6 +231,8 @@ app.mount('#app')
 | `getUserInfo()` | 拉取并合并到 `userInfo` |
 | `login(payload)` / `register(payload)` | 账号登录 / 注册，返回 `{ success, message }` |
 | `updateProfile(patch)` | 修改昵称/头像/性别/生日，成功后把回读结果并入 `userInfo` |
+| `uploadAvatar(image)` | 上传头像（data URL），成功后把服务端回写的相对路径并入 `userInfo` |
+| `avatarUrl` (getter) | **可直接放进 `<img src>`** 的头像地址。`avatar_url` 可能是外部 URL，也可能是后端托管的 `/uploads/...` 相对路径 —— 后者经 `resolveAssetUrl` 补上 API 基地址（否则生产环境会打到 web 域名上 404） |
 | `openLoginModal(reason)` / `closeLoginModal()` | 打开（可带一句提示）/ 关闭登录弹窗 |
 | `logout()` | 清空状态并把 localStorage 中的 token 写为空串，随后重新以游客身份初始化 |
 
@@ -449,7 +455,7 @@ const requests = axios.create({
 | 模块 | 导出 | 对应后端 |
 | --- | --- | --- |
 | `user.js` | `visitorLogin`、`login`、`register` | `POST /user/visitorLogin`、`/user/login`、`/user/register` |
-| `userApi.js` | `getUserInfo`、`updateProfile(patch)` | `GET /userApi/getUserInfo`、`PUT /userApi/profile` |
+| `userApi.js` | `getUserInfo`、`updateProfile(patch)`、`uploadAvatar({image})` | `GET /userApi/getUserInfo`、`PUT /userApi/profile`、`POST /userApi/avatar` |
 | `shop.js` | `getCategories(params)`、`getProducts(params)`、`getProduct(id)` | `/class/getCategories`、`/shop/getProducts`、`/shop/getProduct/:id` |
 | `toolApi.js` | `getTools`、`getToolClasses`、`getTool`、`getAppleIds` | `/toolApi/*` |
 | `kami.js` | `getUserCards(user_id, params)`、`activateCard(data)`、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
@@ -482,6 +488,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useRefreshToken` | `refreshToken()` / `isRefreshToken(config)` | 刷新 token；promise 级去重 |
 | `useBodyScroll` | `disableScroll` / `enableScroll` / `toggle` | 弹窗打开时锁 `body` 滚动，并在 `onUnmounted` 自动恢复 |
 | `useModalA11y` | `modalRef` / `activate` / `deactivate` / `handleKeydown` | 模态无障碍的**唯一实现**（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）。`auto: false` 用于常驻组件，`initialFocus` 支持选择器/元素/函数 |
+| `useAvatarUpload` | `preview` / `previewSize` / `sourceName` / `preparing` / `prepare(file)` / `reset()` | 头像上传的前端流程：校验 → 解码 → **canvas 缩到 256px** → 编码 data URL。纯逻辑部分在 `utils/avatarFile.js`，因此可单测 |
 | `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message? }` |
 | `useOpenTool` | `openTool(tool)` | 打开外部工具：地址校验、弹窗被拦截的提示、复用已开窗口（同一工具点两次不会开出两个标签页） |
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
@@ -729,16 +736,20 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 
 `vite.config.js` 已为 `/user/login`、`/user/register`、`/user/visitorLogin`、`/user/refreshToken`、
 `/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/cartApi`、`/orderApi`、`/favoriteApi`、
-`/userBackend`、`/health` 配置了开发代理，
+`/uploads`、`/userBackend`、`/health` 配置了开发代理，
 默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
 由于 `/user` 下既有后端接口也有前端路由（`/user/kami`、`/user/orders` 是页面），代理只列了四个具体接口
 而非 `/user` 前缀 —— **新增后端接口时若路径不在上述之内，需要同步在这里加代理规则**，
 否则该接口在 dev 下会 404（打到 dev server 自己，不会转发给后端，而且返回的是 index.html，
 前端拿到一段 HTML 去解析，报的却是「网络错误」，排查方向会被带偏）。
 
-> `npm run verify:dev` 现在会**静态比对**「前端 `src/api/ask/*.js` 里的每条调用路径」
-> 与「`vite.config.js` 的 proxy 键」，并真实请求三个交易前缀确认返回的是 JSON 而不是
-> index.html。忘记加代理规则会被这条断言直接拦下。
+> `/uploads` 这条尤其容易漏：它不是 `request()` 调用而是 `<img src>`，
+> 漏了的表现是「**头像上传成功但图片不显示**」，几乎不会有人联想到代理配置。
+> `npm run verify:dev` 因此单独断言了它。
+
+> `npm run verify:dev` 会**静态比对**「前端 `src/api/ask/*.js` 里的每条调用路径」
+> 与「`vite.config.js` 的 proxy 键」，并真实请求三个交易前缀与 `/uploads` 确认返回的是
+> JSON 而不是 index.html。忘记加代理规则会被这条断言直接拦下。
 
 > 只有「刻意把 `VITE_API_BASE_URL` 设成 `http://localhost:8080`（直连、跨源）」时才需要后端
 > 的 `CORS_ORIGINS` 放行；那份白名单在 server 仓库的 `.env` 里，且支持 `/正则/` 条目以覆盖端口漂移。
@@ -749,9 +760,9 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 469 个用例）
+npm test             # 单元测试（node:test，共 509 个用例）
 npm run check        # lint + test
-npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（16 项）
+npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
 ```
 
@@ -773,6 +784,7 @@ HMR 能推送。`scripts/verify-dev.cjs` 补上这一段：
 | 代理 `POST /user/visitorLogin` 返回 token | 确认带响应头的接口也能透传 |
 | **代理能覆盖全部前端 API 调用路径** | 静态比对 `src/api/ask/*.js` 的每条调用路径与 `vite.config.js` 的 proxy 键（整条匹配或首段匹配） |
 | **三个交易前缀真实转发** | `/cartApi`、`/orderApi`、`/favoriteApi` 经 5173 请求后端，断言返回 JSON 而不是 index.html |
+| **`/uploads` 真实转发** | 用户上传的头像靠它才能在 dev 下显示；漏了的表现是「上传成功但图片不显示」，极难联想到代理配置 |
 | HMR WebSocket 握手 | **必须带子协议 `vite-hmr`**，否则握手失败 |
 | 改源文件后收到变更推送 | 实测收到 `custom:file-changed` 且指向该文件 |
 | 未触发整页 reload | HMR 应为局部热更新 |
@@ -834,6 +846,9 @@ test/
 │   └── alias.mjs                     # 解析钩子：@/ 别名、省略扩展名、antd 测试替身
 ├── setup.js                          # 公共设施：Storage 桩、浏览器桩、import.meta.env
 ├── utils.test.js                     # src/utils 的纯函数（价格/计数格式化、节流、平滑滚动）
+├── assetUrl.test.js                  # 后端静态资源地址解析（dev 同源 / 生产补基地址）
+├── avatarFile.test.js                # 头像纯函数：文件校验、等比缩放、data URL 体积
+├── modalLayering.test.js             # 「点不到」类缺陷守卫：关闭按钮的层叠层级与让位
 ├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
 ├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
@@ -858,7 +873,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 469 个用例。
+共 509 个用例。
 
 ### 主题契约测试
 
@@ -975,14 +990,23 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | 真实浏览器行为 | 本机 `bsk`（BrowserSkill CLI）未安装，无法真实打开页面。CSS 布局、响应式、真实点击/键盘事件、无障碍树都只能靠人工看 |
 | `hooks/useBodyScroll` | 依赖 DOM 尺寸测量 |
 | `hooks/useModalA11y` 的焦点陷阱 | 依赖 `offsetParent` 与真实焦点，SSR 下拿不到 |
+| `hooks/useAvatarUpload` 的 canvas 部分 | 依赖 `Image` / `createImageBitmap` / `canvas.toDataURL`；纯逻辑（校验、缩放尺寸、体积换算）已抽到 `utils/avatarFile.js` 并覆盖 |
 | 由 `onMounted` 取数的页面内容 | SSR 不执行 `onMounted`，`Orders` / `OrderDetail` / `ProductDetail` / `CategoryDetail` 只能断言首屏骨架（见 `renderTradeData.test.js` 末尾） |
 
-已覆盖：`utils`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、`useKamiDisplay`、`useKamiActivation`、
+已覆盖：`utils`、`assetUrl`、`avatarFile`、`modalLayering`、`useClass`、`useSimpleTimeFormatter`、`useEmoji`、`useToken`、`useKamiDisplay`、`useKamiActivation`、
 六个 store（`user` / `shop` / `tool` / `kami` / `cart` / `favorite`），
 带数据的页面渲染（卡密表格逐格、交易页具体内容），以及跨仓库的接口契约。
 
 > 测试基础设施（`test/loaders/alias.mjs`、`test/setup.js`）模拟了 Vite 的解析规则；
 > 若 `vite.config.js` 的 `resolve.alias` 有变动，这里需要同步。
+>
+> **`import.meta.env` 注入的是转发用的 Proxy**（见 `test/setup.js`）。
+> 早先是直接把 `globalThis.__SSTC_TEST_ENV__` 赋给 `import.meta.env`，而只要有代码
+> 把那个全局换成新对象（`setTestEnv()` 与 `request.test.js` 都这么做过），
+> 已经加载的模块就会继续指向旧对象 —— 表现为「单独跑通过、全量跑失败」的顺序依赖。
+> 转发之后 `import.meta.env.VITE_X` 永远读当前值，两种写法都成立。
+> 相应地，**改了环境变量的测试必须还原**（`request.test.js` 的 `freshRequestModule`
+> 就紧跟着 `finally` 还原）。
 
 ---
 
@@ -1037,7 +1061,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（469 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（509 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

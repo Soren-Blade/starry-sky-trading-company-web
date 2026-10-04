@@ -17,7 +17,7 @@
         {{ activeTab === 'login' ? '登录' : '注册' }}
       </h2>
 
-      <button class="u-modal-close" @click="$emit('close')" aria-label="关闭弹窗">
+      <button type="button" class="u-modal-close" @click="$emit('close')" aria-label="关闭弹窗">
         ✕
       </button>
 
@@ -369,6 +369,14 @@ const switchTab = (tab) => {
 /* ── 页签：下划线式，与主题弹窗的胶囊页签区分开 ─────────── */
 .modal-tabs {
   display: flex;
+  /*
+   * 右侧给关闭按钮让位。页签行与 ✕ 处在同一条垂直带上，不让位的话
+   * 「注册」页签会一直铺到弹窗右边缘、压在按钮底下 ——
+   * 即便 ✕ 已经靠 z-index 提到上层（见 global.css 的 .u-modal-close），
+   * 页签的悬停底色与选中下划线仍会紧贴按钮，看上去像是按钮的一部分。
+   * 与 .u-modal-title 的 padding-right 是同一套做法。
+   */
+  padding-right: calc(var(--modal-close-size) + var(--space-unit));
   margin-bottom: calc(var(--space-unit) * 3);
   border-bottom: var(--stroke-width) solid var(--divider);
 }

@@ -62,22 +62,65 @@
           </div>
 
           <div class="u-field">
-            <label class="u-field-label" for="profile-avatar">{{ TRADE.profileAvatar }}</label>
+            <span class="u-field-label">{{ TRADE.profileAvatar }}</span>
+
+            <!--
+              头像上传：选图 → 前端 canvas 缩到 256px → 编码成 data URL → POST /userApi/avatar
+              选完即上传（不额外要求点一次「保存」）：头像与其它资料不同，
+              它本身就是一次独立的写操作，多一步确认只会让人以为没生效。
+            -->
+            <div class="avatar-editor">
+              <span class="u-avatar avatar-preview">
+                <img v-if="avatarShown" :src="avatarShown" :alt="nickname || '用户头像'" />
+                <span v-else aria-hidden="true">👤</span>
+              </span>
+
+              <div class="avatar-actions">
+                <!-- 原生 file input 藏起来，用按钮触发：原生控件在五套风格下无法主题化 -->
+                <input
+                  id="profile-avatar-file"
+                  ref="fileInputRef"
+                  class="visually-hidden"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  :disabled="!userStore.isLoggedIn || uploading || preparing"
+                  @change="handleFileChange"
+                />
+                <label
+                  for="profile-avatar-file"
+                  class="u-btn-secondary avatar-pick"
+                  :class="{ 'avatar-pick--disabled': !userStore.isLoggedIn || uploading || preparing }"
+                >
+                  <span v-if="preparing || uploading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+                  <span>
+                    {{
+                      preparing
+                        ? TRADE.profileAvatarProcessing
+                        : uploading
+                          ? TRADE.profileAvatarUploading
+                          : TRADE.profileAvatarPick
+                    }}
+                  </span>
+                </label>
+
+                <p class="u-field-hint avatar-hint">{{ TRADE.profileAvatarHint }}</p>
+                <p v-if="pickedInfo" class="u-field-hint avatar-hint">{{ pickedInfo }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="u-field">
+            <label class="u-field-label" for="profile-avatar-url">{{ TRADE.profileAvatarUrl }}</label>
             <input
-              id="profile-avatar"
+              id="profile-avatar-url"
               v-model="form.avatar_url"
               class="u-input"
-              type="url"
+              type="text"
               maxlength="500"
               :placeholder="TRADE.profileAvatarPlaceholder"
               :disabled="!userStore.isLoggedIn"
             />
-            <span v-if="avatarPreview" class="profile-avatar-preview">
-              <span class="u-avatar">
-                <img :src="avatarPreview" alt="头像预览" />
-              </span>
-              <span class="u-field-hint">预览</span>
-            </span>
+            <span class="u-field-hint">{{ TRADE.profileAvatarUrlHint }}</span>
           </div>
 
           <div class="profile-grid">
@@ -153,8 +196,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import { useAvatarUpload } from '@/hooks/useAvatarUpload'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
+import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
 
 const userStore = useUserStore()
@@ -162,6 +207,12 @@ const { userInfo, nickname } = storeToRefs(userStore)
 
 const saving = ref(false)
 const errorMessage = ref('')
+
+/** 头像上传：选图 → 缩放 → 提交 */
+const fileInputRef = ref(null)
+const uploading = ref(false)
+const { preview: avatarPreview, previewSize, sourceName, preparing, prepare, reset: resetAvatar } =
+  useAvatarUpload()
 
 const form = ref({
   nickname: '',
@@ -191,6 +242,8 @@ const fillForm = () => {
     birthday: toDateInput(data.birthday),
   }
   baseline.value = { ...form.value }
+  // 已保存的资料成为新基线，本地预览（未提交的选图）随之作废
+  resetAvatar()
   errorMessage.value = ''
 }
 
@@ -202,10 +255,28 @@ const isDirty = computed(
     form.value.birthday !== baseline.value.birthday
 )
 
-/** 头像预览：只在看起来是 http(s) 链接时显示，避免把非法输入塞进 <img src> */
-const avatarPreview = computed(() => {
-  const url = form.value.avatar_url.trim()
-  return /^https?:\/\//i.test(url) ? url : ''
+/**
+ * 头像显示什么。
+ *
+ * 优先级：刚选中的预览 > 表单里的地址 > 已保存的头像。
+ * 三个来源都要经 `resolveAssetUrl` —— 表单里可能是 `/uploads/...` 相对路径
+ * （上传成功后服务端回写的就是它），直接塞进 `<img src>` 在生产环境会 404。
+ */
+const avatarShown = computed(() => {
+  if (avatarPreview.value) return avatarPreview.value
+
+  const raw = form.value.avatar_url.trim()
+  if (!raw) return ''
+  // 外部地址与站内相对路径都放行；唯独不放行 javascript: / data:text 这类
+  if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return ''
+  return resolveAssetUrl(raw)
+})
+
+/** 选中文件的提示：文件名 + 缩放后的体积，让用户知道「传上去的是多大」 */
+const pickedInfo = computed(() => {
+  if (!avatarPreview.value) return ''
+  const size = previewSize.value ? `，压缩后 ${previewSize.value}` : ''
+  return `${sourceName.value || '已选择图片'}${size}`
 })
 
 const readonlyRows = computed(() => {
@@ -229,7 +300,47 @@ const readonlyRows = computed(() => {
 
 const resetForm = () => {
   form.value = { ...baseline.value }
+  resetAvatar()
   errorMessage.value = ''
+  // 让同一个文件能被再次选择（input 的值不变时不会触发 change）
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
+
+/**
+ * 选中图片后立刻上传。
+ *
+ * 不额外要求点一次「保存」：头像是独立的写操作，多一步确认只会让人以为没生效。
+ * 上传成功时服务端会把新的 `avatar_url` 写进用户资料，这里同步进表单的基线，
+ * 避免刚上传完就显示「有未保存的修改」。
+ */
+const handleFileChange = async (event) => {
+  const file = event.target?.files?.[0]
+  if (!file) return
+
+  const prepared = await prepare(file)
+  if (!prepared.ok) {
+    notify.error(prepared.message)
+    if (fileInputRef.value) fileInputRef.value.value = ''
+    return
+  }
+
+  uploading.value = true
+  try {
+    const result = await userStore.uploadAvatar(prepared.dataUrl)
+    if (!result.success) {
+      notify.error(result.message)
+      return
+    }
+
+    notify.success(result.message)
+    // 服务端回写的相对路径成为新的基线，表单不再处于「已修改」状态
+    form.value = { ...form.value, avatar_url: result.avatarUrl || form.value.avatar_url }
+    baseline.value = { ...form.value }
+    resetAvatar()
+  } finally {
+    uploading.value = false
+    if (fileInputRef.value) fileInputRef.value.value = ''
+  }
 }
 
 const handleSubmit = async () => {
@@ -374,6 +485,53 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 0.5);
 }
 
+/* ── 头像编辑器 ─────────────────────────────────────────────
+ * 左侧是方形预览，右侧是「选择图片」与提示。头像用 --card-image-height 量级的
+ * 固定方块，而不是 --avatar-size（那是顶栏 32px 左右的档位，做编辑器太小）。 */
+.avatar-editor {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.avatar-preview {
+  flex-shrink: 0;
+  width: calc(var(--space-unit) * 9);
+  height: calc(var(--space-unit) * 9);
+  font-size: var(--fs-h2);
+}
+
+/* `label` 触发隐藏的 file input：外观复用 .u-btn-secondary，
+ * 但 label 不是 button，需要自己补上禁用态与指针 */
+.avatar-pick {
+  cursor: pointer;
+  user-select: none;
+}
+
+.avatar-pick--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 禁用时要把悬停位移一并取消，否则看起来仍可点 */
+.avatar-pick--disabled:hover {
+  transform: none;
+  border-color: var(--btn-border-color);
+  color: var(--text-secondary);
+}
+
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 0.75);
+  min-width: 0;
+}
+
+.avatar-hint {
+  max-width: 42ch;
+}
+
 .profile-actions {
   margin-top: calc(var(--space-unit));
 }
@@ -393,6 +551,21 @@ onMounted(() => {
 
   .profile-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 窄屏：预览与按钮上下排，按钮整宽，拇指更好点 */
+  .avatar-editor {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .avatar-actions {
+    width: 100%;
+  }
+
+  .avatar-pick {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>

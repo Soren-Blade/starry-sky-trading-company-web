@@ -789,6 +789,20 @@ button.u-tag:hover:not(.u-tag--accent) {
   position: absolute;
   top: var(--modal-padding);
   right: var(--modal-padding);
+  /*
+   * z-index 不能省 —— 这是实测修过的缺陷（「登录弹窗的 ✕ 点了没反应」）。
+   *
+   * 定位元素且 z-index: auto 时，谁的 DOM 靠后谁画在上面。关闭按钮在模板里是
+   * 弹窗的第一个元素，而紧跟其后的内容（登录弹窗的页签行、主题弹窗的标题）
+   * 起始位置与它**重叠**：登录弹窗的 `.tab-btn` 是 `position: relative` +
+   * `flex: 1`，两个页签铺满整行宽度，正好盖在右上角的 ✕ 上。
+   * 于是点在 ✕ 上的点击实际落到「注册」页签 —— 表现为按钮完全失效。
+   *
+   * 提高层叠层级比「给每个弹窗的内容让位」更可靠：新增弹窗时不必记得这件事。
+   * 内容侧仍应留出横向空间（`.u-modal-title` 与登录弹窗的 `.modal-tabs` 都
+   * 做了 padding-right），否则文字会钻到按钮底下。
+   */
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;

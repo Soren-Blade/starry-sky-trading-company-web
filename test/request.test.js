@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
 
-import { installStorageStub, installDomStub, resetStorage, loadAppModule } from './setup.js'
+import { installStorageStub, installDomStub, resetStorage, loadAppModule, setTestEnv } from './setup.js'
 
 installStorageStub()
 installDomStub()
@@ -104,11 +104,20 @@ function startStub() {
  * 而所有用例在同一进程里运行。用查询串作为 Node 模块缓存的键，
  * 可以既复用同一份源码、又拿到彼此隔离的实例
  * （依赖 test/loaders/alias.mjs 里保留查询串的解析逻辑）。
+ *
+ * 环境变量**用完立刻还原**：`request.js` 只在模块加载时读一次
+ * `import.meta.env.VITE_API_BASE_URL`，因此还原不会影响本实例。
+ * 不还原的话这个值会泄漏给后面所有测试 —— 注入改成「转发 Proxy」之后
+ * 它真的会泄漏（此前靠「每次替换新对象、旧对象被孤立」侥幸没有）。
  */
 async function freshRequestModule(baseURL) {
-  // setup.js 的 load 钩子会把 import.meta.env 设成 __SSTC_TEST_ENV__
-  globalThis.__SSTC_TEST_ENV__ = { ...(globalThis.__SSTC_TEST_ENV__ || {}), VITE_API_BASE_URL: baseURL }
-  return loadAppModule(`/api/request.js?t=${Date.now()}-${Math.random()}`)
+  const previous = globalThis.__SSTC_TEST_ENV__?.VITE_API_BASE_URL ?? ''
+  setTestEnv({ VITE_API_BASE_URL: baseURL })
+  try {
+    return await loadAppModule(`/api/request.js?t=${Date.now()}-${Math.random()}`)
+  } finally {
+    setTestEnv({ VITE_API_BASE_URL: previous })
+  }
 }
 
 test('401 触发刷新：刷新成功后自动重放原请求并返回结果', async () => {

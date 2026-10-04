@@ -200,6 +200,22 @@ const sleep = (ms) =>
     );
   }
 
+  // `/uploads` 不是 `request()` 调用，上面对 API 调用路径的静态比对**覆盖不到它**，
+  // 而它一旦没被代理，表现是「头像上传成功但图片不显示」—— 极难联想到代理配置。
+  // 这里直接打一个不存在的文件：后端会回 JSON 404，dev server 未被代理时回 index.html。
+  const uploadsProbe = await httpGet(5173, '/uploads/avatars/__probe__.png');
+  let uploadsJson = null;
+  try {
+    uploadsJson = JSON.parse(uploadsProbe.body);
+  } catch {
+    /* index.html */
+  }
+  check(
+    '代理 /uploads 转发到后端（用户上传的头像才能在 dev 下显示）',
+    uploadsProbe.status === 404 && uploadsJson?.code === 'NOT_FOUND',
+    `HTTP ${uploadsProbe.status}，body=${uploadsProbe.body.slice(0, 120)}`
+  );
+
   // ── 5. HMR 真实推送 ─────────────────────────────────────────────
   // 注意：Vite 的 HMR socket 必须带子协议 `vite-hmr`，只给 URL 会握手失败。
   // 见 /@vite/client 里的 `new WebSocket(url, "vite-hmr")`。

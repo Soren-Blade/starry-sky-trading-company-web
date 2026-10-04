@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { installStorageStub, installDomStub, resetStorage, loadAppModule } from './setup.js'
+import {
+  installStorageStub,
+  installDomStub,
+  resetStorage,
+  loadAppModule,
+  setTestEnv,
+} from './setup.js'
 
 // 存储与 DOM 桩都必须在被测模块被导入前装好
 installStorageStub()
@@ -416,6 +422,122 @@ test('logout：清空 userInfo 后才重新 init', async () => {
     await store.logout()
     // 第一次 getUserInfo 针对的是清空后的状态
     assert.equal(seen[0], '{}')
+  } finally {
+    restore()
+  }
+})
+
+// ── 头像：URL 解析与上传 ────────────────────────────────────
+
+test('avatarUrl getter：外部绝对地址原样返回', () => {
+  const store = freshStore()
+  store.userInfo = REGISTERED
+  assert.equal(store.avatarUrl, 'https://example.invalid/a.png')
+})
+
+test('avatarUrl getter：空值返回空串（不渲染出 src="undefined"）', () => {
+  const store = freshStore()
+  store.userInfo = { id: 1, user_type: 'registered' }
+  assert.equal(store.avatarUrl, '')
+  store.userInfo = { id: 1, user_type: 'registered', avatar_url: null }
+  assert.equal(store.avatarUrl, '')
+})
+
+test('avatarUrl getter：dev（base 为空）下站内相对路径保持同源，交给 Vite 代理', () => {
+  const store = freshStore()
+  store.userInfo = { id: 1, user_type: 'registered', avatar_url: '/uploads/avatars/u1-x.webp' }
+  assert.equal(store.avatarUrl, '/uploads/avatars/u1-x.webp')
+})
+
+test('avatarUrl getter：生产（base 有值）下补上后端基地址，否则会打到 web 域名 404', () => {
+  const previous = globalThis.__SSTC_TEST_ENV__.VITE_API_BASE_URL
+  setTestEnv({ VITE_API_BASE_URL: 'https://api.example.com' })
+
+  try {
+    const store = freshStore()
+    store.userInfo = { id: 1, user_type: 'registered', avatar_url: '/uploads/avatars/u1-x.webp' }
+    assert.equal(store.avatarUrl, 'https://api.example.com/uploads/avatars/u1-x.webp')
+  } finally {
+    setTestEnv({ VITE_API_BASE_URL: previous })
+  }
+})
+
+test('uploadAvatar：成功后把服务端回写的相对路径并入 userInfo', async () => {
+  const store = freshStore()
+  store.userInfo = { ...REGISTERED, avatar_url: '/uploads/avatars/u42-old.png' }
+
+  let received = null
+  const restore = stubApi({
+    uploadAvatar: async (payload) => {
+      received = payload
+      return {
+        success: true,
+        message: '头像已更新',
+        data: { avatar_url: '/uploads/avatars/u42-new.webp' },
+      }
+    },
+  })
+  try {
+    const result = await store.uploadAvatar('data:image/webp;base64,AAAA')
+    assert.equal(result.success, true)
+    assert.equal(result.avatarUrl, '/uploads/avatars/u42-new.webp')
+    assert.deepEqual(received, { image: 'data:image/webp;base64,AAAA' })
+    // 存的是**相对路径**（不是解析后的绝对地址）—— 换域名不该需要刷历史数据
+    assert.equal(store.userInfo.avatar_url, '/uploads/avatars/u42-new.webp')
+    assert.equal(store.avatarUrl, '/uploads/avatars/u42-new.webp', 'dev 下应可直接加载')
+  } finally {
+    restore()
+  }
+})
+
+test('uploadAvatar：服务端返回失败时保留原头像，不改本地状态', async () => {
+  const store = freshStore()
+  store.userInfo = { ...REGISTERED, avatar_url: '/uploads/avatars/u42-old.png' }
+
+  const restore = stubApi({
+    uploadAvatar: async () => ({ success: false, message: '只支持 JPG / PNG / WebP 格式的图片' }),
+  })
+  try {
+    const result = await store.uploadAvatar('data:image/gif;base64,AAAA')
+    assert.equal(result.success, false)
+    assert.match(result.message, /JPG/)
+    assert.equal(store.userInfo.avatar_url, '/uploads/avatars/u42-old.png', '失败不应清掉原头像')
+  } finally {
+    restore()
+  }
+})
+
+test('uploadAvatar：请求抛异常时返回失败而不是抛出', async () => {
+  const store = freshStore()
+  store.userInfo = { ...REGISTERED }
+
+  const restore = stubApi({
+    uploadAvatar: async () => {
+      const error = new Error('图片超过 512 KB，请压缩后再上传')
+      error.status = 400
+      throw error
+    },
+  })
+  try {
+    const result = await store.uploadAvatar('data:image/png;base64,AAAA')
+    assert.equal(result.success, false)
+    assert.match(result.message, /512 KB/)
+  } finally {
+    restore()
+  }
+})
+
+test('uploadAvatar：响应缺少 avatar_url 时按失败处理（不能写入 undefined）', async () => {
+  const store = freshStore()
+  store.userInfo = { ...REGISTERED, avatar_url: '/uploads/avatars/u42-old.png' }
+
+  const restore = stubApi({
+    uploadAvatar: async () => ({ success: true, data: {} }),
+  })
+  try {
+    const result = await store.uploadAvatar('data:image/png;base64,AAAA')
+    assert.equal(result.success, false)
+    assert.equal(store.userInfo.avatar_url, '/uploads/avatars/u42-old.png')
   } finally {
     restore()
   }

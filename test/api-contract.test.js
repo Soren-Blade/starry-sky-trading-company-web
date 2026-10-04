@@ -166,6 +166,7 @@ test('关键契约：token 相关接口必须存在且方法正确', () => {
     ['POST', '/user/refreshToken'],
     ['GET', '/userApi/getUserInfo'],
     ['PUT', '/userApi/profile'],
+    ['POST', '/userApi/avatar'],
     ['GET', '/shop/getProducts'],
     ['GET', '/shop/getProduct/:param'],
     ['GET', '/class/getCategories'],

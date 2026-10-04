@@ -29,6 +29,28 @@ const TEST_ENV = {
 
 // Vite 会在每个模块上注入 import.meta.env，Node 没有。
 // 这里补齐它，让源码无需为「可测试」而改写。
+//
+// **注入的是一个转发用的 Proxy，而不是 `__SSTC_TEST_ENV__` 本身。**
+// 原因是踩过一次的真实陷阱：`import.meta.env = globalThis.__SSTC_TEST_ENV__`
+// 只复制了**对象引用**，之后任何把 `globalThis.__SSTC_TEST_ENV__` 换成新对象的
+// 代码（`setTestEnv()` 与 `request.test.js` 都这么做过）都会让已经加载的模块
+// 继续指向旧对象 —— 于是一部分测试改环境变量生效、另一部分不生效，
+// 表现为「单独跑通过、全量跑失败」的顺序依赖。
+//
+// 转发之后，`import.meta.env.VITE_X` 永远读取 `globalThis.__SSTC_TEST_ENV__`
+// 的当前值，两种写法（就地改属性 / 整体替换）都成立。
+const ENV_PROXY = `globalThis.__SSTC_TEST_ENV__ ??= ${JSON.stringify(TEST_ENV)};\n` +
+  `globalThis.__SSTC_TEST_ENV_PROXY__ ??= new Proxy({}, {\n` +
+  `  get: (_, key) => globalThis.__SSTC_TEST_ENV__?.[key],\n` +
+  `  has: (_, key) => key in (globalThis.__SSTC_TEST_ENV__ || {}),\n` +
+  `  ownKeys: () => Reflect.ownKeys(globalThis.__SSTC_TEST_ENV__ || {}),\n` +
+  `  getOwnPropertyDescriptor: (_, key) => ({\n` +
+  `    value: globalThis.__SSTC_TEST_ENV__?.[key],\n` +
+  `    enumerable: true, configurable: true, writable: false,\n` +
+  `  }),\n` +
+  `});\n` +
+  `import.meta.env = globalThis.__SSTC_TEST_ENV_PROXY__;\n`
+
 registerHooks({
   load(url, context, nextLoad) {
     const result = nextLoad(url, context)
@@ -41,22 +63,32 @@ registerHooks({
       const text =
         typeof result.source === 'string' ? result.source : Buffer.from(result.source).toString('utf8')
 
-      // 已经自己声明了 import.meta.env 的模块不重复注入
+      // 已经自己声明 import.meta.env 的模块不重复注入
       if (!/import\.meta\.env\s*=/.test(text)) {
-        return {
-          ...result,
-          source: `globalThis.__SSTC_TEST_ENV__ ??= ${JSON.stringify(TEST_ENV)};\n` +
-            `import.meta.env = globalThis.__SSTC_TEST_ENV__;\n${text}`,
-        }
+        return { ...result, source: `${ENV_PROXY}${text}` }
       }
     }
     return result
   },
 })
 
-/** 给某个用例临时改环境变量（如 VITE_API_BASE_URL） */
-export function setTestEnv(patch) {
-  globalThis.__SSTC_TEST_ENV__ = { ...TEST_ENV, ...patch }
+/**
+ * 给某个用例临时改环境变量（如 VITE_API_BASE_URL）。
+ *
+ * **就地改写**而不是替换整个对象：虽然注入的 Proxy 让两种写法都能生效，
+ * 但就地改写能保证「同一个 env 对象」这条不变量，
+ * 避免再有人写出依赖对象身份的判断。
+ */
+export function setTestEnv(patch = {}) {
+  const target = globalThis.__SSTC_TEST_ENV__
+  if (!target) {
+    globalThis.__SSTC_TEST_ENV__ = { ...TEST_ENV, ...patch }
+    return
+  }
+
+  // 先恢复成默认值再叠加 patch，语义与「替换成 {...TEST_ENV, ...patch}」一致
+  for (const key of Object.keys(target)) delete target[key]
+  Object.assign(target, TEST_ENV, patch)
 }
 
 /** 一个最小的 Storage 实现（Map 支撑） */

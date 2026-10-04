@@ -47,6 +47,10 @@ export default defineConfig(({ mode }) => {
         '/cartApi': { target: apiTarget, changeOrigin: true },
         '/orderApi': { target: apiTarget, changeOrigin: true },
         '/favoriteApi': { target: apiTarget, changeOrigin: true },
+        // 用户上传的文件（头像）。**必须代理**：`avatar_url` 存的是
+        // `/uploads/avatars/xxx.webp` 这样的相对路径，不代理的话 dev 下
+        // 会打到 dev server 自己（404），表现为「上传成功但头像不显示」。
+        '/uploads': { target: apiTarget, changeOrigin: true },
         '/userBackend': { target: apiTarget, changeOrigin: true },
         '/health': { target: apiTarget, changeOrigin: true },
       },
