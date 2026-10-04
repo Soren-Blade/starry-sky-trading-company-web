@@ -587,7 +587,7 @@ const switchTab = (tab) => {
   margin-right: 8px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: var(--color-on-primary);
   animation: spin 0.8s linear infinite;
   vertical-align: middle;
 }
@@ -665,7 +665,7 @@ const switchTab = (tab) => {
   padding: 12px;
   background: #FEE;
   color: #C33;
-  border: 1px solid #FCC;
+  border: 1px solid var(--color-error-border);
   border-radius: 8px;
   font-size: 14px;
   text-align: center;

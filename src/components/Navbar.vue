@@ -311,7 +311,7 @@ onUnmounted(() => {
 .auth-btn {
   padding: 10px 24px;
   background: var(--gradient-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   border-radius: var(--radius-sm);
   font-weight: 600;
   transition: var(--transition-base);
@@ -358,7 +358,7 @@ onUnmounted(() => {
   right: 0;
   margin-top: 12px;
   width: 240px;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -413,12 +413,12 @@ onUnmounted(() => {
 }
 
 .dropdown-item.logout {
-  color: #ff6b6b;
+  color: var(--color-error);
 }
 
 .dropdown-item.logout:hover {
   background: rgba(255, 107, 107, 0.08);
-  color: #ff6b6b;
+  color: var(--color-error);
 }
 
 /* ============ 移动端菜单 ============ */
@@ -508,7 +508,7 @@ onUnmounted(() => {
     top: 56px;
     left: 0;
     right: 0;
-    background: #fff;
+    background: var(--color-surface);
     flex-direction: column;
     margin: 0;
     padding: 16px 0;

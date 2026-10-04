@@ -364,7 +364,7 @@ watch(
   margin: 0 auto;
   padding: 32px;
   text-align: center;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
 }
@@ -394,7 +394,7 @@ watch(
   padding: 10px 24px;
   border: 2px solid transparent;
   border-radius: var(--radius-xl);
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
@@ -409,7 +409,7 @@ watch(
 
 .tab-bar button.active {
   background: var(--gradient-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
 }
 
@@ -421,7 +421,7 @@ watch(
 }
 
 .activate-card {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: 40px;
   box-shadow: var(--shadow-lg);
@@ -449,7 +449,7 @@ watch(
   border-radius: var(--radius-sm);
   font-size: 14px;
   transition: var(--transition-fast);
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-dark);
 }
 
@@ -463,7 +463,7 @@ watch(
 .activate-btn {
   padding: 10px 28px;
   background: var(--gradient-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -497,7 +497,7 @@ watch(
 .error-banner {
   padding: 10px 16px;
   background: #fee;
-  border-bottom: 1px solid #fcc;
+  border-bottom: 1px solid var(--color-error-border);
 }
 
 .activate-tips {
@@ -509,7 +509,7 @@ watch(
 
 /* List */
 .list-container {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
@@ -542,7 +542,7 @@ watch(
   padding: 6px 12px;
   border: 1px solid #d9d9d9;
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
@@ -580,7 +580,7 @@ watch(
   padding: 6px 12px;
   border: 1px solid var(--color-border-strong);
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-surface);
   cursor: pointer;
   font-size: 14px;
   color: var(--color-dark);

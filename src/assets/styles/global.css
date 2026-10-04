@@ -218,7 +218,7 @@ img {
 .page-header {
   text-align: center;
   padding: 60px 20px;
-  color: #fff;
+  color: var(--color-on-primary);
   background: var(--page-header-gradient, var(--gradient-primary));
 }
 

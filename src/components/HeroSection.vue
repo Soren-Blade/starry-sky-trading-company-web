@@ -123,7 +123,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--color-light) 0%, #EEE 50%, #EEEEEE 100%);
+  background: var(--gradient-page-soft);
 }
 
 /* 背景装饰 */

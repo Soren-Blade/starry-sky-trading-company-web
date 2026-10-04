@@ -329,11 +329,20 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 详见 [`src/assets/README.md`](src/assets/README.md)。要点：
 
-**设计令牌**（`assets/styles/variables.css` 的 `:root`）：品牌色、语义色（`--color-muted` /
-`--color-text-secondary` / `--color-border` / `--color-success|danger`）、渐变、阴影
-（含 `--shadow-card`）、毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
+**设计令牌**（`assets/styles/variables.css` 的 `:root`）：品牌色、文字层级
+（`--color-text-primary` → `secondary` → `tertiary` → `muted` → `muted-light`）、
+边框与分割、状态色（`--color-success|danger|error`）、表面与背景
+（`--color-surface` / `--color-on-primary`）、渐变、阴影（含 `--shadow-card`）、
+毛玻璃、圆角、过渡、布局尺寸。文件末尾含 `prefers-reduced-motion` 全局降级。
 
-> **令牌必须有人用**：`:root` 当前有 41 个令牌，**没有一个是无人使用的**。
+> **`#fff` 有两个令牌，不可互换**：`background` 用 `--color-surface`；
+> 位于渐变/主色背景**之上**的文字用 `--color-on-primary`（后者在白底上不可见）。
+
+> **不要再为一次性色值新增令牌**：目前仍有约 79 处硬编码，其中 63 个色值只出现 1 次。
+> 判断标准是「同一色值在第二个组件出现时才提升为令牌」—— 否则会制造
+> 「定义了没人用」的令牌，而那正是导致作者继续写硬编码的根源。
+
+> **令牌必须有人用**：`:root` 当前有 54 个令牌，**没有一个是无人使用的**。
 > 定义了却没人用会稀释「可用令牌」的信号，结果是作者继续写新的硬编码值 —— 因此
 > `test/designTokens.test.js` 会把「死令牌」和「引用了未定义令牌」都判为失败。
 > 新增令牌的同时要把它用在真实组件上；组件不再需要时同步删除令牌。

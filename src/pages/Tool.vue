@@ -228,7 +228,7 @@ onMounted(() => {
   gap: 12px;
   font-size: 36px;
   font-weight: 800;
-  color: #222;
+  color: var(--color-text-primary);
   margin-bottom: 12px;
 }
 
@@ -297,7 +297,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #fff;
+  background: var(--color-surface);
   border: 2px solid var(--color-border);
   border-radius: 25px;
   font-size: 14px;
@@ -316,7 +316,7 @@ onMounted(() => {
 .favorites-btn.active {
   background: linear-gradient(90deg, var(--color-secondary), #e84393);
   border-color: var(--color-secondary);
-  color: #fff;
+  color: var(--color-on-primary);
   box-shadow: 0 4px 12px rgba(253, 121, 168, 0.3);
 }
 
@@ -333,7 +333,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  background: #fff;
+  background: var(--color-surface);
   border: 2px solid var(--color-border);
   border-radius: 25px;
   font-size: 14px;
@@ -352,7 +352,7 @@ onMounted(() => {
 .filter-tab.active {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   box-shadow: 0 4px 12px rgba(138, 109, 255, 0.3);
 }
 
@@ -369,7 +369,7 @@ onMounted(() => {
 .empty-note {
   grid-column: 1 / -1;
   text-align: center;
-  color: #888;
+  color: var(--color-text-tertiary);
   padding: 48px 20px;
   background: rgba(250, 250, 250, 0.7);
   border-radius: var(--radius-md);

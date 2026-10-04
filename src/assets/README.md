@@ -42,14 +42,25 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
 | 类别 | 令牌 |
 | --- | --- |
 | 品牌色 | `--color-primary`、`--color-primary-dark`、`--color-secondary`、`--color-light`、`--color-dark` |
-| 语义色 | `--color-muted`、`--color-text-secondary`、`--color-border`、`--color-border-strong`、`--color-divider`、`--color-success(-bg)`、`--color-danger(-bg)` |
-| 表面与背景 | `--color-surface`、`--color-page-bg` |
-| 渐变 | `--gradient-primary`、`--gradient-hot`、`--gradient-about`、`--gradient-apple` |
+| 文字层级 | `--color-text-primary`(高对比) → `--color-text-secondary` → `--color-text-tertiary` → `--color-muted` → `--color-muted-light` |
+| 深色系正文 | `--color-text-soft-dark`、`--color-text-muted-dark`（Apple ID 区块） |
+| 边框与分割 | `--color-border`、`--color-border-strong`、`--color-border-contrast`、`--color-divider` |
+| 状态色 | `--color-success(-bg)`、`--color-danger(-bg)`、`--color-error`、`--color-error-dark`、`--color-error-border` |
+| 表面与背景 | `--color-surface`（白底）、`--color-on-primary`（置于主色之上）、`--color-page-bg` |
+| 渐变 | `--gradient-primary`、`--gradient-hot`、`--gradient-about`、`--gradient-apple`、`--gradient-indigo`、`--gradient-accent-violet`、`--gradient-page-soft` |
 | 阴影 | `--shadow-md/lg/xl`、`--shadow-card`、`--shadow-card-hover`、`--shadow-primary` |
 | 毛玻璃 | `--glass-effect`、`--glass-backdrop` |
 | 圆角 | `--radius-sm/md/lg/xl`、`--radius-pill` |
 | 过渡 | `--transition-fast/base/slow` |
 | 布局 | `--container-max`、`--container-content`、`--container-narrow`、`--container-padding`、`--navbar-height` |
+
+**关于 `#fff` 的两个令牌**：`background: #fff` 用 `--color-surface`；
+位于渐变或主色背景**之上**的文字用 `--color-on-primary`（例如主按钮上的白字、
+激活态 tab、彩色徽标）。二者不可互换 —— 后者在白底上不可见。
+
+**不要再为一次性色值新增令牌。** 目前仍有约 79 处硬编码，其中 63 个色值只出现 1 次
+（各组件专属的调色）。给它们加令牌只会制造「定义了没人用」的令牌 ——
+判断标准是：**同一色值在第二个组件出现时才提升为令牌**。
 
 **这里不应存在无人使用的令牌。** 曾经有 16 个令牌定义了却没人用，而组件里同时
 硬编码着它们的值 —— 这会稀释「可用令牌」的信号，让后续作者继续写新的硬编码值。

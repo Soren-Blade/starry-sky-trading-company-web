@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-light) 0%, #EEE 100%);
+  background: var(--gradient-page-soft);
 }
 
 .not-found-container {

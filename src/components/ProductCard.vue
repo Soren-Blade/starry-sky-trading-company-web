@@ -133,7 +133,7 @@ const onBuy = () => emit("buy", props.product);
 .fp-title {
   font-size: 16px;
   font-weight: 700;
-  color: #222;
+  color: var(--color-text-primary);
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -191,7 +191,7 @@ const onBuy = () => emit("buy", props.product);
 }
 .cta-btn {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  color: #fff;
+  color: var(--color-on-primary);
   border: none;
   padding: 8px 12px;
   border-radius: 8px;

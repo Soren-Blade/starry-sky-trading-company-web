@@ -70,7 +70,7 @@ const handleBuy = (product) => {
 .empty-note {
   grid-column: 1 / -1;
   text-align: center;
-  color: #888;
+  color: var(--color-text-tertiary);
   padding: 28px 12px;
   background: rgba(250, 250, 250, 0.7);
   border-radius: var(--radius-md);

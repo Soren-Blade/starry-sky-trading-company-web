@@ -133,7 +133,7 @@ const copyToClipboard = async (text) => {
 /* 外壳（背景/圆角/阴影/hover 位移）统一来自 global.css 的 .ui-card，
    这里只保留苹果 ID 卡特有的边框处理 */
 .apple-id-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border-contrast);
 }
 
 .card-header {
@@ -191,14 +191,14 @@ const copyToClipboard = async (text) => {
   min-width: 80px;
   font-size: 14px;
   font-weight: 600;
-  color: #4a5568;
+  color: var(--color-text-muted-dark);
   margin-right: 12px;
 }
 
 .id-value {
   flex: 1;
   font-size: 14px;
-  color: #2d3748;
+  color: var(--color-text-soft-dark);
   word-break: break-all;
 }
 
@@ -230,7 +230,7 @@ const copyToClipboard = async (text) => {
 .card-actions {
   padding: 16px 20px;
   background: #f7fafc;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border-contrast);
   display: flex;
   gap: 8px;
 }
@@ -248,7 +248,7 @@ const copyToClipboard = async (text) => {
 }
 
 .copy-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-indigo);
   color: white;
 }
 

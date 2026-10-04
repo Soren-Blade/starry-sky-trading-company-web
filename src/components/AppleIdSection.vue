@@ -253,7 +253,7 @@ onMounted(() => {
 
 .loading-text {
   font-size: 15px;
-  color: #4a5568;
+  color: var(--color-text-muted-dark);
   margin: 0 0 18px 0;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -271,7 +271,7 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff9ff3, #f368e0);
+  background: var(--gradient-apple);
   animation: dotBounce 1.4s infinite;
 }
 
@@ -290,7 +290,7 @@ onMounted(() => {
 }
 
 .retry-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-indigo);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -327,7 +327,7 @@ onMounted(() => {
     rgba(255, 193, 7, 0.1) 0%,
     rgba(255, 152, 0, 0.1) 100%
   );
-  border-left-color: #ff6b6b;
+  border-left-color: var(--color-error);
 }
 
 .warning-item.scam {
@@ -354,13 +354,13 @@ onMounted(() => {
 .warning-title {
   font-size: 15px;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--color-text-soft-dark);
   margin: 0 0 6px 0;
 }
 
 .warning-text {
   font-size: 14px;
-  color: #4a5568;
+  color: var(--color-text-muted-dark);
   margin: 0;
   line-height: 1.6;
 }
@@ -380,7 +380,7 @@ onMounted(() => {
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border-contrast);
 }
 
 .guide-toggle {
@@ -389,7 +389,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #ff9ff3 0%, #f368e0 100%);
+  background: var(--gradient-apple);
   color: white;
   border: none;
   cursor: pointer;
@@ -430,7 +430,7 @@ onMounted(() => {
 .guide-subtitle {
   font-size: 16px;
   font-weight: 700;
-  color: #2d3748;
+  color: var(--color-text-soft-dark);
   margin-bottom: 12px;
   margin-top: 0;
   display: flex;
@@ -440,20 +440,20 @@ onMounted(() => {
 
 .guide-item.tutorial .guide-subtitle::before {
   content: "▸";
-  color: #667eea;
+  color: var(--color-primary-dark);
   font-size: 18px;
 }
 
 .guide-item.tips .guide-subtitle::before {
   content: "▸";
-  color: #f368e0;
+  color: var(--color-secondary);
   font-size: 18px;
 }
 
 .guide-list {
   margin: 0;
   padding-left: 24px;
-  color: #4a5568;
+  color: var(--color-text-muted-dark);
   line-height: 1.8;
 }
 
@@ -466,7 +466,7 @@ onMounted(() => {
   margin: 0;
   padding-left: 0;
   list-style: none;
-  color: #4a5568;
+  color: var(--color-text-muted-dark);
 }
 
 .guide-tips-list li {
@@ -481,7 +481,7 @@ onMounted(() => {
   content: "●";
   position: absolute;
   left: 0;
-  color: #667eea;
+  color: var(--color-primary-dark);
 }
 
 .guide-note {
@@ -517,8 +517,8 @@ onMounted(() => {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 24px;
-  color: #2d3748;
-  border-bottom: 2px solid #e2e8f0;
+  color: var(--color-text-soft-dark);
+  border-bottom: 2px solid var(--color-border-contrast);
   padding-bottom: 12px;
 }
 
@@ -530,7 +530,7 @@ onMounted(() => {
 
 .empty-note {
   text-align: center;
-  color: #888;
+  color: var(--color-text-tertiary);
   padding: 60px 20px;
   background: rgba(250, 250, 250, 0.7);
   border-radius: 16px;

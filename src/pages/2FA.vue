@@ -230,7 +230,7 @@ onBeforeUnmount(() => {
 .fp-container {
   max-width: 640px;
   width: 100%;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 6px 18px rgba(23, 23, 23, 0.06);
@@ -239,7 +239,7 @@ h1 {
   margin: 0 0 18px 0;
   font-size: 20px;
   font-weight: 700;
-  color: #222;
+  color: var(--color-text-primary);
   text-align: center;
 }
 .fp-row {
@@ -260,7 +260,7 @@ input {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #e6e6e6;
-  background: #fff;
+  background: var(--color-surface);
   outline: none;
 }
 input:focus {
@@ -279,7 +279,7 @@ button:disabled {
   cursor: not-allowed;
 }
 button.primary {
-  background: linear-gradient(90deg,var(--color-primary),#6f54ff);
+  background: var(--gradient-accent-violet);
   color: white;
 }
 .fp-tutorial {
@@ -287,19 +287,19 @@ button.primary {
   padding: 16px;
   max-width: 640px;
   width: 100%;
-  background: #ffffff;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 6px 18px rgba(23, 23, 23, 0.04);
 }
 .fp-tutorial h2 { margin: 8px 0; font-size:16px }
 .fp-tutorial-body p { white-space:pre-line; color:#444; line-height:1.6; margin:8px 0 }
-.fp-tutorial-body p span { font-weight:600; color:#222 }
+.fp-tutorial-body p span { font-weight:600; color:var(--color-text-primary) }
 .fp-demo-key { margin-top:10px; display:flex; gap:8px; align-items:center }
-.link-like { background:transparent; border:none; color:#6f54ff; cursor:pointer; padding:6px 8px; border-radius:6px }
+.link-like { background:transparent; border:none; color: var(--color-primary-dark); cursor:pointer; padding:6px 8px; border-radius:6px }
 .link-like:hover { background:rgba(111,84,255,0.06) }
-.key-inline { background: linear-gradient(90deg,#fff,#fff); border:1px solid #ededff; color:#6f54ff; padding:4px 8px; border-radius:6px; cursor:pointer }
+.key-inline { background: linear-gradient(90deg,#fff,#fff); border:1px solid #ededff; color: var(--color-primary-dark); padding:4px 8px; border-radius:6px; cursor:pointer }
 .key-inline:hover { background:rgba(111,84,255,0.04) }
-.demo-link { color:#6f54ff }
+.demo-link { color: var(--color-primary-dark) }
 
 /* layout improvements */
 .field { display:block; margin-bottom:12px; width: 100%; }
@@ -358,7 +358,7 @@ button.primary {
   margin: 0 0 16px;
   padding: 12px 16px;
   background: var(--color-danger-bg, #fef2f2);
-  border: 1px solid #fcc;
+  border: 1px solid var(--color-error-border);
   border-radius: var(--radius-sm, 8px);
   text-align: left;
   line-height: 1.6;
@@ -367,7 +367,7 @@ button.primary {
 /* Card-style container inside the main container */
 .fp-card {
   width: 100%;
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid #e6eef9;
   border-radius: 8px;
   padding: 14px 16px;

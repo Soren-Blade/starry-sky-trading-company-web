@@ -19,23 +19,49 @@
   --color-dark: #2d3436;
 
   /* ── 语义色 ───────────────────────────────── */
-  --color-muted: #999;
+  /* 文字层级：primary（高对比正文/数值）> text-secondary（次级）> muted（弱化/占位） */
+  --color-text-primary: #222;
   --color-text-secondary: #666;
+  --color-text-tertiary: #888;
+  --color-muted: #999;
+  /* 比 muted 更浅，用于深色底或页脚的辅助文字 */
+  --color-muted-light: #aaa;
   --color-border: #e9ecef;
   --color-border-strong: #ddd;
+  /* 比 border-strong 更明显的中性边框（Apple ID 区块的表单/卡片分隔） */
+  --color-border-contrast: #e2e8f0;
   --color-divider: #f0f0f0;
   --color-success: #15803d;
   --color-success-bg: #f0fdf4;
   --color-danger: #c0392b;
   --color-danger-bg: #fef2f2;
+  /* 错误态下方的柔和分割线 */
+  --color-error-border: #ffcccc;
+  /* 错误/警告态的强调色（Tag、移动端菜单里的退出项） */
+  --color-error: #ff6b6b;
+  --color-error-dark: #ee5a52;
+  /* 中性深色文字的第二层级（Apple ID 区块的说明文字） */
+  --color-text-soft-dark: #2d3748;
+  --color-text-muted-dark: #4a5568;
   --color-surface: #ffffff;
+  /* 位于主色/强调色背景之上的文字色 */
+  --color-on-primary: #ffffff;
   --color-page-bg: linear-gradient(180deg, #f8f9fa 0%, #f1f2f4 100%);
 
   /* ── 渐变 ─────────────────────────────────── */
   --gradient-primary: linear-gradient(135deg, #8a6dff 0%, #6c5ce7 100%);
   --gradient-hot: linear-gradient(135deg, #fd79a8 0%, #ff7675 100%);
   --gradient-about: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+  /* 两端写法统一带 0%/100%，便于组件整体引用 */
   --gradient-apple: linear-gradient(135deg, #ff9ff3 0%, #f368e0 100%);
+  /* 工具卡片图标区与 Apple ID 数据源标题使用的紫蓝渐变 */
+  --gradient-indigo: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* 2FA 页的强调紫（比 primary 更偏蓝，用于链接与进度条） */
+  --gradient-accent-violet: linear-gradient(90deg, #8a6dff, #6f54ff);
+  /* 页面浅底到浅灰的装饰底（Hero / NotFound）。刻意保留中间色标：
+   * Hero 原本是 `0% #EEE 50% #EEEEEE 100%` 的三色标写法，压成两色标会改变渐变的
+   * 过渡位置（肉眼可见的差异）。因此令牌按三色标定义，两处统一引用。 */
+  --gradient-page-soft: linear-gradient(135deg, #f8f9fa 0%, #eeeeee 50%, #eeeeee 100%);
 
   /* ── 阴影 ─────────────────────────────────── */
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);

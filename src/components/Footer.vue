@@ -136,7 +136,7 @@
 .about-text {
   font-size: 13px;
   line-height: 1.6;
-  color: #aaa;
+  color: var(--color-muted-light);
   margin-bottom: 16px;
 }
 
@@ -197,7 +197,7 @@
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #aaa;
+  color: var(--color-muted-light);
 }
 
 .method-label {
@@ -210,7 +210,7 @@
 
 .copyright {
   font-size: 12px;
-  color: #aaa;
+  color: var(--color-muted-light);
   margin: 0;
   flex: 1;
   text-align: center;
@@ -233,7 +233,7 @@
 }
 
 .footer-bottom-links a {
-  color: #aaa;
+  color: var(--color-muted-light);
   text-decoration: none;
   transition: all 0.3s ease-in-out;
 }

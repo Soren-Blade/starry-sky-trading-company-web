@@ -75,8 +75,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   position: absolute;
   top: 12px;
   left: 12px;
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-error), var(--color-error-dark));
+  color: var(--color-on-primary);
   padding: 6px 10px;
   border-radius: 16px;
   font-size: 11px;
@@ -111,8 +111,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   position: absolute;
   top: -8px;
   right: -8px;
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-error), var(--color-error-dark));
+  color: var(--color-on-primary);
   border-radius: 50%;
   min-width: 20px;
   height: 20px;
@@ -124,7 +124,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 2px 6px rgba(255, 107, 107, 0.4);
-  border: 2px solid #fff;
+  border: 2px solid var(--color-surface);
   animation: bounceIn 0.5s ease-out;
 }
 
@@ -158,7 +158,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 .tool-title {
   font-size: 18px;
   font-weight: 700;
-  color: #222;
+  color: var(--color-text-primary);
   margin: 0;
   flex: 1;
   overflow: hidden;
@@ -205,7 +205,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 
 .tool-btn.primary {
   background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .tool-btn.primary:hover {
