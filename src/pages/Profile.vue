@@ -68,44 +68,49 @@
               头像上传：选图 → 前端 canvas 缩到 256px → 编码成 data URL → POST /userApi/avatar
               选完即上传（不额外要求点一次「保存」）：头像与其它资料不同，
               它本身就是一次独立的写操作，多一步确认只会让人以为没生效。
+
+              版式是左右两栏：**左**「头像 + 说明文字」/ **右**「上传按钮」。
+              说明跟头像放在一起（而不是堆在按钮下方），按钮因此可以收成一个纯图标 ——
+              一行只有两个视觉落点，说明也贴着它描述的那个东西。
             -->
             <div class="avatar-editor">
-              <span class="u-avatar avatar-preview">
-                <img v-if="avatarShown" :src="avatarShown" :alt="nickname || '用户头像'" />
-                <span v-else aria-hidden="true">👤</span>
-              </span>
+              <div class="avatar-profile">
+                <span class="u-avatar avatar-preview">
+                  <img v-if="avatarShown" :src="avatarShown" :alt="nickname || '用户头像'" />
+                  <span v-else aria-hidden="true">👤</span>
+                </span>
 
-              <div class="avatar-actions">
-                <!-- 原生 file input 藏起来，用按钮触发：原生控件在五套风格下无法主题化 -->
-                <input
-                  id="profile-avatar-file"
-                  ref="fileInputRef"
-                  class="visually-hidden"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  :disabled="!userStore.isLoggedIn || uploading || preparing"
-                  @change="handleFileChange"
-                />
-                <label
-                  for="profile-avatar-file"
-                  class="u-btn-secondary avatar-pick"
-                  :class="{ 'avatar-pick--disabled': !userStore.isLoggedIn || uploading || preparing }"
-                >
-                  <span v-if="preparing || uploading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-                  <span>
-                    {{
-                      preparing
-                        ? TRADE.profileAvatarProcessing
-                        : uploading
-                          ? TRADE.profileAvatarUploading
-                          : TRADE.profileAvatarPick
-                    }}
-                  </span>
-                </label>
-
-                <p class="u-field-hint avatar-hint">{{ TRADE.profileAvatarHint }}</p>
-                <p v-if="pickedInfo" class="u-field-hint avatar-hint">{{ pickedInfo }}</p>
+                <div class="avatar-desc">
+                  <p class="u-field-hint avatar-hint">{{ TRADE.profileAvatarHint }}</p>
+                  <p v-if="pickedInfo" class="u-field-hint avatar-hint">{{ pickedInfo }}</p>
+                </div>
               </div>
+
+              <!-- 原生 file input 藏起来、用 label 触发：原生控件在五套风格下无法主题化。
+                   label 里刻意放一段 .visually-hidden 文本 —— 图标本身 aria-hidden，
+                   不给文字的话这个 input 就没有可访问名（label 的文本才算 input 的名字，
+                   label 上的 aria-label 不算）。 -->
+              <input
+                id="profile-avatar-file"
+                ref="fileInputRef"
+                class="visually-hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                :disabled="!userStore.isLoggedIn || uploading || preparing"
+                @change="handleFileChange"
+              />
+              <label
+                for="profile-avatar-file"
+                class="u-icon-btn avatar-upload"
+                :class="{ 'avatar-upload--disabled': !userStore.isLoggedIn || uploading || preparing }"
+                :title="uploadLabel"
+              >
+                <span v-if="preparing || uploading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+                <!-- 用文本字形而不是 emoji：emoji 不受 CSS color 影响，
+                     悬停变色与五套风格都会失效（✕ 关闭按钮也是同样的取舍） -->
+                <span v-else class="avatar-upload-icon" aria-hidden="true">↑</span>
+                <span class="visually-hidden">{{ uploadLabel }}</span>
+              </label>
             </div>
           </div>
 
@@ -288,6 +293,19 @@ const pickedInfo = computed(() => {
   if (!avatarPreview.value) return ''
   const size = previewSize.value ? `，压缩后 ${previewSize.value}` : ''
   return `${sourceName.value || '已选择图片'}${size}`
+})
+
+/**
+ * 上传按钮的可访问名。
+ *
+ * 按钮已经收成纯图标，可见文字没有了 —— 因此这个名字**必须**保留：
+ * 它既是 input 的可访问名（读屏会念），也是鼠标悬停时的 `title`。
+ * 顺便把进行中的状态也带进去，读屏用户能知道当前在做什么。
+ */
+const uploadLabel = computed(() => {
+  if (preparing.value) return TRADE.profileAvatarProcessing
+  if (uploading.value) return TRADE.profileAvatarUploading
+  return TRADE.profileAvatarUpload
 })
 
 const readonlyRows = computed(() => {
@@ -489,20 +507,22 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 2);
 }
 
-.profile-avatar-preview {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit));
-  margin-top: calc(var(--space-unit) * 0.5);
-}
-
 /* ── 头像编辑器 ─────────────────────────────────────────────
- * 左侧是方形预览，右侧是「选择图片」与提示。头像用 --card-image-height 量级的
- * 固定方块，而不是 --avatar-size（那是顶栏 32px 左右的档位，做编辑器太小）。 */
+ * 左右两栏：左「头像 + 说明文字」（自己占满剩余宽度），右「上传图标按钮」。
+ * 头像用固定方块而不是 --avatar-size（那是顶栏 32px 档，做编辑器太小）。 */
 .avatar-editor {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
+}
+
+/* 左栏整体：头像与说明并排，说明可换行、可被压缩 */
+.avatar-profile {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 2);
+  min-width: 0;
 }
 
 .avatar-preview {
@@ -512,35 +532,42 @@ onMounted(() => {
   font-size: var(--fs-h2);
 }
 
-/* `label` 触发隐藏的 file input：外观复用 .u-btn-secondary，
- * 但 label 不是 button，需要自己补上禁用态与指针 */
-.avatar-pick {
-  cursor: pointer;
-  user-select: none;
-}
-
-.avatar-pick--disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* 禁用时要把悬停位移一并取消，否则看起来仍可点 */
-.avatar-pick--disabled:hover {
-  transform: none;
-  border-color: var(--btn-border-color);
-  color: var(--text-secondary);
-}
-
-.avatar-actions {
+.avatar-desc {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: calc(var(--space-unit) * 0.75);
+  gap: calc(var(--space-unit) * 0.5);
   min-width: 0;
 }
 
 .avatar-hint {
   max-width: 42ch;
+}
+
+/* 右栏：图标按钮。`label` 触发隐藏的 file input —— 外观复用 .u-icon-btn，
+ * 但 label 不是 button，`:disabled` 那条全局规则选不中它，
+ * 因此禁用态要自己按 class 补（指针 + 取消悬停位移）。 */
+.avatar-upload {
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.avatar-upload-icon {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  line-height: 1;
+}
+
+.avatar-upload--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.avatar-upload--disabled:hover {
+  transform: none;
+  background: var(--bg-elevated);
+  border-color: var(--stroke-color);
+  color: var(--text-secondary);
 }
 
 .profile-actions {
@@ -564,19 +591,22 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* 窄屏：预览与按钮上下排，按钮整宽，拇指更好点 */
-  .avatar-editor {
-    flex-direction: column;
-    align-items: flex-start;
+  /* 窄屏**保持左右结构**（这正是这次改动要的版式）：只把头像与间距收一档，
+   * 说明文字自己换行，按钮继续钉在右侧。 */
+  .avatar-editor,
+  .avatar-profile {
+    gap: calc(var(--space-unit) * 1.25);
   }
 
-  .avatar-actions {
-    width: 100%;
+  .avatar-preview {
+    width: calc(var(--space-unit) * 7);
+    height: calc(var(--space-unit) * 7);
+    font-size: var(--fs-h3);
   }
 
-  .avatar-pick {
-    width: 100%;
-    justify-content: center;
+  /* 说明文字在小屏让它自己换行即可，不必压到按钮底下 */
+  .avatar-hint {
+    max-width: none;
   }
 }
 </style>

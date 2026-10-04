@@ -255,9 +255,17 @@ export const TRADE = {
   profileNickname: '昵称',
   profileNicknamePlaceholder: '1 - 32 个字符',
   profileAvatar: '头像',
-  profileAvatarPick: '选择图片',
-  profileAvatarUploading: '上传中…',
-  profileAvatarProcessing: '处理中…',
+  /**
+   * 上传按钮的可访问名 / 悬停提示。
+   *
+   * 按钮已收成纯图标（见 Profile.vue），可见文字没有了 —— 因此这个名字是
+   * 读屏用户与鼠标用户唯一能知道它做什么的地方。用「上传头像」而不是
+   * 「选择图片」：点击后确实先弹文件选择器，但用户预期的动作是「上传」，
+   * 而且选完即自动上传、不需要再点第二次。
+   */
+  profileAvatarUpload: '上传头像',
+  profileAvatarUploading: '正在上传头像…',
+  profileAvatarProcessing: '正在处理图片…',
   profileAvatarHint: '支持 JPG / PNG / WebP，最大 5 MB。会先在本地压缩到 256px 再上传。',
   profileAvatarUploaded: '头像已更新',
   profileAvatarUrl: '使用外部图片地址（可选）',

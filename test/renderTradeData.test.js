@@ -266,6 +266,61 @@ test('个人中心：说明哪些字段不能自助修改', async () => {
   assert.match(html, /暂不支持自助修改/)
 })
 
+// ── 头像栏的版式：左「头像 + 说明」/ 右「上传图标按钮」──────────
+
+test('头像栏：左侧是头像 + 说明文字，右侧是上传按钮', async () => {
+  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+
+  const editorAt = html.indexOf('class="avatar-editor"')
+  assert.ok(editorAt > -1, '应有头像编辑器')
+
+  // 左栏：头像与说明在同一个 .avatar-profile 容器里，且**在**上传按钮之前
+  const leftAt = html.indexOf('class="avatar-profile"', editorAt)
+  const uploadAt = html.indexOf('class="u-icon-btn avatar-upload"', editorAt)
+  const descAt = html.indexOf('class="u-field-hint avatar-hint"', editorAt)
+
+  assert.ok(leftAt > -1 && descAt > -1 && uploadAt > -1, '左栏容器、说明、上传按钮都应存在')
+  assert.ok(leftAt < uploadAt, '头像 + 说明应在左，上传按钮在右')
+  assert.ok(descAt < uploadAt, '说明文字属于左栏，不能排在上传按钮之后')
+
+  // 说明文字确实在左栏容器内部（两者之间没有关闭该容器）
+  const leftBlock = html.slice(leftAt, uploadAt)
+  assert.ok(leftBlock.includes('avatar-hint'), '说明文字应位于左栏容器内')
+})
+
+test('头像栏：上传按钮已收成图标（可见文字改成图标，文字转为可访问名）', async () => {
+  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+
+  const uploadAt = html.indexOf('class="u-icon-btn avatar-upload"')
+  assert.ok(uploadAt > -1)
+  const button = html.slice(uploadAt, uploadAt + 500)
+
+  // 图标是文本字形，且对读屏隐藏（它只是装饰，语义由可访问名承担）
+  assert.match(button, /class="avatar-upload-icon" aria-hidden="true">↑</, '图标应是一个 aria-hidden 的字形')
+
+  // 图标按钮必须有可访问名；且这段文字不能是可见文字
+  assert.match(
+    button,
+    /<span class="visually-hidden">上传头像<\/span>/,
+    '图标按钮必须带 .visually-hidden 的可访问名 —— label 上的 aria-label 不算 input 的名字'
+  )
+  assert.match(button, /title="上传头像"/, '鼠标悬停也要能知道这个按钮做什么')
+
+  // 按钮里不应再有可见的「选择图片 / 上传中」文字
+  assert.equal(/>\s*选择图片\s*</.test(button), false, '可见文字应已换成图标')
+})
+
+test('头像栏：隐藏的 file input 仍在，且被 label 关联', async () => {
+  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+
+  assert.match(
+    html,
+    /<input id="profile-avatar-file"[^>]*class="visually-hidden"[^>]*type="file"/,
+    '原生 file input 应保留（隐藏），label 通过 for 触发它'
+  )
+  assert.match(html, /<label for="profile-avatar-file"/, 'label 必须关联到该 input')
+})
+
 test('个人中心：游客态禁用表单并说明原因', async () => {
   const html = await renderPage('/pages/Profile.vue', { user: GUEST_USER })
   assert.match(html, /游客/)

@@ -1,4 +1,4 @@
-# starry-sky-trading-company-web
+﻿# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -203,7 +203,7 @@ app.mount('#app')
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
 | `Tool.vue` | 工具页：分类 tab + 搜索框 + "已收藏"筛选 + `ToolCard` 网格 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
-| `Profile.vue` | 左只读账号信息 / 右可编辑资料（头像上传、头像地址、昵称、性别、生日） |
+| `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板 + 联系备注 + 状态时间线 + 动作行 |
@@ -825,7 +825,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 563 个用例）
+npm test             # 单元测试（node:test，共 585 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -939,7 +939,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 563 个用例。
+共 585 个用例。
 
 ### 主题契约测试
 
@@ -1128,7 +1128,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（563 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（585 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。
