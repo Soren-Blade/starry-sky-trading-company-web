@@ -78,7 +78,7 @@ test('debounce：只在停止调用后执行一次', async () => {
   const fn = debounce(() => { calls += 1 }, 20)
   fn(); fn(); fn()
   assert.equal(calls, 0, '防抖窗口内不应执行')
-  await new Promise((r) => setTimeout(r, 50))
+  await new Promise((r) => { setTimeout(r, 50) })
   assert.equal(calls, 1)
 })
 

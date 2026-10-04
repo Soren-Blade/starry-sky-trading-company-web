@@ -25,7 +25,6 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { message } from 'ant-design-vue'
 import { throttle } from '@/utils/index.js'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'

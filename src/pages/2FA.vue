@@ -142,22 +142,18 @@ function truncate(hmac) {
 }
 
 async function computeTOTP(secretBase32, digits = 6, step = 30) {
-  try {
-    const secretBytes = base32ToBytes(secretBase32);
-    if (!keyCache || keyCache.rawSecret !== secretBase32) {
-      const cryptoKey = await importKey(secretBytes);
-      keyCache = { cryptoKey, rawSecret: secretBase32 };
-    }
-
-    const counter = Math.floor(Date.now() / 1000 / step);
-    const counterBytes = intToBytes(counter);
-    const hmac = await hmacSha1(keyCache.cryptoKey, counterBytes);
-    const bin = truncate(hmac);
-    const otp = (bin % Math.pow(10, digits)).toString().padStart(digits, "0");
-    return { otp, counter };
-  } catch (e) {
-    throw e;
+  const secretBytes = base32ToBytes(secretBase32);
+  if (!keyCache || keyCache.rawSecret !== secretBase32) {
+    const cryptoKey = await importKey(secretBytes);
+    keyCache = { cryptoKey, rawSecret: secretBase32 };
   }
+
+  const counter = Math.floor(Date.now() / 1000 / step);
+  const counterBytes = intToBytes(counter);
+  const hmac = await hmacSha1(keyCache.cryptoKey, counterBytes);
+  const bin = truncate(hmac);
+  const otp = (bin % Math.pow(10, digits)).toString().padStart(digits, "0");
+  return { otp, counter };
 }
 
 async function updateCode() {

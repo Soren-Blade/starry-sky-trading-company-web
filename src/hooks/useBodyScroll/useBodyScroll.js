@@ -1,4 +1,4 @@
-import { onMounted, onUnmounted } from 'vue';
+import { onUnmounted } from 'vue';
 
 /**
  * 禁用/启用页面滚动的 Hook
