@@ -10,7 +10,7 @@
       aria-haspopup="dialog"
       @click="themeStore.togglePanel()"
     >
-      <span class="theme-trigger-icon" aria-hidden="true">🎨</span>
+      <span class="theme-trigger-icon"><AppIcon name="palette" /></span>
       <span class="theme-trigger-dot" aria-hidden="true"></span>
     </button>
 
@@ -233,6 +233,7 @@ import { CUSTOM_FIELDS } from '@/theme/presets.js'
 import { THEME_PANEL } from '@/constants/content.js'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import SelectField from '@/components/SelectField.vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 const themeStore = useThemeStore()
 

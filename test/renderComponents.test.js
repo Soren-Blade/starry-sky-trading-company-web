@@ -114,6 +114,8 @@ const REQUIRED_PROPS = {
   // HelpModal 的 title 同时作为可见标题与 aria-labelledby 的目标，
   // 没有默认值（默认标题会让读屏念出一句与内容无关的话），因此单独渲染时必须给。
   'HelpModal.vue': { title: '桩标题' },
+  // AppIcon 的 name 同理：给它一个默认图标名会把「漏传」藏起来
+  'AppIcon.vue': { name: 'search' },
 }
 
 const propsFor = (spec) => REQUIRED_PROPS[path.basename(spec)] || {}

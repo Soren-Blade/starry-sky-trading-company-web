@@ -67,7 +67,7 @@
               :aria-expanded="searchOpen"
               @click="toggleSearch"
             >
-              <span aria-hidden="true">🔍</span>
+              <AppIcon name="search" />
             </button>
           </div>
         </div>
@@ -85,7 +85,7 @@
           class="u-icon-btn navbar-cart"
           :aria-label="cartLabel"
         >
-          <span aria-hidden="true">🛒</span>
+          <AppIcon name="shopping-cart" />
           <span v-if="cartCount > 0" class="navbar-cart-badge" aria-hidden="true">
             {{ cartCount > 99 ? '99+' : cartCount }}
           </span>
@@ -131,7 +131,7 @@
               <!-- 没有头像地址时退化成一个字形，而不是渲染空 src
                    （空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
               <img v-if="avatarUrl" :src="avatarUrl" :alt="nickname || '用户头像'" />
-              <span v-else class="avatar-fallback" aria-hidden="true">👤</span>
+              <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
             </span>
             <!-- 游客标记直接压在头像上：不展开菜单也能一眼看出当前不是正式账号 -->
             <span v-if="isGuest" class="guest-mark" aria-hidden="true">游</span>
@@ -247,6 +247,7 @@ import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
+import AppIcon from './AppIcon.vue'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 

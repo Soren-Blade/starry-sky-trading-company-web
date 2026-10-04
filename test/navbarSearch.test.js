@@ -282,12 +282,22 @@ test('不要「搜索」提交按钮：图标已内嵌，框里再塞按钮会�
   assert.match(searchBarSource, /showSubmit: \{ type: Boolean, default: true \}/)
 })
 
-test('顶栏只画一个放大镜（SearchBar 自带的那个要让位）', async () => {
+test('顶栏的搜索只有一个放大镜（SearchBar 自带的那个要让位）', async () => {
   const html = await render('/components/Navbar.vue')
 
-  assert.match(NAVBAR_SOURCE, /:show-icon="false"/)
-  const magnifiers = countMatches(html, /🔍/g)
-  assert.equal(magnifiers, 1, `放大镜应只有一个，实际 ${magnifiers} 个`)
+  assert.match(NAVBAR_SOURCE, /:show-icon="false"/, 'SearchBar 自带的放大镜要关掉')
+
+  // 放大镜现在是线性 SVG 而不是 emoji，因此按 app-icon 数量断言
+  const toggleAt = html.indexOf('search-toggle')
+  const toggleEnd = html.indexOf('</button>', toggleAt)
+  const insideToggle = html.slice(toggleAt, toggleEnd)
+
+  assert.equal(
+    countMatches(insideToggle, /class="app-icon"/g),
+    1,
+    '放大镜按钮里应恰好一个图标'
+  )
+  assert.equal(html.includes('u-search-icon'), false, '搜索框里不应再画第二个放大镜')
 })
 
 // ── 工具页版式 ─────────────────────────────────────────────

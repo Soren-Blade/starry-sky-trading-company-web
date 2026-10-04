@@ -1,7 +1,7 @@
 <template>
   <form class="u-search" role="search" @submit.prevent="$emit('submit', modelValue)">
     <label class="visually-hidden" :for="inputId">{{ label }}</label>
-    <span v-if="showIcon" class="u-search-icon" aria-hidden="true">🔍</span>
+    <span v-if="showIcon" class="u-search-icon"><AppIcon name="search" /></span>
     <input
       :id="inputId"
       ref="inputRef"
@@ -30,6 +30,7 @@
  * （`stores/shop.js` 的 `searchKeyword` / `filteredProducts`）。
  */
 import { useId, ref } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 
 defineProps({
   modelValue: { type: String, default: '' },

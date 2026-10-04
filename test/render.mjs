@@ -320,6 +320,9 @@ export async function createRenderEnv() {
     ToolCard: { tool: { id: 1, tool_name: '桩工具' } },
     AppleIdCard: { appleId: { account: 'a@b.c', password: 'p' }, source: 'Stub' },
     HelpModal: { title: '桩标题' },
+    // AppIcon 的 name 没有默认值（默认一个图标名意味着「忘了传也画得出东西」，
+    // 那会把漏传藏起来），因此遍历渲染时统一补一个存在的名字
+    AppIcon: { name: 'search' },
   }
 
   // 注册到全局，使父组件模板里的子组件能被解析并拿到必需 props
@@ -328,6 +331,7 @@ export async function createRenderEnv() {
   const { default: ToolCard } = await import('@/components/ToolCard.vue')
   const { default: AppleIdCard } = await import('@/components/AppleIdCard.vue')
   const { default: HelpModal } = await import('@/components/HelpModal.vue')
+  const { default: AppIcon } = await import('@/components/AppIcon.vue')
 
   const withDefaults = (name, Comp, props) =>
     defineComponent({
@@ -343,6 +347,7 @@ export async function createRenderEnv() {
   globalComponents.ToolCard = withDefaults('ToolCard', ToolCard, requiredProps.ToolCard)
   globalComponents.AppleIdCard = withDefaults('AppleIdCard', AppleIdCard, requiredProps.AppleIdCard)
   globalComponents.HelpModal = withDefaults('HelpModal', HelpModal, requiredProps.HelpModal)
+  globalComponents.AppIcon = withDefaults('AppIcon', AppIcon, requiredProps.AppIcon)
 
   const { createRouter, createMemoryHistory } = await import('vue-router')
   const router = createRouter({
