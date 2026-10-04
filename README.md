@@ -407,13 +407,16 @@ Vercel 静态站点，构建命令为 Vite 默认流程，产物目录 `dist`（
 | ✅ | 请求失败统一抛 `'faile'`，服务端 `message` 被丢弃 |
 | ✅ | `Navbar` 卡密管理项把 `<router-link>` 嵌在 `<button>` 里（已改为独立 `<router-link>`） |
 | ✅ | 区块头被复制 5 份、页面头被复制 4 份（已抽取 `SectionHeader.vue` / `PageHeader.vue`） |
-| ⬜ | `Tool.vue` 的搜索对 `tool.description` 直接调 `.toLowerCase()`（后端可能返回 null） |
-| ⬜ | `Tool.vue` 收藏是写死的 `Set([1,3,5])`，切换逻辑仍被注释 |
-| ⬜ | `2FA.vue` 中 `countdown === 0` 永不成立（应为 `=== 30`）；非 HTTPS 下 `crypto.subtle` 不可用 |
-| ⬜ | `useSimpleTimeFormatter` 的 `getRelativeTime()` 恒返回空串；季度计算 `Math.ceil(month()/3)+1` 偏差 1 |
+| ✅ | `Tool.vue` 的搜索对 `tool.description` 直接调 `.toLowerCase()`（已统一 null 安全处理） |
+| ✅ | `Tool.vue` 收藏是写死的 `Set([1,3,5])`（已改为真实可切换并持久化到 localStorage） |
+| ✅ | `2FA.vue` 中 `countdown === 0` 永不成立（已改为 `=== 30`，并给异步计算加序号守卫） |
+| ✅ | 非 HTTPS 下 `crypto.subtle` 不可用却报「无法解析密钥」（已改为明确的安全上下文提示） |
+| ✅ | `useSimpleTimeFormatter` 的 `getRelativeTime()` 恒返回空串（插件改为静态注册） |
+| ✅ | 季度计算 `Math.ceil(month()/3)+1` 偏差 1（已改为 `Math.floor(month()/3)+1`） |
+| ✅ | `router/index.js` 无鉴权守卫（已加 `beforeEach`，`/user/kami` 标记 `requiresAuth`，登录后按 `redirect` 回跳） |
 | ⬜ | `Navbar` 的个人中心 / 我的收藏 / 订单管理仍为 TODO |
-| ⬜ | `router/index.js` 无鉴权守卫（`/user/kami` 未保护） |
 | ⬜ | 卡片组件仍各自实现外壳；`ProductCard.vue` 静态容器带 `role="button"` 但无键盘处理 |
+| ⬜ | `ProductCard.vue` 仍硬编码商品图标/标签/评分等展示字段（后端未提供对应字段） |
 
 **工程卫生**
 
