@@ -39,22 +39,42 @@ export const domUtils = {
 /**
  * 展示层格式化
  *
- * 价格必须带货币信息，而货币由**主题**决定（technical-monochrome 用 `$`），
- * 因此 `formatPrice` 接受一个货币描述对象，默认值与主站一致（¥ / 两位小数）。
- * 调用方应从 `useThemeStore()` 取 `pricePrefix` / `priceDecimals` 传入，
- * 不要在各组件里各写一个符号。
+ * 价格必须带货币信息，而货币由**主题**决定（technical-monochrome 用 `$`，
+ * bento / neo / mono 还要求不带小数）。因此这里把价格拆成三段，
+ * 让模板能对小数部分单独设字号（规范：小数小一号）。
+ * 调用方应从 `useThemeStore()` 取 `pricePrefix` / `priceDecimals` 传入。
  */
 export const formatUtils = {
+  /**
+   * 拆价格：`{ prefix, integer, decimals, text }`。
+   * decimals 为 0 时 `decimals` 是空串 —— 模板据此决定要不要渲染小数节点。
+   *
+   * @param {number|string} price 价格
+   * @param {{ prefix?: string, decimals?: number }} [currency] 货币描述
+   */
+  splitPrice: (price, currency = {}) => {
+    const prefix = typeof currency.prefix === 'string' ? currency.prefix : '¥'
+    const decimals = Number.isInteger(currency.decimals) ? currency.decimals : 2
+    const value = Number(price)
+    const safe = Number.isFinite(value) ? value : 0
+    const fixed = Math.max(0, decimals)
+
+    const [integer, fraction = ''] = safe.toFixed(fixed).split('.')
+    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+    return {
+      prefix,
+      integer: grouped,
+      decimals: fraction,
+      text: `${prefix}${grouped}${fraction ? `.${fraction}` : ''}`,
+    }
+  },
+
   /**
    * @param {number|string} price 价格
    * @param {{ prefix?: string, decimals?: number }} [currency] 货币描述
    */
-  formatPrice: (price, currency = {}) => {
-    const prefix = typeof currency.prefix === 'string' ? currency.prefix : '¥'
-    const decimals = Number.isInteger(currency.decimals) ? currency.decimals : 2
-    const value = Number(price)
-    return `${prefix}${(Number.isFinite(value) ? value : 0).toFixed(decimals)}`
-  },
+  formatPrice: (price, currency = {}) => formatUtils.splitPrice(price, currency).text,
 
   /** 计数：按量级使用 k / 万 后缀 */
   formatReviewCount: (count) => {

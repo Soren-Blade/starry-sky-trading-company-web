@@ -11,8 +11,8 @@
             v-for="category in toolData.classes"
             :key="category.class"
             type="button"
-            class="u-chip filter-tab"
-            :class="{ 'u-chip--active': activeCategory === category.class }"
+            class="u-tag filter-tab"
+            :class="{ 'u-tag--accent': activeCategory === category.class }"
             @click="toolStore.setActiveCategory(category.class)"
           >
             <span class="tab-icon" aria-hidden="true">{{ category.icon }}</span>
@@ -20,21 +20,22 @@
           </button>
         </div>
         <div class="filter-actions">
-          <div class="search-box">
+          <!-- 搜索框：图标定位与输入区让位来自共享类 .u-search / .u-search-icon -->
+          <div class="u-search search-box">
             <label class="visually-hidden" for="tool-search">搜索工具</label>
+            <span class="u-search-icon" aria-hidden="true">🔍</span>
             <input
               id="tool-search"
               v-model="searchQuery"
               type="search"
               :placeholder="TOOL_PAGE.searchPlaceholder"
-              class="u-input search-input"
+              class="u-input"
             />
-            <span class="search-icon" aria-hidden="true">🔍</span>
           </div>
           <button
             type="button"
-            class="u-chip favorites-btn"
-            :class="{ 'u-chip--active': showFavorites }"
+            class="u-tag favorites-btn"
+            :class="{ 'u-tag--accent': showFavorites }"
             :aria-pressed="showFavorites"
             @click="toggleFavorites"
           >
@@ -55,8 +56,14 @@
           @open-tool="handleOpenTool"
           @toggle-favorite="handleToggleFavorite"
         />
-        <div v-if="toolsLoading" class="empty-note">{{ TOOL_PAGE.loading }}</div>
-        <div v-else-if="toolsError" class="empty-note error">{{ TOOL_PAGE.errorPrefix }}{{ toolsError }}</div>
+        <!-- 加载 / 错误 / 空态：加载走共享的 .u-loading-block，另两态共用同一块占位 -->
+        <div v-if="toolsLoading" class="u-loading-block" role="status">
+          <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
+          <span>{{ TOOL_PAGE.loading }}</span>
+        </div>
+        <div v-else-if="toolsError" class="empty-note empty-note--error">
+          {{ TOOL_PAGE.errorPrefix }}{{ toolsError }}
+        </div>
         <div v-else-if="filteredTools.length === 0" class="empty-note">{{ TOOL_PAGE.empty }}</div>
       </div>
     </div>
@@ -66,10 +73,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { message } from 'ant-design-vue'
 import ToolCard from '@/components/ToolCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useToolStore } from '@/stores/tool'
+import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
 import { PAGES, TOOL_PAGE } from '@/constants/index.js'
 
@@ -149,7 +156,7 @@ const handleOpenTool = (tool) => {
   const url = tool?.tool_path
 
   if (!url || typeof url !== 'string') {
-    message.warning(TOOL_PAGE.missingPath)
+    notify.warning(TOOL_PAGE.missingPath)
     return
   }
 
@@ -162,7 +169,7 @@ const handleOpenTool = (tool) => {
   try {
     absoluteUrl = new URL(url, window.location.origin).href
   } catch {
-    message.error(TOOL_PAGE.invalidPath)
+    notify.error(TOOL_PAGE.invalidPath)
     return
   }
 
@@ -182,7 +189,7 @@ const handleOpenTool = (tool) => {
 
   const win = window.open(url, '_blank')
   if (!win) {
-    message.warning(TOOL_PAGE.popupBlocked)
+    notify.warning(TOOL_PAGE.popupBlocked)
     return
   }
   openedWindows.set(url, win)
@@ -194,10 +201,10 @@ const handleToggleFavorite = (tool) => {
 
   if (favoriteTools.value.has(id)) {
     favoriteTools.value.delete(id)
-    message.success(TOOL_PAGE.removedFavorite)
+    notify.success(TOOL_PAGE.removedFavorite)
   } else {
     favoriteTools.value.add(id)
-    message.success(TOOL_PAGE.addedFavorite)
+    notify.success(TOOL_PAGE.addedFavorite)
   }
   // Set 是响应式 ref 的内部可变对象，需触发一次更新
   favoriteTools.value = new Set(favoriteTools.value)
@@ -238,8 +245,9 @@ onMounted(() => {
   gap: var(--space-unit);
 }
 
-/* 分类 tab 与「已收藏」胶囊的外观（含选中态）来自 .u-chip / .u-chip--active，
-   这里只放大 emoji 图标，使其与标签文字比例协调 */
+/* 分类 tab 与「已收藏」的尺寸、描边、圆角与选中态全部来自 .u-tag / .u-tag--accent
+   （选中态悬停时的文字色已在 global.css 修好，这里不再写兜底覆盖），
+   组件内只放大 emoji 图标，使其与标签文字比例协调 */
 .tab-icon,
 .favorites-icon {
   font-size: var(--fs-body);
@@ -252,65 +260,46 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 1.5);
 }
 
+/* 搜索框的 flex 布局、图标定位与输入区让位来自 .u-search / .u-search-icon / .u-input，
+   这里只负责它在筛选行里占多宽 */
 .search-box {
-  position: relative;
-  display: flex;
-  align-items: center;
   width: calc(var(--space-unit) * 25);
-}
-
-/* 输入框视觉来自 .u-input，这里只给它右侧放大镜让位 */
-.search-input {
-  padding-right: calc(var(--space-unit) * 4.5);
-}
-
-/* 搜索是即时的（由 computed 完成），图标仅作提示 */
-.search-icon {
-  position: absolute;
-  right: calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  pointer-events: none;
 }
 
 .tools-grid {
   display: grid;
-  /* 卡片最小宽度用间距单位表达（40 个基础单位），随主题基础单位一起缩放 */
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 40), 1fr));
+  /* 卡片最小宽度走 --card-width，随主题密度一起缩放（不再借用间距单位换算） */
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
   gap: var(--grid-gap);
 }
 
+/* 空态 / 错误态共用同一块占位：差异只在语义色 */
 .empty-note {
   grid-column: 1 / -1;
-  text-align: center;
-  color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
   padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2.5);
   font-size: var(--fs-body);
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
 }
 
-.empty-note.error {
+.empty-note--error {
   color: var(--danger);
   background: var(--danger-bg);
   border-color: var(--danger);
 }
 
-@media (max-width: 1199px) {
-  .tools-grid {
-    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 35), 1fr));
-  }
-}
-
 @media (max-width: 767px) {
   .tool-page {
-    padding: calc(var(--section-gap) * 0.5) 0;
+    padding: calc(var(--section-gap) * var(--mobile-section-scale)) 0;
   }
 
   .category-filter {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--card-gap);
+    gap: calc(var(--space-unit) * 1.5);
   }
 
   .filter-tabs {
@@ -330,10 +319,13 @@ onMounted(() => {
     min-width: 0;
   }
 
+  /* 卡片窄一档（×0.8）：小屏每行至少两张，窄到 575 时回到一张 */
   .tools-grid {
-    /* 小屏至少保持一行两张卡片 */
-    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 22.5), 1fr));
-    gap: var(--card-gap);
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-width) * 0.8), 1fr));
+  }
+
+  .empty-note {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 }
 </style>

@@ -21,8 +21,8 @@
           浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
           :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
         -->
-        <button class="u-cta" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
-        <button class="u-btn" @click="copyCode" :disabled="!code">复制当前验证码</button>
+        <button class="u-btn-primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
+        <button class="u-btn-secondary" @click="copyCode" :disabled="!code">复制当前验证码</button>
       </div>
 
       <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
@@ -41,22 +41,23 @@
               <!--
                 这里原先带 aria-live="polite"，但验证码每 30 秒换一次、倒计时每秒都在变，
                 会把整个区域变成高频播报源，对屏幕阅读器用户是干扰而非帮助。
-                需要播报验证码时由 copyCode() 的 message 提示承担。
+                需要播报验证码时由 copyCode() 的 notify 提示承担。
               -->
               <div class="meta-value meta-code">{{ code || '—' }}</div>
               <div class="meta-remaining">剩余 {{ countdown }}s</div>
             </div>
           </div>
 
+          <!-- 进度条：高度 / 圆角 / 轨道色 / 过渡全部来自 .u-progress 与 --progress-* -->
           <div
-            class="fp-progress"
+            class="u-progress fp-progress"
             role="progressbar"
             aria-label="验证码有效期剩余时间"
             :aria-valuenow="countdown"
             aria-valuemin="0"
             aria-valuemax="30"
           >
-            <div class="fp-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
+            <div class="u-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
           </div>
 
           <div class="fp-note" v-if="error">{{ error }}</div>
@@ -70,7 +71,7 @@
       <div class="fp-tutorial-body">
         <p>
           <span>演示密钥：</span>
-          <button class="key-inline" @click="copyDemoKey" aria-label="复制演示密钥">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
+          <button class="u-btn-secondary key-inline" @click="copyDemoKey" aria-label="复制演示密钥">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
           （点击此密钥可复制）
         </p>
         <p>
@@ -87,7 +88,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
-import { message } from 'ant-design-vue'
+import { notify } from '@/hooks/useToast/index.js'
 import { createKeyCache, isCryptoAvailable } from '@/utils/totp.js'
 import { computeSecondsRemaining } from '@/utils/totpCountdown.js'
 import { copyText } from '@/utils/clipboard.js'
@@ -194,15 +195,15 @@ async function copyDemoKey() {
   const result = await copyText(demo)
   // 必须按结果提示：早期实现的降级分支既不检查复制是否成功、也不提示用户，
   // 失败时完全静默 —— 用户以为复制成功，粘贴出来却是旧内容。
-  if (result.ok) message.success('密钥已复制到剪贴板')
-  else message.warning(result.message)
+  if (result.ok) notify.success('密钥已复制到剪贴板')
+  else notify.warning(result.message)
 }
 
 async function copyCode() {
   if (!code.value) return
   const result = await copyText(code.value)
-  if (result.ok) message.success('验证码已复制到剪贴板')
-  else message.warning(result.message)
+  if (result.ok) notify.success('验证码已复制到剪贴板')
+  else notify.warning(result.message)
 }
 
 watch(secret, async () => {
@@ -235,14 +236,15 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 
-.fp-container {
-  /* 窄内容列：取 --container-narrow 的 64%，与改造前的 640px 一致。
-     不写成 calc(var(--space-unit) * 80)：4px 基础单位的主题下会缩到 320px 挤坏表单。 */
-  max-width: calc(var(--container-narrow) * 0.64);
+/* 两张卡片同宽同表面：窄内容列取 --container-narrow 的 64%，与改造前的 640px 一致。
+   不写成 calc(var(--space-unit) * 80)：4px 基础单位的主题下会缩到 320px 挤坏表单。 */
+.fp-container,
+.fp-tutorial {
   width: 100%;
-  padding: var(--panel-padding);
+  max-width: calc(var(--container-narrow) * 0.64);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -287,8 +289,9 @@ h1 {
   justify-content: center;
 }
 
-.actions .u-cta,
-.actions .u-btn {
+/* 两个按钮等宽：视觉重量对称，窄屏换行后也不参差 */
+.actions .u-btn-primary,
+.actions .u-btn-secondary {
   min-width: calc(var(--space-unit) * 20);
 }
 
@@ -306,7 +309,7 @@ h1 {
   width: 100%;
   padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -349,18 +352,10 @@ h1 {
   font-size: var(--fs-label);
 }
 
+/* 进度条本体交给 .u-progress / .u-progress-bar（高度、圆角、轨道色、过渡由
+   --progress-* 与 --transition-progress 决定），这里只补它与上方 meta 区的间距 */
 .fp-progress {
   margin-top: calc(var(--space-unit) * 1.25);
-  height: var(--space-unit);
-  background: var(--bg-surface);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-}
-
-.fp-progress-bar {
-  height: 100%;
-  background: var(--accent);
-  transition: width var(--transition-surface);
 }
 
 /* 错误提示：先声明 .fp-note，再声明 .secure-warning，
@@ -380,19 +375,8 @@ h1 {
   line-height: var(--leading-body);
   text-align: left;
   background: var(--danger-bg);
-  border: 1px solid var(--danger);
+  border: var(--stroke-width) solid var(--danger);
   border-radius: var(--radius-panel);
-}
-
-.fp-tutorial {
-  /* 与 .fp-container 同宽，两卡片左对齐 */
-  max-width: calc(var(--container-narrow) * 0.64);
-  width: 100%;
-  padding: var(--panel-padding);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-card);
 }
 
 .fp-tutorial h2 {
@@ -416,26 +400,47 @@ h1 {
   color: var(--text-primary);
 }
 
-/* 演示密钥：可点击的等宽内联按钮，用次级表面 + 边框表达「可点」 */
+/* 演示密钥：按钮外观（底色 / 描边 / 圆角 / 悬停）来自 .u-btn-secondary，
+   这里只把它换成等宽字体，读起来才像一串密钥。
+   密钥是 32 位不可断行的长串，窄屏下必须允许在按钮内换行，
+   否则 neo-brutalism 的内边距会把卡片撑破；高度仍以 --btn-height 为下限。 */
 .key-inline {
-  padding: calc(var(--space-unit) * 0.5) var(--space-unit);
+  height: auto;
+  min-height: var(--btn-height);
   font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--accent);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-chip);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-interactive),
-    color var(--transition-interactive),
-    background-color var(--transition-interactive);
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.key-inline:hover {
-  color: var(--accent-strong);
-  border-color: var(--accent);
-  background: var(--bg-soft);
+/*
+ * 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、正文字号 ×0.95。
+ * 标题字号不乘 --mobile-title-scale：本页 h1 的桌面档只有 --fs-h3（紧凑工具页），
+ * ×0.7 后会小于同页 h2（--fs-body），层级反而倒挂。
+ */
+@media (max-width: 767px) {
+  .fp-page-2fa {
+    padding: calc(var(--section-gap) * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  .fp-container,
+  .fp-tutorial {
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
+  }
+
+  .fp-card {
+    padding: calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
+  }
+
+  /* 控件高度在移动端 ×0.9，换行型按钮的高度下限同样跟着收 */
+  .key-inline {
+    min-height: calc(var(--btn-height) * var(--mobile-control-scale));
+  }
+
+  .fp-tutorial-body p {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
 }
 
 /*
@@ -455,21 +460,12 @@ h1 {
     margin-left: 0;
   }
 
-  .fp-card {
-    padding: calc(var(--space-unit) * 1.5);
-  }
-
-  .fp-container,
-  .fp-tutorial {
-    padding: var(--card-padding);
-  }
-
   .actions {
     flex-wrap: wrap;
   }
 
-  .actions .u-cta,
-  .actions .u-btn {
+  .actions .u-btn-primary,
+  .actions .u-btn-secondary {
     width: 100%;
   }
 }

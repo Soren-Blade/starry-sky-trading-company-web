@@ -57,21 +57,34 @@ if (!BUILT) {
   })
 
   test('设计令牌完整进入 CSS', () => {
-    // 令牌契约换成了「主题化」命名（--color-primary → --accent 等）。
-    // 这里抽查各层级的代表令牌，确认 variables.css 与 global.css 都进了产物。
+    // 抽查各层级的代表令牌：基础层（颜色/字体/圆角）+ 组件层（尺寸表）。
     const tokens = [
       '--bg-page',
       '--bg-surface',
       '--accent',
       '--text-primary',
       '--border',
-      '--radius-card',
-      '--radius-cta',
-      '--shadow-card',
-      '--shadow-cta',
-      '--card-padding',
       '--font-display',
       '--fs-h1',
+      '--radius-card',
+      '--radius-input',
+      '--input-height',
+      '--btn-height',
+      '--btn-radius',
+      '--card-width',
+      '--card-image-height',
+      '--fs-price',
+      '--toast-width',
+      '--modal-width',
+      '--dropdown-item-height',
+      '--tag-height',
+      '--pager-size',
+      '--progress-height',
+      '--avatar-size',
+      '--checkbox-size',
+      '--spinner-size-sm',
+      '--skeleton-duration',
+      '--mobile-control-scale',
       '--effect-backdrop',
       '--enter-shift',
     ]
@@ -85,11 +98,18 @@ if (!BUILT) {
       '--color-warning',
       '--gradient-warm',
       '--shadow-glass',
-      // 本轮重构删除的旧令牌（令牌名册已整体更换）
+      // 上一轮的旧命名（本轮已由组件层令牌取代）
       '--color-primary',
       '--gradient-page-soft',
       '--radius-xl',
       '--glass-backdrop',
+      '--radius-cta',
+      '--shadow-cta',
+      '--radius-chip',
+      '--border-strong',
+      '--shadow-elevated',
+      '--panel-padding',
+      '--card-gap',
     ]
     const present = removed.filter((t) => allCss.includes(t))
     assert.deepEqual(present, [], `以下令牌已删除但仍出现在产物中：\n  ${present.join('\n  ')}`)

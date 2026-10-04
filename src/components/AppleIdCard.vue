@@ -2,10 +2,10 @@
   <!-- 卡片本身不可点击（操作都在内部按钮上），因此不加 role/tabindex -->
   <div class="apple-id-card ui-card">
     <div class="card-header">
-      <div class="source-badge">{{ source }}</div>
-      <div class="status-indicator" :class="getStatusClass(appleId)">
+      <span class="u-tag source-badge">{{ source }}</span>
+      <span class="u-tag status-indicator" :class="getStatusClass(appleId)">
         {{ appleId.status || '未知' }}
-      </div>
+      </span>
     </div>
 
     <div class="card-body">
@@ -42,7 +42,7 @@
 
     <div class="card-actions">
       <button
-        class="action-btn u-cta"
+        class="action-btn u-btn-primary"
         :aria-label="`复制账号 ${appleId.apple_id || ''}`"
         @click.stop="copyToClipboard(appleId.apple_id)"
       >
@@ -50,7 +50,7 @@
       </button>
       <button
         v-if="appleId.password"
-        class="action-btn u-cta"
+        class="action-btn u-btn-primary"
         aria-label="复制密码"
         @click.stop="copyToClipboard(appleId.password)"
       >
@@ -62,7 +62,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { notify } from '@/hooks/useToast/index.js'
 
 const props = defineProps({
   appleId: {
@@ -82,15 +82,14 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-// 获取状态样式类
+// 状态徽标的语义变体类名：交给 global.css 的 .u-tag--success / .u-tag--danger，
+// 默认（无变体）即中性标签，组件内不再自写三套配色。
+// 根据数据源和字段判断状态
 const getStatusClass = (id) => {
-  // 根据数据源和字段判断状态
-  if (props.source === 'NanoCloud') {
-    return id.status === '正常' ? 'active' : 'inactive'
-  } else if (props.source === 'FangQiangNan') {
-    return id.status === '正常' ? 'active' : 'inactive'
+  if (props.source === 'NanoCloud' || props.source === 'FangQiangNan') {
+    return id.status === '正常' ? 'u-tag--success' : 'u-tag--danger'
   }
-  return 'unknown'
+  return ''
 }
 
 // 格式化日期
@@ -111,11 +110,11 @@ const formatDate = (dateStr) => {
   }
 }
 
-// 复制到剪贴板
+// 复制到剪贴板（提示走右上角提示框门面，3000ms 自动消失、悬停暂停）
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
-    message.success('已复制到剪贴板')
+    notify.success('已复制到剪贴板')
   } catch (err) {
     // 降级方案
     const textArea = document.createElement('textarea')
@@ -124,19 +123,16 @@ const copyToClipboard = async (text) => {
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    message.success('已复制到剪贴板')
+    notify.success('已复制到剪贴板')
   }
 }
 </script>
 
 <style scoped>
-/* 外壳来自 global.css 的 .ui-card，这里只用令牌重申边框，
-   避免将来改动 .ui-card 时这张卡静默失去边界 */
-.apple-id-card {
-  border-color: var(--border);
-}
+/* 外壳（表面/边框/圆角/阴影）来自 global.css 的 .ui-card：
+   内边距由共享类提供（--card-padding），子元素只加分隔与行间距 */
 
-/* 卡头用次级表面 + 分隔线表达层级。
+/* 卡头：一条分隔线表达层级，不引入新颜色。
    原先的品红渐变属于规范外的装饰，已删除 —— 卡片身份靠排版而非渐变 */
 .card-header {
   display: flex;
@@ -144,50 +140,21 @@ const copyToClipboard = async (text) => {
   justify-content: space-between;
   gap: calc(var(--space-unit) * 1.5);
   padding-bottom: calc(var(--space-unit) * 1.5);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--stroke-width) solid var(--border);
 }
 
-/* 数据源徽标比卡头再亮一档，保证与状态徽标同处一行时能分辨 */
+/* 数据源徽标：外观全部来自 .u-tag（高度/内边距/圆角/中性配色），
+   这里只保证长数据源名截断而不撑破卡头 */
 .source-badge {
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-chip);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
+/* 状态徽标：语义色由 .u-tag--success / .u-tag--danger 提供，
+   未知来源退回 .u-tag 的中性默认态，组件内不再自写三套配色 */
 .status-indicator {
-  display: inline-flex;
-  align-items: center;
   flex-shrink: 0;
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  border-radius: var(--radius-chip);
-}
-
-.status-indicator.active {
-  color: var(--success);
-  background: var(--success-bg);
-}
-
-.status-indicator.inactive {
-  color: var(--danger);
-  background: var(--danger-bg);
-}
-
-.status-indicator.unknown {
-  color: var(--text-muted);
-  background: var(--bg-soft);
 }
 
 /* 行间距交给卡片的 gap，比逐行 margin 更好随密度缩放 */
@@ -233,6 +200,7 @@ const copyToClipboard = async (text) => {
   letter-spacing: var(--tracking-label);
 }
 
+/* 显隐密码：行内小按钮，圆角与悬停底色走令牌 */
 .toggle-password {
   display: inline-flex;
   align-items: center;
@@ -240,7 +208,7 @@ const copyToClipboard = async (text) => {
   flex-shrink: 0;
   padding: calc(var(--space-unit) * 0.25);
   font-size: var(--fs-body);
-  border-radius: var(--radius-btn);
+  border-radius: var(--btn-radius);
   cursor: pointer;
   transition: background-color var(--transition-interactive);
 }
@@ -249,24 +217,22 @@ const copyToClipboard = async (text) => {
   background: var(--bg-soft);
 }
 
-/* 操作区是卡片的收尾块：抬到次级表面并加一条分隔线 */
+/* 操作区是卡片的收尾块：一条分隔线 + 收尾间距（左右内边距仍由 .ui-card 负责） */
 .card-actions {
   display: flex;
-  gap: calc(var(--space-unit));
+  gap: var(--space-unit);
   padding-top: calc(var(--space-unit) * 1.5);
-  background: var(--bg-surface-2);
-  border-top: 1px solid var(--border);
-  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  border-top: var(--stroke-width) solid var(--border);
 }
 
-/* 复制按钮复用 .u-cta（底色/圆角/hover 位移都随主题），
-   这里只给触控目标一个高度下限 */
+/* 复制按钮复用 .u-btn-primary（底色/圆角/hover 位移都随主题），
+   这里只让两个按钮等分操作区宽度；高度由 --btn-height 决定 */
 .action-btn {
   flex: 1;
-  min-height: calc(var(--space-unit) * 5.5);
 }
 
-/* 小屏维持 id 行不换行 + 省略号截断（原行为保留） */
+/* 小屏维持 id 行不换行 + 省略号截断（原行为保留），
+   并按规范收一档：内边距 ×0.8、正文字号 ×0.95 */
 @media (max-width: 767px) {
   .id-info {
     flex-wrap: nowrap;
@@ -282,6 +248,20 @@ const copyToClipboard = async (text) => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .id-label,
+  .id-value {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+  }
+
+  .toggle-password {
+    padding: calc(var(--space-unit) * 0.25 * var(--mobile-padding-scale));
+  }
+
+  .card-actions {
+    gap: calc(var(--space-unit) * var(--mobile-padding-scale));
+    padding-top: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
   }
 }
 

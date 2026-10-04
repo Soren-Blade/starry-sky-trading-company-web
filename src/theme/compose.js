@@ -65,12 +65,18 @@ export function composeTokens(themeId, custom = {}) {
     }
   }
 
-  // 2) 强调色：同时派生悬停色、柔和底色与「强调色之上的文字色」
+  // 2) 强调色：同时派生悬停色、柔和底色、按钮悬停底色与「强调色之上的文字色」
   if (parseHex(c.accent)) {
     tokens['--accent'] = c.accent
     tokens['--accent-strong'] = darken(c.accent, 0.18)
     tokens['--accent-soft'] = withAlpha(c.accent, theme.scheme === 'dark' ? 0.16 : 0.1)
     tokens['--text-on-accent'] = isLightColor(c.accent) ? '#0a0a0a' : '#ffffff'
+    // 按钮悬停底色：原本等于强调色的风格（mono / neo，靠位移或边框表达悬停）
+    // 保持等于强调色；其余风格按同样幅度压暗，避免换色后悬停色与主色脱节。
+    tokens['--btn-hover-bg'] =
+      theme.tokens['--btn-hover-bg'] === theme.tokens['--accent']
+        ? c.accent
+        : darken(c.accent, 0.12)
   }
 
   // 3) 字体族覆盖

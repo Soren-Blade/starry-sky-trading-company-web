@@ -1,8 +1,8 @@
 <template>
-  <!-- 导航栏容器，根据滚动状态显示底部分隔线 -->
+  <!-- 粘性顶栏：滚动后加强模糊或加阴影（由 --nav-scrolled-* 令牌决定） -->
   <header class="navbar" :class="{ 'navbar-scrolled': isScrolled }">
     <div class="navbar-inner">
-      <!-- Logo -->
+      <!-- Logo（高度由 --nav-logo-height 决定，文字随之派生） -->
       <router-link to="/home" class="navbar-logo" @click="handleMenuClick">
         <span class="logo-icon" aria-hidden="true">{{ SITE.logo }}</span>
         <span class="logo-text">{{ SITE.name }}</span>
@@ -25,7 +25,7 @@
           v-model="keyword"
           :label="PRODUCT_GRID.searchPlaceholder"
           :placeholder="PRODUCT_GRID.searchPlaceholder"
-          :submit-label="'搜索'"
+          submit-label="搜索"
           @submit="handleSearchSubmit"
         />
       </div>
@@ -35,11 +35,11 @@
         <ThemeSwitcher />
 
         <!-- 未登录（含游客）显示登录入口 -->
-        <button v-if="!isLoggedIn" type="button" class="u-cta navbar-auth" @click="openLoginModal">
+        <button v-if="!isLoggedIn" type="button" class="u-btn-primary" @click="openLoginModal">
           登录 / 注册
         </button>
 
-        <!-- 已登录：用户头像与下拉菜单 -->
+        <!-- 已登录：头像与下拉菜单 -->
         <div v-else class="navbar-user">
           <button
             type="button"
@@ -48,23 +48,31 @@
             :aria-expanded="userMenuOpen"
             @click="toggleUserMenu"
           >
-            <img :src="avatarUrl" :alt="nickname || '用户头像'" />
+            <span class="u-avatar">
+              <img :src="avatarUrl" :alt="nickname || '用户头像'" />
+            </span>
           </button>
 
-          <div v-if="userMenuOpen" class="user-dropdown">
+          <div v-if="userMenuOpen" class="u-dropdown user-dropdown">
             <div class="user-info">
               <p class="user-name">{{ nickname || '未设置昵称' }}</p>
               <p class="user-since">注册于 {{ toDate(userInfo.created_at) }}</p>
             </div>
-            <div class="dropdown-divider"></div>
-            <button type="button" class="dropdown-item" @click="handleMyProfile">个人中心</button>
-            <button type="button" class="dropdown-item" @click="handleMyFavorites">我的收藏</button>
-            <button type="button" class="dropdown-item" @click="handleMyOrders">订单管理</button>
-            <router-link class="dropdown-item" to="/user/kami" @click="handleMyKami">
+            <div class="u-dropdown-divider"></div>
+            <button type="button" class="u-dropdown-item" @click="handleMyProfile">
+              个人中心
+            </button>
+            <button type="button" class="u-dropdown-item" @click="handleMyFavorites">
+              我的收藏
+            </button>
+            <button type="button" class="u-dropdown-item" @click="handleMyOrders">
+              订单管理
+            </button>
+            <router-link class="u-dropdown-item" to="/user/kami" @click="handleMyKami">
               卡密管理
             </router-link>
-            <div class="dropdown-divider"></div>
-            <button type="button" class="dropdown-item logout" @click="handleLogout">
+            <div class="u-dropdown-divider"></div>
+            <button type="button" class="u-dropdown-item logout" @click="handleLogout">
               退出登录
             </button>
           </div>
@@ -73,27 +81,27 @@
         <!-- 移动端菜单切换按钮 -->
         <button
           type="button"
-          class="menu-toggle show-mobile"
+          class="u-icon-btn menu-toggle show-mobile"
           :class="{ active: menuOpen }"
           :aria-expanded="menuOpen"
           aria-label="切换导航菜单"
           @click="toggleMenu"
         >
-          <span></span>
-          <span></span>
-          <span></span>
+          <span class="menu-toggle-bars" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </span>
         </button>
       </div>
     </div>
 
     <!-- 移动端抽屉（含搜索栏，桌面端的搜索栏在小屏收起） -->
-    <div class="navbar-drawer show-mobile" :class="{ active: menuOpen }">
+    <div class="navbar-drawer" :class="{ active: menuOpen }">
       <div class="drawer-search">
         <SearchBar
           v-model="keyword"
           :label="PRODUCT_GRID.searchPlaceholder"
           :placeholder="PRODUCT_GRID.searchPlaceholder"
-          :submit-label="'搜索'"
+          submit-label="搜索"
           @submit="handleSearchSubmit"
         />
       </div>
@@ -117,15 +125,17 @@
 
 <script setup>
 /**
- * 顶部导航
+ * 顶部导航（position: sticky）
  *
  * 组成：品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉。
  *
- * 两个刻意的结构决定：
- *   1. **毛玻璃写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
+ * 三个刻意的结构决定：
+ *   1. **sticky 而不是 fixed**。规范要求 `position: sticky; top: 0; z-index: 100`；
+ *      切过来之后顶栏参与文档流，主内容不再需要 `padding-top` 占位。
+ *   2. **毛玻璃写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
  *      `backdrop-filter` 会让元素成为 fixed 后代的包含块 —— 写在导航栏上时，
- *      登录弹窗与样式弹窗会被「钉」在导航栏内部（glass 主题下尤其明显）。
- *   2. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
+ *      登录弹窗与样式弹窗会被「钉」在导航栏内部（glass 主题下必然复现）。
+ *   3. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
  *      关键词留在组件里就得层层透传事件；匹配规则也只应有一处定义。
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -264,18 +274,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ── 粘性定位与表面 ─────────────────────────────────────── */
 .navbar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--transition-surface);
+  /* 规范：z-index 100。低于模态框（2000）与提示框（3000） */
+  z-index: 100;
+  border-bottom: var(--stroke-width) solid var(--nav-border-color);
+  transition: box-shadow var(--transition-surface);
 }
 
-/* 表面与毛玻璃层。
- * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释）。 */
+/* 表面与毛玻璃层。放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释） */
 .navbar::before {
   content: '';
   position: absolute;
@@ -284,21 +293,27 @@ onUnmounted(() => {
   background: var(--bg-nav);
   backdrop-filter: var(--nav-backdrop);
   -webkit-backdrop-filter: var(--nav-backdrop);
+  transition: backdrop-filter var(--transition-surface);
 }
 
-/* 滚动态只强化分隔线，不加阴影 —— 五套规范里导航都不靠投影建立层级 */
+/* 滚动后：glass 加强模糊，其余风格用各自的一档阴影 */
 .navbar-scrolled {
-  border-bottom-color: var(--border);
+  box-shadow: var(--nav-scrolled-shadow);
+}
+
+.navbar-scrolled::before {
+  backdrop-filter: var(--nav-scrolled-backdrop);
+  -webkit-backdrop-filter: var(--nav-scrolled-backdrop);
 }
 
 .navbar-inner {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 2);
-  max-width: var(--container-max);
+  gap: var(--nav-menu-gap);
   height: var(--navbar-height);
   margin: 0 auto;
-  padding: 0 var(--container-padding);
+  padding: 0 var(--nav-padding-x);
+  max-width: var(--container-max);
 }
 
 /* ── Logo ───────────────────────────────────────────────── */
@@ -307,17 +322,19 @@ onUnmounted(() => {
   align-items: center;
   gap: calc(var(--space-unit));
   flex-shrink: 0;
+  height: var(--nav-logo-height);
 }
 
 .logo-icon {
-  font-size: 22px;
+  font-size: var(--nav-logo-height);
   line-height: 1;
   animation: var(--decor-animation);
 }
 
 .logo-text {
+  /* 文字由 Logo 高度派生：换风格时两者同步，不需要第二个令牌 */
   font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: calc(var(--nav-logo-height) * 0.72);
   font-weight: var(--fw-display);
   letter-spacing: var(--tracking-display);
   color: var(--text-primary);
@@ -337,64 +354,57 @@ onUnmounted(() => {
 .menu-list {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
+  gap: var(--nav-menu-gap);
 }
 
 .menu-link {
   position: relative;
   display: block;
-  padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-label);
+  padding: calc(var(--space-unit) * 0.5) 0;
+  font-size: var(--nav-link-size);
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   text-transform: var(--label-transform);
   color: var(--text-secondary);
-  border-radius: var(--radius-btn);
   transition: color var(--transition-interactive);
 }
 
-.menu-link:hover {
-  color: var(--text-primary);
-}
-
-.menu-link::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  width: 0;
-  height: 2px;
-  background: var(--accent);
-  transform: translateX(-50%);
-  transition: width var(--transition-interactive);
-}
-
-.menu-link:hover::after,
-.menu-link.router-link-active::after {
-  width: calc(100% - var(--space-unit) * 2.5);
-}
-
+.menu-link:hover,
 .menu-link.router-link-active {
   color: var(--text-primary);
 }
 
-/* ── 搜索栏 ─────────────────────────────────────────────── */
+/* 选中/悬停用一道强调色下划线表达，不引入背景块 */
+.menu-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform var(--transition-interactive);
+}
+
+.menu-link:hover::after,
+.menu-link.router-link-active::after {
+  transform: scaleX(1);
+}
+
+/* ── 搜索栏：宽度由输入框高度派生，随风格一起收放 ─────────── */
 .navbar-search {
-  flex: 0 1 260px;
-  min-width: 180px;
+  flex: 0 1 calc(var(--input-height) * 6);
+  min-width: calc(var(--input-height) * 4);
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit));
+  gap: calc(var(--space-unit) * 1.5);
   margin-left: auto;
   flex-shrink: 0;
-}
-
-.navbar-auth {
-  white-space: nowrap;
 }
 
 /* ── 用户菜单 ───────────────────────────────────────────── */
@@ -404,40 +414,22 @@ onUnmounted(() => {
 
 .user-avatar-btn {
   display: block;
-  width: 36px;
-  height: 36px;
-  overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  transition: border-color var(--transition-interactive);
+  border-radius: var(--avatar-radius);
+  transition: opacity var(--transition-interactive);
 }
 
 .user-avatar-btn:hover {
-  border-color: var(--accent);
-}
-
-.user-avatar-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  opacity: 0.85;
 }
 
 .user-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-unit));
+  top: calc(100% + var(--space-unit) * 1.5);
   right: 0;
-  width: 220px;
-  overflow: hidden;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-elevated);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
 .user-info {
-  padding: calc(var(--space-unit) * 1.5);
-  background: var(--bg-soft);
+  padding: calc(var(--space-unit) * 1.5) var(--dropdown-item-padding-x);
 }
 
 .user-name {
@@ -451,66 +443,48 @@ onUnmounted(() => {
 }
 
 .user-since {
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   color: var(--text-muted);
   margin: 0;
 }
 
-.dropdown-divider {
-  height: 1px;
-  background: var(--divider);
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  text-align: left;
-  color: var(--text-primary);
-  transition: background-color var(--transition-interactive), color var(--transition-interactive);
-}
-
-.dropdown-item:hover {
-  background: var(--bg-soft);
-  color: var(--accent);
-}
-
-.dropdown-item.logout {
+.u-dropdown-item.logout {
   color: var(--danger);
 }
 
-/* ── 移动端抽屉 ─────────────────────────────────────────── */
+/* ── 汉堡按钮 ───────────────────────────────────────────── */
 .menu-toggle {
   display: none;
-  flex-direction: column;
-  gap: 5px;
-  width: 28px;
-  height: 22px;
-  flex-shrink: 0;
 }
 
-.menu-toggle span {
+.menu-toggle-bars {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  width: calc(var(--icon-btn-icon-size));
+}
+
+.menu-toggle-bars i {
   display: block;
-  width: 100%;
   height: 2px;
-  background: var(--text-primary);
+  background: currentColor;
   border-radius: 2px;
   transition: transform var(--transition-interactive), opacity var(--transition-interactive);
 }
 
-.menu-toggle.active span:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
+.menu-toggle.active .menu-toggle-bars i:nth-child(1) {
+  transform: translateY(calc(var(--space-unit) * 0.5 + 2px)) rotate(45deg);
 }
 
-.menu-toggle.active span:nth-child(2) {
+.menu-toggle.active .menu-toggle-bars i:nth-child(2) {
   opacity: 0;
 }
 
-.menu-toggle.active span:nth-child(3) {
-  transform: translateY(-7px) rotate(-45deg);
+.menu-toggle.active .menu-toggle-bars i:nth-child(3) {
+  transform: translateY(calc((var(--space-unit) * -0.5) - 2px)) rotate(-45deg);
 }
 
+/* ── 移动端抽屉 ─────────────────────────────────────────── */
 .navbar-drawer {
   position: fixed;
   top: var(--navbar-height);
@@ -518,9 +492,9 @@ onUnmounted(() => {
   right: 0;
   max-height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
-  padding: calc(var(--space-unit) * 2) var(--container-padding) calc(var(--space-unit) * 3);
+  padding: calc(var(--space-unit) * 2) var(--nav-padding-x) calc(var(--space-unit) * 3);
   background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--stroke-width) solid var(--stroke-color);
   transform: translateY(-8px);
   opacity: 0;
   visibility: hidden;
@@ -547,12 +521,12 @@ onUnmounted(() => {
 
 .drawer-link {
   display: block;
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit));
+  padding: calc(var(--space-unit) * 1.5) 0;
   font-size: var(--fs-body);
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--divider);
+  border-bottom: var(--stroke-width) solid var(--divider);
 }
 
 .drawer-link.router-link-active {
@@ -564,11 +538,6 @@ onUnmounted(() => {
   .hide-below-992 {
     display: none;
   }
-
-  .navbar-inner {
-    gap: calc(var(--space-unit) * 1.5);
-    padding: 0 16px;
-  }
 }
 
 @media (max-width: 767px) {
@@ -577,28 +546,28 @@ onUnmounted(() => {
   }
 
   .menu-toggle {
-    display: flex;
+    display: inline-flex;
   }
 
-  .logo-text {
-    font-size: var(--fs-body);
-    font-weight: var(--fw-heading);
+  /* 移动端缩放：导航高度 ×0.85 */
+  .navbar-inner {
+    height: calc(var(--navbar-height) * var(--mobile-nav-scale));
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  .navbar-drawer {
+    top: calc(var(--navbar-height) * var(--mobile-nav-scale));
+    max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale));
+  }
+
+  .navbar-actions {
+    gap: var(--space-unit);
   }
 }
 
 @media (max-width: 575px) {
-  .navbar-inner {
-    gap: var(--space-unit);
-    padding: 0 12px;
-  }
-
-  .logo-icon {
-    font-size: 18px;
-  }
-
-  .navbar-auth {
-    padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.25);
-    font-size: var(--fs-label);
+  .logo-text {
+    display: none;
   }
 }
 </style>

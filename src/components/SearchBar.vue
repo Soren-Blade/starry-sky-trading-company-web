@@ -1,17 +1,17 @@
 <template>
-  <form class="search-bar" role="search" @submit.prevent="$emit('submit', modelValue)">
+  <form class="u-search" role="search" @submit.prevent="$emit('submit', modelValue)">
     <label class="visually-hidden" :for="inputId">{{ label }}</label>
-    <span class="search-bar-icon" aria-hidden="true">🔍</span>
+    <span class="u-search-icon" aria-hidden="true">🔍</span>
     <input
       :id="inputId"
-      class="search-bar-input"
+      class="u-input"
       type="search"
       autocomplete="off"
       :value="modelValue"
       :placeholder="placeholder"
       @input="$emit('update:modelValue', $event.target.value)"
     />
-    <button type="submit" class="search-bar-submit">{{ submitLabel }}</button>
+    <button type="submit" class="u-btn-primary search-submit">{{ submitLabel }}</button>
   </form>
 </template>
 
@@ -19,9 +19,12 @@
 /**
  * 搜索栏（受控组件）
  *
+ * 尺寸、圆角、描边、图标尺寸与间距、聚焦态全部来自 `.u-search` / `.u-input`
+ * 与 `--input-*` 令牌 —— 五套风格下分别是
+ * 40px/12px 直角系、48px/全胶囊玻璃、44px/24px 便当、48px/8px 粗野、36px/6px 等宽。
+ *
  * 只负责输入与提交，不直接读写 store —— 过滤逻辑属于数据层
- * （`stores/shop.js` 的 `searchKeyword` / `filteredProducts`），
- * 这样同一个搜索栏可以放在导航栏、移动端菜单或任意页面里复用。
+ * （`stores/shop.js` 的 `searchKeyword` / `filteredProducts`）。
  */
 import { useId } from 'vue'
 
@@ -40,58 +43,14 @@ const inputId = `search-bar-${useId()}`
 </script>
 
 <style scoped>
-.search-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  width: 100%;
-}
-
-.search-bar-icon {
-  position: absolute;
-  left: calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  line-height: 1;
-  pointer-events: none;
-}
-
-.search-bar-input {
-  flex: 1;
-  min-width: 0;
-  padding-left: calc(var(--space-unit) * 4);
-  padding-right: calc(var(--space-unit) * 1.5);
-  background: var(--bg-surface-2);
-  border-color: var(--border);
-  /* 搜索框圆角独立于按钮：glass 是全胶囊，mono 是 6px */
-  border-radius: var(--radius-input);
-}
-
-.search-bar-submit {
+.search-submit {
   flex-shrink: 0;
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
-  font-family: var(--font-body);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border-radius: var(--radius-btn);
-  transition: background-color var(--transition-interactive);
-}
-
-.search-bar-submit:hover {
-  background: var(--accent-strong);
 }
 
 @media (max-width: 767px) {
-  .search-bar-submit {
+  /* 移动端隐藏提交按钮，改由软键盘的「搜索」键提交（表单 submit 仍然生效） */
+  .search-submit {
     display: none;
-  }
-
-  .search-bar-input {
-    padding-right: calc(var(--space-unit) * 2);
   }
 }
 </style>

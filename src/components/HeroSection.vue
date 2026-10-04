@@ -9,11 +9,11 @@
         <p class="hero-subtitle u-enter" :style="{ '--i': 2 }">{{ HERO.subtitle }}</p>
 
         <div class="hero-actions u-enter" :style="{ '--i': 3 }">
-          <button type="button" class="u-cta u-cta--lg" @click="handleShopNow">
+          <button type="button" class="u-btn-primary" @click="handleShopNow">
             <span>{{ HERO.primaryCta }}</span>
             <span aria-hidden="true">→</span>
           </button>
-          <button type="button" class="u-btn u-cta--lg" @click="handleLearnMore">
+          <button type="button" class="u-btn-secondary" @click="handleLearnMore">
             <span>{{ HERO.secondaryCta }}</span>
             <span aria-hidden="true">↓</span>
           </button>
@@ -66,6 +66,13 @@ const handleLearnMore = () => {
 </script>
 
 <style scoped>
+/*
+ * 首屏
+ *
+ * 组件只负责布局与排版节奏：两个 CTA 走 global.css 的 .u-btn-primary /
+ * .u-btn-secondary（高度、内边距、悬停位移全部由令牌决定，各风格天然不同），
+ * 视觉面板的底/描边/圆角/阴影/内边距同样只消费令牌。
+ */
 .hero {
   width: 100%;
   background: transparent;
@@ -77,6 +84,9 @@ const handleLearnMore = () => {
   align-items: center;
   gap: calc(var(--space-unit) * 6);
   max-width: var(--container-max);
+  /* 顶栏是 sticky、已参与文档流，因此只减去它的高度即可。
+   * 该值是按桌面顶栏算的：移动端顶栏更矮（Navbar 内部按 --mobile-nav-scale
+   * 缩放），这里的富余只会多留一点空间，不会遮住内容 —— 因此不重复扣减。 */
   min-height: calc(100vh - var(--navbar-height));
   margin: 0 auto;
   padding: calc(var(--section-gap) * 0.8) var(--container-padding);
@@ -118,6 +128,7 @@ const handleLearnMore = () => {
   margin: 0;
 }
 
+/* 两个 CTA 的排布；间距与高度交给共享按钮类 */
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -129,7 +140,7 @@ const handleLearnMore = () => {
   flex-wrap: wrap;
   gap: calc(var(--space-unit) * 3);
   padding-top: calc(var(--space-unit) * 3);
-  border-top: 1px solid var(--divider);
+  border-top: var(--stroke-width) solid var(--divider);
 }
 
 .hero-feature {
@@ -148,7 +159,7 @@ const handleLearnMore = () => {
   animation: var(--decor-animation);
 }
 
-/* 视觉面板 */
+/* ── 视觉面板：一块表面 + 品牌标记，不含装饰性渐变 ────────────── */
 .hero-visual {
   display: flex;
   justify-content: center;
@@ -161,12 +172,12 @@ const handleLearnMore = () => {
   justify-content: center;
   gap: calc(var(--space-unit) * 1.5);
   width: 100%;
-  max-width: 380px;
+  max-width: calc(var(--container-narrow) * 0.38);
   aspect-ratio: 4 / 3;
-  padding: var(--panel-padding);
+  padding: var(--card-padding-lg);
   text-align: center;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -194,7 +205,7 @@ const handleLearnMore = () => {
   margin: 0;
 }
 
-/* ── 响应式 ─────────────────────────────────────────────── */
+/* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
   .hero-inner {
     grid-template-columns: 1fr;
@@ -208,9 +219,19 @@ const handleLearnMore = () => {
   }
 }
 
+/* 移动端：区块留白 ×--mobile-section-scale，标题字号 ×--mobile-title-scale */
 @media (max-width: 767px) {
   .hero-inner {
-    padding: calc(var(--section-gap) * 0.5) 16px;
+    padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  .hero-title {
+    font-size: calc(var(--fs-display) * var(--mobile-title-scale));
+  }
+
+  .hero-subtitle {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 
   .hero-features {
@@ -221,6 +242,7 @@ const handleLearnMore = () => {
 @media (max-width: 575px) {
   .hero-actions {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .hero-visual {

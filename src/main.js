@@ -4,11 +4,11 @@ import 'ant-design-vue/dist/reset.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { message } from 'ant-design-vue'
 import router from './router/index.js'
 import App from './App.vue'
 import { setAuthExpiredHandler } from './api/request.js'
 import { useThemeStore } from './stores/theme.js'
+import { notify } from './hooks/useToast/index.js'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -42,7 +42,7 @@ setAuthExpiredHandler(() => {
     if (now - notifiedAt < 3000) return
     notifiedAt = now
 
-    message.warning('登录状态已失效，请重新登录')
+    notify.warning('登录状态已失效，请重新登录')
 
     // 回到首页，避免停留在需要登录的页面反复失败
     // （路由名是 'Home'，见 router/index.js）

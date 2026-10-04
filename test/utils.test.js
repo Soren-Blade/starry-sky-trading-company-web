@@ -27,6 +27,26 @@ test('formatPrice：货币描述来自主题（technical-monochrome 用 $）', (
   assert.equal(formatUtils.formatPrice('12.5'), '¥12.50')
 })
 
+test('splitPrice：拆成前缀/整数/小数，供模板对小数单独设字号', () => {
+  assert.deepEqual(formatUtils.splitPrice(1234.5), {
+    prefix: '¥',
+    integer: '1,234',
+    decimals: '50',
+    text: '¥1,234.50',
+  })
+  // 无小数的风格：decimals 是空串，模板据此不渲染小数节点
+  assert.deepEqual(formatUtils.splitPrice(89, { prefix: '$', decimals: 0 }), {
+    prefix: '$',
+    integer: '89',
+    decimals: '',
+    text: '$89',
+  })
+  // 负数与非法值都不能产出 NaN
+  assert.equal(formatUtils.splitPrice(-5).text, '¥-5.00')
+  assert.equal(formatUtils.splitPrice(null, { decimals: 0 }).text, '¥0')
+  assert.equal(formatUtils.splitPrice(1.005, { decimals: 2 }).text, '¥1.00')
+})
+
 test('formatReviewCount：按量级使用 k / 万 后缀', () => {
   assert.equal(formatUtils.formatReviewCount(999), '999')
   assert.equal(formatUtils.formatReviewCount(1000), '1.0k')

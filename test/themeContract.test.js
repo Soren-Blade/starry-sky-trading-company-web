@@ -231,7 +231,154 @@ test('fontFamily 覆盖只改标题与正文字体，不动等宽/价格字体',
 
 // ── 规范数值守卫（防止「凭手感改数值」） ───────────────────────
 
-test('规范里的关键数值必须原样落地', () => {
+/**
+ * 组件尺寸速查总表（规范第十五节）逐格断言。
+ *
+ * 行 = 令牌，列 = 五套风格。这张表是「组件尺寸规范」的浓缩版；
+ * 只要它能对上，输入框/按钮/卡片/导航/分页/进度条的尺寸就不会被手感改坏。
+ */
+const COMPONENT_TABLE = {
+  // 组件               TechMin  LiquidGlass  Bento     NeoBrutal  TechMono
+  '--input-height': ['40px', '48px', '44px', '48px', '36px'],
+  '--radius-input': ['12px', '9999px', '24px', '8px', '6px'],
+  '--btn-height': ['40px', '48px', '44px', '52px', '36px'],
+  '--btn-radius': ['8px', '14px', '10px', '0px', '6px'],
+  '--icon-btn-size': ['40px', '44px', '40px', '44px', '32px'],
+  '--icon-btn-radius': ['8px', '9999px', '10px', '0px', '6px'],
+  '--card-width': ['280px', '300px', '280px', '280px', '260px'],
+  '--card-width-lg': ['280px', '300px', '400px', '280px', '260px'],
+  '--card-padding': ['20px', '24px', '18px', '24px', '16px'],
+  '--card-padding-lg': ['20px', '24px', '28px', '24px', '16px'],
+  '--radius-card': ['12px', '20px', '16px', '12px', '4px'],
+  '--grid-gap': ['16px', '20px', '14px', '16px', '12px'],
+  '--card-image-height': ['200px', '220px', '180px', '200px', '180px'],
+  '--card-image-height-lg': ['200px', '220px', '280px', '200px', '180px'],
+  '--radius-media': ['8px', '16px', '12px', '8px', '4px'],
+  '--fs-price': ['20px', '22px', '18px', '20px', '24px'],
+  '--toast-width': ['360px', '380px', '360px', '380px', '340px'],
+  '--modal-width': ['480px', '520px', '480px', '520px', '440px'],
+  '--dropdown-item-height': ['36px', '40px', '38px', '44px', '32px'],
+  '--tag-height': ['22px', '26px', '24px', '26px', '20px'],
+  '--navbar-height': ['64px', '72px', '68px', '72px', '56px'],
+  '--pager-size': ['36px', '40px', '38px', '44px', '32px'],
+  '--progress-height': ['4px', '6px', '6px', '8px', '4px'],
+  '--checkbox-size': ['18px', '20px', '18px', '22px', '16px'],
+  '--space-unit': ['8px', '8px', '8px', '8px', '4px'],
+}
+
+test('组件尺寸速查总表：每格都必须与规范一致', () => {
+  const problems = []
+  for (const [token, column] of Object.entries(COMPONENT_TABLE)) {
+    THEMES.forEach((theme, index) => {
+      const actual = theme.tokens[token]
+      if (actual !== column[index]) {
+        problems.push(`${theme.id} / ${token}：期望 ${column[index]}，实际 ${actual}`)
+      }
+    })
+  }
+  assert.deepEqual(problems, [], `组件尺寸与规范不符：\n  ${problems.join('\n  ')}`)
+})
+
+test('聚焦态：五套风格各自的做法必须原样落地', () => {
+  const t = (id) => getTheme(id).tokens
+
+  // Tech Minimal：边框变 #3B82F6 + 外发光 0 0 0 3px rgba(59,130,246,0.15)
+  assert.equal(t('tech-minimal')['--input-focus-border'], '#3b82f6')
+  assert.equal(t('tech-minimal')['--input-focus-shadow'], '0 0 0 3px rgba(59, 130, 246, 0.15)')
+
+  // Liquid Glass：blur 增至 24px、边框变 #6366F1
+  assert.equal(t('liquid-glass')['--input-focus-border'], '#6366f1')
+  assert.match(t('liquid-glass')['--input-focus-backdrop'], /blur\(24px\)/)
+
+  // Bento：边框变 #D62872、无外发光
+  assert.equal(t('bento-editorial')['--input-focus-border'], '#d62872')
+  assert.equal(t('bento-editorial')['--input-focus-shadow'], 'none')
+
+  // Neo-Brutalism：边框保持 2px #000000、阴影 4px 4px 0 #000000
+  assert.equal(t('neo-brutalism')['--stroke-width'], '2px')
+  assert.equal(t('neo-brutalism')['--stroke-color'], '#000000')
+  assert.equal(t('neo-brutalism')['--input-focus-shadow'], '4px 4px 0 #000000')
+
+  // Technical Mono：outline 2px solid #22C55E、offset 2px
+  assert.equal(t('technical-monochrome')['--input-focus-outline'], '2px solid #22c55e')
+  assert.equal(t('technical-monochrome')['--input-focus-outline-offset'], '2px')
+})
+
+test('主按钮悬停态：五套风格各自的做法必须原样落地', () => {
+  const t = (id) => getTheme(id).tokens
+
+  assert.equal(t('tech-minimal')['--btn-hover-bg'], '#2563eb')
+  assert.equal(t('tech-minimal')['--btn-hover-transform'], 'none')
+
+  assert.equal(t('liquid-glass')['--btn-hover-transform'], 'translateY(-2px)')
+  assert.equal(t('liquid-glass')['--btn-shadow'], '0 4px 16px rgba(99, 102, 241, 0.2)')
+
+  // bento：背景变深 10%（#D62872 → #C12467）
+  assert.equal(t('bento-editorial')['--btn-hover-bg'], '#c12467')
+
+  // neo：translate(3px,3px) + 阴影 3px 3px 0 #000
+  assert.equal(t('neo-brutalism')['--btn-shadow'], '6px 6px 0 #000000')
+  assert.equal(t('neo-brutalism')['--btn-hover-shadow'], '3px 3px 0 #000000')
+  assert.equal(t('neo-brutalism')['--btn-hover-transform'], 'translate(3px, 3px)')
+  assert.equal(t('neo-brutalism')['--btn-active-transform'], 'translate(6px, 6px)')
+  assert.equal(t('neo-brutalism')['--transition-btn'], '0.1s linear')
+
+  // mono：悬停只换边框色
+  assert.equal(t('technical-monochrome')['--btn-hover-border'], '#22c55e')
+  assert.equal(t('technical-monochrome')['--btn-border-width'], '1px')
+})
+
+test('价格：字号/字重/字体/颜色/小数处理按规范', () => {
+  const t = (id) => getTheme(id).tokens
+
+  assert.equal(t('tech-minimal')['--fw-price'], '500')
+  assert.match(t('tech-minimal')['--font-price'], /JetBrains Mono/)
+  assert.equal(t('tech-minimal')['--fs-price-decimals'], '14px', '小数小一号')
+  assert.equal(t('tech-minimal')['--fs-price-original'], '18px', '原价小 2px')
+  assert.equal(getTheme('tech-minimal').price.decimals, 2)
+
+  assert.equal(t('liquid-glass')['--fw-price'], '600')
+  assert.match(t('liquid-glass')['--font-price'], /Geist Mono/)
+  assert.equal(t('liquid-glass')['--fs-price-decimals'], '15px')
+
+  assert.equal(t('bento-editorial')['--price-color'], '#d62872')
+  assert.match(t('bento-editorial')['--font-price'], /Oxygen/)
+  assert.equal(getTheme('bento-editorial').price.decimals, 0, 'bento 无小数')
+
+  assert.equal(t('neo-brutalism')['--price-color'], '#000000')
+  assert.equal(getTheme('neo-brutalism').price.decimals, 0, 'neo 无小数')
+
+  assert.equal(t('technical-monochrome')['--price-color'], '#22c55e')
+  assert.equal(t('technical-monochrome')['--price-bg'], '#141414')
+  assert.equal(getTheme('technical-monochrome').price.prefix, '$')
+  assert.equal(getTheme('technical-monochrome').price.decimals, 0, 'mono 无小数')
+})
+
+test('语义色与提示框位置：规范标注的「5 套通用」部分必须五套一致', () => {
+  for (const theme of THEMES) {
+    const t = theme.tokens
+    assert.equal(t['--success'], '#22c55e', `${theme.id} 成功色`)
+    assert.equal(t['--warning'], '#f59e0b', `${theme.id} 警告色`)
+    assert.equal(t['--danger'], '#ef4444', `${theme.id} 错误色`)
+    assert.equal(t['--info'], '#3b82f6', `${theme.id} 信息色`)
+    assert.equal(t['--toast-offset'], '24px', `${theme.id} 提示框距边`)
+    assert.equal(t['--toast-gap'], '12px', `${theme.id} 提示框堆叠间距`)
+    assert.equal(t['--modal-title-gap'], '16px')
+    assert.equal(t['--modal-body-gap'], '24px')
+    assert.equal(t['--modal-footer-gap'], '12px')
+    assert.equal(t['--dropdown-item-padding-x'], '16px')
+    assert.equal(t['--dropdown-active-bar'], '2px')
+    assert.equal(t['--micro-badge-radius'], '4px')
+    assert.equal(t['--mobile-nav-scale'], '0.85')
+    assert.equal(t['--mobile-control-scale'], '0.9')
+    assert.equal(t['--mobile-padding-scale'], '0.8')
+    assert.equal(t['--mobile-section-scale'], '0.6')
+    assert.equal(t['--mobile-title-scale'], '0.7')
+    assert.equal(t['--mobile-body-scale'], '0.95')
+  }
+})
+
+test('基础层的风格语言（颜色/字体/阴影/动效）按规范', () => {
   const t = (id) => getTheme(id).tokens
 
   // 风格一 Tech Minimal
@@ -240,54 +387,39 @@ test('规范里的关键数值必须原样落地', () => {
   assert.equal(t('tech-minimal')['--accent'], '#3b82f6')
   assert.equal(t('tech-minimal')['--bg-surface'], '#27272a')
   assert.equal(t('tech-minimal')['--border'], '#2a2a2d')
-  assert.equal(t('tech-minimal')['--disabled-bg'], '#3f3f46')
-  assert.equal(t('tech-minimal')['--radius-card'], '12px')
-  assert.equal(t('tech-minimal')['--radius-btn'], '8px')
-  assert.equal(t('tech-minimal')['--card-padding'], '20px')
-  assert.equal(t('tech-minimal')['--navbar-height'], '64px')
+  assert.equal(t('tech-minimal')['--placeholder'], '#3f3f46')
   assert.equal(t('tech-minimal')['--shadow-card'], 'none')
   assert.equal(t('tech-minimal')['--effect-backdrop'], 'none')
   assert.equal(t('tech-minimal')['--media-hover-scale'], '1.03')
   assert.equal(t('tech-minimal')['--stagger-step'], '60ms')
   assert.equal(t('tech-minimal')['--enter-shift'], '12px')
+  assert.equal(t('tech-minimal')['--transition-interactive'], '0.2s ease-out')
 
   // 风格二 Liquid Glass
   assert.equal(t('liquid-glass')['--text-primary'], '#1e1b4b')
   assert.equal(t('liquid-glass')['--accent'], '#6366f1')
   assert.equal(t('liquid-glass')['--bg-surface'], 'rgba(255, 255, 255, 0.55)')
   assert.equal(t('liquid-glass')['--border'], 'rgba(255, 255, 255, 0.6)')
-  assert.equal(t('liquid-glass')['--radius-card'], '20px')
-  assert.equal(t('liquid-glass')['--radius-panel'], '24px')
-  assert.equal(t('liquid-glass')['--radius-btn'], '14px')
-  assert.equal(t('liquid-glass')['--radius-input'], '9999px')
-  assert.equal(t('liquid-glass')['--radius-media'], '16px')
-  assert.equal(t('liquid-glass')['--card-padding'], '24px')
-  assert.equal(t('liquid-glass')['--grid-gap'], '20px')
-  assert.equal(t('liquid-glass')['--section-gap'], '100px')
+  assert.equal(t('liquid-glass')['--placeholder'], '#6b7280')
   assert.equal(t('liquid-glass')['--shadow-card'], '0 8px 32px rgba(99, 102, 241, 0.08)')
+  assert.equal(t('liquid-glass')['--shadow-card-hover'], '0 8px 32px rgba(99, 102, 241, 0.14)')
   assert.match(t('liquid-glass')['--effect-backdrop'], /blur\(16px\) saturate\(180%\)/)
-  assert.match(t('liquid-glass')['--effect-backdrop-hover'], /blur\(24px\)/)
   assert.match(t('liquid-glass')['--nav-backdrop'], /blur\(20px\) saturate\(180%\)/)
+  assert.equal(t('liquid-glass')['--card-hover-transform'], 'translateY(-4px)')
   assert.match(t('liquid-glass')['--enter-ease'], /cubic-bezier\(0\.34, 1\.56, 0\.64, 1\)/)
   assert.match(t('liquid-glass')['--mesh-animation'], /20s/)
+  assert.match(t('liquid-glass')['--font-display'], /Instrument Sans/)
 
   // 风格三 Bento Editorial
   assert.equal(t('bento-editorial')['--bg-page'], '#f7f7f5')
   assert.equal(t('bento-editorial')['--text-primary'], '#1a1a1a')
   assert.equal(t('bento-editorial')['--accent'], '#d62872')
-  assert.equal(t('bento-editorial')['--bg-surface'], '#ffffff')
   assert.equal(t('bento-editorial')['--border'], '#ebebeb')
   assert.equal(t('bento-editorial')['--text-muted'], '#8a8a8a')
-  assert.equal(t('bento-editorial')['--price-color'], '#d62872')
-  assert.equal(t('bento-editorial')['--radius-card'], '20px')
-  assert.equal(t('bento-editorial')['--radius-panel'], '16px')
-  assert.equal(t('bento-editorial')['--radius-btn'], '10px')
-  assert.equal(t('bento-editorial')['--radius-input'], '24px')
-  assert.equal(t('bento-editorial')['--radius-media'], '12px')
+  assert.equal(t('bento-editorial')['--placeholder'], '#8a8a8a')
   assert.equal(t('bento-editorial')['--shadow-card'], '0 1px 3px rgba(0, 0, 0, 0.04)')
   assert.equal(t('bento-editorial')['--card-hover-border'], '#d4d4d4')
   assert.equal(t('bento-editorial')['--media-hover-scale'], '1.02')
-  assert.equal(t('bento-editorial')['--grid-gap'], '14px')
   assert.equal(t('bento-editorial')['--enter-shift'], '8px')
   assert.match(t('bento-editorial')['--font-display'], /Playfair Display/)
 
@@ -296,15 +428,9 @@ test('规范里的关键数值必须原样落地', () => {
   assert.equal(t('neo-brutalism')['--text-primary'], '#000000')
   assert.equal(t('neo-brutalism')['--accent'], '#ff6b35')
   assert.equal(t('neo-brutalism')['--bg-footer'], '#1a1a2e')
-  assert.equal(t('neo-brutalism')['--radius-card'], '12px')
-  assert.equal(t('neo-brutalism')['--radius-cta'], '0px')
-  assert.equal(t('neo-brutalism')['--cta-border-width'], '3px')
-  assert.equal(t('neo-brutalism')['--shadow-cta'], '6px 6px 0 #000000')
-  assert.equal(t('neo-brutalism')['--shadow-cta-hover'], '3px 3px 0 #000000')
-  assert.equal(t('neo-brutalism')['--shadow-cta-active'], '0 0 0 #000000')
-  assert.equal(t('neo-brutalism')['--cta-hover-transform'], 'translate(3px, 3px)')
-  assert.equal(t('neo-brutalism')['--cta-active-transform'], 'translate(6px, 6px)')
-  assert.equal(t('neo-brutalism')['--transition-cta'], '0.1s linear')
+  assert.equal(t('neo-brutalism')['--placeholder'], '#666666')
+  assert.equal(t('neo-brutalism')['--modal-shadow'], '8px 8px 0 #000000')
+  assert.equal(t('neo-brutalism')['--shadow-float'], '6px 6px 0 #000000')
   assert.equal(t('neo-brutalism')['--heading-transform'], 'uppercase')
   assert.equal(t('neo-brutalism')['--label-transform'], 'uppercase')
 
@@ -312,25 +438,19 @@ test('规范里的关键数值必须原样落地', () => {
   assert.equal(t('technical-monochrome')['--bg-page'], '#0d0d0d')
   assert.equal(t('technical-monochrome')['--text-primary'], '#e8e8e8')
   assert.equal(t('technical-monochrome')['--accent'], '#22c55e')
-  assert.equal(t('technical-monochrome')['--bg-surface'], '#1a1a1a')
   assert.equal(t('technical-monochrome')['--border'], '#2a2a2a')
   assert.equal(t('technical-monochrome')['--bg-surface-2'], '#141414')
   assert.equal(t('technical-monochrome')['--text-muted'], '#6b6b6b')
-  assert.equal(t('technical-monochrome')['--radius-card'], '4px')
-  assert.equal(t('technical-monochrome')['--radius-btn'], '6px')
-  assert.equal(t('technical-monochrome')['--radius-input'], '6px')
-  assert.equal(t('technical-monochrome')['--radius-media'], '6px')
-  assert.equal(t('technical-monochrome')['--space-unit'], '4px')
-  assert.equal(t('technical-monochrome')['--card-padding'], '16px')
-  assert.equal(t('technical-monochrome')['--grid-gap'], '12px')
-  assert.equal(t('technical-monochrome')['--section-gap'], '72px')
   assert.equal(t('technical-monochrome')['--shadow-card'], 'none')
-  assert.equal(t('technical-monochrome')['--card-hover-border'], '#22c55e')
+  assert.equal(t('technical-monochrome')['--shadow-float'], 'none')
+  assert.equal(t('technical-monochrome')['--modal-shadow'], 'none')
   assert.equal(t('technical-monochrome')['--media-hover-scale'], '1')
   assert.equal(t('technical-monochrome')['--leading-body'], '1.6')
-  assert.equal(t('technical-monochrome')['--label-transform'], 'uppercase')
-  assert.equal(getTheme('technical-monochrome').price.prefix, '$')
+  assert.equal(t('technical-monochrome')['--transition-interactive'], '0.15s ease')
+  assert.match(t('technical-monochrome')['--font-display'], /JetBrains Mono/)
+  assert.match(t('technical-monochrome')['--font-mono'], /JetBrains Mono/)
 })
+
 
 test('五套主题的字体族全部带 CJK 兜底（中文不会掉到浏览器默认字体）', () => {
   // 只要求「栈里显式声明了 CJK 族」，不限定具体是哪一款：

@@ -96,8 +96,8 @@ router.beforeEach(async (to) => {
 
   if (userStore.isLoggedIn) return true
 
-  const { message } = await import('ant-design-vue')
-  message.warning('请先登录账号后再访问卡密管理')
+  const { notify } = await import('@/hooks/useToast/index.js')
+  notify.warning('请先登录账号后再访问卡密管理')
 
   return { name: 'Home', query: { redirect: to.fullPath } }
 })

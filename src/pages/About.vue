@@ -83,8 +83,8 @@ import { PAGES } from '@/constants/index.js'
   letter-spacing: var(--tracking-display);
   text-transform: var(--heading-transform);
   color: var(--text-primary);
-  /* 结构性分隔线统一 1px：粗线在直角/玻璃主题下会显得突兀 */
-  border-bottom: 1px solid var(--accent);
+  /* 结构性分隔线跟随主题描边宽度：粗野主义的 2px 在直角主题下才不突兀 */
+  border-bottom: var(--stroke-width) solid var(--accent);
   padding-bottom: calc(var(--space-unit) * 1.5);
   margin-bottom: calc(var(--space-unit) * 3);
 }
@@ -99,16 +99,19 @@ import { PAGES } from '@/constants/index.js'
 .values-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: calc(var(--grid-gap) * 2);
-  margin-top: calc(var(--grid-gap) * 2);
+  gap: var(--grid-gap);
+  margin-top: calc(var(--grid-gap) * 1.5);
 }
 
 /* 原先的紫粉渐变底改为令牌表面色 + 边框，五套主题下都能成立 */
 .value-card {
-  padding: calc(var(--card-padding) * 1.5);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
   text-align: center;
   transition:
     transform var(--transition-surface),
@@ -125,7 +128,8 @@ import { PAGES } from '@/constants/index.js'
 .value-icon {
   display: block;
   font-size: var(--fs-h1);
-  margin-bottom: var(--card-gap);
+  /* 卡片内部节奏：1.5 个基础单位（原 --card-gap 的替代） */
+  margin-bottom: calc(var(--space-unit) * 1.5);
 }
 
 .value-card h3 {
@@ -151,27 +155,36 @@ import { PAGES } from '@/constants/index.js'
   margin: var(--space-unit) 0;
 }
 
+/* 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、标题 ×0.7、正文 ×0.95 */
 @media (max-width: 767px) {
   .about-container {
-    padding: calc(var(--section-gap) * 0.5) var(--container-padding);
+    padding: calc(var(--section-gap) * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
   .about-section {
-    margin-bottom: calc(var(--section-gap) * 0.5);
+    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
+  }
+
+  .about-section h2 {
+    font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
+  }
+
+  .about-section p,
+  .contact-info {
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 
   .values-grid {
     grid-template-columns: 1fr;
-    gap: var(--grid-gap);
-    margin-top: var(--grid-gap);
   }
 
   .value-card {
-    padding: var(--card-padding);
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
   .value-icon {
-    font-size: var(--fs-h2);
+    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
   }
 }
 </style>

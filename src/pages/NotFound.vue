@@ -7,8 +7,8 @@
         <h1>{{ PAGES.notFound.title }}</h1>
         <p>{{ PAGES.notFound.subtitle }}</p>
 
-        <!-- 主 CTA 复用 .u-cta：底色 / 圆角 / hover 位移与阴影全部走令牌 -->
-        <router-link to="/" class="u-cta u-cta--lg back-home-btn">
+        <!-- 主 CTA 复用 .u-btn-primary：底色 / 圆角 / hover 位移与阴影全部走令牌 -->
+        <router-link to="/" class="u-btn-primary back-home-btn">
           <span>{{ PAGES.notFound.backHome }}</span>
           <span class="arrow" aria-hidden="true">→</span>
         </router-link>
@@ -40,12 +40,12 @@ import { PAGES } from '@/constants/index.js'
 <style scoped>
 .not-found-page {
   width: 100%;
-  /* 垂直居中要扣掉固定顶栏的高度（顶栏占位本身由 App.vue 的 .main-content 负责） */
+  /* 垂直居中要扣掉粘性顶栏的高度（顶栏本身参与文档流，页面无需再留占位） */
   min-height: calc(100vh - var(--navbar-height));
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 页面底色由 body 的 --bg-page / 主题背景层承担，此处保持透明 */
+  /* 页面底色由 body 的 --bg-page / 主题背景层承担 */
   background: transparent;
 }
 
@@ -88,7 +88,7 @@ import { PAGES } from '@/constants/index.js'
   margin: 0 0 calc(var(--section-gap) * 0.4);
 }
 
-/* .u-cta 已负责主按钮的视觉、hover 与文字色（含链接型 CTA 的 hover 锁定），
+/* .u-btn-primary 已负责主按钮的视觉、hover 位移与文字色（链接型也同样锁定），
    这里只补页内间距与箭头微动效 */
 .back-home-btn {
   margin-bottom: calc(var(--section-gap) * 0.4);
@@ -103,9 +103,9 @@ import { PAGES } from '@/constants/index.js'
 }
 
 .suggestions {
-  padding: var(--panel-padding);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -130,7 +130,7 @@ import { PAGES } from '@/constants/index.js'
   font-size: var(--fs-sm);
   color: var(--accent);
   padding: var(--space-unit) 0;
-  border-bottom: 1px solid transparent;
+  border-bottom: var(--stroke-width) solid transparent;
   transition:
     border-color var(--transition-interactive),
     padding-left var(--transition-interactive);
@@ -184,14 +184,6 @@ import { PAGES } from '@/constants/index.js'
     gap: calc(var(--section-gap) * 0.4);
   }
 
-  .not-found-icon {
-    font-size: var(--fs-h1);
-  }
-
-  .not-found-content h1 {
-    font-size: var(--fs-h2);
-  }
-
   .not-found-illustration {
     height: calc(var(--space-unit) * 25);
   }
@@ -211,31 +203,34 @@ import { PAGES } from '@/constants/index.js'
   }
 }
 
+/* 移动端缩放（规范第十四节）：区块间距 ×0.6、内边距 ×0.8、标题 ×0.7、正文 ×0.95 */
 @media (max-width: 767px) {
   .not-found-container {
-    padding: calc(var(--section-gap) * 0.4) var(--container-padding);
-    gap: calc(var(--space-unit) * 3.75);
+    gap: calc(var(--section-gap) * var(--mobile-section-scale));
+    padding: calc(var(--section-gap) * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
   .not-found-icon {
-    font-size: var(--fs-h2);
+    font-size: calc(var(--fs-display) * var(--mobile-title-scale));
+    margin-bottom: calc(var(--space-unit) * 2);
   }
 
   .not-found-content h1 {
-    font-size: var(--fs-h3);
+    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
   }
 
   .not-found-content p {
-    font-size: var(--fs-sm);
-    margin-bottom: calc(var(--space-unit) * 3.75);
+    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
   }
 
   .back-home-btn {
-    margin-bottom: calc(var(--space-unit) * 3.75);
+    margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
   }
 
   .suggestions {
-    padding: var(--card-padding);
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
   .not-found-illustration {

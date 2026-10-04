@@ -77,24 +77,17 @@
         </div>
       </div>
 
-      <!-- 加载状态 -->
-      <div v-if="loading" class="loading-container">
-        <div class="loader-wrapper">
-          <div class="gradient-spinner"></div>
-          <div class="loader-dot" aria-hidden="true">🍎</div>
-        </div>
+      <!-- 加载状态：区块级加载态走共享类 .u-loading-block + .u-spinner，
+           原先自绘的渐变圆环与三点跳动动效不属于规范动效，已删除 -->
+      <div v-if="loading" class="u-loading-block" role="status">
+        <span class="u-spinner" aria-hidden="true"></span>
         <p class="loading-text">正在加载苹果ID列表</p>
-        <div class="loading-dots">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
       </div>
 
       <!-- 错误状态 -->
       <div v-else-if="error" class="error-container">
         <p class="error-message">{{ error }}</p>
-        <button class="retry-btn u-cta" type="button" @click="fetchAppleIds">重试</button>
+        <button class="u-btn-primary" type="button" @click="fetchAppleIds">重试</button>
       </div>
 
       <!-- 苹果ID网格 -->
@@ -167,11 +160,12 @@ onMounted(() => {
 
 <style scoped>
 /*
- * 本组件只保留自身特有布局，两条前提：
+ * 本组件只保留自身特有布局，三条前提：
  *   1. 区块底色由 body 的 --bg-page 承担，组件不再自绘背景
  *      （原先的浅色线性渐变里写死了两个色值，已删除）；
- *   2. 区块头（.section-header 系列）由 global.css / SectionHeader.vue 提供。
- *      原先在这里抄的第二份既与全局重复、scoped 也选不到子组件内部，已整段删除。
+ *   2. 区块头（.section-header 系列）由 global.css / SectionHeader.vue 提供，
+ *      原先在这里抄的第二份既与全局重复、scoped 也选不到子组件内部，已整段删除；
+ *   3. 加载态与按钮走共享类（.u-loading-block / .u-spinner / .u-btn-primary）。
  */
 
 .apple-id-section {
@@ -190,11 +184,12 @@ onMounted(() => {
 
 /* ── 使用说明（折叠面板）────────────────────────────────────── */
 
-/* 外壳走「面板」档令牌：比卡片大一档的内边距与圆角，表达容器而非条目 */
+/* 外壳走「面板」档令牌：内边距 --card-padding-lg、圆角 --radius-panel、
+   描边 --border、阴影 --shadow-card —— 比卡片大一档，表达容器而非条目 */
 .guide-section {
   margin-bottom: calc(var(--section-gap) * 0.5);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -233,12 +228,14 @@ onMounted(() => {
 
 /* 展开区退到次级表面：与面板本体拉开层级，不引入新颜色 */
 .guide-content {
-  padding: var(--panel-padding);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface-2);
 }
 
+/* 两组之间的间距用基础单位派生（--card-padding-lg 是容器档内边距，
+   不用来当条目间距） */
 .guide-item {
-  margin-bottom: var(--panel-padding);
+  margin-bottom: calc(var(--space-unit) * 2);
 }
 
 .guide-item:last-child {
@@ -304,8 +301,8 @@ onMounted(() => {
 }
 
 /* ── 风险提示 ─────────────────────────────────────────────────
- * 原先两条警告各写一套线性渐变，标题还各有一个硬编码红色。
- * 现在统一为「--danger-bg 底 + --danger 左侧色条 + --danger 标题」：
+ * 两条提示分别取 .u-tag--danger / .u-tag--warning 的语义色方案：
+ * 底色用语义柔和底（--danger-bg / --warning-bg），文字与左侧色条用语义色本身。
  * 语义色只有一份来源，五套主题都成立。 */
 
 .risk-warning {
@@ -319,10 +316,17 @@ onMounted(() => {
   display: flex;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
+  color: var(--danger);
   background: var(--danger-bg);
   /* 色条宽度取半个间距单位：既保持醒目，又随主题密度一起缩放 */
   border-left: calc(var(--space-unit) * 0.5) solid var(--danger);
   border-radius: var(--radius-card);
+}
+
+.warning-item.scam {
+  color: var(--warning);
+  background: var(--warning-bg);
+  border-left-color: var(--warning);
 }
 
 .warning-icon {
@@ -342,7 +346,8 @@ onMounted(() => {
   margin: 0 0 calc(var(--space-unit) * 0.75);
   font-size: var(--fs-body);
   font-weight: var(--fw-heading);
-  color: var(--danger);
+  /* 标题跟随所属提示的语义色 */
+  color: inherit;
 }
 
 .warning-text {
@@ -354,72 +359,18 @@ onMounted(() => {
 
 /* ── 加载 / 错误态 ──────────────────────────────────────────── */
 
-.loading-container,
-.error-container {
-  padding: calc(var(--section-gap) * 0.8) var(--container-padding);
-  text-align: center;
-}
-
-.loader-wrapper {
-  position: relative;
-  width: calc(var(--space-unit) * 12);
-  height: calc(var(--space-unit) * 12);
-  margin: 0 auto calc(var(--space-unit) * 3.5);
-}
-
-/* 单色加载环：--border 勾出整圈，顶段用 --accent 指示转动方向。
- * 原先的多色渐变色环属于规范之外的装饰性渐变，已删除。
- * 转速从 --enter-duration 派生，避免再引入一个魔法时长。 */
-.gradient-spinner {
-  position: absolute;
-  inset: 0;
-  border: calc(var(--space-unit) * 0.25) solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: apple-spin calc(var(--enter-duration) * 1.6) linear infinite;
-}
-
-/* 中心苹果图标：脉冲节拍同样从 --enter-duration 派生 */
-.loader-dot {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 10;
-  transform: translate(-50%, -50%);
-  font-size: var(--fs-h1);
-  animation: apple-pulse calc(var(--enter-duration) * 3.6) var(--enter-ease) infinite;
-}
-
+/* .u-loading-block 负责占位、居中与内部间距（含区块级节奏），
+   这里只补一行文案的排版 */
 .loading-text {
-  margin: 0 0 calc(var(--space-unit) * 2);
-  font-size: var(--fs-body);
+  margin: 0;
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   color: var(--text-secondary);
 }
 
-.loading-dots {
-  display: flex;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 0.75);
-  margin-top: calc(var(--space-unit) * 0.5);
-}
-
-/* 点状指示器的颜色改为 --accent（原先引用的旧渐变令牌已随规范删除） */
-.loading-dots span {
-  width: var(--space-unit);
-  height: var(--space-unit);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  animation: apple-dot-bounce calc(var(--enter-duration) * 2.8) infinite;
-}
-
-.loading-dots span:nth-child(2) {
-  animation-delay: calc(var(--enter-duration) * 0.4);
-}
-
-.loading-dots span:nth-child(3) {
-  animation-delay: calc(var(--enter-duration) * 0.8);
+.error-container {
+  padding: calc(var(--section-gap) * 0.8) var(--container-padding);
+  text-align: center;
 }
 
 .error-message {
@@ -428,7 +379,7 @@ onMounted(() => {
   color: var(--danger);
 }
 
-/* .retry-btn 的底色 / 圆角 / 悬停位移全部来自共享类 .u-cta，组件内不再复写 */
+/* .error-container 里的重试按钮就是 .u-btn-primary，组件内不再复写 */
 
 /* ── 数据源分区 ─────────────────────────────────────────────── */
 
@@ -438,11 +389,12 @@ onMounted(() => {
   gap: calc(var(--section-gap) * 0.6);
 }
 
-/* 分区是「装卡片的容器」，所以用面板档令牌（--radius-panel / --panel-padding） */
+/* 分区是「装卡片的容器」，所以用面板档令牌：
+   内边距 --card-padding-lg、圆角 --radius-panel、描边 --border、阴影 --shadow-card */
 .data-source-section {
-  padding: var(--panel-padding);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -453,14 +405,14 @@ onMounted(() => {
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--stroke-width) solid var(--border);
 }
 
-/* 列数固定、列宽自适应：卡片里有两枚并排的复制按钮，
-   最窄一档必须容得下它们，因此桌面取 3 列而不是 4 列 */
+/* 列数交给卡片最小宽度（--card-width）：容器变窄时自动减列，
+   不需要为每一档断点各写一次列数 */
 .ids-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
   gap: var(--grid-gap);
 }
 
@@ -471,26 +423,39 @@ onMounted(() => {
   text-align: center;
   color: var(--text-muted);
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
 }
 
-/* ── 响应式（统一断点：991 / 767 / 575）────────────────────── */
-
-@media (max-width: 991px) {
-  .ids-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+/* ── 响应式（统一断点：767 / 575）─────────────────────────────
+   移动端缩放按规范：内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95
+   （按钮与加载圈属于共享类，缩放已在 global.css 内处理；
+   栅格列数由 auto-fill + --card-width 自行收敛，无需逐档声明） */
 
 @media (max-width: 767px) {
-  .guide-toggle {
-    padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
-    font-size: var(--fs-sm);
+  .apple-id-section {
+    padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale)) 0;
   }
 
-  .guide-content {
-    padding: calc(var(--space-unit) * 2);
+  .guide-section {
+    margin-bottom: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale));
+  }
+
+  .guide-toggle {
+    padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
+
+  .guide-content,
+  .data-source-section {
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
+  }
+
+  .guide-list,
+  .guide-tips-list,
+  .warning-text {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
   }
 
   .guide-list {
@@ -501,66 +466,40 @@ onMounted(() => {
     padding-left: calc(var(--space-unit) * 2.25);
   }
 
-  .data-source-section {
-    padding: calc(var(--space-unit) * 2);
+  .source-title {
+    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
   }
 
-  .ids-grid {
-    grid-template-columns: 1fr;
+  .risk-warning {
+    gap: calc(var(--space-unit) * 2 * var(--mobile-section-scale));
+    margin-bottom: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale));
   }
 
   .warning-item {
     gap: calc(var(--space-unit) * 1.5);
-    padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+    padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+  }
+
+  .apple-ids-grid {
+    gap: calc(var(--section-gap) * 0.6 * var(--mobile-section-scale));
+  }
+
+  .empty-note {
+    padding: calc(var(--section-gap) * 0.6 * var(--mobile-section-scale))
+      var(--container-padding);
+    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  }
+
+  .error-container {
+    padding: calc(var(--section-gap) * 0.8 * var(--mobile-section-scale))
+      var(--container-padding);
   }
 }
 
 @media (max-width: 575px) {
-  .apple-id-section {
-    padding: calc(var(--section-gap) * 0.35) 0;
-  }
-
   .section-container {
-    padding: 0 calc(var(--container-padding) * 0.8);
-  }
-}
-
-/* ── 关键帧 ───────────────────────────────────────────────────
- * 原先组件内定义 8 个关键帧，其中 fadeInUp 与全局 enterUp 重复、float 与全局同名，
- * 已删除：入场统一走 .u-enter（全局 enterUp）。组件内的 spin / spinGradient
- * 完全重复，合并为一个。保留下来的三个都加 apple- 前缀，避免与全局关键帧重名。 */
-
-@keyframes apple-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 中心图标的居中靠 translate(-50%, -50%)，脉冲必须把这部分变换一起写进关键帧 */
-@keyframes apple-pulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.15);
-    opacity: 0.8;
-  }
-}
-
-@keyframes apple-dot-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translateY(calc(var(--space-unit) * -1.5));
-    opacity: 1;
+    padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 }
 </style>

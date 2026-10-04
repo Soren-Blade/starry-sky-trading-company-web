@@ -77,6 +77,7 @@ import { SITE, FOOTER } from '@/constants/content.js';
 /*
  * 页脚：表面与文字全部走令牌，因此浅色主题是浅底深字、深色主题是深底浅字，
  * 两套都成立，不需要为某个主题写例外。
+ * 内边距与分割线间距统一由 --section-gap 派生，移动端整体乘 --mobile-section-scale。
  */
 .footer {
   width: 100%;
@@ -143,15 +144,17 @@ import { SITE, FOOTER } from '@/constants/content.js';
   gap: calc(var(--space-unit) * 1.5);
 }
 
-/* 图标按钮：尺寸用 em 从 --fs-h3 派生（默认即 40px），
- * 字号微调或换主题时同步缩放，不必为小屏再写一套尺寸 */
+/*
+ * 社交圆钮：尺寸取图标按钮档（必要时垫到头像档），圆角取胶囊令牌。
+ * 不用 em 从字号推导 —— 按钮尺寸应当独立于正文字号缩放。
+ */
 .social-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2em;
-  height: 2em;
-  font-size: var(--fs-h3);
+  width: max(var(--icon-btn-size), var(--avatar-size));
+  height: max(var(--icon-btn-size), var(--avatar-size));
+  font-size: var(--icon-btn-icon-size);
   color: var(--text-footer);
   background: var(--bg-soft);
   border-radius: var(--radius-pill);
@@ -167,8 +170,9 @@ import { SITE, FOOTER } from '@/constants/content.js';
   transform: translateY(calc(var(--space-unit) * -0.5));
 }
 
+/* 分割线：宽度也走描边令牌，neo-brutalism 下自动变粗 */
 .footer-divider {
-  height: 1px;
+  height: var(--stroke-width);
   margin-bottom: calc(var(--section-gap) * 0.4);
   background: var(--divider);
 }
@@ -229,7 +233,7 @@ import { SITE, FOOTER } from '@/constants/content.js';
   font-size: var(--fs-label);
 }
 
-/* 响应式：断点统一用 1199 / 991 / 767 / 575，间距按密度令牌收放 */
+/* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 1199px) {
   .footer-container {
     padding: calc(var(--section-gap) * 0.5) var(--container-padding);
@@ -242,13 +246,19 @@ import { SITE, FOOTER } from '@/constants/content.js';
   }
 }
 
+/* 移动端：页脚留白 ×--mobile-section-scale，两侧内边距再按 ×0.8 收 */
 @media (max-width: 767px) {
   .footer-container {
-    padding: calc(var(--section-gap) * 0.4) var(--container-padding);
+    padding: calc(var(--section-gap) * 0.4 * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
   .footer-content {
-    margin-bottom: calc(var(--section-gap) * 0.3);
+    margin-bottom: calc(var(--section-gap) * 0.3 * var(--mobile-section-scale));
+  }
+
+  .footer-divider {
+    margin-bottom: calc(var(--section-gap) * 0.3 * var(--mobile-section-scale));
   }
 
   .footer-bottom-container {
@@ -273,7 +283,8 @@ import { SITE, FOOTER } from '@/constants/content.js';
 
 @media (max-width: 575px) {
   .footer-container {
-    padding: calc(var(--section-gap) * 0.3) calc(var(--container-padding) * 0.6);
+    padding: calc(var(--section-gap) * 0.3 * var(--mobile-section-scale))
+      calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
   .social-links {

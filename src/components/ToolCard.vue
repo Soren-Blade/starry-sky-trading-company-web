@@ -3,7 +3,7 @@
     <div class="ui-card-media">
       <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
       <div v-else class="tool-icon" aria-hidden="true">{{ tool.icon }}</div>
-      <div v-if="tool.is_new" class="tool-new-badge">新</div>
+      <span v-if="tool.is_new" class="u-tag u-tag--accent tool-new-badge">新</span>
       <button
         class="favorite-btn"
         :class="{ active: isFavorited }"
@@ -20,7 +20,7 @@
     <div class="ui-card-body">
       <div class="tool-header">
         <h3 class="tool-title">{{ tool.tool_name }}</h3>
-        <div class="tool-category u-chip">{{ tool.class_name }}</div>
+        <div class="tool-category u-tag">{{ tool.class_name }}</div>
       </div>
 
       <p class="tool-description">{{ tool.description }}</p>
@@ -28,7 +28,7 @@
       <!-- Collection count moved to media section as badge -->
 
       <div class="tool-actions">
-        <button class="tool-btn u-cta" @click.stop="onOpenTool">打开工具</button>
+        <button class="tool-btn u-btn-primary" @click.stop="onOpenTool">打开工具</button>
       </div>
     </div>
   </div>
@@ -54,8 +54,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   cursor: default;
 }
 
-/* 媒体区没有图片时退化为图标：居中由共享类提供，这里只给 hover 缩放，
-   缩放幅度走令牌，保证与有图卡片在同一主题下动作一致 */
+/* 媒体区没有图片时退化为图标：字号取标题档 --fs-h1，
+   hover 缩放走 --media-hover-scale（mono 主题该令牌为 1，即不缩放） */
 .tool-icon {
   font-size: var(--fs-h1);
   transition: transform var(--transition-surface);
@@ -65,37 +65,28 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   transform: scale(var(--media-hover-scale));
 }
 
-/* 「新」标记：与 ProductCard 的缺货标记同源（语义色 + 柔和底 + 细边），
-   不再自造渐变；backdrop-filter 交给令牌，非玻璃主题该令牌为 none */
+/* 「新」标记：外观全部来自共享类 .u-tag / .u-tag--accent
+   （强调底 + 反白字，高度/内边距/圆角由 --tag-* 令牌给全），
+   组件内只负责把它钉在媒体区左上角，不再自写配色与内边距 */
 .tool-new-badge {
   position: absolute;
   top: calc(var(--space-unit) * 1.5);
   left: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--danger);
-  background: var(--danger-bg);
-  border: 1px solid var(--danger);
-  border-radius: var(--radius-chip);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
 }
 
-/* 圆形按钮：用 padding 撑出尺寸下限（不写死宽高，否则 mono 主题的 4px
-   基础单位会显得过大）。0.75 倍单位让最紧凑的 mono 主题也有 24px 触控目标 */
+/* 收藏按钮：尺寸与 .u-icon-btn 同档（--icon-btn-size），
+   胶囊圆角 + 浮起表面 + 描边色走令牌，因此五套主题下形态一致 */
 .favorite-btn {
   position: absolute;
   top: calc(var(--space-unit) * 1.5);
   right: calc(var(--space-unit) * 1.5);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--space-unit) * 0.75);
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--stroke-color);
   border-radius: var(--radius-pill);
   cursor: pointer;
   transition:
@@ -106,7 +97,7 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 
 .favorite-btn:hover {
   border-color: var(--accent);
-  transform: var(--cta-hover-transform);
+  transform: var(--btn-hover-transform);
 }
 
 .favorite-btn.active {
@@ -118,8 +109,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   font-size: var(--fs-h3);
 }
 
-/* 数量徽标压在圆形按钮的右上角：边框取卡片表面色，
-   与卡片背景连成一体而不需要额外的描边令牌 */
+/* 数量徽标压在圆形按钮的右上角：微型徽标圆角 + 强调底 + 反白字，
+   描边取卡片表面色，与卡片背景连成一体而不需要额外的描边令牌 */
 .favorite-count {
   position: absolute;
   top: calc(var(--space-unit) * -1);
@@ -136,8 +127,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   line-height: 1;
   color: var(--text-on-accent);
   background: var(--accent);
-  border: 2px solid var(--bg-surface);
-  border-radius: var(--radius-pill);
+  border: var(--stroke-width) solid var(--bg-surface);
+  border-radius: var(--micro-badge-radius);
 }
 
 .tool-header {
@@ -161,10 +152,10 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   white-space: nowrap;
 }
 
-/* 分类标签复用 .u-chip，这里只保证长分类名不换行（标题才是可压缩的一侧） */
+/* 分类标签复用 .u-tag（高度/内边距/圆角都由共享类给全），
+   这里只保证长分类名不换行（标题才是可压缩的一侧） */
 .tool-category {
   flex-shrink: 0;
-  white-space: nowrap;
 }
 
 .tool-description {
@@ -185,14 +176,15 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   margin-top: auto;
 }
 
-/* u-cta 提供底色/圆角/悬停位移与粗野主义主题下的 3px 黑边，
+/* .u-btn-primary 提供底色/圆角/悬停位移与 disabled 样式，
    这里只负责铺满操作区宽度 */
 .tool-btn {
   flex: 1;
   width: 100%;
 }
 
-/* 窄卡片下标题与分类并排会互相挤压，改为上下排列 */
+/* 窄卡片下标题与分类并排会互相挤压，改为上下排列；
+   同时按规范收一档：控件高度 ×0.9、内边距 ×0.8、标题字号 ×0.7、正文字号 ×0.95 */
 @media (max-width: 767px) {
   .tool-header {
     flex-direction: column;
@@ -200,9 +192,24 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
     gap: calc(var(--space-unit) * 0.5);
   }
 
+  .tool-title {
+    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
+  }
+
+  .tool-description {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+  }
+
   .tool-new-badge {
-    top: calc(var(--space-unit));
-    left: calc(var(--space-unit));
+    top: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
+    left: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
+  }
+
+  .favorite-btn {
+    top: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
+    right: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
+    width: calc(var(--icon-btn-size) * var(--mobile-control-scale));
+    height: calc(var(--icon-btn-size) * var(--mobile-control-scale));
   }
 }
 </style>

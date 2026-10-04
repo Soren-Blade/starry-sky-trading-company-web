@@ -3,8 +3,8 @@
     <!-- 导航栏右侧的图标按钮 -->
     <button
       type="button"
-      class="theme-trigger"
-      :class="{ active: themeStore.panelOpen }"
+      class="u-icon-btn theme-trigger"
+      :class="{ 'theme-trigger--active': themeStore.panelOpen }"
       :aria-label="THEME_PANEL.trigger"
       :aria-expanded="themeStore.panelOpen"
       aria-haspopup="dialog"
@@ -15,38 +15,35 @@
     </button>
 
     <Teleport v-if="themeStore.panelOpen" to="body">
-      <div class="theme-overlay" @click.self="close">
+      <div class="u-modal-overlay" @click.self="close">
         <div
           ref="modalRef"
-          class="theme-modal"
+          class="u-modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="theme-modal-title"
         >
           <h2 id="theme-modal-title" class="visually-hidden">{{ THEME_PANEL.title }}</h2>
 
-          <header class="theme-modal-head">
-            <div class="theme-modal-heading">
-              <p class="theme-modal-title">{{ THEME_PANEL.title }}</p>
-              <p class="theme-modal-subtitle">{{ THEME_PANEL.subtitle }}</p>
-            </div>
-            <button
-              type="button"
-              class="theme-close"
-              :aria-label="THEME_PANEL.close"
-              @click="close"
-            >
-              ✕
-            </button>
-          </header>
+          <button
+            type="button"
+            class="u-modal-close theme-close"
+            :aria-label="THEME_PANEL.close"
+            @click="close"
+          >
+            ✕
+          </button>
+
+          <p class="u-modal-title theme-modal-title">{{ THEME_PANEL.title }}</p>
+          <p class="theme-modal-subtitle">{{ THEME_PANEL.subtitle }}</p>
 
           <div class="theme-tabs" role="tablist" :aria-label="THEME_PANEL.title">
             <button
               :id="tabId('preset')"
               type="button"
               role="tab"
-              class="theme-tab"
-              :class="{ active: tab === 'preset' }"
+              class="u-tag theme-tab"
+              :class="{ 'u-tag--accent': tab === 'preset' }"
               :aria-selected="tab === 'preset'"
               :aria-controls="panelId('preset')"
               :tabindex="tab === 'preset' ? 0 : -1"
@@ -59,8 +56,8 @@
               :id="tabId('custom')"
               type="button"
               role="tab"
-              class="theme-tab"
-              :class="{ active: tab === 'custom' }"
+              class="u-tag theme-tab"
+              :class="{ 'u-tag--accent': tab === 'custom' }"
               :aria-selected="tab === 'custom'"
               :aria-controls="panelId('custom')"
               :tabindex="tab === 'custom' ? 0 : -1"
@@ -74,20 +71,20 @@
             </button>
           </div>
 
-          <!-- 整体风格 -->
-          <div
-            v-if="tab === 'preset'"
-            :id="panelId('preset')"
-            role="tabpanel"
-            :aria-labelledby="tabId('preset')"
-            class="theme-body"
-          >
-            <ul class="theme-grid">
+          <div class="u-modal-body theme-body">
+            <!-- 整体风格 -->
+            <ul
+              v-if="tab === 'preset'"
+              :id="panelId('preset')"
+              role="tabpanel"
+              :aria-labelledby="tabId('preset')"
+              class="theme-grid"
+            >
               <li v-for="(item, index) in themeStore.themeList" :key="item.id">
                 <button
                   type="button"
                   class="theme-card u-enter"
-                  :class="{ active: item.id === themeStore.themeId }"
+                  :class="{ 'theme-card--active': item.id === themeStore.themeId }"
                   :style="{ '--i': index }"
                   :aria-pressed="item.id === themeStore.themeId"
                   @click="themeStore.setTheme(item.id)"
@@ -103,107 +100,102 @@
                   <span class="theme-card-name">{{ item.name }}</span>
                   <span class="theme-card-label">{{ item.label }}</span>
                   <span class="theme-card-tagline">{{ item.tagline }}</span>
-                  <span v-if="item.id === themeStore.themeId" class="theme-card-badge">
+                  <span v-if="item.id === themeStore.themeId" class="u-tag u-tag--accent theme-card-badge">
                     {{ THEME_PANEL.currentBadge }}
                   </span>
                 </button>
               </li>
             </ul>
-          </div>
 
-          <!-- 单项修改 -->
-          <div
-            v-else
-            :id="panelId('custom')"
-            role="tabpanel"
-            :aria-labelledby="tabId('custom')"
-            class="theme-body"
-          >
-            <p v-if="themeStore.isCustomized" class="theme-custom-note">
-              {{ THEME_PANEL.customizedNote(themeStore.customizedKeys.length) }}
-            </p>
+            <!-- 单项修改 -->
+            <div
+              v-else
+              :id="panelId('custom')"
+              role="tabpanel"
+              :aria-labelledby="tabId('custom')"
+            >
+              <p v-if="themeStore.isCustomized" class="theme-custom-note">
+                {{ THEME_PANEL.customizedNote(themeStore.customizedKeys.length) }}
+              </p>
 
-            <div v-for="field in CUSTOM_FIELDS" :key="field.key" class="theme-field">
-              <div class="theme-field-head">
-                <label class="theme-field-label" :for="fieldId(field.key)">
-                  {{ field.label }}
-                </label>
-                <span v-if="field.type === 'range'" class="theme-field-value">
-                  {{ field.format(themeStore.custom[field.key]) }}
-                </span>
-                <button
-                  v-if="isChanged(field.key)"
-                  type="button"
-                  class="theme-field-reset"
-                  @click="themeStore.resetCustomField(field.key)"
-                >
-                  {{ THEME_PANEL.resetField }}
-                </button>
-              </div>
+              <div v-for="field in CUSTOM_FIELDS" :key="field.key" class="theme-field">
+                <div class="theme-field-head">
+                  <label class="theme-field-label" :for="fieldId(field.key)">
+                    {{ field.label }}
+                  </label>
+                  <span v-if="field.type === 'range'" class="theme-field-value">
+                    {{ field.format(themeStore.custom[field.key]) }}
+                  </span>
+                  <button
+                    v-if="isChanged(field.key)"
+                    type="button"
+                    class="theme-field-reset"
+                    @click="themeStore.resetCustomField(field.key)"
+                  >
+                    {{ THEME_PANEL.resetField }}
+                  </button>
+                </div>
 
-              <input
-                v-if="field.type === 'range'"
-                :id="fieldId(field.key)"
-                class="theme-range"
-                type="range"
-                :min="field.min"
-                :max="field.max"
-                :step="field.step"
-                :value="themeStore.custom[field.key]"
-                @input="onRangeInput(field.key, $event)"
-              />
-
-              <select
-                v-else-if="field.type === 'select'"
-                :id="fieldId(field.key)"
-                class="theme-select"
-                :value="themeStore.custom[field.key]"
-                @change="themeStore.setCustom(field.key, $event.target.value)"
-              >
-                <option v-for="option in field.options" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
-
-              <div v-else-if="field.type === 'color'" class="theme-color-row">
                 <input
+                  v-if="field.type === 'range'"
                   :id="fieldId(field.key)"
-                  class="theme-color"
-                  type="color"
-                  :value="accentValue"
-                  @input="themeStore.setCustom('accent', $event.target.value)"
+                  class="theme-range"
+                  type="range"
+                  :min="field.min"
+                  :max="field.max"
+                  :step="field.step"
+                  :value="themeStore.custom[field.key]"
+                  @input="onRangeInput(field.key, $event)"
                 />
-                <span class="theme-color-text">{{ themeStore.custom.accent || accentValue }}</span>
+
+                <select
+                  v-else-if="field.type === 'select'"
+                  :id="fieldId(field.key)"
+                  class="u-input"
+                  :value="themeStore.custom[field.key]"
+                  @change="themeStore.setCustom(field.key, $event.target.value)"
+                >
+                  <option v-for="option in field.options" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+
+                <div v-else-if="field.type === 'color'" class="theme-color-row">
+                  <input
+                    :id="fieldId(field.key)"
+                    class="theme-color"
+                    type="color"
+                    :value="accentValue"
+                    @input="themeStore.setCustom('accent', $event.target.value)"
+                  />
+                  <span class="theme-color-text">{{ themeStore.custom.accent || accentValue }}</span>
+                </div>
+
+                <input
+                  v-else
+                  :id="fieldId(field.key)"
+                  class="u-input"
+                  type="text"
+                  :value="themeStore.custom[field.key]"
+                  :placeholder="field.placeholder"
+                  @change="themeStore.setCustom(field.key, $event.target.value)"
+                />
+
+                <p class="theme-field-hint">{{ field.hint }}</p>
               </div>
-
-              <input
-                v-else
-                :id="fieldId(field.key)"
-                class="theme-text"
-                type="text"
-                :value="themeStore.custom[field.key]"
-                :placeholder="field.placeholder"
-                @change="themeStore.setCustom(field.key, $event.target.value)"
-              />
-
-              <p class="theme-field-hint">{{ field.hint }}</p>
             </div>
           </div>
 
-          <footer class="theme-modal-foot">
+          <footer class="u-modal-foot">
             <button
               type="button"
-              class="u-btn theme-foot-btn"
+              class="u-btn-secondary"
               :disabled="!themeStore.isCustomized"
               @click="themeStore.resetCustom()"
             >
               {{ THEME_PANEL.resetCustom }}
             </button>
-            <button
-              type="button"
-              class="u-btn theme-foot-btn"
-              @click="themeStore.resetAll()"
-            >
+            <button type="button" class="u-btn-secondary" @click="themeStore.resetAll()">
               {{ THEME_PANEL.resetAll }}
             </button>
           </footer>
@@ -217,14 +209,17 @@
 /**
  * 样式主题切换器
  *
- * 功能要求里的「导航栏右侧图标按钮 + 切换弹窗」即此组件：
- *   - 「整体风格」页签：五套设计风格整体切换；
- *   - 「单项修改」页签：字号、间距密度、圆角、强调色、字体族、页面背景图逐项微调。
+ * 「整体风格」页签整体换风格；「单项修改」页签逐项微调
+ * （字号 / 间距密度 / 圆角 / 强调色 / 字体族 / 页面背景图）。
  * 控件由 `CUSTOM_FIELDS` 数据驱动渲染 —— 新增一个可调项只需在 presets.js 里加一条，
  * 不需要改这个组件的模板。
  *
- * 无障碍遵循项目里 LoginModal 确立的模态约定：
- * role=dialog + aria-modal + 隐藏标题、Escape 关闭、Tab 焦点陷阱、焦点归还、滚动锁定。
+ * 结构全部复用 global.css 的共享类（.u-icon-btn / .u-modal* / .u-tag / .u-input /
+ * .u-btn-secondary），因此弹窗宽度、内边距、圆角、阴影、关闭按钮尺寸、
+ * 底部按钮组间距都随五套风格自动变化（480~520px、24~28px、16~24px…）。
+ *
+ * 无障碍遵循项目既有的模态约定：role=dialog + aria-modal + 隐藏标题、
+ * Escape 关闭、Tab 焦点陷阱、焦点归还、滚动锁定。
  */
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useThemeStore } from '@/stores/theme'
@@ -323,29 +318,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* ── 触发按钮 ───────────────────────────────────────────── */
+/* ── 触发按钮：尺寸/圆角/图标大小来自 .u-icon-btn 与 --icon-btn-* ── */
 .theme-trigger {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-btn);
-  background: var(--bg-surface);
-  transition:
-    border-color var(--transition-interactive),
-    background-color var(--transition-interactive);
 }
 
-.theme-trigger:hover,
-.theme-trigger.active {
+.theme-trigger--active,
+.theme-trigger:hover {
+  color: var(--accent);
   border-color: var(--accent);
 }
 
 .theme-trigger-icon {
-  font-size: 16px;
   line-height: 1;
   animation: var(--decor-animation);
 }
@@ -353,144 +337,58 @@ onUnmounted(() => {
 /* 右上角的小色点：用当前强调色标记「可换肤」 */
 .theme-trigger-dot {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  top: 15%;
+  right: 15%;
+  width: 18%;
+  height: 18%;
+  border-radius: var(--radius-pill);
   background: var(--accent);
 }
 
-/* ── 弹窗 ───────────────────────────────────────────────── */
-.theme-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--container-padding);
-  background: var(--scrim);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.theme-modal {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 720px;
-  max-height: min(86vh, 720px);
-  padding: var(--panel-padding);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-elevated);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.theme-modal-head {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 2);
-}
-
-.theme-modal-heading {
-  flex: 1;
-  min-width: 0;
-}
-
+/* ── 弹窗：宽度/内边距/圆角/阴影全部来自 .u-modal 与 --modal-* ── */
 .theme-modal-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  color: var(--text-primary);
-  margin: 0 0 calc(var(--space-unit) * 0.5);
+  margin-bottom: calc(var(--space-unit) * 0.5);
 }
 
 .theme-modal-subtitle {
+  margin-bottom: var(--modal-title-gap);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  margin: 0;
-}
-
-.theme-close {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  font-size: 16px;
-  color: var(--text-muted);
-  border-radius: var(--radius-btn);
-  transition: color var(--transition-interactive), background-color var(--transition-interactive);
-}
-
-.theme-close:hover {
-  color: var(--accent);
-  background: var(--bg-soft);
 }
 
 /* ── 页签 ───────────────────────────────────────────────── */
 .theme-tabs {
   display: flex;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 0.5);
+  gap: calc(var(--space-unit));
   margin-bottom: calc(var(--space-unit) * 2);
-  background: var(--bg-surface-2);
-  border-radius: var(--radius-btn);
 }
 
 .theme-tab {
   flex: 1;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  gap: calc(var(--space-unit) * 0.75);
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-secondary);
-  border-radius: var(--radius-btn);
-  transition: color var(--transition-interactive), background-color var(--transition-interactive);
-}
-
-.theme-tab:hover {
-  color: var(--text-primary);
-}
-
-.theme-tab.active {
-  color: var(--text-on-accent);
-  background: var(--accent);
+  cursor: pointer;
 }
 
 .theme-tab-count {
-  min-width: 18px;
-  padding: 0 4px;
+  min-width: var(--tag-height);
+  padding: 0 calc(var(--space-unit) * 0.5);
   font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  line-height: 18px;
+  font-size: var(--tag-font-size);
   text-align: center;
-  border-radius: var(--radius-chip);
+  border-radius: var(--micro-badge-radius);
   background: var(--bg-elevated);
   color: var(--accent);
 }
 
-/* ── 内容区 ─────────────────────────────────────────────── */
+/* ── 风格卡片网格 ───────────────────────────────────────── */
 .theme-body {
-  flex: 1;
-  overflow-y: auto;
   padding-right: calc(var(--space-unit) * 0.5);
 }
 
 .theme-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--card-gap);
+  gap: var(--grid-gap);
 }
 
 .theme-card {
@@ -503,8 +401,8 @@ onUnmounted(() => {
   height: 100%;
   padding: var(--card-padding);
   text-align: left;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
   transition:
     border-color var(--transition-interactive),
@@ -515,7 +413,7 @@ onUnmounted(() => {
   border-color: var(--card-hover-border);
 }
 
-.theme-card.active {
+.theme-card--active {
   border-color: var(--accent);
   background: var(--bg-soft);
 }
@@ -527,10 +425,10 @@ onUnmounted(() => {
 }
 
 .theme-swatch-chip {
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-chip);
+  width: calc(var(--space-unit) * 2.5);
+  height: calc(var(--space-unit) * 2.5);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--micro-badge-radius);
 }
 
 .theme-card-name {
@@ -542,13 +440,13 @@ onUnmounted(() => {
 }
 
 .theme-card-label {
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   color: var(--accent);
 }
 
 .theme-card-tagline {
-  font-size: var(--fs-label);
-  line-height: 1.5;
+  font-size: var(--tag-font-size);
+  line-height: var(--leading-body);
   color: var(--text-muted);
 }
 
@@ -556,12 +454,6 @@ onUnmounted(() => {
   position: absolute;
   top: calc(var(--space-unit) * 1.25);
   right: calc(var(--space-unit) * 1.25);
-  padding: 2px 6px;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border-radius: var(--radius-chip);
 }
 
 /* ── 单项修改 ───────────────────────────────────────────── */
@@ -573,7 +465,7 @@ onUnmounted(() => {
 
 .theme-field {
   padding: calc(var(--space-unit) * 1.5) 0;
-  border-bottom: 1px solid var(--divider);
+  border-bottom: var(--stroke-width) solid var(--divider);
 }
 
 .theme-field:last-child {
@@ -583,8 +475,8 @@ onUnmounted(() => {
 .theme-field-head {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit));
-  margin-bottom: calc(var(--space-unit));
+  gap: var(--space-unit);
+  margin-bottom: var(--space-unit);
 }
 
 .theme-field-label {
@@ -596,13 +488,13 @@ onUnmounted(() => {
 
 .theme-field-value {
   font-family: var(--font-mono);
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   color: var(--accent);
 }
 
 .theme-field-reset {
   margin-left: auto;
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   color: var(--text-muted);
   transition: color var(--transition-interactive);
 }
@@ -613,52 +505,29 @@ onUnmounted(() => {
 
 .theme-range {
   width: 100%;
-  height: 4px;
+  height: var(--progress-height);
   appearance: none;
-  background: var(--bg-surface-2);
-  border-radius: var(--radius-chip);
+  background: var(--progress-track);
+  border-radius: var(--progress-radius);
   cursor: pointer;
 }
 
 .theme-range::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: 0;
-  border-radius: 50%;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  border-radius: var(--radius-pill);
   background: var(--accent);
   cursor: pointer;
 }
 
 .theme-range::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
   border: none;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background: var(--accent);
   cursor: pointer;
-}
-
-.theme-select,
-.theme-text,
-.theme-color-row {
-  width: 100%;
-}
-
-.theme-select,
-.theme-text {
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-input);
-  transition: border-color var(--transition-interactive);
-}
-
-.theme-select:focus,
-.theme-text:focus {
-  border-color: var(--accent);
 }
 
 .theme-color-row {
@@ -668,68 +537,36 @@ onUnmounted(() => {
 }
 
 .theme-color {
-  width: 44px;
-  height: 32px;
+  width: calc(var(--input-height) * 1.1);
+  height: var(--input-height);
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-chip);
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--radius-input);
   background: none;
   cursor: pointer;
 }
 
 .theme-color-text {
   font-family: var(--font-mono);
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   color: var(--text-secondary);
 }
 
 .theme-field-hint {
   margin-top: calc(var(--space-unit) * 0.75);
-  font-size: var(--fs-label);
-  line-height: 1.5;
+  font-size: var(--tag-font-size);
+  line-height: var(--leading-body);
   color: var(--text-muted);
-}
-
-/* ── 底部操作 ───────────────────────────────────────────── */
-.theme-modal-foot {
-  display: flex;
-  gap: calc(var(--space-unit));
-  margin-top: calc(var(--space-unit) * 2);
-  padding-top: calc(var(--space-unit) * 2);
-  border-top: 1px solid var(--divider);
-}
-
-.theme-foot-btn {
-  flex: 1;
 }
 
 /* ── 响应式 ─────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .theme-modal {
-    max-height: 88vh;
-  }
-
   .theme-grid {
     grid-template-columns: 1fr;
   }
 
-  .theme-modal-foot {
+  .theme-tabs {
     flex-direction: column;
-  }
-}
-
-@media (max-width: 575px) {
-  .theme-trigger {
-    width: 32px;
-    height: 32px;
-  }
-
-  .theme-modal {
-    padding: calc(var(--space-unit) * 1.5);
-  }
-
-  .theme-card {
-    padding: calc(var(--space-unit) * 1.5);
   }
 }
 </style>

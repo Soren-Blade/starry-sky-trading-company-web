@@ -3,88 +3,104 @@
  * ============================================================================
  *
  * 这里定义的是**令牌名 + 默认主题（tech-minimal）的值**。
- *
  * 五套风格的完整取值在 `src/theme/presets.js`，由 `src/stores/theme.js`
  * 在运行时写到 `<html>` 的行内样式上（优先级高于本文件的 `:root`）。
+ *
  * 本文件的 `:root` 承担两个职责：
  *   1. JS 执行前的首屏兜底（不出现无令牌可用的空窗）；
  *   2. 令牌名的权威登记表 —— `test/designTokens.test.js` 用它检查：
  *      凡是被 `var()` 引用的令牌必须在这里登记，且这里登记的令牌必须真有人用。
  *
+ * 分两层：
+ *   A. 基础层 —— 颜色、字体、圆角、间距、动效等「风格语言」；
+ *   B. 组件层 —— 输入框/按钮/卡片/价格/提示框/模态框/下拉/标签/导航/分页/
+ *      进度/头像/复选框的**具体尺寸**，取自组件尺寸规范表。
+ *
  * 因此：**新增令牌必须同时改两处** —— 这里登记 + `presets.js` 五套取值。
  * `test/themeContract.test.js` 会强制两者的令牌集合完全一致，漏一处即失败。
  *
- * 规则：组件样式只允许消费令牌，不允许写死色值 / 字号 / 圆角 / 阴影。
+ * 规范里「5 套通用」的取值（语义色、提示框位置、模态框内部间距、移动端缩放系数等）
+ * 在 `presets.js` 里由 SHARED 组统一注入，五套取值相同但**仍然逐套登记**，
+ * 这样「键集合完全一致」这条不变量不需要例外。
+ *
+ * 规则：组件样式只允许消费令牌，不允许写死色值 / 字号 / 尺寸 / 圆角 / 阴影。
  * 详见 .dsh/skills/project-ui-system/SKILL.md
  */
 
 :root {
-  /* ══ 页面与表面 ══════════════════════════════════════════════ */
-  /* 页面底色（可为纯色或渐变） */
+  /* ════════════════════════════════════════════════════════════
+   * A. 基础层
+   * ════════════════════════════════════════════════════════════ */
+
+  /* ── A1. 页面与表面 ────────────────────────────────────────── */
   --bg-page: #0a0a0a;
-  /* 主题自带的背景网格（glass 的多色渐变网格，其余主题为 none） */
+  /* 主题自带的背景网格（仅 glass 有内容）与其动效 */
   --bg-mesh: none;
-  /* 背景网格的持续动效；无网格的主题置为 none，避免留下空转的合成层 */
   --mesh-animation: none;
-  /* 用户自定义背景图（none 或 url(...)），由主题弹窗写入 */
+  /* 用户自定义背景图（none 或 url(...)） */
   --bg-media: none;
   --bg-media-opacity: 0.18;
-  /* 卡片表面 */
   --bg-surface: #27272a;
   /* 次级表面：媒体占位、表头、代码块 */
   --bg-surface-2: #1f1f22;
-  /* 顶部导航表面 */
   --bg-nav: #0a0a0a;
-  /* 浮层表面：弹窗、下拉 */
   --bg-elevated: #18181b;
-  /* 页脚表面 */
-  --bg-footer: #0a0a0a;
+  --bg-footer: #18181b;
   /* 柔和强调底：悬停项、徽标 */
   --bg-soft: rgba(59, 130, 246, 0.12);
-  /* 模态遮罩。刻意不做成主题表面色：浅色主题下也需要压暗背景才分得出层级 */
+  /* 模态遮罩与其模糊（glass 专用） */
   --scrim: rgba(0, 0, 0, 0.7);
+  --scrim-backdrop: none;
 
-  /* ══ 文字 ════════════════════════════════════════════════════ */
+  /* ── A2. 文字 ─────────────────────────────────────────────── */
   --text-primary: #fafafa;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  /* 位于强调色之上的文字 */
   --text-on-accent: #ffffff;
   --text-footer: #a1a1aa;
   --text-footer-muted: #71717a;
+  /* 输入框占位符：规范给的是一条独立的低对比色，不复用 muted */
+  --placeholder: #3f3f46;
 
-  /* ══ 强调与语义 ══════════════════════════════════════════════ */
+  /* ── A3. 强调与语义 ───────────────────────────────────────── */
   --accent: #3b82f6;
   --accent-strong: #2563eb;
   --accent-soft: rgba(59, 130, 246, 0.12);
+  /* 语义色五套通用：成功 #22C55E / 警告 #F59E0B / 错误 #EF4444 / 信息 #3B82F6 */
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+
+  /* ── A4. 描边与禁用 ───────────────────────────────────────── */
   --border: #2a2a2d;
-  --border-strong: #3f3f46;
+  /* 常规区域描边宽度：只有 neo-brutalism 是 2px */
+  --stroke-width: 1px;
+  /* 输入框 / 次按钮 / 提示框 / 下拉 / 标签共用的描边色 */
+  --stroke-color: #2a2a2d;
+  /* 卡片悬停边框 */
+  --card-hover-border: #3f3f46;
   --divider: #232326;
   --disabled-bg: #3f3f46;
   --disabled-text: #71717a;
-  --danger: #f87171;
-  --danger-bg: rgba(248, 113, 113, 0.12);
-  --success: #4ade80;
-  --success-bg: rgba(74, 222, 128, 0.12);
-  /* 价格数字的前景色与底色（tech-minimal 无底色，mono 用代码块底色） */
-  --price-color: #fafafa;
-  --price-bg: transparent;
 
-  /* ══ 字体族 ══════════════════════════════════════════════════ */
-  /* 中文界面必须显式声明 CJK 字体，否则跨平台观感不一致 */
+  /* ── A5. 字体族 ───────────────────────────────────────────── */
   --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
     Roboto, Helvetica, Arial, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
     Roboto, Helvetica, Arial, sans-serif;
-  /* 等宽栈同样带 CJK：价格、卡号、关键词计数这些位置会混排中文 */
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', monospace;
   --font-price: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', monospace;
 
-  /* ══ 字号 ════════════════════════════════════════════════════ */
+  /* ── A6. 字号 ─────────────────────────────────────────────── */
   --fs-display: 72px;
   --fs-h1: 48px;
   --fs-h2: 40px;
@@ -92,89 +108,234 @@
   --fs-body: 15px;
   --fs-sm: 14px;
   --fs-label: 12px;
-  --fs-price: 22px;
+  /* 价格：整数部分字号 + 小数部分「小一号」的字号 */
+  --fs-price: 20px;
+  --fs-price-decimals: 14px;
+  /* 划线原价：比现价小 2px */
+  --fs-price-original: 18px;
 
-  /* ══ 字重 ════════════════════════════════════════════════════ */
+  /* ── A7. 字重 ─────────────────────────────────────────────── */
   --fw-display: 700;
   --fw-heading: 600;
   --fw-body: 400;
   --fw-label: 500;
   --fw-price: 500;
 
-  /* ══ 排版细节 ════════════════════════════════════════════════ */
+  /* ── A8. 排版细节 ─────────────────────────────────────────── */
   --tracking-display: -0.02em;
   --tracking-label: -0.01em;
   --leading-body: 1.5;
-  /* 标题是否大写（neo-brutalism 的压缩大写标题） */
+  /* 商品标题固定 1.4 行高（规范值，与正文行高不同） */
+  --leading-title: 1.4;
   --heading-transform: none;
-  /* 导航/标签/徽标是否大写 */
   --label-transform: none;
 
-  /* ══ 圆角 ════════════════════════════════════════════════════ */
+  /* ── A9. 圆角 ─────────────────────────────────────────────── */
   --radius-card: 12px;
-  --radius-panel: 12px;
-  --radius-btn: 8px;
-  /* 主 CTA 单独一档：neo-brutalism 要求完全直角 */
-  --radius-cta: 8px;
+  /* bento 的大卡片用更大一档，其余风格与小卡一致 */
+  --radius-card-lg: 12px;
+  --radius-panel: 16px;
   --radius-input: 12px;
-  --radius-media: 12px;
-  --radius-chip: 6px;
+  /* 图片容器圆角（与卡片圆角不同，规范单独给值） */
+  --radius-media: 8px;
   --radius-pill: 9999px;
+  --btn-radius: 8px;
 
-  /* ══ 间距 ════════════════════════════════════════════════════ */
-  /* 基础单位（technical-monochrome 用 4px 的更细粒度） */
+  /* ── A10. 间距与布局 ──────────────────────────────────────── */
+  /* 基础单位：technical-monochrome 用 4px 的更细粒度 */
   --space-unit: 8px;
-  --card-padding: 20px;
-  --card-gap: 16px;
   --grid-gap: 16px;
   --section-gap: 96px;
-  --panel-padding: 24px;
-
-  /* ══ 布局 ════════════════════════════════════════════════════ */
-  --navbar-height: 64px;
   --container-max: 1320px;
   --container-content: 1280px;
   --container-narrow: 1000px;
   --container-padding: 20px;
 
-  /* ══ 阴影与悬停 ══════════════════════════════════════════════ */
-  /* 卡片无阴影时以 1px 边框区分层级 */
+  /* ── A11. 导航栏 ──────────────────────────────────────────── */
+  --navbar-height: 64px;
+  --nav-padding-x: 32px;
+  --nav-border-color: #2a2a2d;
+  --nav-logo-height: 24px;
+  --nav-menu-gap: 28px;
+  --nav-link-size: 13px;
+  /* 滚动后：加强模糊或加阴影（规范二选一，按风格取） */
+  --nav-backdrop: none;
+  --nav-scrolled-backdrop: none;
+  --nav-scrolled-shadow: none;
+
+  /* ── A12. 阴影 ────────────────────────────────────────────── */
   --shadow-card: none;
   --shadow-card-hover: none;
-  --shadow-elevated: 0 16px 40px rgba(0, 0, 0, 0.5);
-  --shadow-cta: none;
-  --shadow-cta-hover: none;
-  --shadow-cta-active: none;
-  --card-hover-transform: none;
-  --card-hover-border: #3f3f46;
-  --media-hover-scale: 1.03;
-  --cta-hover-transform: none;
-  --cta-active-transform: none;
-  --cta-border-width: 0;
-  --cta-border-color: transparent;
+  /* 提示框与下拉菜单共用 */
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --modal-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
 
-  /* ══ 玻璃与过渡 ══════════════════════════════════════════════ */
-  /* 整条 backdrop-filter 值：非玻璃主题为 none，避免残留模糊 */
+  /* ── A13. 毛玻璃 ──────────────────────────────────────────── */
   --effect-backdrop: none;
   --effect-backdrop-hover: none;
-  --nav-backdrop: none;
-  --transition-interactive: 0.2s ease-out;
-  /* 表面类元素（卡片本体、玻璃模糊参数）的过渡，glass 需要 0.4s */
-  --transition-surface: 0.3s ease;
-  /* CTA 单独一档：neo-brutalism 用 0.1s linear 制造按压感 */
-  --transition-cta: 0.2s ease-out;
 
-  /* ══ 入场与装饰动效 ══════════════════════════════════════════ */
+  /* ── A14. 按钮的行为令牌 ──────────────────────────────────── */
+  --btn-height: 40px;
+  --btn-padding-y: 12px;
+  --btn-padding-x: 20px;
+  --btn-font-size: 14px;
+  --btn-font-weight: 500;
+  --btn-border-width: 0;
+  --btn-border-color: transparent;
+  --btn-shadow: none;
+  --btn-hover-bg: #2563eb;
+  --btn-hover-transform: none;
+  --btn-hover-shadow: none;
+  --btn-hover-border: transparent;
+  --btn-active-transform: none;
+  --btn-active-shadow: none;
+  /* 次按钮底色 */
+  --btn-secondary-bg: transparent;
+
+  /* ── A15. 卡片行为 ────────────────────────────────────────── */
+  --card-hover-transform: none;
+  --media-hover-scale: 1.03;
+
+  /* ── A16. 过渡 ────────────────────────────────────────────── */
+  --transition-interactive: 0.2s ease-out;
+  --transition-surface: 0.3s ease;
+  --transition-btn: 0.2s ease-out;
+  --transition-progress: 0.3s ease;
+
+  /* ── A17. 动效 ────────────────────────────────────────────── */
   --enter-shift: 12px;
   --enter-scale: 1;
   --enter-duration: 0.5s;
   --enter-ease: ease-out;
-  /* 同一组元素依次入场的间隔 */
   --stagger-step: 60ms;
-  /* 装饰性持续动效（浮动等）；不需要的主题置为 none */
   --decor-animation: none;
 
-  /* ── 断点（仅作文档记录）─────────────────────────────────────
+  /* ════════════════════════════════════════════════════════════
+   * B. 组件层（尺寸规范表）
+   * ════════════════════════════════════════════════════════════ */
+
+  /* ── B1. 输入框 / 搜索框 ──────────────────────────────────── */
+  --input-height: 40px;
+  --input-padding-y: 12px;
+  --input-padding-x: 14px;
+  --input-font-size: 14px;
+  --input-icon-size: 16px;
+  --input-icon-gap: 10px;
+  --input-focus-border: #3b82f6;
+  --input-focus-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  /* glass 聚焦时把模糊从 16px 提到 24px */
+  --input-focus-backdrop: none;
+  /* technical-monochrome 用 outline 而不是 box-shadow */
+  --input-focus-outline: none;
+  --input-focus-outline-offset: 0px;
+
+  /* ── B2. 图标按钮 ─────────────────────────────────────────── */
+  --icon-btn-size: 40px;
+  --icon-btn-radius: 8px;
+  --icon-btn-icon-size: 18px;
+
+  /* ── B3. 商品卡片 ─────────────────────────────────────────── */
+  --card-width: 280px;
+  --card-width-lg: 280px;
+  --card-padding: 20px;
+  --card-padding-lg: 20px;
+  /* 图片区固定高度（取代原先的 58% 比例） */
+  --card-image-height: 200px;
+  --card-image-height-lg: 200px;
+  --card-title-size: 15px;
+  --card-sub-size: 12px;
+
+  /* ── B4. 价格 ─────────────────────────────────────────────── */
+  --price-color: #fafafa;
+  --price-bg: transparent;
+  /* 折扣标签等微型徽标（规范 5 套同值） */
+  --micro-badge-padding: 2px 6px;
+  --micro-badge-radius: 4px;
+
+  /* ── B5. 提示框 Toast ─────────────────────────────────────── */
+  /* 阴影与下拉菜单同值，共用 --shadow-float，不再单独登记 */
+  --toast-width: 360px;
+  --toast-padding-y: 14px;
+  --toast-padding-x: 16px;
+  --toast-radius: 12px;
+  --toast-icon-size: 20px;
+  --toast-font-size: 14px;
+  /* 右上角固定：距顶 24px、距右 24px、堆叠间距 12px（5 套通用） */
+  --toast-offset: 24px;
+  --toast-gap: 12px;
+
+  /* ── B6. 模态框 ───────────────────────────────────────────── */
+  --modal-width: 480px;
+  --modal-padding: 24px;
+  --modal-close-size: 32px;
+  --modal-title-size: 20px;
+  /* 标题下边距 / 正文下边距 / 底部按钮组间距（5 套通用） */
+  --modal-title-gap: 16px;
+  --modal-body-size: 15px;
+  --modal-body-gap: 24px;
+  --modal-footer-gap: 12px;
+
+  /* ── B7. 下拉菜单 ─────────────────────────────────────────── */
+  --dropdown-width: 200px;
+  --dropdown-padding-y: 6px;
+  --dropdown-radius: 12px;
+  --dropdown-item-height: 36px;
+  /* 选项内边距（左右）与选中态左侧竖条宽度（5 套通用） */
+  --dropdown-item-padding-x: 16px;
+  --dropdown-active-bar: 2px;
+
+  /* ── B8. 标签 Tag / Badge ─────────────────────────────────── */
+  --tag-height: 22px;
+  --tag-padding-y: 2px;
+  --tag-padding-x: 8px;
+  --tag-radius: 6px;
+  --tag-font-size: 11px;
+  --tag-font-weight: 500;
+
+  /* ── B9. 分页 ─────────────────────────────────────────────── */
+  --pager-size: 36px;
+  --pager-radius: 8px;
+  --pager-gap: 6px;
+  --pager-font-size: 13px;
+  --pager-active-bg: #3b82f6;
+  --pager-active-color: #ffffff;
+  --pager-active-border: transparent;
+  --pager-active-shadow: none;
+
+  /* ── B10. 进度条 / 加载 ───────────────────────────────────── */
+  --progress-height: 4px;
+  --progress-radius: 9999px;
+  --progress-track: #27272a;
+  /* 加载圈三档（20/24 用于按钮内联，32 用于区块，40 用于整块占位） */
+  --spinner-size-sm: 24px;
+  --spinner-size-md: 32px;
+  --spinner-size-lg: 40px;
+  --spinner-border: 2px;
+  --spinner-border-lg: 3px;
+  --spinner-duration: 0.8s;
+  /* 骨架屏 shimmer 循环时长 */
+  --skeleton-duration: 1.5s;
+
+  /* ── B11. 头像 ────────────────────────────────────────────── */
+  --avatar-size: 32px;
+  --avatar-radius: 9999px;
+  --avatar-border-width: 0;
+  --avatar-border-color: transparent;
+
+  /* ── B12. 复选框 ──────────────────────────────────────────── */
+  --checkbox-size: 18px;
+  --checkbox-radius: 4px;
+  --checkbox-icon-size: 12px;
+
+  /* ── B13. 移动端缩放系数（5 套通用）───────────────────────── */
+  --mobile-nav-scale: 0.85;
+  --mobile-control-scale: 0.9;
+  --mobile-padding-scale: 0.8;
+  --mobile-section-scale: 0.6;
+  --mobile-title-scale: 0.7;
+  --mobile-body-scale: 0.95;
+
+  /* ── 断点（仅作文档记录）────────────────────────────────────
    * CSS 自定义属性无法用于 @media，实际断点必须写字面量，统一使用：
    *   1199px / 991px / 767px / 575px
    */

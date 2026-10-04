@@ -1,9 +1,9 @@
 <template>
   <div class="app-container">
-    <!-- 顶部导航 -->
+    <!-- 顶部导航（position: sticky，参与文档流，因此主内容不再需要顶栏占位） -->
     <Navbar />
 
-    <!-- 主内容：给固定顶栏留出高度，页面自身不再各写一份 padding-top -->
+    <!-- 主内容 -->
     <main class="main-content">
       <router-view />
     </main>
@@ -15,12 +15,15 @@
     <button
       v-if="showScrollTop"
       type="button"
-      class="scroll-to-top"
+      class="u-icon-btn scroll-to-top"
       aria-label="回到顶部"
       @click="scrollToTop"
     >
       <span aria-hidden="true">↑</span>
     </button>
+
+    <!-- 提示框宿主：全站唯一的 Toast 渲染出口 -->
+    <ToastHost />
   </div>
 </template>
 
@@ -29,6 +32,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { throttle } from '@/utils/index.js'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
+import ToastHost from '@/components/ToastHost.vue'
 // 全局状态
 import { useShopStore } from '@/stores/shop'
 import { useUserStore } from '@/stores/user'
@@ -75,48 +79,21 @@ onUnmounted(() => {
 .main-content {
   flex: 1;
   width: 100%;
-  /* 固定顶栏占位：各页面不再重复声明 */
-  padding-top: var(--navbar-height);
 }
 
+/* 悬浮在内容之上，但不遮挡弹窗（modal 2000 / toast 3000） */
 .scroll-to-top {
   position: fixed;
   right: calc(var(--space-unit) * 3);
   bottom: calc(var(--space-unit) * 3);
   z-index: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  font-size: 18px;
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border-radius: var(--radius-btn);
-  box-shadow: var(--shadow-cta);
-  transition:
-    background-color var(--transition-interactive),
-    color var(--transition-interactive),
-    transform var(--transition-interactive);
   animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.scroll-to-top:hover {
-  background: var(--accent-strong);
-  transform: translateY(-2px);
-}
-
-.scroll-to-top:active {
-  transform: translateY(0);
 }
 
 @media (max-width: 767px) {
   .scroll-to-top {
     right: calc(var(--space-unit) * 2);
     bottom: calc(var(--space-unit) * 2);
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
   }
 }
 </style>

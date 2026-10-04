@@ -63,6 +63,12 @@ const handleCategoryClick = (category) => {
 </script>
 
 <style scoped>
+/*
+ * 分类区块
+ *
+ * 分类卡的外壳（圆角/描边/内边距/悬停）全部来自 global.css 的 .ui-card，
+ * 这里只保留卡片内部的排布；入场错峰由 .u-enter + `:style="{ '--i': index }"` 提供。
+ */
 .categories-section {
   width: 100%;
   padding: var(--section-gap) 0;
@@ -85,6 +91,7 @@ const handleCategoryClick = (category) => {
   display: flex;
 }
 
+/* 卡片本身是 <button>：只补共享类没覆盖到的排版（左对齐、不换行时的截断） */
 .category-card {
   width: 100%;
   align-items: flex-start;
@@ -93,6 +100,7 @@ const handleCategoryClick = (category) => {
   cursor: pointer;
 }
 
+/* 图标底纹：分类色只以低透明度出现，容器保持中性表面 + 独立圆角 */
 .category-visual {
   position: relative;
   display: grid;
@@ -101,7 +109,7 @@ const handleCategoryClick = (category) => {
   height: calc(var(--space-unit) * 7);
   overflow: hidden;
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-media);
 }
 
@@ -119,7 +127,7 @@ const handleCategoryClick = (category) => {
 
 .category-name {
   font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: var(--card-title-size);
   font-weight: var(--fw-heading);
   letter-spacing: var(--tracking-display);
   text-transform: var(--heading-transform);
@@ -132,25 +140,26 @@ const handleCategoryClick = (category) => {
   color: var(--text-secondary);
 }
 
+/* 「浏览 →」：字号取标签档，颜色取强调色 */
 .category-more {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space-unit) * 0.5);
   margin-top: auto;
-  padding-top: calc(var(--space-unit));
-  font-size: var(--fs-label);
+  padding-top: var(--space-unit);
+  font-size: var(--tag-font-size);
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   text-transform: var(--label-transform);
   color: var(--accent);
 }
 
-.category-card:hover .category-more span:last-child {
-  transform: translateX(2px);
-}
-
 .category-more span:last-child {
   transition: transform var(--transition-interactive);
+}
+
+.category-card:hover .category-more span:last-child {
+  transform: translateX(calc(var(--space-unit) * 0.25));
 }
 
 .categories-empty {
@@ -160,11 +169,11 @@ const handleCategoryClick = (category) => {
   text-align: center;
   color: var(--text-muted);
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
 }
 
-/* ── 响应式 ─────────────────────────────────────────────── */
+/* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 1199px) {
   .categories-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -177,17 +186,18 @@ const handleCategoryClick = (category) => {
   }
 }
 
+/* 移动端：区块留白 ×0.6、两侧内边距 ×0.8 */
 @media (max-width: 767px) {
   .categories-section {
-    padding: calc(var(--section-gap) * 0.7) 0;
+    padding: calc(var(--section-gap) * var(--mobile-section-scale)) 0;
   }
 
   .section-inner {
-    padding: 0 16px;
+    padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
   }
 
   .category-icon {
-    font-size: var(--fs-h3);
+    font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
   }
 }
 

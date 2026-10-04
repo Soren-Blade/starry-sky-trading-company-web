@@ -1,6 +1,7 @@
 <template>
   <div
-    class="product-card ui-card ui-card-interactive u-enter"
+    class="product-card ui-card u-enter"
+    :class="{ 'ui-card--lg': featured }"
     role="link"
     tabindex="0"
     :aria-label="`查看商品 ${title}`"
@@ -10,16 +11,29 @@
   >
     <div class="ui-card-media">
       <img :src="product.main_image_url || product.image" :alt="title" />
-      <span v-if="isOut" class="product-flag">{{ PRODUCT_GRID.soldOut }}</span>
+      <!-- 缺货标记：语义色 10% 底 + 语义色文字（规范第八节的颜色变体） -->
+      <span v-if="isOut" class="u-tag u-tag--danger product-flag">
+        {{ PRODUCT_GRID.soldOut }}
+      </span>
+      <!-- 折扣标签：accent 底 + 反白字 -->
+      <span v-else-if="discountPercent > 0" class="u-discount product-flag">
+        -{{ discountPercent }}%
+      </span>
     </div>
 
     <div class="ui-card-body">
-      <div class="product-head">
-        <h3 class="product-title" :title="title">{{ title }}</h3>
-        <span class="product-price">{{ priceText }}</span>
-      </div>
+      <h3 class="ui-card-title" :title="title">{{ title }}</h3>
+      <p class="ui-card-sub" :title="subtitle">{{ subtitle }}</p>
 
-      <p class="product-sub" :title="subtitle">{{ subtitle }}</p>
+      <p class="product-prices">
+        <!-- 价格：整数 + 小数分开渲染，小数「小一号」；无小数的风格只出整数 -->
+        <span class="u-price">
+          <span>{{ price.prefix }}{{ price.integer }}</span>
+          <span v-if="price.decimals" class="u-price-decimals">.{{ price.decimals }}</span>
+        </span>
+        <!-- 划线原价：字号小 2px、弱化 + line-through -->
+        <span v-if="showOriginal" class="u-price-original">{{ originalPrice.text }}</span>
+      </p>
 
       <dl class="product-meta">
         <div class="product-stat">
@@ -39,7 +53,7 @@
       <div class="product-foot">
         <button
           type="button"
-          class="u-cta product-buy"
+          class="u-btn-primary product-buy"
           :disabled="isOut"
           :aria-label="isOut ? '该商品缺货' : `购买 ${title}`"
           @click.stop="onBuy"
@@ -55,10 +69,14 @@
 /**
  * 商品卡
  *
- * 外壳来自 global.css 的 `.ui-card` / `.ui-card-media` / `.ui-card-body`，
- * 价格与货币符号来自主题（`useThemeStore().pricePrefix`）——
- * technical-monochrome 用 `$`，其余用 `¥`。这是「文字/排版变动要同步数据层」
- * 的落点：货币不再写死在格式化函数里。
+ * 外壳（宽度/内边距/圆角/边框/图片高度与圆角）来自 global.css 的
+ * `.ui-card` / `.ui-card--lg` / `.ui-card-media`，尺寸随五套风格切换：
+ * 280px/20px/12px 的极简卡、300px/24px/20px 的玻璃卡、bento 的 400px 大卡、
+ * 260px/16px/4px 的等宽卡。
+ *
+ * 货币与小数位由**主题**决定（`price.decimals`：bento/neo/mono 无小数，
+ * mono 用 `$` 前缀）—— 这是「排版变动要同步数据层」的落点：
+ * 货币不再是格式化函数里的常量，价格也不再是一个拼好的字符串。
  */
 import { computed } from 'vue'
 import { formatUtils } from '@/utils/index.js'
@@ -67,12 +85,19 @@ import { useThemeStore } from '@/stores/theme'
 
 const props = defineProps({
   product: { type: Object, required: true },
+  /** bento 的主推位用大卡片（400px / 28px 内边距 / 280px 图片） */
+  featured: { type: Boolean, default: false },
 })
 const emit = defineEmits(['go-detail', 'buy'])
 
 const themeStore = useThemeStore()
 
 const formatReviewCount = formatUtils.formatReviewCount
+
+const currency = computed(() => ({
+  prefix: themeStore.pricePrefix,
+  decimals: themeStore.priceDecimals,
+}))
 
 const title = computed(
   () => props.product.main_title || props.product.name || props.product.product_name || '商品'
@@ -86,19 +111,27 @@ const subtitle = computed(
     PRODUCT_GRID.defaultSeller
 )
 
-const priceText = computed(() =>
-  formatUtils.formatPrice(props.product.price, {
-    prefix: themeStore.pricePrefix,
-    decimals: themeStore.priceDecimals,
-  })
+const price = computed(() => formatUtils.splitPrice(props.product.price, currency.value))
+
+/** 后端已给出 has_discount / discount_percent，直接消费，不在前端重算 */
+const discountPercent = computed(() => {
+  const percent = Number(props.product.discount_percent)
+  return Number.isFinite(percent) && percent > 0 ? Math.round(percent) : 0
+})
+
+const showOriginal = computed(() => {
+  if (props.product.has_discount === true) return true
+  const original = Number(props.product.original_price)
+  const current = Number(props.product.price)
+  return Number.isFinite(original) && Number.isFinite(current) && original > current
+})
+
+const originalPrice = computed(() =>
+  formatUtils.splitPrice(props.product.original_price, currency.value)
 )
 
 const views = computed(
-  () =>
-    props.product.viewCount ??
-    props.product.reviewCount ??
-    props.product.view_count ??
-    0
+  () => props.product.viewCount ?? props.product.reviewCount ?? props.product.view_count ?? 0
 )
 
 const sales = computed(
@@ -134,58 +167,13 @@ const onBuy = () => emit('buy', props.product)
   position: absolute;
   top: calc(var(--space-unit) * 1.5);
   left: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit));
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--danger);
-  background: var(--danger-bg);
-  border: 1px solid var(--danger);
-  border-radius: var(--radius-chip);
 }
 
-.product-head {
+.product-prices {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-}
-
-.product-title {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
+  gap: calc(var(--space-unit));
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 价格：等宽字体强化数据感；mono 主题还带代码块底色 */
-.product-price {
-  flex-shrink: 0;
-  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.75);
-  font-family: var(--font-price);
-  font-size: var(--fs-price);
-  font-weight: var(--fw-price);
-  line-height: 1.2;
-  color: var(--price-color);
-  background: var(--price-bg);
-  border-radius: var(--radius-chip);
-}
-
-.product-sub {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .product-meta {
@@ -202,7 +190,7 @@ const onBuy = () => emit('buy', props.product)
 }
 
 .product-stat-label {
-  font-size: var(--fs-label);
+  font-size: var(--tag-font-size);
   letter-spacing: var(--tracking-label);
   color: var(--text-muted);
 }
@@ -230,12 +218,6 @@ const onBuy = () => emit('buy', props.product)
 }
 
 @media (max-width: 575px) {
-  .product-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: calc(var(--space-unit) * 0.5);
-  }
-
   .product-foot {
     justify-content: flex-start;
   }

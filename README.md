@@ -379,81 +379,140 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 ## 9. 样式体系
 
-全站支持**五套可切换的设计风格**，并且每套风格都完全由设计令牌驱动。
+全站支持**五套可切换的设计风格**，且每套风格从「风格语言」（颜色/字体/阴影/动效）
+到「组件尺寸」（输入框高度、按钮圆角、卡片宽度、模态框宽度……）都完全由设计令牌驱动。
 令牌清单与用法见 [`src/assets/README.md`](src/assets/README.md)。
 
 ### 9.1 五套风格
 
-| id | 名称 | 底色 | 强调色 | 特点 |
+| id | 名称 | 底色 | 强调色 | 风格语言 |
 | --- | --- | --- | --- | --- |
-| `tech-minimal`（默认） | Tech Minimal 暗色科技极简 | `#0a0a0a` | `#3b82f6` | 无阴影、1px 边框分层；标题 Inter 600-700；价格 JetBrains Mono；卡片 12px / 按钮 8px；入场 translateY 12px，60ms 递增 |
-| `liquid-glass` | Liquid Glass Commerce 液态玻璃·电商 | 紫粉渐变网格 | `#6366f1` | 半透明面板 + `backdrop-filter: blur(16px) saturate(180%)`（悬停 24px）；卡片 20px / 面板 24px / 按钮 14px / 搜索栏全胶囊；入场 scale 0.96 带弹性；背景网格 20s 流动 |
-| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Century Gothic；卡片 20px / 小卡 16px / 按钮 10px / 搜索框 24px；网格 gap 14px |
-| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 克制基底 + 关键转化点的粗野主义 CTA：3px 黑边、`6px 6px 0 #000` 硬阴影、悬停 `3px 3px 0` + `translate(3px,3px)`、激活归零位移 6px、`0.1s linear` 即时过渡；标题压缩大写 |
-| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；全部 4-6px 圆角；基础间距单位 4px；价格 `$` 前缀 + `#141414` 代码块底色；悬停仅边框变绿，无缩放无位移 |
+| `tech-minimal`（默认） | Tech Minimal 暗色科技极简 | `#0a0a0a` | `#3b82f6` | 无阴影、1px 边框分层；标题 Inter；价格 JetBrains Mono（小数小一号）；入场 translateY 12px，60ms 递增 |
+| `liquid-glass` | Liquid Glass Commerce 液态玻璃·电商 | 紫粉渐变网格 | `#6366f1` | 半透明面板 + `blur(16px) saturate(180%)`（悬停与聚焦提到 24px）；入场 scale 0.96 带弹性；背景网格 20s 流动 |
+| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Oxygen 且无小数；网格 gap 14px |
+| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 2px 纯黑描边 + 零模糊硬阴影；主按钮 `6px 6px 0 #000`、悬停 `translate(3px,3px)`、`0.1s linear`；标题压缩大写 |
+| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；4-6px 小圆角；基础间距单位 4px；价格 `$` 前缀 + `#141414` 底色、无小数；悬停只换边框色 |
 
-### 9.2 令牌的三层结构
+### 9.2 组件尺寸令牌（第二层）
+
+基础层令牌是「风格语言」，组件层令牌是**尺寸规范表**：
+
+```
+组件           TechMin  LiquidGlass  Bento      NeoBrutal  TechMono
+输入框高度      40px     48px         44px       48px       36px
+输入框圆角      12px     9999px       24px       8px        6px
+主按钮高度      40px     48px         44px       52px       36px
+主按钮圆角      8px      14px         10px       0px        6px
+图标按钮        40×40    44×44        40×40      44×44      32×32
+卡片宽度        280px    300px        280/400px  280px      260px
+卡片内边距      20px     24px         18/28px    24px       16px
+卡片圆角        12px     20px         16/20px    12px       4px
+卡片图片高度    200px    220px        180/280px  200px      180px
+卡片间距        16px     20px         14px       16px       12px
+价格字号        20px     22px         18px       20px       24px
+提示框宽度      360px    380px        360px      380px      340px
+模态框宽度      480px    520px        480px      520px      440px
+下拉选项高度    36px     40px         38px       44px       32px
+标签高度        22px     26px         24px       26px       20px
+导航高度        64px     72px         68px       72px       56px
+分页按钮        36×36    40×40        38×38      44×44      32×32
+进度条高度      4px      6px          6px        8px        4px
+复选框          18px     20px         18px       22px       16px
+移动缩放系数    0.85     0.85         0.85       0.85       0.85
+```
+
+完整矩阵（含聚焦态、悬停态、阴影、过渡时长）在 `src/theme/presets.js`，
+由 `test/themeContract.test.js` 的**组件尺寸速查总表**逐格断言 —— 改错一个数字就会失败。
+
+移动端缩放统一在 `global.css` 末尾的三个媒体查询里用 `--mobile-*` 系数实现：
+控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95、圆角保持不变。
+
+### 9.3 令牌的三层结构
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
 | 名册与兜底 | `assets/styles/variables.css` | 令牌**名** + 默认主题的值；JS 执行前的首屏兜底 |
-| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源） |
+| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源），写成「一行令牌 × 五列取值」的矩阵 |
 | 合成与应用 | `src/theme/compose.js` + `src/stores/theme.js` | 叠加「单项自定义」并把结果写到 `:root` |
 
 `main.js` 在 `app.mount()` **之前**调用 `useThemeStore(pinia).init()`，
 把令牌同步写到 `<html>` 的行内样式上 —— 放到 `onMounted` 会让用户先看到默认主题闪一下。
 
-### 9.3 切换与单项自定义
+### 9.4 切换与单项自定义
 
 导航栏右侧的 🎨 图标按钮打开弹窗（`ThemeSwitcher.vue`），两个页签：
 
 - **整体风格**：五套风格整体切换（含色板预览、当前项标记）。
-- **单项修改**：字号缩放 / 间距密度 / 圆角缩放 / 强调色 / 字体族 / 页面背景图与不透明度。
-  强调色会**自动派生**悬停色（压暗 18%）、柔和底色（转 rgba）与「强调色之上的文字色」
+- **单项修改**：全局字号 / 间距与控件密度 / 圆角缩放 / 强调色 / 字体族 / 页面背景图与不透明度。
+  强调色会**自动派生**悬停色（压暗 18%）、柔和底色、按钮悬停底色与「强调色之上的文字色」
   （按相对亮度决定黑或白），因此换个品牌色不会出现看不清的按钮文字。
 
 控件由 `theme/presets.js` 的 `CUSTOM_FIELDS` 数据驱动渲染 ——
-**新增一个可调项只需加一条描述，不用改组件模板**。
+**新增一个可调项只需加一条描述，不用改组件模板**。选择保存在
+`localStorage` 的 `SSTC_THEME_PREF`，刷新后保留。
 
-选择保存在 `localStorage` 的 `SSTC_THEME_PREF`，刷新后保留。
+### 9.5 与数据层的联动
 
-### 9.4 与数据层的联动
+风格会改变价格的表现形式，因此货币与小数位属于**数据层**而不是模板：
 
-风格会改变价格的表现形式（`technical-monochrome` 用 `$` 前缀），
-因此货币信息属于**数据层**而不是模板：
-
-- `theme/presets.js` 每套主题声明 `price: { prefix, decimals }`；
+- `theme/presets.js` 每套主题声明 `price: { prefix, decimals }`
+  （tech/glass 是 `¥` 两位小数，bento/neo 是 `¥` 无小数，mono 是 `$` 无小数）；
 - `useThemeStore()` 暴露 `pricePrefix` / `priceDecimals`；
-- `formatUtils.formatPrice(price, currency)` 接受货币描述，默认值与旧行为一致（`¥` / 两位小数）；
-- `ProductCard.vue` 从 store 取货币再格式化，**不在模板里写货币符号**。
+- `formatUtils.splitPrice(price, currency)` 把价格拆成
+  `{ prefix, integer, decimals, text }`，**模板据此对小数部分单独设字号**（规范：小数小一号）；
+  `formatPrice` 仍在，返回拼好的整串，默认行为与旧版一致；
+- `ProductCard.vue` 从 store 取货币再拆分渲染，模板里不写货币符号；
+  划线原价与折扣标签直接消费后端已返回的 `original_price` / `has_discount` / `discount_percent`
+  （见 server `router/products.js`），不在前端重算折扣。
 
 同理，商品搜索的匹配规则放在 `shopStore` 的 `filteredProducts` getter 里，
-搜索栏（导航栏）与商品网格（区块）共用同一份规则。
+导航栏搜索栏与商品网格共用同一份规则。
 
-### 9.5 共享结构类与动效
+### 9.6 共享组件类
 
-`global.css` 提供（新增前请先确认确有多处复用）：
+组件规范表的落地点是 `global.css` 里的一批共享类，组件只负责布局：
 
-- `.section-header` / `.section-title` / `.title-icon` / `.section-description` — 区块头
-- `.page-header` — 页面头
-- `.ui-card` / `.ui-card-media` / `.ui-card-body` / `.ui-card-interactive` — 卡片外壳
-- `.u-cta`（`--lg` 大号）/ `.u-btn` / `.u-chip` / `.u-input` — 按钮、标签、输入框
-- `.u-enter` — 入场动效，配 `:style="{ '--i': index }"` 做错峰
-- `.visually-hidden` / `.hide-mobile` / `.show-mobile`
+| 组件 | 类 |
+| --- | --- |
+| 按钮 | `.u-btn-primary` / `.u-btn-secondary` / `.u-icon-btn` |
+| 输入框/搜索框 | `.u-input` / `.u-search` / `.u-search-icon` |
+| 卡片 | `.ui-card` / `.ui-card--lg` / `.ui-card-media` / `.ui-card-body` / `.ui-card-title` / `.ui-card-sub` |
+| 价格 | `.u-price` / `.u-price-decimals` / `.u-price-original` / `.u-discount` |
+| 标签 | `.u-tag` + `--accent/--success/--warning/--danger/--info` |
+| 提示框 | `.u-toast-host` / `.u-toast` / `.u-toast--*` |
+| 模态框 | `.u-modal-overlay` / `.u-modal` / `.u-modal-title/body/foot/close` |
+| 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
+| 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
+| 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
+
+命名迁移（旧 → 新）：`.u-cta` → `.u-btn-primary`、`.u-btn` → `.u-btn-secondary`、
+`.u-chip` → `.u-tag`；`.u-cta--lg` 已删除（规范没有「大按钮」这一档）。
 
 动效全部由令牌参数化：`enterUp` 关键帧的起点取自 `--enter-shift` / `--enter-scale`，
 延迟步长取自 `--stagger-step`，装饰性浮动由 `--decor-animation` 开关。
-此外 `.scroll-reveal` 用 scroll-driven animation（`animation-timeline: view()`）
-实现滚动渐显，**包在 `@supports` 内**，不支持的浏览器内容保持可见。
+`.scroll-reveal` 用 scroll-driven animation（`animation-timeline: view()`），
+**包在 `@supports` 内**，不支持的浏览器内容保持可见。
 `variables.css` 末尾有 `prefers-reduced-motion: reduce` 的全局降级。
 
-### 9.6 硬编码与断点纪律
+### 9.7 提示框为什么不用 antd 的 message
 
-- 组件样式**只允许消费令牌**。需要新色值/新字号时，先在 `variables.css` 登记语义化令牌，
+规范要求提示框「右上角固定、距顶/距右 24px、堆叠间距 12px、3000ms 自动消失、悬停暂停」，
+并给出五套风格的宽度/内边距/圆角/阴影/图标尺寸。antd 的 `message` 只能顶部居中、
+样式由它自己的样式表固定、完全不消费本项目的令牌（五套风格下长得一模一样）。
+
+因此改为自建：`stores/toast.js`（队列、计时、悬停暂停）+ `components/ToastHost.vue`
+（唯一渲染出口，挂在 `App.vue` 根部）+ `hooks/useToast/index.js`
+（`notify.success/warning/error/info` 门面，供组件内外统一调用，路由守卫与 store action 也用它）。
+
+### 9.8 硬编码与断点纪律
+
+- 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
   再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。
 - **不许有死令牌**：`test/designTokens.test.js` 会把「定义了没人用」和
   「引用了未定义令牌」都判为失败；判定「有人用」时会排除 `variables.css` 与整个
   `src/theme/`（那是写出令牌名的地方）。
+- **规范里有、产品里没有对应组件的档位不入册**（Radio 目前无使用场景、
+  头像只登记实际使用的那一档），否则会触发死令牌检查。
 - **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
   统一使用 `1199` / `991` / `767` / `575`（`min-width` 互补写法用 `768`）。
   同一文件内**不得重复声明相同的媒体查询**。
@@ -513,7 +572,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 404 个用例）
+npm test             # 单元测试（node:test，共 422 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（11 项）
 npm run verify       # lint + test + build + verify:dev
@@ -603,7 +662,8 @@ test/
 ├── useKamiDisplay.test.js            # 卡密展示层纯函数（状态文案/配色、工具名、日期）
 ├── useKamiActivation.test.js         # 卡密激活流程（校验、服务端失败、异常、activating 复位）
 ├── designTokens.test.js              # 设计令牌卫生（无死令牌、断点白名单、无重复媒体查询）
-├── themeContract.test.js             # 主题契约：五套预设 ↔ 令牌名册一致、合成不产出空令牌、规范数值守卫
+├── themeContract.test.js             # 主题契约：名册↔预设一致、合成不产出空令牌、组件尺寸速查总表逐格断言
+├── stores.toast.test.js              # 提示框：3000ms 自动消失、悬停暂停/恢复、上限挤出、未知 id 兜底
 ├── constSafety.test.js               # 静态检查「对 const 绑定赋值」
 ├── distContract.test.js              # 产物契约：标识/令牌是否真的进了打包结果（无 dist 时跳过）
 ├── renderComponents.test.js          # 组件渲染（SSR）：全部 .vue 渲染、无警告/插值事故
@@ -611,7 +671,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 404 个用例。
+共 422 个用例。
 
 ### 主题契约测试
 
@@ -621,10 +681,12 @@ test/
    漏一处，该令牌在某个主题下会静默落回别的主题的值。
 2. **合成不产出空令牌**：五套主题 × 极端自定义组合（字号 85%~130%、密度 80%~130%、
    圆角 0~200%、`NaN`/负数/超范围）逐个走 `assertTokenContract`，任何缺失/空串都会失败。
-3. **规范数值守卫**：把五套规范里写死的数字（`#0a0a0a`、`--radius-card: 20px`、
-   `6px 6px 0 #000000`、`--space-unit: 4px` …）逐条断言，防止后续"凭手感改数值"。
+3. **组件尺寸速查总表逐格断言**：25 行 × 5 列的组件尺寸（输入框/按钮/卡片/导航/
+   分页/进度条/复选框……）与规范表格逐格比对，改错一个数字就会失败；
+   另有聚焦态的五种做法、主按钮悬停态的五种做法、价格五套规格、
+   「5 套通用」部分的一致性、基础层风格语言等专项守卫。
 
-此外还覆盖了强调色派生（自动压暗 + 反白/反黑文字）、背景图 URL 白名单
+此外还覆盖了强调色派生（自动压暗 + 按钮悬停底色 + 反白/反黑文字）、背景图 URL 白名单
 （`javascript:` 被丢弃、引号/换行被剔除）、缩放只作用于对应令牌组等行为。
 
 ### 测试基础设施（无新增依赖）
@@ -785,7 +847,7 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
 | ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
-| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（404 个用例） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（422 个用例） |
 | ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
 > 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。

@@ -51,7 +51,9 @@ test('main.js 注册的回调会提示用户并跳转首页', () => {
   const main = read('src/main.js')
 
   assert.match(main, /setAuthExpiredHandler\(/, 'main.js 应注册失效回调')
-  assert.match(main, /message\.\w+\(/, '回调里应给出用户可见的提示')
+  // 提示走自建提示框门面（notify.*），不再用 ant-design-vue 的 message ——
+  // 规范要求提示框在右上角、3000ms 消失、悬停暂停，antd 的 message 做不到
+  assert.match(main, /notify\.\w+\(/, '回调里应给出用户可见的提示')
   assert.match(main, /router\.(replace|push)\(/, '回调里应把用户带离需要登录的页面')
 })
 

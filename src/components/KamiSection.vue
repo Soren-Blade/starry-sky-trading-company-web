@@ -4,12 +4,12 @@
       <!-- header（共享组件，样式在 global.css） -->
       <SectionHeader icon="🎴" title="卡密管理" description="查看并激活你的卡密" />
 
-      <!-- tabs：外观来自 global.css 的 .u-chip / .u-chip--active -->
+      <!-- tabs：外观来自 global.css 的 .u-tag / .u-tag--accent -->
       <div class="tab-bar">
         <button
           type="button"
-          class="u-chip"
-          :class="{ 'u-chip--active': activeTab === 'list' }"
+          class="u-tag"
+          :class="{ 'u-tag--accent': activeTab === 'list' }"
           :aria-pressed="activeTab === 'list'"
           @click="activeTab = 'list'"
         >
@@ -17,8 +17,8 @@
         </button>
         <button
           type="button"
-          class="u-chip"
-          :class="{ 'u-chip--active': activeTab === 'activate' }"
+          class="u-tag"
+          :class="{ 'u-tag--accent': activeTab === 'activate' }"
           :aria-pressed="activeTab === 'activate'"
           @click="activeTab = 'activate'"
         >
@@ -38,7 +38,7 @@
           <div class="activate-card">
             <h3>激活新卡密</h3>
             <div class="activate-form">
-              <select v-model="selectedToolId" class="tool-select u-input" aria-label="选择工具">
+              <select v-model="selectedToolId" class="u-input" aria-label="选择工具">
                 <option value="">请选择工具</option>
                 <option v-for="tool in toolOptions" :key="tool.value" :value="tool.value">
                   {{ tool.label }}
@@ -47,14 +47,14 @@
               <input
                 v-model="activateCode"
                 type="text"
-                class="activate-input u-input"
+                class="u-input"
                 placeholder="请粘贴卡密号..."
                 aria-label="卡密号"
                 @keyup.enter="handleActivate"
               />
               <button
                 type="button"
-                class="activate-btn u-cta"
+                class="activate-btn u-btn-primary"
                 :disabled="!selectedToolId || !activateCode.trim() || activating"
                 :aria-busy="activating"
                 @click="handleActivate"
@@ -84,18 +84,18 @@
             <div class="toolbar-right">
               <button
                 type="button"
-                class="refresh-btn u-btn"
+                class="refresh-btn u-btn-secondary"
                 :disabled="loading"
                 title="刷新卡密列表"
                 @click="reload(1)"
               >
-                <span v-if="loading" class="loading-icon" aria-hidden="true">⏳</span>
+                <span v-if="loading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
                 <span v-else aria-hidden="true">🔄</span>
                 {{ loading ? '刷新中...' : '刷新' }}
               </button>
               <select
                 v-model="statusFilter"
-                class="status-select"
+                class="status-select u-input"
                 aria-label="按状态筛选"
                 @change="reload(1)"
               >
@@ -156,7 +156,7 @@
               </span>
 
               <span v-else-if="column.key === 'tool_id'">
-                <span v-if="getToolName(record.tool_id)" class="tool-badge">
+                <span v-if="getToolName(record.tool_id)" class="u-tag">
                   <span aria-hidden="true">🔧</span> {{ getToolName(record.tool_id) }}
                 </span>
                 <span v-else class="empty-small">未绑定工具</span>
@@ -197,7 +197,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { message } from 'ant-design-vue'
+import { notify } from '@/hooks/useToast/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
 import { useToolStore } from '@/stores/tool'
@@ -248,7 +248,7 @@ const reload = async (page = 1) => {
     status: statusFilter.value,
   })
   if (!ok && kamiStore.error) {
-    message.error(kamiStore.error)
+    notify.error(kamiStore.error)
   }
 }
 
@@ -278,9 +278,9 @@ const copyCardNo = async (card) => {
   if (!text) return
   try {
     await navigator.clipboard.writeText(text)
-    message.success('已复制脱敏卡号（含掩码，仅用于核对）')
+    notify.success('已复制脱敏卡号（含掩码，仅用于核对）')
   } catch {
-    message.error('复制失败，请手动选择复制')
+    notify.error('复制失败，请手动选择复制')
   }
 }
 
@@ -324,13 +324,15 @@ watch(
 
 /* ── 未登录提示 ─────────────────────────────────────────────── */
 
+/* 面板档令牌：内边距 --card-padding-lg、圆角 --radius-panel、
+   描边 --border、阴影 --shadow-card */
 .notice-card {
   max-width: calc(var(--container-narrow) / 2);
   margin: 0 auto;
-  padding: calc(var(--space-unit) * 4);
+  padding: var(--card-padding-lg);
   text-align: center;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -357,12 +359,8 @@ watch(
   margin-bottom: calc(var(--space-unit) * 5);
 }
 
-/* 页签外观全部来自共享类 .u-chip / .u-chip--active，
-   这里只把「筛选小标签」的尺寸撑到可点区域的大小 */
-.tab-bar .u-chip {
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2.5);
-  font-size: var(--fs-sm);
-}
+/* 页签外观全部来自共享类 .u-tag / .u-tag--accent
+   （高度/内边距/圆角/选中态配色都由 global.css 给全），组件内不复写 */
 
 /* ── 激活卡密 ───────────────────────────────────────────────── */
 
@@ -375,9 +373,9 @@ watch(
 .activate-card {
   width: 100%;
   max-width: calc(var(--container-narrow) / 2);
-  padding: calc(var(--space-unit) * 5);
+  padding: var(--card-padding-lg);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
 }
@@ -395,13 +393,10 @@ watch(
   margin-bottom: calc(var(--space-unit) * 2);
 }
 
-/* 表单控件复用 .u-input（边框、圆角、焦点环都随主题）；
-   卡片与输入框同为表面色时只靠 1px 边框分界，因此输入区退一档次级表面 */
-.activate-form .u-input {
-  background: var(--bg-surface-2);
-}
+/* 表单控件复用 .u-input（高度/内边距/边框/圆角/焦点环都随主题，
+   且已含移动端缩放），组件内不再复写 */
 
-/* .activate-btn 复用 .u-cta：底色、圆角、悬停位移与 disabled 样式都由共享类给全 */
+/* .activate-btn 复用 .u-btn-primary：底色、圆角、悬停位移与 disabled 样式都由共享类给全 */
 
 /* 激活结果：成功 / 失败各带语义底，颜色不是唯一信号 */
 .success-msg,
@@ -409,7 +404,7 @@ watch(
   margin: 0;
   padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
   font-size: var(--fs-sm);
-  border-radius: var(--radius-btn);
+  border-radius: var(--btn-radius);
 }
 
 .success-msg {
@@ -433,9 +428,9 @@ watch(
 
 .list-container {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -443,8 +438,8 @@ watch(
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--card-padding);
-  border-bottom: 1px solid var(--divider);
+  padding: var(--card-padding-lg);
+  border-bottom: var(--stroke-width) solid var(--divider);
 }
 
 .toolbar-left {
@@ -462,35 +457,14 @@ watch(
   gap: calc(var(--space-unit) * 1.5);
 }
 
-/* .refresh-btn 复用 .u-btn：边框取 --border-strong，悬停走 --accent + --bg-soft，
-   disabled 的底色、文字与光标也由共享类给全。这里只保留它独有的旋转图标 */
-.loading-icon {
-  animation: kami-spin calc(var(--enter-duration) * 2) linear infinite;
-}
+/* .refresh-btn 复用 .u-btn-secondary（描边/悬停/disabled 由共享类给全），
+   加载中把 ⏳ 换成共享加载圈，因此组件内不再需要旋转动画 */
 
-@keyframes kami-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 状态筛选：与 .u-input 同构，但按工具栏的尺寸收紧一档 */
+/* 状态筛选与 .u-input 同源，只把宽度交还给工具栏（桌面按内容宽，
+   窄屏在媒体查询里撑满） */
 .status-select {
-  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-input);
+  width: auto;
   cursor: pointer;
-  transition: border-color var(--transition-interactive);
-}
-
-.status-select:hover {
-  border-color: var(--accent);
 }
 
 /* 列表错误横幅：语义底 + 语义字色，不再用固定的浅红 */
@@ -500,7 +474,7 @@ watch(
   font-size: var(--fs-sm);
   color: var(--danger);
   background: var(--danger-bg);
-  border-bottom: 1px solid var(--danger);
+  border-bottom: var(--stroke-width) solid var(--danger);
 }
 
 /* ── 表格（ant-design-vue 覆盖：沿用 :deep() 提高特异性，不用强制优先级）── */
@@ -519,12 +493,12 @@ watch(
   font-weight: var(--fw-heading);
   color: var(--text-primary);
   background-color: var(--bg-surface-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: var(--stroke-width) solid var(--border);
 }
 
 :deep(.kami-ant-table .ant-table-tbody > tr > td) {
   padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
-  border-bottom: 1px solid var(--divider);
+  border-bottom: var(--stroke-width) solid var(--divider);
 }
 
 :deep(.kami-ant-table .ant-table-tbody > tr:hover > td) {
@@ -535,6 +509,102 @@ watch(
   margin-top: calc(var(--space-unit) * 2);
   padding: 0 calc(var(--space-unit) * 2) calc(var(--space-unit) * 2);
   color: var(--text-secondary);
+}
+
+/* 分页：尺寸 / 圆角 / 间距 / 字号四项全部来自 --pager-* 令牌 */
+:deep(.kami-ant-table .ant-pagination-item),
+:deep(.kami-ant-table .ant-pagination-prev),
+:deep(.kami-ant-table .ant-pagination-next),
+:deep(.kami-ant-table .ant-pagination-jump-prev),
+:deep(.kami-ant-table .ant-pagination-jump-next) {
+  min-width: var(--pager-size);
+  height: var(--pager-size);
+  margin-inline-end: var(--pager-gap);
+  font-size: var(--pager-font-size);
+  line-height: var(--pager-size);
+  border-radius: var(--pager-radius);
+}
+
+/* 页码与「•••」跳页块：与卡片同一套表面 + 描边 */
+:deep(.kami-ant-table .ant-pagination-item),
+:deep(.kami-ant-table .ant-pagination-jump-prev),
+:deep(.kami-ant-table .ant-pagination-jump-next) {
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--stroke-color);
+}
+
+/* 上一页 / 下一页的边框长在内部按钮上，必须一并覆盖 */
+:deep(.kami-ant-table .ant-pagination-prev .ant-pagination-item-link),
+:deep(.kami-ant-table .ant-pagination-next .ant-pagination-item-link) {
+  color: var(--text-secondary);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--pager-radius);
+}
+
+:deep(.kami-ant-table .ant-pagination-item a),
+:deep(.kami-ant-table .ant-pagination-jump-prev .ant-pagination-item-ellipsis),
+:deep(.kami-ant-table .ant-pagination-jump-next .ant-pagination-item-ellipsis) {
+  color: var(--text-secondary);
+}
+
+/* 跳页提示图标（››）原本是 antd 的主题蓝，改用强调色 */
+:deep(.kami-ant-table .ant-pagination-item-link-icon) {
+  color: var(--accent);
+}
+
+/* 悬停：描边与文字一起切到强调色 */
+:deep(.kami-ant-table .ant-pagination-item:hover),
+:deep(.kami-ant-table .ant-pagination-jump-prev:hover),
+:deep(.kami-ant-table .ant-pagination-jump-next:hover) {
+  border-color: var(--accent);
+}
+
+:deep(.kami-ant-table .ant-pagination-item:hover a),
+:deep(.kami-ant-table .ant-pagination-prev:hover .ant-pagination-item-link),
+:deep(.kami-ant-table .ant-pagination-next:hover .ant-pagination-item-link) {
+  color: var(--accent);
+}
+
+:deep(.kami-ant-table .ant-pagination-prev:hover .ant-pagination-item-link),
+:deep(.kami-ant-table .ant-pagination-next:hover .ant-pagination-item-link) {
+  border-color: var(--accent);
+}
+
+/* 当前页：一组 --pager-active-* 令牌（neo 是黑底硬阴影、mono 是描边绿字） */
+:deep(.kami-ant-table .ant-pagination-item-active) {
+  background: var(--pager-active-bg);
+  border-color: var(--pager-active-border);
+  box-shadow: var(--pager-active-shadow);
+}
+
+:deep(.kami-ant-table .ant-pagination-item-active a) {
+  color: var(--pager-active-color);
+}
+
+/* 到头时的上一页 / 下一页退到禁用色，而不是 antd 的浅灰 */
+:deep(.kami-ant-table .ant-pagination-disabled),
+:deep(.kami-ant-table .ant-pagination-disabled:hover) {
+  background: var(--disabled-bg);
+  border-color: var(--stroke-color);
+}
+
+:deep(.kami-ant-table .ant-pagination-disabled .ant-pagination-item-link),
+:deep(.kami-ant-table .ant-pagination-disabled:hover .ant-pagination-item-link) {
+  color: var(--disabled-text);
+  background: var(--disabled-bg);
+  border-color: var(--stroke-color);
+}
+
+/* 快速跳页输入框：与表内控件同源，高度收到分页档 */
+:deep(.kami-ant-table .ant-pagination-options-quick-jumper input) {
+  height: var(--pager-size);
+  padding: 0 calc(var(--space-unit) * 0.75);
+  font-size: var(--pager-font-size);
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--pager-radius);
 }
 
 /* ── 单元格内容 ─────────────────────────────────────────────── */
@@ -575,22 +645,22 @@ watch(
   gap: var(--space-unit);
 }
 
-/* 脱敏卡号按「代码片段」处理：等宽 + 次级表面 + 边框 */
+/* 脱敏卡号按「代码片段」处理：等宽 + 次级表面 + 微型徽标圆角 */
 .card-no-display {
-  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.75);
+  padding: var(--micro-badge-padding);
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   color: var(--text-primary);
   background: var(--bg-surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-chip);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--micro-badge-radius);
 }
 
 .copy-icon-btn {
   padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 0.5);
   font-size: var(--fs-sm);
   color: var(--text-muted);
-  border-radius: var(--radius-btn);
+  border-radius: var(--btn-radius);
   transition: color var(--transition-interactive);
 }
 
@@ -598,33 +668,49 @@ watch(
   color: var(--accent);
 }
 
-/* 关联工具徽标：强调色柔和底 + 强调色文字，不再写死一套蓝色 */
-.tool-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-}
-
-/* ── 响应式（统一断点 767）──────────────────────────────────── */
+/* ── 响应式（统一断点 767）────────────────────────────────────
+   移动端缩放按规范：内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95
+   （.u-input / .u-btn-* / .u-tag 等共享类的高度与内边距缩放已在 global.css 内处理） */
 
 @media (max-width: 767px) {
+  .kami-section {
+    padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale)) 0
+      calc(var(--section-gap) * 0.6 * var(--mobile-section-scale));
+  }
+
   .tab-bar {
     gap: var(--space-unit);
-    margin-bottom: calc(var(--space-unit) * 3);
+    margin-bottom: calc(var(--space-unit) * 5 * var(--mobile-section-scale));
+  }
+
+  .notice-card,
+  .activate-card {
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
+  }
+
+  .notice-title,
+  .activate-card h3 {
+    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
+  }
+
+  .notice-desc,
+  .activate-tips,
+  .success-msg,
+  .error-msg,
+  .error-banner,
+  .empty-small {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+  }
+
+  .activate-container {
+    padding: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
   }
 
   .list-toolbar {
     flex-direction: column;
     align-items: flex-start;
     gap: calc(var(--space-unit) * 1.5);
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
   .toolbar-right {
@@ -635,12 +721,12 @@ watch(
     width: 100%;
   }
 
-  .activate-card {
-    padding: calc(var(--space-unit) * 3);
-  }
-
   .activate-btn {
     width: 100%;
+  }
+
+  :deep(.kami-ant-table) {
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
   }
 }
 </style>

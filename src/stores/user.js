@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { message } from 'ant-design-vue'
+import { notify } from '@/hooks/useToast/index.js'
 import {
     getAccessToken,
     getRefreshToken,
@@ -126,7 +126,7 @@ export const useUserStore = defineStore('user', {
             clearTokens()
             this.userInfo = {}
             this.initialized = false
-            message.success('已退出登录')
+            notify.success('已退出登录')
             // 退出后重新以游客身份初始化，保证卡密等需登录功能给出正确提示
             await this.init()
         },
