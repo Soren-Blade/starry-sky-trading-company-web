@@ -77,13 +77,16 @@ test('移动端抽屉里不再有搜索框（搜索已统一到顶栏图标）',
   assert.equal(drawer.includes('drawer-search'), false)
 })
 
-test('收起态是「只有图标那么大、且底与描边透明」，不是 visibility: hidden', () => {
+test('收起态就是一枚普通图标按钮：与左右邻居逐值相同的尺寸与外观', () => {
   const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
   const body = fieldRule.slice(0, fieldRule.indexOf('}'))
 
-  assert.match(body, /width: var\(--icon-btn-size\)/, '收起时宽度应正好是一个图标格')
-  assert.match(body, /background: transparent/)
-  assert.match(body, /border: var\(--stroke-width\) solid transparent/)
+  assert.match(body, /width: var\(--icon-btn-size\)/)
+  assert.match(body, /height: var\(--icon-btn-size\)/, '高度必须锚在图标格上，不是 --input-height')
+  assert.match(body, /background: var\(--bg-surface\)/, '与 .u-icon-btn 同底')
+  assert.match(body, /border: var\(--stroke-width\) solid var\(--stroke-color\)/)
+  assert.match(body, /border-radius: var\(--icon-btn-radius\)/)
+  assert.match(body, /color: var\(--text-secondary\)/)
   assert.equal(
     /visibility:\s*hidden/.test(body),
     false,
@@ -91,18 +94,72 @@ test('收起态是「只有图标那么大、且底与描边透明」，不是 v
   )
 })
 
-test('展开宽度按主题的输入框高度换算，且不超过视口', () => {
+test('**展开态除宽度外不改任何外观**（这就是「点击前后明显差异」的根因）', () => {
+  // 踩过的坑：收起态用 --icon-btn-size / --icon-btn-radius / --bg-surface，
+  // 展开态用 --input-height / --radius-input / --bg-surface-2。
+  // 这两组值在五套主题里并不相等 —— 高度在玻璃(44→48)、便当(40→44)、
+  // 粗野(44→48)、单色(32→36)四套里都不同，圆角在便当(10→24)、粗野(0→8)也不同。
+  // 于是点击时盒子会明显长大、变方。因此展开规则里**只允许出现 width**。
+  const selectorAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
+  const bodyStart = NAVBAR_SOURCE.indexOf('{', selectorAt) + 1
+  const body = NAVBAR_SOURCE.slice(bodyStart, NAVBAR_SOURCE.indexOf('}', bodyStart))
+  const declarations = body
+    .split(';')
+    .map((line) => line.replace(/\/\*[\s\S]*?\*\//g, '').trim())
+    .filter(Boolean)
+
+  const properties = declarations.map((line) => line.split(':')[0].trim())
+  assert.deepEqual(
+    [...new Set(properties)],
+    ['width'],
+    `展开态只应改宽度，实际改了：${properties.join(', ')}`
+  )
+})
+
+test('展开宽度按图标格换算，不掺 --input-height / --space-unit 的倍数', () => {
   const openRule = NAVBAR_SOURCE.slice(
     NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
   )
-  const body = openRule.slice(0, openRule.indexOf('}'))
+  const widthLine = openRule.slice(0, openRule.indexOf('}')).match(/width: min\([^;]*;/)?.[0]
 
-  assert.match(body, /width: min\(calc\(var\(--input-height\)/, '五套主题的输入框高度不同')
-  assert.match(
-    body,
-    /100vw - var\(--space-unit\)/,
-    '必须有视口上限：展开的框在手机上会把顶栏顶出屏幕'
+  assert.ok(widthLine, '展开宽度应是一句 min(...)')
+  assert.match(widthLine, /var\(--icon-btn-size\) \* \d+/, '缩放基准应是图标格')
+  assert.equal(
+    /var\(--input-height\)/.test(widthLine),
+    false,
+    '混用 --input-height 会让盒子在点击时变高'
   )
+  assert.equal(
+    /var\(--space-unit\) \* \d+\),/.test(widthLine),
+    false,
+    '--space-unit 在「技术单色」主题是 4px，拿它当缩放基准会把框压得很窄'
+  )
+  assert.match(
+    widthLine,
+    /100vw - var\(--space-unit\)/,
+    '视口上限里用 --space-unit 只作边距，不参与缩放，这是允许的'
+  )
+})
+
+test('按钮从不画自己的盒子（收起时两层描边会错位，展开时框里多一个方按钮）', () => {
+  const at = NAVBAR_SOURCE.indexOf('.navbar-search .search-field .search-toggle {')
+  assert.ok(at > -1, '应有按钮的中性化规则')
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('}', at))
+
+  assert.match(body, /background: transparent/)
+  assert.match(body, /border-color: transparent/)
+  assert.match(body, /color: inherit/, '字形颜色要跟着外框走，悬停才会一起变色')
+  // 尺寸缩到内容盒：否则字形在图标格里偏 1~2px（粗野主题描边 2px 更明显）
+  assert.match(body, /width: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2\)/)
+
+  // 这条规则**不能**挂在 .search-open 上 —— 收起时同样需要它
+  const ruleSelector = NAVBAR_SOURCE.slice(0, at).split('\n').filter((l) => l.includes('{')).pop()
+  assert.equal(
+    /search-open/.test(NAVBAR_SOURCE.slice(at - 120, at)),
+    false,
+    '按钮的中性化在收起态也要生效'
+  )
+  assert.ok(ruleSelector !== undefined)
 })
 
 test('展开的框是绝对定位，不参与文档流（否则 1024px 与手机上总宽会溢出）', () => {
@@ -156,33 +213,11 @@ test('**展开前后放大镜位置不变**', () => {
   assert.equal(/border-right-width/.test(openBody), false)
 })
 
-test('展开宽度不掺 --space-unit 倍数（紧凑主题下会把框压得很窄）', () => {
-  const openRule = NAVBAR_SOURCE.slice(
-    NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
+test('聚焦高亮画在外框上（内层输入框的描边已抹掉，否则看不见聚焦态）', () => {
+  assert.match(
+    NAVBAR_SOURCE,
+    /\.navbar-search\.search-open \.search-field:focus-within \{[\s\S]*?border-color: var\(--input-focus-border\)/
   )
-  const widthLine = openRule.slice(0, openRule.indexOf('}')).match(/width: min\([^;]*;/)?.[0]
-
-  assert.ok(widthLine, '展开宽度应是一句 min(...)')
-  assert.match(widthLine, /var\(--input-height\)/)
-  assert.equal(
-    /var\(--space-unit\) \* \d+\)?,/.test(widthLine),
-    false,
-    '--space-unit 在「技术单色」主题是 4px，掺进来会让框在紧凑主题下过窄'
-  )
-})
-
-test('展开后按钮自身的外观让位给外框（否则框里还有一个方按钮）', () => {
-  const openAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-toggle {')
-  assert.ok(openAt > -1, '应有展开态的按钮规则')
-  const body = NAVBAR_SOURCE.slice(openAt, NAVBAR_SOURCE.indexOf('}', openAt))
-  assert.match(body, /background: transparent/)
-  assert.match(body, /border-color: transparent/)
-
-  // 悬停态必须单独覆盖：否则鼠标停在按钮上时 .u-icon-btn:hover 又会画出一个方底
-  const hoverAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-toggle:hover {')
-  assert.ok(hoverAt > -1, '展开态必须连 :hover 一起盖住')
-  const hoverBody = NAVBAR_SOURCE.slice(hoverAt, NAVBAR_SOURCE.indexOf('}', hoverAt))
-  assert.match(hoverBody, /background: transparent/)
 })
 
 test('提交与 Escape 之后收起：closeSearch 同时释放状态与焦点', () => {
@@ -235,13 +270,6 @@ test('焦点只在这块**之内**移动时不收起（否则「再点一次收�
 
   assert.match(body, /searchRoot\.value\?\.contains\(event\.relatedTarget\)/, '必须判断新焦点是否仍在这块内')
   assert.match(body, /!event\.relatedTarget/, 'relatedTarget 为 null（点了页面空白）也要收起')
-})
-
-test('聚焦高亮画在外框上（内层输入框的描边已抹掉，否则看不见聚焦态）', () => {
-  assert.match(
-    NAVBAR_SOURCE,
-    /\.navbar-search\.search-open \.search-field:focus-within \{[\s\S]*?border-color: var\(--input-focus-border\)/
-  )
 })
 
 test('不要「搜索」提交按钮：图标已内嵌，框里再塞按钮会挤掉输入区', async () => {

@@ -590,11 +590,21 @@ onUnmounted(() => {
  *   - 它 `right: 0` 与占位格右缘对齐、向**左**生长，因此永远不会顶出屏幕右边；
  *     而放大镜是框的最后一个子元素，右贴框缘 ——
  *     于是**展开前后放大镜一动不动**，长出来的是它左边的输入区。
- *   - 收起时框只有图标那么宽、且底与描边透明 ——
- *     看上去就是操作区里一个普通的图标按钮。
  *
- * ⚠ 展开态**不能**给框加右内边距（或右边框），那会把放大镜往左推，
- *   「位置不变」就破了。左侧的呼吸感由输入框自己的 padding 负责。
+ * ⚠⚠ 收起态与展开态**必须共用同一套尺寸令牌**，只允许宽度变。
+ *
+ * 这里踩过一次：收起态用 `--icon-btn-size` / `--icon-btn-radius` /
+ * `--bg-surface`，展开态用 `--input-height` / `--radius-input` / `--bg-surface-2`。
+ * 五套主题里这两组值并不相等 —— 高度在玻璃（44→48）、便当（40→44）、
+ * 粗野（44→48）、单色（32→36）四套里都不一致，圆角在便当（10→24）与
+ * 粗野（0→8）也不同。于是**一点击盒子就明显长大、变方**，四套主题全中。
+ *
+ * 现在统一锚在图标按钮那一组上（它是顶栏里的一员，收起时就该和左右邻居
+ * 一模一样），展开只加宽：
+ *   height / border-radius / background / border  → 两个状态完全相同
+ *   width                                        → 唯一变化的属性
+ * 阴影也不再在展开时凭空出现（那同样是一次「明显差异」），
+ * 只在真正聚焦时给一圈焦点环 —— 那是用户主动操作的结果，不是点击的副作用。
  */
 .navbar-search {
   position: relative;
@@ -617,64 +627,68 @@ onUnmounted(() => {
   align-items: center;
   gap: var(--input-icon-gap);
   width: var(--icon-btn-size);
+  /* 与左右邻居（主题 / 购物车 / 头像）逐值相同的图标按钮外观 */
   height: var(--icon-btn-size);
   overflow: hidden;
-  background: transparent;
-  border: var(--stroke-width) solid transparent;
-  border-radius: var(--radius-input);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--icon-btn-radius);
   transform: translateY(-50%);
   transition:
     width var(--transition-surface),
-    height var(--transition-surface),
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive),
-    box-shadow var(--transition-interactive);
+    color var(--transition-interactive),
+    border-color var(--transition-interactive);
 }
 
 .navbar-search.search-open .search-field {
-  /* 展开宽度按主题的输入框高度换算（避免写死像素在五套风格里失衡），
-   * 同时不超过视口 —— 窄屏上也不会把框顶出屏幕。
-   * 刻意**不**掺 var(--space-unit) * n：那一档在紧凑主题下会把框压得很窄。 */
-  width: min(calc(var(--input-height) * 8), calc(100vw - var(--space-unit) * 6));
-  height: var(--input-height);
-  background: var(--bg-surface-2);
-  border-color: var(--stroke-color);
-  /* 它是浮在顶栏之上的一层，给一点抬升阴影；
-   * 否则与导航栏同底，展开后看着像被压扁在栏里 */
-  box-shadow: var(--shadow-float);
+  /* **唯一**的几何变化：变宽。
+   * 宽度按图标格换算，五套主题各得其所（极简 320 / 玻璃 352 / 便当 320 /
+   * 粗野 352 / 单色 256），同时不超过视口。 */
+  width: min(calc(var(--icon-btn-size) * 8), calc(100vw - var(--space-unit) * 6));
 }
 
-/* 聚焦态画在**外框**上：输入框自己的描边已经抹掉，
- * 否则聚焦高亮只会出现在内层那个没有边框的输入框上、看不出来。
- * 放在展开规则之后，焦点环才盖得住上面那层抬升阴影。 */
+/* 悬停反馈照搬 .u-icon-btn:hover:not(:disabled)（只变字色与描边色）——
+ * 盒子已经移到外框上，这套反馈也要跟着上来，否则鼠标移上去毫无反应。
+ * 字形靠按钮的 color: inherit 跟着变色。 */
+.navbar-search .search-field:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* 展开后它已经是输入框：描边不再随悬停变色，字色仍随悬停提亮
+ * （提示右端的放大镜仍可点击收起）。 */
+.navbar-search.search-open .search-field:hover {
+  border-color: var(--stroke-color);
+}
+
+/* 聚焦时给一圈焦点环。这是用户主动把光标放进来才有的，
+ * 与「点击展开」无关，因此不算上面说的那种差异。放在悬停规则之后才盖得住。 */
 .navbar-search.search-open .search-field:focus-within {
   border-color: var(--input-focus-border);
   box-shadow: var(--input-focus-shadow);
 }
 
-.search-toggle {
+/* 按钮**永远不画自己的底与描边**，盒子统一由外框承担：
+ *   - 收起时若两层都画，框的内容宽是「图标格 − 2×描边」，
+ *     而按钮是图标格宽 —— 描边会错位 1px、并在右侧被裁掉（粗野主题 2px 更明显）
+ *   - 展开时若还画着，框里就多出一个方按钮
+ * 尺寸也相应缩到内容盒大小，字形才会在图标格里真正居中。
+ * 写到三层选择器，确保压得过 .u-icon-btn 自身的 width/height/color。 */
+.navbar-search .search-field .search-toggle {
+  width: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
+  height: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
   flex-shrink: 0;
-}
-
-/* 展开后按钮外观让位给外框：它此时是输入框右端的图标，不是一个独立按钮。
- * 选择器比 .u-icon-btn / .u-icon-btn:hover 都更具体，因此能盖住。
- *
- * 颜色用次级文字色而不是强调色：它此刻是输入框的装饰图标，
- * 跟着占位文字同一层级才像「一个搜索框」；强调色会让它看着又像一个按钮，
- * 与右侧真正可点的图标抢注意力。悬停时才提亮，提示它仍可点击收起。 */
-.navbar-search.search-open .search-toggle {
+  color: inherit;
   background: transparent;
   border-color: transparent;
-  color: var(--text-muted);
-  /* 展开后它仍是可点击的（再点一次收起），所以指针不能写成 text */
   cursor: pointer;
   transform: none;
 }
 
-.navbar-search.search-open .search-toggle:hover {
+.navbar-search .search-field .search-toggle:hover {
   background: transparent;
   border-color: transparent;
-  color: var(--accent);
 }
 
 /* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
