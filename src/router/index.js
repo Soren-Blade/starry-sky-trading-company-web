@@ -47,7 +47,7 @@ const routes = [
     path: '/user/kami',
     name: 'kami',
     component: () => import('@/pages/Kami.vue'),
-    meta: { title: '卡密管理 - 星辰商行' }
+    meta: { title: '卡密管理 - 星辰商行', requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -77,6 +77,29 @@ const router = createRouter({
 // 路由守卫 - 更新页面标题
 router.afterEach((to) => {
   document.title = to.meta.title || '星辰商行'
+})
+
+// 路由守卫 - 需要账号登录的页面
+// 游客也会拿到 token 与 userInfo，因此不能用「有 userInfo」判断，
+// 必须看 user_type 是否为 registered（即 userStore.isLoggedIn）。
+// 这里懒加载 store，避免 router 与 store 的循环依赖。
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) return true
+
+  const { useUserStore } = await import('@/stores/user')
+  const userStore = useUserStore()
+
+  // 首屏可能仍在初始化身份，等一次
+  if (!userStore.initialized) {
+    await userStore.init()
+  }
+
+  if (userStore.isLoggedIn) return true
+
+  const { message } = await import('ant-design-vue')
+  message.warning('请先登录账号后再访问卡密管理')
+
+  return { name: 'Home', query: { redirect: to.fullPath } }
 })
 
 export default router

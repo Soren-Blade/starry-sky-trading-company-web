@@ -2,10 +2,16 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/zh-cn';
 
 // 启用必要的插件
+// relativeTime 必须在这里静态注册：原先在 getRelativeTime 里用动态 import() 注册，
+// 但紧接着就同步调用 .fromNow()，插件尚未生效 → 每次都抛错并返回空串。
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.extend(relativeTime);
+dayjs.locale('zh-cn');
 
 /**
  * 格式化ISO时间字符串
@@ -64,8 +70,9 @@ export function parseISOTime(isoString) {
       weekday: beijingTime.format('dddd'),
       weekdayCN: getChineseWeekday(beijingTime.day()),
       
-      // 季度
-      quarter: Math.ceil(beijingTime.month() / 3) + 1,
+      // 季度：month() 返回 0-11，3/6/9/12 月应分别为 1/2/3/4 季度。
+      // 原式 Math.ceil(month()/3)+1 会整体偏大 1（3 月算成第 2 季度）。
+      quarter: Math.floor(beijingTime.month() / 3) + 1,
       
       // dayjs对象
       dayjs: date,
@@ -89,22 +96,19 @@ export function getChineseWeekday(dayIndex) {
 
 /**
  * 获取相对时间（如：3分钟前）
+ * relativeTime 插件已在文件顶部静态注册，这里可直接调用。
  * @param {string} isoString - ISO时间字符串
- * @returns {string} 相对时间
+ * @returns {string} 相对时间，无法解析时返回空串
  */
 export function getRelativeTime(isoString) {
   if (!isoString) return '';
-  
+
   try {
-    import('dayjs/plugin/relativeTime').then(module => {
-      dayjs.extend(module.default);
-    }).catch(() => {
-      // 如果导入失败，使用备用方案
-      console.warn('dayjs/plugin/relativeTime 插件导入失败');
-    });
-    
-    return dayjs(isoString).fromNow();
+    const date = dayjs(isoString);
+    if (!date.isValid()) return '';
+    return date.fromNow();
   } catch (error) {
+    console.error('相对时间格式化失败:', error.message);
     return '';
   }
 }

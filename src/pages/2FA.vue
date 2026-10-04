@@ -14,6 +14,10 @@
         <button @click="copyCode" :disabled="!code" aria-disabled="!code">复制当前验证码</button>
       </div>
 
+      <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
+        当前页面不是安全上下文，浏览器已禁用 WebCrypto，无法生成验证码。请通过 HTTPS 或 localhost 访问本页。
+      </div>
+
       <div class="fp-code-area" v-if="hasSecret">
         <div class="fp-card">
           <div class="fp-meta">
@@ -67,8 +71,16 @@ const error = ref("");
 
 let keyCache = null;
 let intervalId = null;
+// 已触发的计算序号，用于丢弃过期的异步结果
+let computeSeq = 0;
 
 const hasSecret = computed(() => secret.value.trim().length > 0);
+
+/**
+ * WebCrypto 的 crypto.subtle 只在安全上下文（HTTPS 或 localhost）可用。
+ * 非安全上下文下 importKey 会抛异常，原先会被当成「密钥格式错误」误导用户。
+ */
+const cryptoAvailable = typeof crypto !== 'undefined' && Boolean(crypto.subtle);
 
 function base32ToBytes(input) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -99,6 +111,12 @@ function intToBytes(num) {
 }
 
 async function importKey(raw) {
+  // crypto.subtle 在非安全上下文（HTTP 且非 localhost）下不可用
+  if (!cryptoAvailable) {
+    const err = new Error('当前页面不是安全上下文，浏览器禁用了 WebCrypto。请通过 HTTPS 或 localhost 访问。');
+    err.name = 'MissingSecureContext';
+    throw err;
+  }
   return await crypto.subtle.importKey(
     "raw",
     raw,
@@ -147,12 +165,20 @@ async function updateCode() {
     code.value = "";
     return;
   }
+  // 序号守卫：倒计时每秒触发一次计算，输入时也会触发，
+  // 若较慢的旧计算后返回，会覆盖掉较新的结果。
+  const seq = ++computeSeq;
   try {
     error.value = "";
     const { otp } = await computeTOTP(secret.value);
+    if (seq !== computeSeq) return; // 已有更新的计算，丢弃本次结果
     code.value = otp;
   } catch (e) {
-    error.value = "无法解析密钥：" + (e.message || e);
+    if (seq !== computeSeq) return;
+    error.value =
+      e && e.name === 'MissingSecureContext'
+        ? e.message
+        : "无法解析密钥：" + (e.message || e);
     code.value = "";
   }
 }
@@ -160,16 +186,18 @@ async function updateCode() {
 function updateCountdown() {
   const step = 30;
   const now = Math.floor(Date.now() / 1000);
+  // 1..30；等于 step 表示刚好进入新周期，等于 1 表示即将翻页
   countdown.value = step - (now % step);
 }
 
 function startInterval() {
   stopInterval();
   updateCountdown();
-  intervalId = setInterval(async () => {
+  intervalId = setInterval(() => {
     updateCountdown();
-    if (countdown.value === 30 || countdown.value === 0) {
-      await updateCode();
+    // 每个 30 秒周期的第一秒重新生成验证码
+    if (countdown.value === 30) {
+      void updateCode();
     }
   }, 1000);
 }
@@ -367,6 +395,16 @@ button.primary {
   color: #b00020;
   font-size: 13px;
   text-align: center;
+}
+
+.secure-warning {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  background: var(--color-danger-bg, #fef2f2);
+  border: 1px solid #fcc;
+  border-radius: var(--radius-sm, 8px);
+  text-align: left;
+  line-height: 1.6;
 }
 
 /* Card-style container inside the main container */

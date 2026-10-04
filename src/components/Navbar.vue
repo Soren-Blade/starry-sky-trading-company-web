@@ -75,6 +75,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { throttle } from '@/utils/index.js'
 import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll'
@@ -85,6 +86,8 @@ import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 // ============ 状态管理 ============
 
 const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
 // isLoggedIn 是 getter：只有 user_type === 'registered' 才为 true，
 // 游客也会拿到 token，但不应被当作已登录。
 const { isLoggedIn, userInfo, nickname, avatarUrl } = storeToRefs(userStore)
@@ -129,6 +132,12 @@ const handleLoginSuccess = () => {
   enableScroll()
   userMenuOpen.value = false
   menuOpen.value = false
+
+  // 若因路由守卫被挡回首页，登录成功后回到原目标页
+  const redirect = route.query.redirect
+  if (typeof redirect === 'string' && redirect.startsWith('/')) {
+    router.replace(redirect)
+  }
 }
 
 const handleCloseLoginModal = () => {

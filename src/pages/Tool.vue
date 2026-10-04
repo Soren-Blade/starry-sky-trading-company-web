@@ -17,22 +17,24 @@
         </div>
         <div class="filter-actions">
           <div class="search-box">
+            <label class="visually-hidden" for="tool-search">搜索工具</label>
             <input
+              id="tool-search"
               v-model="searchQuery"
-              type="text"
+              type="search"
               placeholder="搜索工具..."
               class="search-input"
             />
-            <button class="search-btn" @click="performSearch">
-              <span class="search-icon">🔍</span>
-            </button>
+            <span class="search-icon" aria-hidden="true">🔍</span>
           </div>
           <button
+            type="button"
             class="favorites-btn"
             :class="{ active: showFavorites }"
+            :aria-pressed="showFavorites"
             @click="toggleFavorites"
           >
-            <span class="favorites-icon">❤️</span>
+            <span class="favorites-icon" aria-hidden="true">❤️</span>
             <span class="favorites-text">已收藏</span>
           </button>
         </div>
@@ -44,11 +46,13 @@
           v-for="tool in filteredTools"
           :key="tool.id"
           :tool="tool"
-          :is-favorited="favoriteTools.has(parseInt(tool.id))"
+          :is-favorited="favoriteTools.has(Number(tool.id))"
           @open-tool="handleOpenTool"
           @toggle-favorite="handleToggleFavorite"
         />
-        <div v-if="filteredTools.length === 0" class="empty-note">
+        <div v-if="toolsLoading" class="empty-note">正在加载工具…</div>
+        <div v-else-if="toolsError" class="empty-note error">工具加载失败：{{ toolsError }}</div>
+        <div v-else-if="filteredTools.length === 0" class="empty-note">
           该分类下暂无工具
         </div>
       </div>
@@ -57,109 +61,146 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import ToolCard from "@/components/ToolCard.vue";
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { message } from 'ant-design-vue'
+import ToolCard from '@/components/ToolCard.vue'
+import { useToolStore } from '@/stores/tool'
 
-// 工具管理存储
-import { useToolStore } from "@/stores/tool";
-import { storeToRefs } from "pinia";
+const toolStore = useToolStore()
+const { toolData, activeCategory, toolsLoading, toolsError } = storeToRefs(toolStore)
 
-const toolStore = useToolStore();
-const { toolData, activeCategory } = storeToRefs(toolStore);
+const searchQuery = ref('')
+const showFavorites = ref(false)
 
-const searchQuery = ref("");
-const showFavorites = ref(false);
-const favoriteTools = ref(new Set([1, 3, 5])); // 示例收藏工具ID
+// 收藏为本地偏好（尚无后端接口），持久化到 localStorage 以便刷新后保留
+const FAVORITES_KEY = 'SSTC_TOOL_FAVORITES'
+
+const loadFavorites = () => {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return new Set(Array.isArray(parsed) ? parsed.map(Number) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+const favoriteTools = ref(loadFavorites())
+
+const persistFavorites = () => {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favoriteTools.value]))
+  } catch {
+    /* 隐私模式下不可写，忽略 */
+  }
+}
+
+/** 统一取小写字符串，兼容后端可能返回 null 的字段 */
+const lower = (value) => (value == null ? '' : String(value).toLowerCase())
 
 const filteredTools = computed(() => {
-  let toolsdata = toolData.value.tools || [];
+  let list = toolData.value.tools || []
 
   // 分类过滤
-  if (activeCategory.value !== "all") {
-    toolsdata = toolsdata.filter((tool) => tool.class === activeCategory.value);
+  if (activeCategory.value !== 'all') {
+    list = list.filter((tool) => tool.class === activeCategory.value)
   }
 
   // 搜索过滤
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase();
-    toolsdata = toolsdata.filter(tool =>
-      tool.class_name.toLowerCase().includes(query) ||
-      tool.description.toLowerCase().includes(query) ||
-      tool.tool_name.toLowerCase().includes(query) ||
-      tool.display_name.toLowerCase().includes(query)
-    );
+  const query = searchQuery.value.trim().toLowerCase()
+  if (query) {
+    list = list.filter((tool) =>
+      lower(tool.class_name).includes(query) ||
+      lower(tool.tool_name).includes(query) ||
+      lower(tool.display_name).includes(query) ||
+      lower(tool.description).includes(query)
+    )
   }
 
   // 收藏过滤
   if (showFavorites.value) {
-    toolsdata = toolsdata.filter(tool => favoriteTools.value.has(parseInt(tool.id)));
+    list = list.filter((tool) => favoriteTools.value.has(Number(tool.id)))
   }
 
-  return toolsdata;
-});
-
-const performSearch = () => {
-  // 搜索逻辑已在computed中处理，这里可以添加额外逻辑
-  console.log("搜索:", searchQuery.value);
-};
+  return list
+})
 
 const toggleFavorites = () => {
-  showFavorites.value = !showFavorites.value;
+  showFavorites.value = !showFavorites.value
   if (showFavorites.value) {
-    activeCategory.value = "all"; // 显示收藏时重置分类
-    searchQuery.value = ""; // 清除搜索
+    // 显示收藏时重置分类与搜索，避免两个过滤条件叠加后看不到结果
+    toolStore.setActiveCategory('all')
+    searchQuery.value = ''
   }
-};
+}
 
-// keep references to opened tool windows by path
-const openedWindows = new Map();
+// 记录已打开的工具窗口，避免同一工具重复开窗
+// 使用 Map 并在每次打开时顺带清理已关闭的引用，避免长期驻留
+const openedWindows = new Map()
 
 const handleOpenTool = (tool) => {
-  const url = tool.tool_path;
-  console.log("打开工具详情:", url);
+  const url = tool?.tool_path
 
-  // normalize URL to absolute for comparison
-  const absoluteUrl = new URL(url, window.location.origin).href;
+  if (!url || typeof url !== 'string') {
+    message.warning('该工具暂未配置跳转地址')
+    return
+  }
 
-  // check if we already have an open window for this path
-  const existing = openedWindows.get(url);
+  // 顺带清理已关闭的窗口引用
+  for (const [key, win] of openedWindows) {
+    if (win.closed) openedWindows.delete(key)
+  }
+
+  let absoluteUrl
+  try {
+    absoluteUrl = new URL(url, window.location.origin).href
+  } catch {
+    message.error('工具地址无效')
+    return
+  }
+
+  const existing = openedWindows.get(url)
   if (existing && !existing.closed) {
     try {
-      // check if the window is still on the original URL
+      // 窗口仍停留在原地址时直接聚焦，否则重新打开
       if (existing.location.href === absoluteUrl) {
-        // focus the existing window
-        existing.focus();
-        return;
+        existing.focus()
+        return
       }
-    } catch (e) {
-      // cross-origin error, assume page changed, reopen
+    } catch {
+      // 跨域读取 location 会抛错，视为页面已变化
     }
-    // if URL changed or error, remove old reference
-    openedWindows.delete(url);
+    openedWindows.delete(url)
   }
 
-  // open a new window and store reference
-  const win = window.open(url, '_blank');
-  if (win) {
-    openedWindows.set(url, win);
+  const win = window.open(url, '_blank')
+  if (!win) {
+    message.warning('浏览器拦截了新窗口，请允许本站弹出窗口')
+    return
   }
-};
+  openedWindows.set(url, win)
+}
 
 const handleToggleFavorite = (tool) => {
-  // if (favoriteTools.value.has(tool.id)) {
-  //   favoriteTools.value.delete(tool.id);
-  //   console.log("取消收藏:", tool.name);
-  // } else {
-  //   favoriteTools.value.add(tool.id);
-  //   console.log("添加收藏:", tool.name);
-  // }
-  console.log('收藏相关')
-};
+  const id = Number(tool?.id)
+  if (!Number.isFinite(id)) return
+
+  if (favoriteTools.value.has(id)) {
+    favoriteTools.value.delete(id)
+    message.success('已取消收藏')
+  } else {
+    favoriteTools.value.add(id)
+    message.success('已收藏')
+  }
+  // Set 是响应式 ref 的内部可变对象，需触发一次更新
+  favoriteTools.value = new Set(favoriteTools.value)
+  persistFavorites()
+}
 
 onMounted(() => {
-  // 初始化
-  toolStore.init();
-});
+  toolStore.init()
+})
 </script>
 
 <style scoped>
@@ -229,39 +270,37 @@ onMounted(() => {
 
 .search-input {
   width: 200px;
-  padding: 8px 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 25px;
+  padding: 8px 34px 8px 12px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-pill);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--transition-fast);
 }
 
 .search-input:focus {
-  border-color: #8a6dff;
+  border-color: var(--color-primary);
 }
 
-.search-btn {
-  position: absolute;
-  right: 4px;
-  /* background: linear-gradient(90deg, #8a6dff, #6c5ce7); */
-  border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.search-btn:hover {
-  transform: scale(1.1);
-}
-
+/* 搜索是即时的（由 computed 完成），图标仅作提示 */
 .search-icon {
+  position: absolute;
+  right: 12px;
   font-size: 14px;
+  pointer-events: none;
+}
+
+/* 仅供屏幕阅读器 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .favorites-btn {
@@ -344,8 +383,13 @@ onMounted(() => {
   color: #888;
   padding: 48px 20px;
   background: rgba(250, 250, 250, 0.7);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 16px;
+}
+
+.empty-note.error {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
 }
 
 @media (max-width: 1199px) {
