@@ -70,12 +70,13 @@
           <div class="form-options">
             <label class="u-checkbox">
               <input v-model="loginForm.rememberMe" type="checkbox" /><span class="u-checkbox-box" aria-hidden="true"></span>
-              <span>记住我</span>
+              <span :title="AUTH.rememberHint">{{ AUTH.rememberMe }}</span>
             </label>
             <button type="button" class="link-btn" @click="showHelpModal = true">
               {{ AUTH.forgotPassword }}?
             </button>
           </div>
+          <p class="page-note remember-hint">{{ AUTH.rememberHint }}</p>
 
           <button
             type="submit"
@@ -214,6 +215,10 @@ import { ref } from 'vue';
 import { useUserStore } from '@/stores/user';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import HelpModal from '@/components/HelpModal.vue';
+import {
+  getRememberPreference,
+  getRememberedIdentifier,
+} from '@/hooks/useToken/index.js';
 import { AUTH } from '@/constants/index.js';
 
 const emit = defineEmits(['close', 'login-success']);
@@ -234,9 +239,11 @@ const showHelpModal = ref(false);
 const { modalRef } = useModalA11y({ close: () => emit('close') });
 
 const loginForm = ref({
-  username: '',
+  // 「记住我」的默认值与上次登录的账号都从本地存储恢复：
+  // 勾过就保持勾选（这是用户上次的选择），勾过才带出账号。
+  username: getRememberedIdentifier(),
   password: '',
-  rememberMe: false,
+  rememberMe: getRememberPreference(),
 });
 
 const registerForm = ref({
@@ -272,6 +279,8 @@ const handleLogin = async () => {
       email: loginType === 'email' ? identifier : undefined,
       phone: loginType === 'phone' ? identifier : undefined,
       password: loginForm.value.password,
+      // 仅客户端偏好：决定 refresh token 是否持久化（关掉浏览器后是否仍登录）
+      rememberMe: loginForm.value.rememberMe,
     });
 
     if (result.success) {
@@ -334,11 +343,18 @@ const handleRegister = async () => {
   }
 };
 
+/**
+ * 清空表单。
+ *
+ * 账号与「记住我」**不能清成空值**：它们要回到本地存储里那份偏好 ——
+ * 否则用户勾了「记住我」登录一次之后，再打开弹窗会看到账号被清空、勾也没了，
+ * 看上去就像「记住我根本没生效」。密码则必须清掉。
+ */
 const resetForms = () => {
   loginForm.value = {
-    username: '',
+    username: getRememberedIdentifier(),
     password: '',
-    rememberMe: false,
+    rememberMe: getRememberPreference(),
   };
   registerForm.value = {
     username: '',
@@ -437,6 +453,14 @@ const switchTab = (tab) => {
   gap: var(--space-unit);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
+}
+
+/* 「记住我」的说明：这行的语义（关掉浏览器后是否仍登录）不看说明是猜不到的，
+ * 因此把它写在复选框下面，而不是塞进 title 里让移动端无法发现。 */
+.remember-hint {
+  margin-top: calc(var(--space-unit) * -1.5);
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
 }
 
 .u-checkbox span {

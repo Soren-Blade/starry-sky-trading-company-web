@@ -297,6 +297,8 @@ export const CATEGORY_PAGE = {
 
 /** 登录弹窗补充文案 */
 export const AUTH = {
+  rememberMe: '记住我',
+  rememberHint: '勾选后关掉浏览器再打开仍是登录态，有效期 7 天；不勾选则只在本次浏览器会话内有效。',
   forgotPassword: '忘记密码',
   forgotTitle: '找回密码',
   forgotIntro:
@@ -426,10 +428,13 @@ export const LEGAL = {
       {
         heading: '二、存在你设备上的数据',
         paragraphs: [
-          '平台不使用第三方追踪脚本或广告 Cookie。以下几项数据保存在浏览器的 localStorage 中，清除浏览器数据即会消失：',
+          '平台不使用第三方追踪脚本或广告 Cookie。以下几项数据保存在浏览器的本地存储（localStorage / sessionStorage）中，清除浏览器数据即会消失：',
         ],
         list: [
-          '`ACCESS_TOKEN` / `REFRESH_TOKEN`：登录凭据（访问令牌 3 分钟、刷新令牌 7 天）',
+          '`ACCESS_TOKEN`：访问令牌（有效期 3 分钟）',
+          '`REFRESH_TOKEN`：刷新令牌（7 天）。**默认只存在 sessionStorage**，关掉浏览器即失效；登录时勾选「记住我」才会同时写入 localStorage，使登录态跨浏览器重启保留',
+          '`SSTC_REMEMBER_ME`：上次是否勾选了「记住我」（只影响复选框默认值）',
+          '`SSTC_LAST_IDENTIFIER`：上次成功登录用的账号（用户名 / 邮箱 / 手机号）与密码**无关**，仅在勾选「记住我」时保存，用于下次打开登录框时带出账号',
           '`SSTC_THEME_PREF`：你选择的界面风格与单项微调',
           '`SSTC_TOOL_FAVORITES`：**游客**身份下的工具收藏（登录后收藏会上传到服务端）',
         ],

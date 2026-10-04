@@ -121,25 +121,57 @@ class MemoryStorage {
   }
 }
 
+/** 当前已安装的桩实例（让 installStorageStub 幂等，见下） */
+let installedStorage = null
+/** 当前是否处于「写入抛错」模式，用于判断要不要换实现 */
+let installedFailWrites = false
+
 /**
  * 安装 localStorage / sessionStorage 桩，并返回它们便于断言。
+ *
+ * **幂等**：重复调用复用同一对实例（只清空内容、切换写入模式），
+ * 而不是每次 `new` 一对新的。
+ *
+ * 为什么要这样：调用方的习惯写法是文件顶部拿一次句柄，
+ *   `const { local, session } = installStorageStub()`
+ * 之后一直用它做断言。而某个用例为了模拟隐私模式会再调一次
+ * `installStorageStub({ failWrites: true })` —— 若这里换成新实例，
+ * 顶部那份句柄就指向了一个**已经被替换掉、再也不会被写入的对象**，
+ * 之后凡是经它做的断言读到的都是 null。
+ * 症状是「代码怎么看都对，断言就是不通过」，且只在特定用例顺序下出现
+ * （useToken.test.js 实测踩到，且是**真踩过**：5 条新用例全红）。
+ *
  * @param {{ failWrites?: boolean }} [options] failWrites=true 时模拟隐私模式（写入抛错）
  */
 export function installStorageStub(options = {}) {
   const { failWrites = false } = options
 
-  const local = new MemoryStorage()
-  const session = new MemoryStorage()
+  if (!installedStorage) {
+    installedStorage = { local: new MemoryStorage(), session: new MemoryStorage() }
+  }
 
-  if (failWrites) {
+  const { local, session } = installedStorage
+
+  // 与「新建一对空实例」保持同样的可观察行为：装完就是干净的
+  local.clear()
+  session.clear()
+
+  if (failWrites !== installedFailWrites) {
     for (const storage of [local, session]) {
-      storage.setItem = () => {
-        throw new DOMExceptionLike('写入被拒绝')
-      }
-      storage.removeItem = () => {
-        throw new DOMExceptionLike('写入被拒绝')
+      if (failWrites) {
+        storage.setItem = () => {
+          throw new DOMExceptionLike('写入被拒绝')
+        }
+        storage.removeItem = () => {
+          throw new DOMExceptionLike('写入被拒绝')
+        }
+      } else {
+        // 删掉自有属性即回落到 MemoryStorage.prototype 上的原实现
+        delete storage.setItem
+        delete storage.removeItem
       }
     }
+    installedFailWrites = failWrites
   }
 
   globalThis.localStorage = local

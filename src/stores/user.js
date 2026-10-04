@@ -4,6 +4,7 @@ import {
     getAccessToken,
     getRefreshToken,
     clearTokens,
+    applyRememberMe,
 } from '@/hooks/useToken'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import api from '@/api/index'
@@ -16,6 +17,18 @@ import api from '@/api/index'
  *   否则顶栏的登录入口会在首屏之后消失，用户再也无法登录。
  * - 只有 user_type === 'registered' 才算已登录。
  */
+
+/**
+ * 从登录凭据里取出「用户填的那个账号」。
+ *
+ * 登录支持用户名 / 邮箱 / 手机号三种方式，用户只填其中一个，
+ * 而「记住我」要带出的正是他填的那一个（不是数据库里的用户名）。
+ */
+function identifierOf(credentials) {
+    if (!credentials || typeof credentials !== 'object') return ''
+    const raw = credentials.username ?? credentials.email ?? credentials.phone ?? ''
+    return typeof raw === 'string' ? raw : ''
+}
 export const useUserStore = defineStore('user', {
     state: () => ({
         userInfo: {},
@@ -129,13 +142,28 @@ export const useUserStore = defineStore('user', {
 
         /**
          * 账号登录（用户名 / 邮箱 / 手机号）
-         * @param {{login_type: 'username'|'email'|'phone', username?: string, email?: string, phone?: string, password: string}} payload
+         *
+         * `rememberMe` 是**纯客户端的偏好**，不会发给服务端（下面解构掉了）：
+         * 它决定 refresh token 放在 sessionStorage 还是同时持久化到 localStorage，
+         * 也就是「关掉浏览器后是否仍是登录态」。
+         *
+         * @param {{login_type: 'username'|'email'|'phone', username?: string, email?: string,
+         *          phone?: string, password: string, rememberMe?: boolean}} payload
          * @returns {Promise<{success: boolean, message: string}>}
          */
         async login(payload) {
+            // 把客户端偏好摘出去，避免混进请求体（服务端会忽略未知字段，但不该发）
+            const { rememberMe, ...credentials } = payload || {}
+
             try {
-                const result = await api.login(payload)
+                const result = await api.login(credentials)
                 if (result?.success) {
+                    // **必须在 getUserInfo 之前**：token 由响应拦截器写入，
+                    // 而 getUserInfo 一旦 401 就会触发一次静默续期；
+                    // 那次续期会依据「localStorage 里有没有 refresh token」
+                    // 决定把新 token 写到哪里 —— 顺序反了，「记住我」就丢了。
+                    applyRememberMe(Boolean(rememberMe), identifierOf(credentials))
+
                     // 登录接口只下发 token，用户信息需要再拉一次
                     await this.getUserInfo()
                     return { success: true, message: result.message || '登录成功' }

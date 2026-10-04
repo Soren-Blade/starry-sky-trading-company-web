@@ -16,9 +16,8 @@ installDomStub()
 const { createPinia, setActivePinia } = await import('pinia')
 const { useUserStore } = await loadAppModule('/stores/user.js')
 const api = (await loadAppModule('/api/index.js')).default
-const { setAccessToken, setRefreshToken, getAccessToken } = await loadAppModule(
-  '/hooks/useToken/index.js'
-)
+const { setAccessToken, setRefreshToken, getAccessToken, setTokensFromHeaders } =
+  await loadAppModule('/hooks/useToken/index.js')
 
 /** 用 stub 替换 api 上的方法，返回恢复函数 */
 function stubApi(methods) {
@@ -424,6 +423,243 @@ test('logout：清空 userInfo 后才重新 init', async () => {
     assert.equal(seen[0], '{}')
   } finally {
     restore()
+  }
+})
+
+// ── 记住我 ─────────────────────────────────────────────────
+
+const REFRESH_KEY = 'REFRESH_TOKEN'
+const REMEMBER_KEY = 'SSTC_REMEMBER_ME'
+const IDENTIFIER_KEY = 'SSTC_LAST_IDENTIFIER'
+
+test('login：记住我不发给服务端（纯客户端偏好，不该混进请求体）', async () => {
+  const store = freshStore()
+  let received = null
+  const restore = stubApi({
+    login: async (payload) => {
+      received = payload
+      return { success: true }
+    },
+    getUserInfo: async () => ({ success: true, data: REGISTERED }),
+  })
+  try {
+    await store.login({
+      login_type: 'username',
+      username: 'alice',
+      password: 'pw',
+      rememberMe: true,
+    })
+    assert.equal('rememberMe' in received, false, `请求体不应含 rememberMe：${JSON.stringify(received)}`)
+    assert.equal(received.username, 'alice')
+    assert.equal(received.password, 'pw')
+  } finally {
+    restore()
+  }
+})
+
+test('login：勾选记住我后，refresh token 被持久化到 localStorage', async () => {
+  const store = freshStore()
+  const restore = stubApi({
+    login: async () => {
+      // 模拟响应拦截器：token 通过响应头写入（默认只进 sessionStorage）
+      setTokensFromHeaders({ 'access-token': 'a1', 'refresh-token': 'r1' })
+      return { success: true }
+    },
+    getUserInfo: async () => ({ success: true, data: REGISTERED }),
+  })
+  try {
+    await store.login({
+      login_type: 'email',
+      email: 'alice@example.com',
+      password: 'pw',
+      rememberMe: true,
+    })
+
+    assert.equal(globalThis.sessionStorage.getItem(REFRESH_KEY), 'r1')
+    assert.equal(globalThis.localStorage.getItem(REFRESH_KEY), 'r1', '勾选后应持久化')
+    assert.equal(globalThis.localStorage.getItem(REMEMBER_KEY), '1')
+    assert.equal(globalThis.localStorage.getItem(IDENTIFIER_KEY), 'alice@example.com', '应记住用户填的账号')
+  } finally {
+    restore()
+  }
+})
+
+test('login：不勾选记住我时保持会话级', async () => {
+  const store = freshStore()
+  const restore = stubApi({
+    login: async () => {
+      setTokensFromHeaders({ 'access-token': 'a1', 'refresh-token': 'r1' })
+      return { success: true }
+    },
+    getUserInfo: async () => ({ success: true, data: REGISTERED }),
+  })
+  try {
+    await store.login({ login_type: 'username', username: 'alice', password: 'pw' })
+
+    assert.equal(globalThis.sessionStorage.getItem(REFRESH_KEY), 'r1')
+    assert.equal(globalThis.localStorage.getItem(REFRESH_KEY), null, '默认不应持久化')
+    assert.equal(globalThis.localStorage.getItem(REMEMBER_KEY), null)
+  } finally {
+    restore()
+  }
+})
+
+test('login：记住我必须生效在 getUserInfo 之前（否则续期会把持久化冲掉）', async () => {
+  const store = freshStore()
+  const restore = stubApi({
+    login: async () => {
+      setTokensFromHeaders({ 'access-token': 'a1', 'refresh-token': 'r1' })
+      return { success: true }
+    },
+    // getUserInfo 里模拟一次静默续期：这类请求会带上新的 refresh token
+    getUserInfo: async () => {
+      setTokensFromHeaders({ 'access-token': 'a2', 'refresh-token': 'r2' })
+      return { success: true, data: REGISTERED }
+    },
+  })
+  try {
+    await store.login({
+      login_type: 'username',
+      username: 'alice',
+      password: 'pw',
+      rememberMe: true,
+    })
+
+    // 若 applyRememberMe 排在 getUserInfo 之后，续期时看到的还是
+    // 「localStorage 里没有 refresh token」的旧状态，会被写成会话级，
+    // r2 就不会出现在 localStorage 里 —— 那正是「勾了记住我却不生效」的成因。
+    assert.equal(globalThis.localStorage.getItem(REFRESH_KEY), 'r2')
+    assert.equal(globalThis.sessionStorage.getItem(REFRESH_KEY), 'r2')
+  } finally {
+    restore()
+  }
+})
+
+test('login：登录失败时不写入任何记忆（不能把失败当成功记住）', async () => {
+  const store = freshStore()
+  const restore = stubApi({
+    login: async () => ({ success: false, message: '用户名或密码错误' }),
+  })
+  try {
+    const result = await store.login({
+      login_type: 'username',
+      username: 'alice',
+      password: 'bad',
+      rememberMe: true,
+    })
+
+    assert.equal(result.success, false)
+    assert.equal(globalThis.localStorage.getItem(REFRESH_KEY), null)
+    assert.equal(globalThis.localStorage.getItem(REMEMBER_KEY), null)
+    assert.equal(globalThis.localStorage.getItem(IDENTIFIER_KEY), null)
+  } finally {
+    restore()
+  }
+})
+
+// ── 「记住我」的真实验收：模拟浏览器重启 ────────────────────
+//
+// 关掉浏览器 = sessionStorage 清空 + localStorage 保留。
+// 这两条用例用 `init()` 的实际分支来证明「记住我」真的改变了结果 ——
+// 单元测试里断言几个键当然也能证明写入正确，但证明不了
+// 「下次打开会发生什么」，而后者才是用户报的那个问题。
+
+/** 造一次「重启后的新页面」：新 pinia + 新 store，但**不清存储** */
+const reopenedPage = async () => {
+  setActivePinia(createPinia())
+  return useUserStore()
+}
+
+test('记住我（勾选）：浏览器重启后仍是登录态，而不是降级成游客', async () => {
+  // 第一次访问：勾选「记住我」登录
+  const first = freshStore()
+  const restoreLogin = stubApi({
+    login: async () => {
+      setTokensFromHeaders({ 'access-token': 'a1', 'refresh-token': 'r1' })
+      return { success: true }
+    },
+    getUserInfo: async () => ({ success: true, data: REGISTERED }),
+  })
+  await first.login({
+    login_type: 'username',
+    username: 'alice',
+    password: 'pw',
+    rememberMe: true,
+  })
+  restoreLogin()
+
+  // 关掉浏览器：sessionStorage 随之消失，localStorage 留着
+  globalThis.sessionStorage.clear()
+  assert.equal(globalThis.localStorage.getItem(REFRESH_KEY), 'r1', '持久化的那份应还在')
+
+  // 重新打开页面
+  const second = await reopenedPage()
+  const visited = []
+  const restoreInit = stubApi({
+    getUserInfo: async () => {
+      visited.push('getUserInfo')
+      return { success: true, data: REGISTERED }
+    },
+    visitorLogin: async () => {
+      visited.push('visitorLogin')
+      return { success: true, data: { is_new_user: false } }
+    },
+  })
+  try {
+    await second.init()
+
+    assert.deepEqual(visited, ['getUserInfo'], '应走「复用已有身份」的分支，而不是重新做游客登录')
+    assert.equal(second.isLoggedIn, true, '重启后仍应是登录态')
+  } finally {
+    restoreInit()
+  }
+})
+
+test('记住我（不勾选）：浏览器重启后降级为游客 —— 这才是「不记住」的含义', async () => {
+  const first = freshStore()
+  const restoreLogin = stubApi({
+    login: async () => {
+      setTokensFromHeaders({ 'access-token': 'a1', 'refresh-token': 'r1' })
+      return { success: true }
+    },
+    getUserInfo: async () => ({ success: true, data: REGISTERED }),
+  })
+  await first.login({
+    login_type: 'username',
+    username: 'alice',
+    password: 'pw',
+    rememberMe: false,
+  })
+  restoreLogin()
+
+  // 关掉浏览器
+  globalThis.sessionStorage.clear()
+
+  const second = await reopenedPage()
+  const visited = []
+  const restoreInit = stubApi({
+    // 重启后拿到的是**新建的游客身份**，因此这里必须回游客行；
+    // 回 REGISTERED 会让用例自欺（isLoggedIn 会变成 true，与真实行为不符）
+    getUserInfo: async () => {
+      visited.push('getUserInfo')
+      return { success: true, data: GUEST }
+    },
+    visitorLogin: async () => {
+      visited.push('visitorLogin')
+      return { success: true, data: { is_new_user: true } }
+    },
+  })
+  try {
+    await second.init()
+
+    // init() 在游客登录成功后还会再拉一次用户信息，因此两个都会出现；
+    // 关键是**第一个**是 visitorLogin —— 说明走的是「重新建档」而不是「复用身份」。
+    assert.equal(visited[0], 'visitorLogin', '没有长效凭据时应重新以游客身份初始化')
+    assert.ok(visited.includes('visitorLogin'))
+    assert.equal(second.isLoggedIn, false, '不勾选就不该在重启后仍是登录态')
+    assert.equal(second.isGuest, true)
+  } finally {
+    restoreInit()
   }
 })
 
