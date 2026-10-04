@@ -19,7 +19,8 @@
 | 日期 | dayjs（含 `utc`、`timezone` 插件） |
 | 开发辅助 | `vite-plugin-vue-devtools` |
 
-**没有使用** TypeScript、ESLint、Prettier、测试框架。
+**使用** Vue 3 + Vite，但**不使用** TypeScript。已接入 ESLint 9（flat config，`eslint.config.cjs`）与
+`node:test` 单元测试（不需要 jsdom / vitest）；**未使用** Prettier。
 
 ### 关于组件自动引入
 
@@ -384,7 +385,7 @@ npm run dev        # http://localhost:5173
 npm run build      # 产出 dist/
 npm run preview    # 预览构建产物
 npm run lint       # ESLint 检查
-npm test           # 单元测试（node:test，74 个用例）
+npm test           # 单元测试（node:test，共 286 个用例）
 npm run check      # lint + test
 ```
 
@@ -546,9 +547,15 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 | ✅ | 卡片外壳被复制到 3 个组件（已收敛为 `global.css` 的 `.ui-card` / `.ui-card-media`） |
 | ✅ | `ProductCard.vue` 静态容器带 `role="button"` 但无键盘处理（已改为 `role="link"` + Enter/Space） |
 | ✅ | `ProductCard.vue` 模板直接取 `product.stock_status.message` 会崩溃（已改为 computed 兜底） |
+| ✅ | token 自动续期从未生效：401 重试逻辑写在成功回调里（axios 对 4xx 会 reject，那段代码不可达），且请求拦截器无条件覆盖 `Authorization` 使刷新请求带的是 access token；另有 `api/ask/user.js` 的同名 `refreshToken` 覆盖了正确实现。已移入错误处理器、拦截器改为「已显式设置则提前返回」、删除重复实现，并补 `__isRetry` 防死循环 |
+| ✅ | `useBodyScroll` 无引用计数，任一持有者解锁即恢复滚动；`Navbar` 还在从不加锁的情况下调用 `enableScroll`（无主释放）。已加引用计数与实例级持有标记，并删除 `Navbar` 的无主解锁 |
+| ✅ | `2FA.vue` 的 TOTP 算法无法被测试（嵌在 `.vue` 中）。已抽到 `utils/totp.js` 并对照 RFC 6238 官方测试向量验证（6/6 通过） |
+| ✅ | 复制验证码/密钥失败时完全静默（丢弃 `execCommand` 返回值、降级分支无任何提示）。已抽出 `utils/clipboard.js`，按结果提示，失败明确告知用户 |
+| ✅ | 后台标签页返回前台后仍显示上一周期的验证码（`setInterval` 被节流）。已加 `visibilitychange` 监听，重新可见时立刻重算 |
+| ✅ | `obj[key]` 命中原型链：`icon_url` 为 `toString` 等值时分区块渲染崩溃（实测可达）。已加 `utils/safeLookup.js` 并修复 4 处同类查表 |
 | ⬜ | `Navbar` 的个人中心 / 我的收藏 / 订单管理仍为 TODO |
 | ⬜ | 商品「标签 / 评分」等字段后端未提供，卡片已不再渲染，若需要需先扩展 `products` 表 |
-| ⬜ | 无 lint / 无测试运行器（`package.json` 仍沿用旧包名 `easy-payment-interface-test`） |
+| ⬜ | `product_categories.icon_url` 有 6 行为 NULL，这些分类会渲染出空白图标（数据问题，需确认是否补齐） |
 
 **工程卫生**
 
@@ -556,10 +563,14 @@ server 源码缺失时断言会直接失败，不会静默跳过。
 | --- | --- |
 | ✅ | `Navbar.vue` 重复的 `<style>` 块（1109 行 → 828 行） |
 | ✅ | 死文件 `ProductsSection.vue` / `KamiCard.vue` / `stores/home.js` / `__tests__/imports.test.js` 已删除 |
-| ✅ | `variables.css` 的非法值、缺失语义令牌、重复 `@import`、缺失中文字体栈 |
-| ⬜ | `package.json` 的 `name` 仍是 `easy-payment-interface-test`；无 lint / test 脚本，无测试运行器 |
-| ⬜ | `.vite`/`dist` 之外，`.env.*` 的忽略规则已补，但 `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
+| ✅ | `variables.css` 的非法值（`--glass-backdrop` 曾含属性名）、缺失语义令牌、重复 `@import`、缺失中文字体栈 —— 均已修复（已实测确认：`global.css` 第 1 行为注释说明不再 `@import`；字体栈含 `PingFang SC`/`Microsoft YaHei`；已补 `--color-muted`/`--color-border`/`--color-success`/`--color-warning`/`--color-danger`） |
+| ✅ | `package.json` 的 `name` 已改为 `starry-sky-trading-company-web`；已有 `lint` / `test` / `check` 脚本；已接入 ESLint 9 与 `node:test`（286 个用例） |
+| ⬜ | `.vscode/settings.json` 仍是 Vite-TS 模板残留 |
 
-> **未完成项均未经验证修复**。另有环境层面的限制：本仓库的 `vite build` / `vite dev` 在受限沙箱中无法运行（esbuild 需要以管道 stdio 派生常驻子进程），因此前端改动仅通过静态检查（ESM 解析、SFC 结构、令牌引用完整性），**尚未在浏览器中实测**。
+> 上表中的 ✅ 条目均经实际检查确认，不是「应该已修」。
+>
+> **环境限制**：本仓库的 `vite build` / `vite dev` 需要 esbuild 以管道 stdio 派生常驻子进程，
+> 在受限沙箱中会被拒绝（`vite build` 已通过一次性放宽权限实际执行成功，产物已验证）。
+> **组件渲染类行为仍未在真实浏览器中实测** —— 需要 jsdom 或浏览器环境，属尚未决定引入的依赖。
 
 17. `constants/index.js` 缺少部分被引用的导出（`CATEGORIES`、`HOT_PRODUCTS`）。
