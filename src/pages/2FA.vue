@@ -83,6 +83,8 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
 import { message } from 'ant-design-vue'
 import { createKeyCache, isCryptoAvailable } from '@/utils/totp.js'
+import { computeSecondsRemaining } from '@/utils/totpCountdown.js'
+import { copyText } from '@/utils/clipboard.js'
 
 const secret = ref("");
 const code = ref("");
@@ -133,22 +135,38 @@ async function updateCode() {
 }
 
 function updateCountdown() {
-  const step = 30;
-  const now = Math.floor(Date.now() / 1000);
-  // 1..30；等于 step 表示刚好进入新周期，等于 1 表示即将翻页
-  countdown.value = step - (now % step);
+  // 从时钟派生（见 @/utils/totpCountdown.js），范围 1..30。
+  // 不用自减计数：定时器被节流后自减会累积误差。
+  countdown.value = computeSecondsRemaining();
+}
+
+function handleVisibilityChange() {
+  // 只在重新可见时处理（切到后台不需要做事）
+  if (document.visibilityState === 'hidden') return;
+
+  updateCountdown();
+  // 长时间在后台后当前显示的验证码大概率已过期，因此无条件重新生成一次
+  if (hasSecret.value) {
+    void updateCode();
+  }
 }
 
 function startInterval() {
   stopInterval();
   updateCountdown();
   intervalId = setInterval(() => {
+    const before = countdown.value;
     updateCountdown();
-    // 每个 30 秒周期的第一秒重新生成验证码
-    if (countdown.value === 30) {
+    // 刚进入新周期时（倒计时回到 30）重新生成验证码。
+    // 相比「判断等于 30」，用前后比较可以容忍定时器被节流后一次跳过多个周期。
+    if (countdown.value === 30 && before !== 30) {
       void updateCode();
     }
   }, 1000);
+
+  // 页面切到后台时浏览器会节流 setInterval，定时器不再按时触发，
+  // 回到前台时可能仍在显示上一个周期的验证码。因此在重新可见时立刻重算一次。
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
 function stopInterval() {
@@ -156,6 +174,7 @@ function stopInterval() {
     clearInterval(intervalId);
     intervalId = null;
   }
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 }
 
 async function generateNow() {
@@ -166,33 +185,18 @@ async function generateNow() {
 
 async function copyDemoKey() {
   const demo = '7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL'
-  try {
-    await navigator.clipboard.writeText(demo)
-    message.success('密钥已复制到剪贴板');
-  } catch (e) {
-    const ta = document.createElement('textarea')
-    ta.value = demo
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    document.body.removeChild(ta)
-  }
+  const result = await copyText(demo)
+  // 必须按结果提示：早期实现的降级分支既不检查复制是否成功、也不提示用户，
+  // 失败时完全静默 —— 用户以为复制成功，粘贴出来却是旧内容。
+  if (result.ok) message.success('密钥已复制到剪贴板')
+  else message.warning(result.message)
 }
 
-
 async function copyCode() {
-  if (!code.value) return;
-  try {
-    await navigator.clipboard.writeText(code.value);
-    message.success('验证码已复制到剪贴板');
-  } catch (e) {
-    const ta = document.createElement("textarea");
-    ta.value = code.value;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-  }
+  if (!code.value) return
+  const result = await copyText(code.value)
+  if (result.ok) message.success('验证码已复制到剪贴板')
+  else message.warning(result.message)
 }
 
 watch(secret, async () => {
