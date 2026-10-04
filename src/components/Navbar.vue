@@ -643,11 +643,28 @@ onUnmounted(() => {
   right: 0;
   display: flex;
   align-items: center;
-  gap: var(--input-icon-gap);
+  /*
+   * ⚠ 这里**刻意不设 gap**。
+   *
+   * 曾经写过 `gap: var(--input-icon-gap)` + 收起态 `gap: 0` 的覆盖。问题是
+   * gap 不在过渡列表里，展开时会**瞬间**从 0 跳到 10px，而宽度是慢慢长的：
+   * 展开的第一帧可用内容宽只有「图标格 − 2×描边」= 38px，而需要
+   * 输入框(0) + gap(10) + 按钮(38) = 48px —— 溢出 10px，按钮压不动，
+   * 于是被 overflow 从右边裁掉，放大镜在开头几帧先被切一刀再归位。
+   * 这和「图标不居中」是同一个根因，只是发生在动画过程中。
+   *
+   * 现在两个状态都没有 gap：间距由输入框自己的 padding-right
+   * （--input-padding-x）提供，占宽恒为「按钮宽 ≤ 可用宽」，任何一帧都不溢出。
+   */
   width: var(--icon-btn-size);
   /* 与左右邻居（主题 / 购物车 / 头像）逐值相同的图标按钮外观 */
   height: var(--icon-btn-size);
-  overflow: hidden;
+  /*
+   * 用 clip 而不是 hidden：hidden 只隐藏滚动条，容器**仍可被程序滚动**，
+   * 而聚焦一个溢出其容器的输入框时浏览器会滚动它 —— 那会让整个框的内容
+   * 横向位移。clip 彻底禁止滚动，从根上排除这类位移。
+   */
+  overflow: clip;
   color: var(--text-secondary);
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--stroke-color);
@@ -668,18 +685,6 @@ onUnmounted(() => {
    * 宽度按图标格换算，五套主题各得其所（极简 320 / 玻璃 352 / 便当 320 /
    * 粗野 352 / 单色 256），同时不超过视口。 */
   width: min(calc(var(--icon-btn-size) * 8), calc(100vw - var(--space-unit) * 6));
-}
-
-/* ⚠ 收起态必须把 gap 归零，否则字形不居中。
- *
- * 收起时框的**内容盒**宽 = 图标格 − 2×描边（38/42/38/40/30），
- * 而子元素占宽 = 输入框(收缩到 0) + gap + 按钮(图标格 − 2×描边)。
- * 按钮是 flex-shrink: 0 压不动，于是**每个主题都整整溢出「一个 gap」**
- * （极简 10 / 玻璃 12 / 便当 10 / 粗野 12 / 单色 8 px），
- * 被 overflow: hidden 从右边裁掉 —— 字形看起来就往右偏了 gap/2。
- * 展开态需要这个 gap（输入框与放大镜之间要留白），收起态不需要。 */
-.navbar-search:not(.search-open) .search-field {
-  gap: 0;
 }
 
 /* 悬停反馈照搬 .u-icon-btn:hover:not(:disabled)（只变字色与描边色）——
@@ -735,7 +740,10 @@ onUnmounted(() => {
 
 .search-field :deep(.u-input) {
   height: 100%;
+  /* 左侧留白由输入框自己给；右侧的 padding-right 同时承担
+   * 「文字与放大镜之间的间距」——因此外层不需要 gap */
   padding-left: var(--input-padding-x);
+  padding-right: var(--input-padding-x);
   background: transparent;
   border: 0;
   border-radius: 0;

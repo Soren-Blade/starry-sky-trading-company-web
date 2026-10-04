@@ -164,21 +164,38 @@ test('聚焦环整体淡入：box-shadow 必须与 border-color 一起过渡', (
   assert.match(body, /box-shadow var\(--transition-interactive\)/)
 })
 
-test('收起态的 gap 必须归零，否则字形不居中（每个主题都整整溢出一个 gap）', () => {
-  // 收起时框的内容盒 = 图标格 − 2×描边（38/42/38/40/30），
-  // 而子元素占宽 = 输入框(收缩到 0) + gap + 按钮(图标格 − 2×描边)。
-  // 按钮 flex-shrink: 0 压不动，于是整整溢出一个 gap（10/12/10/12/8 px），
-  // 被 overflow: hidden 从右边裁掉 —— 字形看起来就偏右 gap/2。
-  assert.match(
-    NAVBAR_SOURCE,
-    /\.navbar-search:not\(\.search-open\) \.search-field \{[\s\S]*?gap: 0;/,
-    '收起态必须把 gap 归零'
+test('框内**任何一帧都不允许溢出**：不能有会瞬间变化的 gap', () => {
+  // 踩过两次同一个根因，因此这条测试直接守住机制：
+  // gap 不在过渡列表里，展开时会瞬间 0 → 10px，而宽度是慢慢长的。
+  // 第一帧可用内容宽只有「图标格 − 2×描边」= 38px，而需要
+  // 输入框(0) + gap(10) + 按钮(38) = 48px —— 溢出 10px，按钮压不动，
+  // 被 overflow 从右边裁掉：放大镜在开头几帧先被切一刀再归位。
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
+
+  assert.equal(
+    /(^|\s)gap:/.test(body.replace(/\/\*[\s\S]*?\*\//g, '')),
+    false,
+    '框里不能有 gap：它会在展开的第一帧造成溢出'
+  )
+  assert.equal(
+    /\.navbar-search:not\(\.search-open\) \.search-field/.test(NAVBAR_SOURCE),
+    false,
+    '不应再有「收起态把 gap 归零」这类按状态切换间距的规则'
   )
 
-  // 展开态仍要保留 gap（输入框与放大镜之间需要留白）
-  const openAt = NAVBAR_SOURCE.indexOf('.navbar-search.search-open .search-field {')
-  const openBody = NAVBAR_SOURCE.slice(openAt, NAVBAR_SOURCE.indexOf('}', openAt))
-  assert.equal(/gap: 0/.test(openBody), false, '展开态不应把 gap 也归零')
+  // 间距改由输入框自己的 padding 提供
+  const inputAt = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-input) {')
+  const inputBody = NAVBAR_SOURCE.slice(inputAt, NAVBAR_SOURCE.indexOf('}', inputAt))
+  assert.match(inputBody, /padding-right: var\(--input-padding-x\)/, '文字与放大镜之间要靠它留白')
+})
+
+test('框用 overflow: clip 而不是 hidden（hidden 仍可被程序滚动，聚焦会横向位移）', () => {
+  const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
+  const body = fieldRule.slice(0, fieldRule.indexOf('}'))
+
+  assert.match(body, /overflow: clip/)
+  assert.equal(/overflow: hidden/.test(body), false)
 })
 
 test('输入框 min-width 归零：否则它会撑到浏览器默认宽度、盖在放大镜上', () => {
