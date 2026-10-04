@@ -15,9 +15,12 @@
           :key="category.id"
           class="category-card"
           :style="{ '--animation-delay': index * 0.1 + 's' }"
-          @click="handleCategoryClick(category)"
+          role="link"
           :tabindex="0"
+          :aria-label="`查看分类 ${category.category_name}`"
+          @click="handleCategoryClick(category)"
           @keyup.enter="handleCategoryClick(category)"
+          @keyup.space.prevent="handleCategoryClick(category)"
         >
           <div class="card-inner">
             <!-- 背景渐变 -->
@@ -25,7 +28,7 @@
 
             <!-- 卡片内容 -->
             <div class="card-content">
-              <div class="category-icon">
+              <div class="category-icon" aria-hidden="true">
                 {{ category.icon_url }}
               </div>
               <h3 class="category-name">{{ category.category_name }}</h3>

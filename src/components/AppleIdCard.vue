@@ -1,9 +1,10 @@
 <template>
-  <div class="apple-id-card" role="button" tabindex="0">
+  <!-- 卡片本身不可点击（操作都在内部按钮上），因此不加 role/tabindex -->
+  <div class="apple-id-card ui-card">
     <div class="card-header">
       <div class="source-badge">{{ source }}</div>
       <div class="status-indicator" :class="getStatusClass(appleId)">
-        {{ appleId.status }}
+        {{ appleId.status || '未知' }}
       </div>
     </div>
 
@@ -17,8 +18,13 @@
         <div class="id-label">密码</div>
         <div class="id-value password-field">
           <span :class="{ 'masked': !showPassword }">{{ showPassword ? appleId.password : '••••••••' }}</span>
-          <button class="toggle-password" @click.stop="togglePasswordVisibility">
-            {{ showPassword ? '🙈' : '👁️' }}
+          <button
+            class="toggle-password"
+            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+            :aria-pressed="showPassword"
+            @click.stop="togglePasswordVisibility"
+          >
+            <span aria-hidden="true">{{ showPassword ? '🙈' : '👁️' }}</span>
           </button>
         </div>
       </div>
@@ -35,10 +41,19 @@
     </div>
 
     <div class="card-actions">
-      <button class="action-btn copy-btn" @click.stop="copyToClipboard(appleId.apple_id)">
+      <button
+        class="action-btn copy-btn"
+        :aria-label="`复制账号 ${appleId.apple_id || ''}`"
+        @click.stop="copyToClipboard(appleId.apple_id)"
+      >
         📋 复制账号
       </button>
-      <button v-if="appleId.password" class="action-btn copy-btn" @click.stop="copyToClipboard(appleId.password)">
+      <button
+        v-if="appleId.password"
+        class="action-btn copy-btn"
+        aria-label="复制密码"
+        @click.stop="copyToClipboard(appleId.password)"
+      >
         🔑 复制密码
       </button>
     </div>
@@ -115,18 +130,10 @@ const copyToClipboard = async (text) => {
 </script>
 
 <style scoped>
+/* 外壳（背景/圆角/阴影/hover 位移）统一来自 global.css 的 .ui-card，
+   这里只保留苹果 ID 卡特有的边框处理 */
 .apple-id-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   border: 1px solid #e2e8f0;
-}
-
-.apple-id-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .card-header {

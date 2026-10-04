@@ -1,6 +1,14 @@
 <template>
-  <div class="fp-card" @click="onGoDetail" role="button" tabindex="0">
-    <div class="fp-media">
+  <div
+    class="fp-card ui-card ui-card-interactive"
+    role="link"
+    tabindex="0"
+    :aria-label="`查看商品 ${product.main_title || product.name}`"
+    @click="onGoDetail"
+    @keydown.enter.prevent="onGoDetail"
+    @keydown.space.prevent="onGoDetail"
+  >
+    <div class="fp-media ui-card-media">
       <img
         :src="product.main_image_url || product.image"
         :alt="product.main_title || product.name"
@@ -22,7 +30,7 @@
             }}
           </div>
         </div>
-        <div class="fp-price">¥{{ product.price }}</div>
+        <div class="fp-price">{{ formatPrice(product.price) }}</div>
       </div>
 
       <div class="fp-meta">
@@ -51,9 +59,10 @@
         </div>
         <div class="meta-item">
           <div class="meta-num" :class="{ out: isOut }">
-            {{ product.stock_quantity }}
+            {{ product.stock_quantity ?? 0 }}
           </div>
-          <div class="meta-label">{{ product.stock_status.message }}</div>
+          <!-- stock_status 来自后端计算，这里做缺失兜底，避免直接取 .message 崩溃 -->
+          <div class="meta-label">{{ stockLabel }}</div>
         </div>
 
         <div class="meta-cta">
@@ -61,6 +70,7 @@
             class="cta-btn"
             :disabled="isOut"
             :class="{ disabled: isOut }"
+            :aria-label="isOut ? '该商品缺货' : `购买 ${product.main_title || product.name}`"
             @click.stop="onBuy"
           >
             {{ isOut ? "缺货" : "购买" }}
@@ -81,6 +91,7 @@ const props = defineProps({
 const emit = defineEmits(["go-detail", "buy"]);
 
 const formatReviewCount = formatUtils.formatReviewCount;
+const formatPrice = formatUtils.formatPrice;
 
 const parseStockRaw = (p) =>
   p.stock_quantity ?? p.stock ?? p.stockCount ?? p.stock_count ?? null;
@@ -103,44 +114,16 @@ const isOut = computed(() => {
   return false;
 });
 
+// stock_status 由后端计算，缺失时兜底，避免模板直接取 .message 抛错
+const stockLabel = computed(() => props.product.stock_status?.message || "库存");
+
 const onGoDetail = () => emit("go-detail", props.product);
 const onBuy = () => emit("buy", props.product);
 </script>
 
 <style scoped>
-.fp-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(16, 14, 40, 0.06);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
-}
-.fp-media {
-  position: relative;
-  padding-bottom: 58%;
-  background: #f2f2f6;
-  overflow: hidden;
-}
-.fp-media img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.36s ease;
-}
-.fp-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 18px 48px rgba(16, 14, 40, 0.12);
-}
-.fp-card:hover .fp-media img {
-  transform: scale(1.04);
-}
-
+/* 外壳（背景/圆角/阴影/hover 位移）来自 global.css 的 .ui-card 与 .ui-card-media，
+   这里只保留商品卡特有的内部布局 */
 .fp-body {
   padding: 16px 16px 18px;
   display: flex;

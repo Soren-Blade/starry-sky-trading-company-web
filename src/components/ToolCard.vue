@@ -1,16 +1,18 @@
 <template>
-  <div class="tool-card">
-    <div class="tool-media">
+  <div class="tool-card ui-card">
+    <div class="tool-media ui-card-media">
       <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
-      <div v-else class="tool-icon">{{ tool.icon }}</div>
+      <div v-else class="tool-icon" aria-hidden="true">{{ tool.icon }}</div>
       <div v-if="tool.is_new" class="tool-new-badge">新</div>
       <button
         class="favorite-btn"
         :class="{ active: isFavorited }"
-        @click.stop="toggleFavorite"
+        :aria-pressed="isFavorited"
         :title="isFavorited ? '取消收藏' : '添加收藏'"
+        :aria-label="isFavorited ? `取消收藏 ${tool.tool_name}` : `收藏 ${tool.tool_name}`"
+        @click.stop="toggleFavorite"
       >
-        <span class="favorite-icon">{{ isFavorited ? '❤️' : '🤍' }}</span>
+        <span class="favorite-icon" aria-hidden="true">{{ isFavorited ? '❤️' : '🤍' }}</span>
         <span class="favorite-count">{{ tool.collection_count > 99 ? '99+' : tool.collection_count }}</span>
       </button>
     </div>
@@ -45,17 +47,8 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 </script>
 
 <style scoped>
-.tool-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 6px 18px rgba(16, 14, 40, 0.06);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.22s ease, box-shadow 0.22s ease;
-}
-
-/* prevent unwanted link clicks on card itself */
+/* 外壳（背景/圆角/阴影/hover 位移）来自 global.css 的 .ui-card，
+   这里只保留工具卡特有的内部布局 */
 .tool-card {
   cursor: default;
 }
@@ -65,39 +58,16 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 }
 
 .tool-media {
-  position: relative;
-  padding-bottom: 58%;
-  background: #f2f2f6;
-  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.tool-media img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform 0.36s ease;
 }
 
 .tool-icon {
   font-size: 48px;
 }
 
-.tool-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 18px 48px rgba(16, 14, 40, 0.12);
-}
-
-.tool-card:hover .tool-media img {
-  transform: scale(1.04);
-}
-
-.tool-card:hover .tool-media .tool-icon {
+.tool-card:hover .tool-icon {
   transform: scale(1.1);
 }
 
