@@ -995,6 +995,24 @@ button.u-tag:hover:not(.u-tag--accent) {
  * 13. 共享区块头 / 页面头
  * ──────────────────────────────────────────────────────────── */
 
+/*
+ * 区块内容容器：限宽 + 居中 + 两侧内边距。
+ *
+ * **必须是全局类。** 它原先在 `CategoriesSection` 与 `HotProductsSection` 的
+ * `<style scoped>` 里各写了一份（逐字相同），而 scoped 样式只作用于本组件 ——
+ * 于是新写的区块一旦复用这个类名，就会拿到**零样式**：不限宽、不居中、没有
+ * 内边距，整块内容横向铺满视口，与上方区块对不齐。
+ * （`HotToolsSection` 一开始就是这么坏的，实测发现。）
+ *
+ * 这类「布局容器」本来就是跨组件共享的东西，放在共享层只有一份定义；
+ * 组件各自的 scoped 副本已删除。
+ */
+.section-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+}
+
 .section-header {
   text-align: center;
   margin-bottom: var(--section-gap);

@@ -163,6 +163,16 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
    | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
    | 事务页外壳 | `.page-shell` / `.page-shell-head`(+-row) / `.page-shell-eyebrow` / `.page-shell-title`(+-link) / `.page-shell-desc` |
    | 事务页面板 | `.page-panel` / `.page-panel-head` / `.page-note`(+-warning/-error) / `.page-empty`(+-title/-hint) / `.page-actions` |
+   | 区块容器 | `.section-inner`（限宽 + 居中 + 两侧内边距）/ `.section-header` 系列 |
+
+   **`.section-inner` 为什么必须放在共享层**：它是「区块内容容器」
+   （`max-width: var(--container-max)` + `margin: 0 auto` + `padding: 0 var(--container-padding)`），
+   原本在 `CategoriesSection` 与 `HotProductsSection` 的 `<style scoped>` 里各写了一份、
+   逐字相同。而 **scoped 样式只作用于本组件** —— 新写的 `HotToolsSection`
+   复用这个类名时拿到的是**零样式**：不限宽、不居中、没有内边距，
+   整块内容横向铺满视口，与上方区块对不齐（用户报的「热门工具排版 bug」）。
+   现已收进 `global.css` 的第 13 节，组件的 scoped 副本已删除；
+   `test/searchAndHotTools.test.js` 守住「共享层有定义、组件不得重复定义」。
 
    **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
    `.page-header` 被删是因为**营销页**（分类索引 / 榜单 / 工作台 / 目录 / 编辑式双栏）
@@ -171,7 +181,7 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
    信息密集型事务页 —— 窄标题带 + 单列内容 + 明确的动作区，版式本就应当一致。
    把这族的外壳收成一套共享类，好过在 8 个页面里各抄一遍（约 320 行相同 CSS）。
 
-6. **共享结构类**：`.section-header` 系列、`.visually-hidden`、
+6. **共享结构类**：`.section-inner`、`.section-header` 系列、`.visually-hidden`、
    `.hide-mobile` / `.show-mobile`7. **焦点管理**：`:focus-visible` 统一样式
 8. **移动端缩放**：文件末尾三个媒体查询里统一处理
    控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题 ×0.7、正文 ×0.95、圆角不变

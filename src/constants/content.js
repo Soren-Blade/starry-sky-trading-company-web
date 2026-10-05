@@ -186,7 +186,10 @@ export const PRODUCT_GRID = {
   /** 搜索图标按钮的无障碍名（图标型按钮必须有 aria-label） */
   searchLabel: '搜索',
   searchPlaceholder: '搜索商品或工具',
-  searchEmpty: (keyword) => `没有找到与「${keyword}」相关的商品`,
+  // 曾有一条 searchEmpty（「没有找到与『x』相关的商品」）：那时首页栅格会按
+  // 导航栏的关键词做客户端过滤。搜索改为 `/search` 页的服务端查询后，
+  // 首页不再有「按关键词过滤」这种状态，该文案没有使用者，已删除。
+  // 搜索无结果的文案在 SEARCH_PAGE.productEmpty / toolEmpty。
   soldOut: '缺货',
   viewsLabel: '浏览',
   salesLabel: '销量',

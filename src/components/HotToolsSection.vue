@@ -15,12 +15,7 @@
         </li>
 
         <template v-else>
-          <li
-            v-for="(tool, index) in tools"
-            :key="tool.id"
-            class="tools-cell"
-            :style="{ '--i': index }"
-          >
+          <li v-for="(tool, index) in tools" :key="tool.id" class="tools-cell" :style="{ '--i': index }">
             <ToolCard
               :tool="tool"
               :is-favorited="favoriteTools.has(Number(tool.id))"
@@ -28,8 +23,6 @@
               @open-tool="handleOpenTool"
               @toggle-favorite="handleToggleFavorite"
             />
-            <!-- 榜单变体：上榜名次交给卡片外的一个角标，不去改卡片内部结构 -->
-            <span v-if="isBoard" class="tools-rank" aria-hidden="true">{{ index + 1 }}</span>
           </li>
         </template>
       </ul>
@@ -182,33 +175,28 @@ async function loadTools() {
   list-style: none;
 }
 
-/* 卡片是 .u-enter 入场元素，靠 --i 做错峰；这里给单元格定位上下文 */
+/* 卡片是 .u-enter 入场元素，靠 --i 做错峰 */
 .tools-cell {
-  position: relative;
   display: flex;
   min-width: 0;
 }
 
-/* 上榜名次：压在卡片左上角，与工具卡自己的「新」标记不冲突
-   （那个标记只在 is_new 时出现，且本项目当前没有 is_new 工具） */
-.tools-rank {
-  position: absolute;
-  top: calc(var(--space-unit) * 1.5);
-  left: calc(var(--space-unit) * 1.5);
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: calc(var(--space-unit) * 3);
-  height: calc(var(--space-unit) * 3);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-heading);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border-radius: var(--micro-badge-radius);
-}
+/*
+ * 这里**不再**给榜单变体加「上榜名次」角标。
+ *
+ * 曾经在卡片外的左上角压一个 `.tools-rank`，有两个问题：
+ *   1. 工具卡媒体区的**左上角已被占**（`ToolCard` 的「新」标记就在那儿），
+ *      今天没有 is_new 的工具所以看不出来，一旦有就会重叠；
+ *   2. 商品榜单的名次在**右上角**（`ProductCard` 的 `.product-rank`），
+ *      而工具卡右上角是收藏按钮（还带一个向外凸出的计数徽标）——
+ *      放到左上角就和商品榜镜像了，同一页两处名次位置不一致。
+ *
+ * 而且名次对工具本来就冗余：列表已按 `collection_count` 降序，
+ * 每张卡片自己也显示着收藏数。
+ *
+ * 如果以后确实要名次，正确做法是像 `ProductCard` 那样给 `ToolCard`
+ * 加一个 `rank` prop，由卡片内部挑一个不与「新」/收藏冲突的位置渲染。
+ */
 
 @media (max-width: 575px) {
   .tools-grid {

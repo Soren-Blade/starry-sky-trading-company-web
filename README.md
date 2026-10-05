@@ -1,4 +1,4 @@
-﻿# starry-sky-trading-company-web
+# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -426,18 +426,26 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 的原因 —— 两者对界面含义不同。换账号时由 `pages/Tool.vue` 的 `watch(userStore.userId)`
 重取（清除或重新拉取），因此不需要在 logout 里反向调用 tool store。
 
-### 搜索：一个输入框，两级行为
-
-导航栏的搜索框有**两级**行为，这是刻意的：
+### 搜索：关键词只在组件内，结果走 `/search`
 
 | 动作 | 发生什么 |
 | --- | --- |
-| 打字 | `v-model` 写入 `shopStore.searchKeyword`，首页/热卖榜的商品栅格**本地即时**过滤（零延迟反馈） |
+| 打字 | 只更新 `Navbar.vue` 内的一个局部 `ref`，**不影响任何列表** |
 | 回车 | 跳到 `/search?q=<关键词>`，那里**同时**查商品与工具 |
 
-为什么要有第二级：工具的数据在另一个接口、另一个 store 里，**客户端过滤拿不到**。
-`/search` 是唯一能把两边结果放在一起的地方。
+**关键词刻意不进 store。** 它一度双向绑定到 `shopStore.searchKeyword`，
+而首页/热卖榜的商品栅格会按那个字段持续过滤 —— 于是
+「搜索之后点首页，下面的商品列表还是搜索后的结果」（用户报的 bug）。
+根因不是「忘了清空」，而是把**瞬态的输入框内容放进了全局状态**：
+只要它还在 store 里，任何读它的列表就会一直受它影响。
 
+现在 `shop.js` 里那个字段、写入它的 action、以及按它过滤的 `filteredProducts`
+getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的计数同理），
+这样也不存在「重新接回 store」的机会。同类守卫见
+`test/searchAndHotTools.test.js` 的「搜索关键词不得进 store」。
+
+**为什么搜索要有独立页面**：工具的数据在另一个接口、另一个 store 里，
+**客户端过滤拿不到**，需要一个把两边结果放在一起的地方。
 两个接口**都已支持 `keyword`**（商品搜 `main_title`、工具搜 `tool_name`），
 因此结果页是服务端搜索，不需要新增后端接口，也不必把两份全量数据拉到前端。
 
@@ -446,6 +454,24 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 > 只有「刚退出登录 / 退出游客」例外。**任何调用工具接口的地方都必须先判断身份** ——
 > 否则用户看到的是「工具加载失败：token已失效或已过期」，像是页面坏了。
 > `Tool.vue`、`SearchResults.vue`、`HotToolsSection.vue` 三处都做了这个判断。
+
+### 组件类名不得跨组件复用 scoped 样式
+
+`.section-inner`（区块内容容器：限宽 + 居中 + 两侧内边距）原先只在
+`CategoriesSection` 与 `HotProductsSection` 的 `<style scoped>` 里各写一份。
+**scoped 样式只作用于本组件** —— 新的 `HotToolsSection` 复用这个类名时拿到的是
+**零样式**：不限宽、不居中、没有内边距，整块内容横向铺满视口，与上方区块对不齐。
+这就是用户报的「热门工具排版 bug」。
+
+现已收进 `global.css` 第 13 节（组件的 scoped 副本已删除；
+移动端 `@media` 覆写仍留在各组件内，那是本项目的约定）。
+
+> 这个坑的特征是「**看起来有定义**」（grep 类名能搜到）却不生效，且不报错 ——
+> 只能靠真机看。同一个坑在 `VideoTool.vue` 上又踩了一次（借用了 `Tool.vue` 的
+> `.workspace-*`），现已改用全局的 `.page-shell-*`。
+> `test/componentClasses.test.js` 机械地把这一类挡在提交前：
+> 模板里用到的类名若**只存在于别的组件**的 scoped 样式里，即判失败
+> （「谁都没定义」的纯语义类名不算错，本项目有不少）。
 
 ### 热门工具
 
@@ -457,6 +483,13 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 - **取不到工具就整块不渲染**：它是补充推荐，缺了不该留个空壳区块
 - 取数失败**静默**（不弹 toast）：首页不该为一块补充内容弹错误；收藏失败才提示（那是用户主动操作）
 - 榜单变体也**保留自己的区块头** —— 榜单页的页头（「热卖榜 / 按销量与浏览量排序的精选商品」+「N 件在榜」）讲的只是商品，第二个栅格没有标题的话用户会以为那还是商品
+- 榜单变体**不加「上榜名次」角标**（商品榜有，工具榜没有）。两个原因：
+  工具卡媒体区的左上角已被「新」标记占用（今天没有 `is_new` 的工具所以看不出来，
+  一旦有就会重叠），右上角是收藏按钮（还带一个向外凸出的计数徽标）；
+  而商品榜的名次在右上角，工具放到左上角就和商品榜**镜像**了，同一页两处位置不一致。
+  何况名次对工具本就冗余：列表已按收藏数降序、每张卡自己也显示着收藏数。
+  将来若确实要名次，正确做法是像 `ProductCard` 那样给 `ToolCard` 加 `rank` prop，
+  由卡片内部挑一个不冲突的位置渲染
 
 ### `theme.js` — `useThemeStore`
 
@@ -1075,7 +1108,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 724 个用例）
+npm test             # 单元测试（node:test，共 732 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1193,7 +1226,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 724 个用例。
+共 732 个用例。
 
 ### 主题契约测试
 

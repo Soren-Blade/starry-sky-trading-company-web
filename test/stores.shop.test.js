@@ -117,8 +117,8 @@ test('getProducts：默认带 in_stock=all 与 limit=100，且可被 extraParams
   try {
     await store.getProducts()
     await store.getProducts({ in_stock: 'true', page: 3 })
-    // limit 取服务端上限：搜索与展示都在客户端做（getters.filteredProducts），
-    // 只拉默认的 20 条会让「搜不到」与「没加载到」混为一谈。
+    // limit 取服务端上限：首页/热卖榜展示的就是这一份列表。
+    // （搜索不在这里做 —— 走 /search 页的服务端 keyword 查询。）
     assert.deepEqual(seen[0], { in_stock: 'all', limit: 100 })
     assert.deepEqual(seen[1], { in_stock: 'true', limit: 100, page: 3 })
   } finally {

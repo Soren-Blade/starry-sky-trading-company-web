@@ -243,7 +243,6 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { useShopStore } from '@/stores/shop'
 import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
@@ -251,9 +250,7 @@ import ThemeSwitcher from './ThemeSwitcher.vue'
 import AppIcon from './AppIcon.vue'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
-
 const userStore = useUserStore()
-const shopStore = useShopStore()
 const cartStore = useCartStore()
 const route = useRoute()
 const router = useRouter()
@@ -305,11 +302,20 @@ const cartLabel = computed(() =>
   cartCount.value > 0 ? `购物车，${cartCount.value} 件商品` : '购物车'
 )
 
-/** 搜索关键词：双向绑定到数据层，商品网格据此过滤 */
-const keyword = computed({
-  get: () => shopStore.searchKeyword,
-  set: (value) => shopStore.setSearchKeyword(value),
-})
+/**
+ * 搜索关键词：**组件自己的状态**，不写进 shop store。
+ *
+ * 这里原先双向绑定到 `shopStore.searchKeyword`，而首页/热卖榜的商品栅格
+ * 会按那个字段持续过滤 —— 于是「搜完再点首页，商品列表还是搜索后的结果」
+ * （用户报的 bug）。
+ *
+ * 根因不是「忘了清空」，而是**把一个瞬态的输入框内容放进了全局状态**：
+ * 只要它还在 store 里，任何读它的列表就会一直受它影响，而导航栏的输入框
+ * 与「首页要展示哪些商品」本来是两件不相干的事。
+ *
+ * 所以这里改成组件内的 ref。搜索这个动作由 `/search?q=` 承担（见下）。
+ */
+const keyword = ref('')
 
 const handleScroll = throttle(() => {
   isScrolled.value = window.scrollY > 50
@@ -336,24 +342,22 @@ const toggleUserMenu = () => {
  * 也就是说它从来没有发起过一次搜索，只是把用户送到一个会被客户端过滤的栅格前，
  * 而且那个栅格只有商品。工具的数据在另一个接口里，客户端过滤拿不到。
  *
- * 现在：
- *   · 打字时仍由 v-model 写入 shopStore.searchKeyword，首页/热卖榜的栅格**即时**过滤商品
- *     （本地零延迟的反馈，保留）；
- *   · 回车才打开 `/search?q=`，那里同时查商品与工具。
- *
- * 两级行为是刻意的：即时反馈用本地过滤，完整搜索交给结果页。
+ * 关键词由 URL 携带（`/search?q=`），因此：
+ *   · 结果页可以直接分享/收藏链接；
+ *   · 用户离开结果页后，首页的商品列表**不会**再受这次搜索影响
+ *     （关键词不再进 store，见上面 `keyword` 的说明）。
  */
 const handleSearchSubmit = () => {
   menuOpen.value = false
   // 收起搜索框：结果已经在页面上了，留着展开只是占地方
   closeSearch()
 
-  const keyword = String(shopStore.searchKeyword || '').trim()
+  const text = keyword.value.trim()
   // 空关键词不跳：结果页没有关键词时只会显示引导语，跳过去等于把用户从一个
   // 空输入框送到另一个空页面
-  if (!keyword) return
+  if (!text) return
 
-  router.push({ name: 'SearchResults', query: { q: keyword } })
+  router.push({ name: 'SearchResults', query: { q: text } })
 }
 
 // ── 搜索图标的展开 / 收起 ──────────────────────────────────────

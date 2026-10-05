@@ -26,8 +26,8 @@
  * 与 `--input-*` 令牌 —— 五套风格下分别是
  * 40px/12px 直角系、48px/全胶囊玻璃、44px/24px 便当、48px/8px 粗野、36px/6px 等宽。
  *
- * 只负责输入与提交，不直接读写 store —— 过滤逻辑属于数据层
- * （`stores/shop.js` 的 `searchKeyword` / `filteredProducts`）。
+ * 只负责输入与提交，不直接读写 store —— 关键词由使用方持有
+ * （导航栏是 `Navbar.vue` 内的局部 ref，提交后跳到 `/search?q=`）。
  */
 import { useId, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'

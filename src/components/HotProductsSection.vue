@@ -4,10 +4,9 @@
       <!-- 榜单页的标题由页面开场的标题带承担，区块不再重复一遍 -->
       <SectionHeader v-if="!isBoard" v-bind="SECTIONS.hot" />
 
-      <!-- 搜索状态：有关键词时告知用户过滤结果数量，避免「商品怎么变少了」的困惑 -->
-      <p v-if="keyword" class="hot-status" role="status">
-        「{{ keyword }}」共 {{ products.length }} 件商品
-      </p>
+      <!-- 这里曾有一条「『关键词』共 N 件商品」的状态行。搜索改为
+           `/search` 页的服务端查询后，本区块不再有任何关键词来源，
+           该行永远不满足条件，故连样式一并删除。 -->
 
       <ul class="products-grid">
         <!-- 骨架屏：占位块与实际卡片的图文结构同高同形，避免加载完成时页面跳动 -->
@@ -49,7 +48,7 @@
             {{ PRODUCT_GRID.errorPrefix }}{{ error }}
           </li>
           <li v-else-if="!products.length" class="products-note">
-            {{ keyword ? PRODUCT_GRID.searchEmpty(keyword) : PRODUCT_GRID.empty }}
+            {{ PRODUCT_GRID.empty }}
           </li>
         </template>
       </ul>
@@ -61,8 +60,11 @@
 /**
  * 热门商品区块
  *
- * 列表来自 `shopStore.filteredProducts`（数据层负责搜索匹配），
- * 组件不再自己写一份 filter —— 搜索栏在导航栏里，两处必须用同一套规则。
+ * 列表来自 `shopStore.shopInfo`（首页/热卖榜展示的就是 store 里那一份）。
+ * 这里**不做**任何关键词过滤 —— 搜索是 `/search` 页的服务端查询
+ * （见 pages/SearchResults.vue）。曾经这里读过 `filteredProducts`，
+ * 而导航栏把关键词写进同一个 store，导致「搜完再回首页，商品列表还是
+ * 搜索后的结果」（用户报的 bug）。那个 getter 已随根因一并删除。
  *
  * 两个变体只差「要不要区块头」与「要不要上榜序号」，栅格完全一致：
  *   - `section`（默认，主页用）—— 带区块头；
@@ -86,7 +88,7 @@ const props = defineProps({
 })
 
 const shopStore = useShopStore()
-const { filteredProducts, searchKeyword, loading, error } = storeToRefs(shopStore)
+const { shopInfo, loading, error } = storeToRefs(shopStore)
 
 // 「看详情」与「加入购物车」的完整逻辑（未登录时拉起登录弹窗等）在 composable 里，
 // 与商品详情页、分类详情页共用同一份，避免三处各写一遍。
@@ -95,8 +97,7 @@ const { goDetail, addToCart } = useProductActions()
 /** 加载态占位块数量：与桌面端一屏可见的列数一致 */
 const SKELETON_COUNT = 4
 
-const products = computed(() => filteredProducts.value)
-const keyword = computed(() => searchKeyword.value.trim())
+const products = computed(() => shopInfo.value || [])
 const isBoard = computed(() => props.variant === 'board')
 </script>
 
@@ -117,19 +118,6 @@ const isBoard = computed(() => props.variant === 'board')
 /* 榜单版：顶部留白由页面的标题带承担，区块只留一点呼吸位（底部不变，页脚前仍需留白） */
 .hot-section--board {
   padding-top: calc(var(--section-gap) * 0.3);
-}
-
-.section-inner {
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
-
-.hot-status {
-  margin: 0 0 calc(var(--space-unit) * 2.5);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--accent);
 }
 
 .products-grid {

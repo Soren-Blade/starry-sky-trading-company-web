@@ -123,12 +123,6 @@ const handleCategoryClick = (category) => {
   padding: calc(var(--section-gap) * 0.2) 0 calc(var(--section-gap) * 0.6);
 }
 
-.section-inner {
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
-
 /* ── grid 变体（主页）：卡片网格 ─────────────────────────────── */
 
 .categories-grid {

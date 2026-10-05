@@ -27,50 +27,9 @@ export const useShopStore = defineStore('shop', {
         },
         loading: false,
         error: null,
-        /**
-         * 商品搜索关键词（导航栏搜索栏写入）。
-         *
-         * 放在数据层而不是组件里：搜索栏与商品网格分处两个组件，
-         * 关键词若留在组件内就需要事件层层透传；更重要的是「什么算匹配」
-         * 属于数据规则，只能有一处定义（见 getters.filteredProducts）。
-         */
-        searchKeyword: '',
     }),
 
-    getters: {
-        /**
-         * 按关键词过滤后的商品列表。
-         * 不区分大小写，命中标题/副标题/作者/卖家/分类任一字段即可。
-         */
-        filteredProducts: (state) => {
-            const keyword = String(state.searchKeyword || '').trim().toLowerCase()
-            if (!keyword) return state.shopInfo
-
-            return state.shopInfo.filter((product) => {
-                if (!product || typeof product !== 'object') return false
-                const fields = [
-                    product.main_title,
-                    product.sub_title,
-                    product.name,
-                    product.product_name,
-                    product.author,
-                    product.seller,
-                    product.category_name,
-                    product.class_name,
-                ]
-                return fields.some(
-                    (field) => field != null && String(field).toLowerCase().includes(keyword)
-                )
-            })
-        },
-    },
-
     actions: {
-        /** 写入搜索关键词（空串表示不过滤） */
-        setSearchKeyword(keyword) {
-            this.searchKeyword = typeof keyword === 'string' ? keyword : ''
-        },
-
         /** 获取分类（树形） */
         async getCategories() {
             try {
@@ -93,10 +52,11 @@ export const useShopStore = defineStore('shop', {
          */
         async getProducts(extraParams = {}) {
             try {
-                // limit 取服务端上限（100）：搜索与展示都在客户端做
-                // （见 getters.filteredProducts），只拉 20 条会让「搜不到」
-                // 与「没加载到」混为一谈。超过 100 件商品时首页只展示前 100 条，
-                // 需要完整目录请走分类详情页 —— 那里按 category_id 过滤。
+                // limit 取服务端上限（100）：首页/热卖榜展示的就是这一份列表，
+                // 因此多拉一些。搜索不在这里做 —— 搜索走 `/search` 页的
+                // 服务端 `keyword` 查询（见 pages/SearchResults.vue）。
+                // 超过 100 件商品时首页只展示前 100 条，需要完整目录请走分类详情页
+                // —— 那里按 category_id 过滤。
                 const params = { in_stock: 'all', limit: 100, ...extraParams }
                 const result = await api.getProducts(params)
                 if (result?.success) {

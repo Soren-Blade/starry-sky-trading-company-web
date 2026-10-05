@@ -41,15 +41,15 @@ import { useShopStore } from '@/stores/shop'
 import { PAGES } from '@/constants/index.js'
 
 const shopStore = useShopStore()
-const { filteredProducts } = storeToRefs(shopStore)
+const { shopInfo } = storeToRefs(shopStore)
 
 /**
- * 在榜数量：与榜单区块同源（关键词过滤在数据层，见 stores/shop.js）。
+ * 在榜数量：与榜单区块同源（就是 store 里那一份商品列表）。
  *
  * 这里仍然只数**商品** —— 上面的页头文案说的就是商品。
  * 工具的条数由 HotToolsSection 自己的区块头呈现，两处不混算。
  */
-const hitCount = computed(() => filteredProducts.value.length)
+const hitCount = computed(() => (shopInfo.value || []).length)
 </script>
 
 <style scoped>

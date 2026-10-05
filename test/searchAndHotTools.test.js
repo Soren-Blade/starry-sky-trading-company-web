@@ -61,9 +61,9 @@ test('导航提交改为跳搜索结果页，且空关键词不跳', () => {
   const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
 
   assert.match(body, /name: 'SearchResults'/, '提交应打开结果页')
-  assert.match(body, /query: \{ q: keyword \}/, '关键词要带过去')
+  assert.match(body, /query: \{ q: text \}/, '关键词要带过去')
   // 空关键词跳过去只会把用户从一个空输入框送到另一个空页面
-  assert.match(body, /if \(!keyword\) return/)
+  assert.match(body, /if \(!text\) return/)
   assert.equal(/name: 'Hot'/.test(body), false, '旧的「跳热卖榜」应已移除')
 })
 
@@ -223,10 +223,89 @@ test('工具区块始终带自己的区块头（榜单页的页头只讲商品�
   assert.equal(typeof SECTIONS.hotTools?.title, 'string')
 })
 
+test('搜索关键词不得进 store：否则首页商品列表会一直按它过滤（用户报的 bug）', () => {
+  // 症状：在导航栏搜索 → 打开 /search → 点「首页」，下面的商品列表还是搜索后的结果。
+  // 根因是把**瞬态的输入框内容**放进了全局状态，而首页栅格会读它。
+  // 修法是把关键词留在组件内，并删掉那个 store 字段（连读它的 getter 一起删），
+  // 这样就没有「重新接回 store」的机会。
+  const SHOP_SOURCE = read('src/stores/shop.js')
+
+  assert.equal(/searchKeyword/.test(SHOP_SOURCE), false, 'shop store 不该再有搜索关键词字段')
+  assert.equal(/filteredProducts/.test(SHOP_SOURCE), false, '也不该再有按关键词过滤的 getter')
+  assert.equal(/setSearchKeyword/.test(SHOP_SOURCE), false, '更不该留有写入它的 action')
+
+  // 导航栏必须是组件内的局部状态
+  assert.match(NAVBAR_SOURCE, /const keyword = ref\(''\)/, '导航栏关键词应是局部 ref')
+  assert.equal(/shopStore\.setSearchKeyword/.test(NAVBAR_SOURCE), false, '导航栏不该再写 store')
+
+  // 首页区块直接读完整列表。断言前先去掉注释 ——
+  // 说明「曾经读过 filteredProducts」的注释不算残留引用
+  const HOT_PRODUCTS_SOURCE = read('src/components/HotProductsSection.vue').replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.match(HOT_PRODUCTS_SOURCE, /const products = computed\(\(\) => shopInfo\.value \|\| \[\]\)/)
+  assert.equal(/filteredProducts/.test(HOT_PRODUCTS_SOURCE), false, '首页区块不该再读过滤后的列表')
+})
+
+test('提交搜索用局部关键词（而不是 store）', () => {
+  const at = NAVBAR_SOURCE.indexOf('const handleSearchSubmit = () => {')
+  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
+
+  assert.match(body, /keyword\.value\.trim\(\)/, '应读组件内的 ref')
+  assert.equal(/shopStore\.searchKeyword/.test(body), false, '不该再读 store 里的关键词')
+  assert.match(body, /query: \{ q: text \}/)
+})
+
+// ══════════════════════════════════════════════════════════
+// 区块容器：`.section-inner` 必须是全局类
+// ══════════════════════════════════════════════════════════
+
+test('.section-inner 必须定义在共享层（scoped 里定义等于只对一个组件生效）', () => {
+  // 这是用户报的「热门工具排版 bug」的根因：`.section-inner` 原先只在
+  // CategoriesSection 与 HotProductsSection 的 <style scoped> 里各写一份 ——
+  // scoped 样式只作用于本组件，于是新区块复用这个类名时拿到的是**零样式**：
+  // 不限宽、不居中、没有内边距，整块内容横向铺满视口，与上方区块对不齐。
+  const GLOBAL_CSS = read('src/assets/styles/global.css')
+
+  assert.match(GLOBAL_CSS, /^\.section-inner \{/m, '共享层要有 .section-inner')
+  const rule = GLOBAL_CSS.slice(GLOBAL_CSS.indexOf('.section-inner {'))
+  const body = rule.slice(0, rule.indexOf('}'))
+  assert.match(body, /max-width: var\(--container-max\)/, '限宽走令牌')
+  assert.match(body, /margin: 0 auto/, '要居中')
+  assert.match(body, /padding: 0 var\(--container-padding\)/, '要有两侧内边距')
+
+  // 各组件不得再各写一份
+  for (const rel of [
+    'src/components/CategoriesSection.vue',
+    'src/components/HotProductsSection.vue',
+    'src/components/HotToolsSection.vue',
+  ]) {
+    assert.equal(
+      /^\.section-inner \{/m.test(read(rel)),
+      false,
+      `${rel} 不该再重复定义 .section-inner`
+    )
+  }
+})
+
+test('使用 .section-inner 的区块都能拿到它（模板里确实用了这个类名）', () => {
+  for (const rel of [
+    'src/components/CategoriesSection.vue',
+    'src/components/HotProductsSection.vue',
+    'src/components/HotToolsSection.vue',
+  ]) {
+    assert.match(read(rel), /class="section-inner"/, `${rel} 应使用共享容器类`)
+  }
+})
+
+test('热门工具不再压「上榜名次」角标（左上角被「新」占用，且与商品榜镜像）', () => {
+  assert.equal(/tools-rank/.test(HOT_TOOLS_SOURCE.replace(/\/\*[\s\S]*?\*\//g, '')), false,
+    '模板/样式里不该再有 tools-rank（注释里说明原因不算）')
+  assert.equal(/position: relative/.test(HOT_TOOLS_SOURCE), false, '格子里没有绝对定位元素了')
+})
+
 test('热卖榜页头的计数仍然只数商品（页头文案说的就是商品）', () => {
   const at = HOT_SOURCE.indexOf('const hitCount = computed')
   assert.ok(at > -1)
-  assert.match(HOT_SOURCE.slice(at, at + 120), /filteredProducts\.value\.length/)
+  assert.match(HOT_SOURCE.slice(at, at + 120), /shopInfo\.value \|\| \[\]\)\.length/)
 })
 
 test('热门工具是首屏就存在的区块（SSR 能渲染出区块头与加载态）', async () => {

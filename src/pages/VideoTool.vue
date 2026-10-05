@@ -1,9 +1,13 @@
 <template>
-  <div class="placeholder-page">
-    <header class="workspace-head">
-      <p class="workspace-eyebrow">{{ PAGES.tools.eyebrow }}</p>
-      <h1 class="workspace-title">{{ VIDEO_TOOL.title }}</h1>
-      <p class="workspace-desc">{{ VIDEO_TOOL.description }}</p>
+  <div class="page-shell placeholder-page">
+    <!-- 页头用**全局**的 .page-shell-* 系列，不要借用 Tool.vue 的 .workspace-*：
+         那些是那一个组件的 scoped 样式，别的组件复用等于拿到零样式
+         （不限宽、不居中、字号也不对）。同样的坑已经在 .section-inner 上踩过一次，
+         由 test/componentClasses.test.js 机械地把这一类问题挡住。 -->
+    <header class="page-shell-head">
+      <p class="page-shell-eyebrow">{{ PAGES.tools.eyebrow }}</p>
+      <h1 class="page-shell-title">{{ VIDEO_TOOL.title }}</h1>
+      <p class="page-shell-desc">{{ VIDEO_TOOL.description }}</p>
     </header>
 
     <div class="placeholder-card ui-card">
@@ -54,6 +58,12 @@ import { PAGES, VIDEO_TOOL } from '@/constants/index.js'
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 3);
+}
+
+/* 占位页是「简单内容页」，不是 Tool.vue 那种两栏工作台，
+   因此页头用 .page-shell-head 的空隙节奏即可，这里只补下方间距 */
+.placeholder-page .page-shell-head {
+  margin-bottom: 0;
 }
 
 /* 居中的单卡片：内容很少，不需要两栏工作台版式 */
