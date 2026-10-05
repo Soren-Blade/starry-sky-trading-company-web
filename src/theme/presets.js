@@ -268,6 +268,380 @@ const SHARED = {
   /* 成功态右侧勾图标尺寸 */
   '--field-success-icon': '16px',
   '--bg-media-opacity': '0.18',
+
+  /* ══════════════════════════════════════════════════════════════
+   * 尺寸统一组：以下令牌**五套取值完全相同**。
+   *
+   * 这是「切换主题只改字体 / 颜色 / 风格」的实现方式 —— 凡是会改变盒子几何的量
+   * （高 / 宽 / 内边距 / 间距 / 字号 / 行高 / 密度基准 / 控件与轨道尺寸）都不再逐主题取值，
+   * 于是切换主题时布局不会跳动，用户不会觉得「窗口变大或变小」。
+   * 取值统一以默认主题 tech-minimal 为基准（它同时是 variables.css 的回退值）。
+   *
+   * 按风格保留逐主题的是：颜色、字体族、字重/字距/大小写、圆角、阴影、滤镜、
+   * 过渡动效，以及描边粗细（1–2px，属于风格签名而非尺寸）。
+   * ══════════════════════════════════════════════════════════════ */
+
+  /* ── 尺寸统一 · leading（行高决定文本块高度，必须逐套同值）─────
+   *
+   * body 的行高走的正是 --leading-body；它逐风格是 1.5 / 1.55 / 1.6 时，
+   * **每一行文本的高度都不同**，整页高度会因此差十几像素 —— 真机实测：
+   * hero-content 336→341、footer-content 165→170、navbar-drawer 294→301。
+   * 把行高统一成比值后，行盒高度 = 行高 × 字号，字号也已统一，于是文本块高度
+   * 不再受字体族度量影响（不同字体的 ascent/descent 会经由 line-height: normal 泄漏进布局）。 */
+  // leading-body
+  '--leading-body': '1.5',
+  // leading-title（商品标题固定 1.4，本来就是五套同值）
+  '--leading-title': '1.4',
+
+  /* ── 尺寸统一 · fs（切主题不改变几何，取 tech-minimal 基准）───── */
+  // fs-display
+  '--fs-display': '72px',
+  // fs-h1
+  '--fs-h1': '48px',
+  // fs-h2
+  '--fs-h2': '40px',
+  // fs-h3
+  '--fs-h3': '20px',
+  // fs-body
+  '--fs-body': '15px',
+  // fs-sm
+  '--fs-sm': '14px',
+  // fs-label
+  '--fs-label': '12px',
+  // fs-price
+  '--fs-price': '20px',
+  // fs-price-decimals
+  '--fs-price-decimals': '14px',
+  // fs-price-original
+  '--fs-price-original': '18px',
+
+  /* ── 尺寸统一 · space（切主题不改变几何，取 tech-minimal 基准）───── */
+  // space-unit
+  '--space-unit': '8px',
+
+  /* ── 尺寸统一 · grid（切主题不改变几何，取 tech-minimal 基准）───── */
+  // grid-gap
+  '--grid-gap': '16px',
+
+  /* ── 尺寸统一 · section（切主题不改变几何，取 tech-minimal 基准）───── */
+  // section-gap
+  '--section-gap': '96px',
+
+  /* ── 尺寸统一 · navbar（切主题不改变几何，取 tech-minimal 基准）───── */
+  // navbar-height
+  '--navbar-height': '64px',
+
+  /* ── 尺寸统一 · nav（切主题不改变几何，取 tech-minimal 基准）───── */
+  // nav-padding-x
+  '--nav-padding-x': '32px',
+  // nav-logo-height
+  '--nav-logo-height': '24px',
+  // nav-menu-gap
+  '--nav-menu-gap': '28px',
+  // nav-link-size
+  '--nav-link-size': '13px',
+
+  /* ── 尺寸统一 · btn（切主题不改变几何，取 tech-minimal 基准）───── */
+  // btn-height
+  '--btn-height': '40px',
+  // btn-padding-y
+  '--btn-padding-y': '12px',
+  // btn-padding-x
+  '--btn-padding-x': '20px',
+  // btn-font-size
+  '--btn-font-size': '14px',
+
+  /* ── 尺寸统一 · input（切主题不改变几何，取 tech-minimal 基准）───── */
+  // input-height
+  '--input-height': '40px',
+  // input-padding-y
+  '--input-padding-y': '12px',
+  // input-padding-x
+  '--input-padding-x': '14px',
+  // input-font-size
+  '--input-font-size': '14px',
+  // input-icon-size
+  '--input-icon-size': '16px',
+  // input-icon-gap
+  '--input-icon-gap': '10px',
+
+  /* ── 尺寸统一 · icon（切主题不改变几何，取 tech-minimal 基准）───── */
+  // icon-btn-size
+  '--icon-btn-size': '40px',
+  // icon-btn-icon-size
+  '--icon-btn-icon-size': '18px',
+
+  /* ── 尺寸统一 · card（切主题不改变几何，取 tech-minimal 基准）───── */
+  // card-width
+  '--card-width': '280px',
+  // card-width-lg
+  '--card-width-lg': '280px',
+  // card-padding
+  '--card-padding': '20px',
+  // card-padding-lg
+  '--card-padding-lg': '20px',
+  // card-image-height
+  '--card-image-height': '200px',
+  // card-image-height-lg
+  '--card-image-height-lg': '200px',
+  // card-title-size
+  '--card-title-size': '15px',
+  // card-sub-size
+  '--card-sub-size': '12px',
+
+  /* ── 尺寸统一 · toast（切主题不改变几何，取 tech-minimal 基准）───── */
+  // toast-width
+  '--toast-width': '360px',
+  // toast-padding-y
+  '--toast-padding-y': '14px',
+  // toast-padding-x
+  '--toast-padding-x': '16px',
+  // toast-icon-size
+  '--toast-icon-size': '20px',
+  // toast-font-size
+  '--toast-font-size': '14px',
+
+  /* ── 尺寸统一 · modal（切主题不改变几何，取 tech-minimal 基准）───── */
+  // modal-width
+  '--modal-width': '480px',
+  // modal-padding
+  '--modal-padding': '24px',
+  // modal-close-size
+  '--modal-close-size': '32px',
+  // modal-title-size
+  '--modal-title-size': '20px',
+  // modal-body-size
+  '--modal-body-size': '15px',
+
+  /* ── 尺寸统一 · dropdown（切主题不改变几何，取 tech-minimal 基准）───── */
+  // dropdown-width
+  '--dropdown-width': '200px',
+  // dropdown-padding-y
+  '--dropdown-padding-y': '6px',
+  // dropdown-item-height
+  '--dropdown-item-height': '36px',
+  // dropdown-max-height
+  '--dropdown-max-height': '280px',
+  // dropdown-offset
+  '--dropdown-offset': '6px',
+  // dropdown-item-padding-x
+  '--dropdown-item-padding-x': '14px',
+  // dropdown-item-font-size
+  '--dropdown-item-font-size': '13px',
+  // dropdown-check-size
+  '--dropdown-check-size': '14px',
+  // dropdown-group-height
+  '--dropdown-group-height': '28px',
+  // dropdown-group-font-size
+  '--dropdown-group-font-size': '11px',
+  // dropdown-group-gap
+  '--dropdown-group-gap': '6px',
+
+  /* ── 尺寸统一 · tag（切主题不改变几何，取 tech-minimal 基准）───── */
+  // tag-height
+  '--tag-height': '22px',
+  // tag-padding-y
+  '--tag-padding-y': '2px',
+  // tag-padding-x
+  '--tag-padding-x': '8px',
+  // tag-font-size
+  '--tag-font-size': '11px',
+
+  /* ── 尺寸统一 · pager（切主题不改变几何，取 tech-minimal 基准）───── */
+  // pager-size
+  '--pager-size': '36px',
+  // pager-gap
+  '--pager-gap': '6px',
+  // pager-font-size
+  '--pager-font-size': '13px',
+
+  /* ── 尺寸统一 · progress（切主题不改变几何，取 tech-minimal 基准）───── */
+  // progress-height
+  '--progress-height': '4px',
+
+  /* ── 尺寸统一 · avatar（切主题不改变几何，取 tech-minimal 基准）───── */
+  // avatar-size
+  '--avatar-size': '32px',
+
+  /* ── 尺寸统一 · checkbox（切主题不改变几何，取 tech-minimal 基准）───── */
+  // checkbox-size
+  '--checkbox-size': '18px',
+  // checkbox-label-gap
+  '--checkbox-label-gap': '10px',
+  // checkbox-label-size
+  '--checkbox-label-size': '14px',
+  // checkbox-indeterminate-width
+  '--checkbox-indeterminate-width': '8px',
+  // checkbox-icon-size
+  '--checkbox-icon-size': '12px',
+
+  /* ── 尺寸统一 · select（切主题不改变几何，取 tech-minimal 基准）───── */
+  // select-arrow-size
+  '--select-arrow-size': '16px',
+
+  /* ── 尺寸统一 · radio（切主题不改变几何，取 tech-minimal 基准）───── */
+  // radio-size
+  '--radio-size': '18px',
+  // radio-dot-size
+  '--radio-dot-size': '8px',
+  // radio-label-gap
+  '--radio-label-gap': '10px',
+
+  /* ── 尺寸统一 · switch（切主题不改变几何，取 tech-minimal 基准）───── */
+  // switch-track-w
+  '--switch-track-w': '40px',
+  // switch-track-h
+  '--switch-track-h': '22px',
+  // switch-thumb-size
+  '--switch-thumb-size': '18px',
+
+  /* ── 尺寸统一 · slider（切主题不改变几何，取 tech-minimal 基准）───── */
+  // slider-track-h
+  '--slider-track-h': '4px',
+  // slider-thumb-size
+  '--slider-thumb-size': '18px',
+
+  /* ── 尺寸统一 · step（切主题不改变几何，取 tech-minimal 基准）───── */
+  // step-dot-size
+  '--step-dot-size': '28px',
+  // step-label-size
+  '--step-label-size': '13px',
+
+  /* ── 尺寸统一 · accordion（切主题不改变几何，取 tech-minimal 基准）───── */
+  // accordion-item-height
+  '--accordion-item-height': '56px',
+  // accordion-padding-y
+  '--accordion-padding-y': '16px',
+  // accordion-padding-x
+  '--accordion-padding-x': '20px',
+  // accordion-title-size
+  '--accordion-title-size': '15px',
+  // accordion-icon-size
+  '--accordion-icon-size': '16px',
+
+  /* ── 尺寸统一 · tab（切主题不改变几何，取 tech-minimal 基准）───── */
+  // tab-height
+  '--tab-height': '40px',
+  // tab-padding-y
+  '--tab-padding-y': '10px',
+  // tab-padding-x
+  '--tab-padding-x': '16px',
+  // tab-font-size
+  '--tab-font-size': '14px',
+  // tab-indicator-height
+  '--tab-indicator-height': '2px',
+  // tab-gap
+  '--tab-gap': '24px',
+
+  /* ── 尺寸统一 · breadcrumb（切主题不改变几何，取 tech-minimal 基准）───── */
+  // breadcrumb-height
+  '--breadcrumb-height': '24px',
+  // breadcrumb-font-size
+  '--breadcrumb-font-size': '13px',
+  // breadcrumb-gap
+  '--breadcrumb-gap': '8px',
+
+  /* ── 尺寸统一 · table（切主题不改变几何，取 tech-minimal 基准）───── */
+  // table-row-height
+  '--table-row-height': '48px',
+  // table-head-height
+  '--table-head-height': '40px',
+  // table-cell-padding-y
+  '--table-cell-padding-y': '12px',
+  // table-cell-padding-x
+  '--table-cell-padding-x': '16px',
+  // table-font-size
+  '--table-font-size': '13px',
+  // table-head-font-size
+  '--table-head-font-size': '12px',
+
+  /* ── 尺寸统一 · datepicker（切主题不改变几何，取 tech-minimal 基准）───── */
+  // datepicker-width
+  '--datepicker-width': '280px',
+  // datepicker-padding
+  '--datepicker-padding': '16px',
+  // datepicker-cell-size
+  '--datepicker-cell-size': '36px',
+  // datepicker-font-size
+  '--datepicker-font-size': '13px',
+
+  /* ── 尺寸统一 · upload（切主题不改变几何，取 tech-minimal 基准）───── */
+  // upload-height
+  '--upload-height': '160px',
+  // upload-padding
+  '--upload-padding': '24px',
+  // upload-icon-size
+  '--upload-icon-size': '32px',
+  // upload-title-size
+  '--upload-title-size': '14px',
+  // upload-sub-size
+  '--upload-sub-size': '12px',
+
+  /* ── 尺寸统一 · rating（切主题不改变几何，取 tech-minimal 基准）───── */
+  // rating-star-size
+  '--rating-star-size': '16px',
+  // rating-star-gap
+  '--rating-star-gap': '4px',
+  // rating-number-size
+  '--rating-number-size': '13px',
+
+  /* ── 尺寸统一 · tooltip（切主题不改变几何，取 tech-minimal 基准）───── */
+  // tooltip-padding-y
+  '--tooltip-padding-y': '6px',
+  // tooltip-padding-x
+  '--tooltip-padding-x': '10px',
+  // tooltip-font-size
+  '--tooltip-font-size': '12px',
+  // tooltip-arrow-size
+  '--tooltip-arrow-size': '6px',
+  // tooltip-max-width
+  '--tooltip-max-width': '240px',
+
+  /* ── 尺寸统一 · drawer（切主题不改变几何，取 tech-minimal 基准）───── */
+  // drawer-width
+  '--drawer-width': '400px',
+  // drawer-padding
+  '--drawer-padding': '24px',
+  // drawer-head-height
+  '--drawer-head-height': '64px',
+  // drawer-foot-height
+  '--drawer-foot-height': '72px',
+
+  /* ── 尺寸统一 · skeleton（切主题不改变几何，取 tech-minimal 基准）───── */
+  // skeleton-line-height
+  '--skeleton-line-height': '16px',
+  // skeleton-line-gap
+  '--skeleton-line-gap': '8px',
+
+  /* ── 尺寸统一 · empty（切主题不改变几何，取 tech-minimal 基准）───── */
+  // empty-icon-size
+  '--empty-icon-size': '64px',
+  // empty-title-size
+  '--empty-title-size': '18px',
+  // empty-desc-size
+  '--empty-desc-size': '14px',
+  // empty-btn-gap
+  '--empty-btn-gap': '24px',
+  // empty-padding-top
+  '--empty-padding-top': '80px',
+
+  /* ── 尺寸统一 · badge（切主题不改变几何，取 tech-minimal 基准）───── */
+  // badge-height
+  '--badge-height': '18px',
+  // badge-padding-x
+  '--badge-padding-x': '5px',
+  // badge-font-size
+  '--badge-font-size': '11px',
+  // badge-min-width
+  '--badge-min-width': '18px',
+  // badge-dot-size
+  '--badge-dot-size': '8px',
+
+  /* ── 尺寸统一 · scrollbar（切主题不改变几何，取 tech-minimal 基准）───── */
+  // scrollbar-width
+  '--scrollbar-width': '8px',
+  // scrollbar-padding
+  '--scrollbar-padding': '2px',
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -411,19 +785,16 @@ const MATRIX = {
   '--font-price': [JETBRAINS, GEIST_MONO, OXYGEN, JETBRAINS, JETBRAINS],
 
   /* ── 字号 ─────────────────────────────────────────────────── */
-  '--fs-display': ['72px', '64px', '48px', '96px', '56px'],
-  '--fs-h1': ['48px', '40px', '40px', '64px', '48px'],
-  '--fs-h2': ['40px', '40px', '40px', '56px', '36px'],
-  '--fs-h3': ['20px', '20px', '20px', '22px', '18px'],
-  '--fs-body': ['15px', '15px', '14px', '15px', '14px'],
-  '--fs-sm': ['14px', '14px', '13px', '14px', '13px'],
-  '--fs-label': ['12px', '12px', '12px', '12px', '12px'],
-  // 价格：整数部分 20/22/18/20/24
-  '--fs-price': ['20px', '22px', '18px', '20px', '24px'],
-  // 小数部分「小一号」；无小数的风格取其本身（该分支不渲染）
-  '--fs-price-decimals': ['14px', '15px', '18px', '20px', '24px'],
-  // 划线原价：比现价小 2px
-  '--fs-price-original': ['18px', '20px', '16px', '18px', '22px'],
+
+
+
+
+
+
+
+
+
+
 
   /* ── 字重 ─────────────────────────────────────────────────── */
   '--fw-display': ['700', '600', '700', '700', '700'],
@@ -436,9 +807,9 @@ const MATRIX = {
   /* ── 排版细节 ─────────────────────────────────────────────── */
   '--tracking-display': ['-0.02em', '-0.03em', '-0.02em', '-0.03em', '-0.04em'],
   '--tracking-label': ['-0.01em', '-0.01em', '0', '0.02em', '0.05em'],
-  '--leading-body': ['1.5', '1.55', '1.6', '1.5', '1.6'],
-  // 商品标题固定 1.4 行高
-  '--leading-title': ['1.4', '1.4', '1.4', '1.4', '1.4'],
+  // --leading-body 已移入「尺寸统一」组：它逐风格是 1.5 / 1.55 / 1.6，
+  // 而 body 的行高正是走这个令牌 —— 于是**每一行文本的高度都不同**，
+  // 整页会因此差十几像素（真机实测 hero 336→341、footer 165→170）。
   '--heading-transform': ['none', 'none', 'none', 'uppercase', 'none'],
   '--label-transform': ['none', 'none', 'none', 'uppercase', 'uppercase'],
 
@@ -457,18 +828,13 @@ const MATRIX = {
   '--btn-radius': ['8px', '14px', '10px', '0px', '6px'],
 
   /* ── 间距与区块 ───────────────────────────────────────────── */
-  // 基础单位：mono 用 4px 的更细粒度
-  '--space-unit': ['8px', '8px', '8px', '8px', '4px'],
-  // 卡片间距 16 / 20 / 14 / 16 / 12
-  '--grid-gap': ['16px', '20px', '14px', '16px', '12px'],
-  // 区块间距 96 / 100 / 72 / 96 / 72
-  '--section-gap': ['96px', '100px', '72px', '96px', '72px'],
+
+
+
 
   /* ── 导航栏 ───────────────────────────────────────────────── */
-  // 高度 64 / 72 / 68 / 72 / 56
-  '--navbar-height': ['64px', '72px', '68px', '72px', '56px'],
-  // 左右内边距 32 / 40 / 32 / 32 / 24
-  '--nav-padding-x': ['32px', '40px', '32px', '32px', '24px'],
+
+
   // 底部边框色（宽度取 --stroke-width：neo 为 2px）
   '--nav-border-color': [
     '#2a2a2d',
@@ -477,12 +843,9 @@ const MATRIX = {
     '#000000',
     '#2a2a2a',
   ],
-  // Logo 高度 24 / 28 / 26 / 28 / 20
-  '--nav-logo-height': ['24px', '28px', '26px', '28px', '20px'],
-  // 菜单项间距 28 / 32 / 28 / 32 / 24
-  '--nav-menu-gap': ['28px', '32px', '28px', '32px', '24px'],
-  // 菜单字号 13 / 14 / 14 / 14 / 12
-  '--nav-link-size': ['13px', '14px', '14px', '14px', '12px'],
+
+
+
   // 粘性导航：glass 用 blur(20px) 半透明，其余为实色
   '--nav-backdrop': [
     'none',
@@ -508,19 +871,29 @@ const MATRIX = {
   ],
 
   /* ── 阴影 ─────────────────────────────────────────────────── */
-  // 卡片 无 / 0 8px 32px(0.08) / 0 1px 3px(0.04) / 0 1px 2px(0.05) / 无
+  /*
+   * 卡片阴影。第四列是 neo-brutalism：
+   *
+   * 尺寸统一之后（按钮 52px→40px、输入框 48px→40px），这套风格原本靠「又大又厚」
+   * 表达的重量感没了，只能由**样式**补回来 —— 而它此前在卡片上恰恰没体现签名：
+   * 只给了 0 1px 2px(0.05) 这种软阴影，hover 还与常态一模一样（等于没有反馈）。
+   * 现在改为与自己 --shadow-float 同一套语言的**硬投影**（无模糊、纯黑、位移），
+   * 悬停时位移加大，brutalism 的「块面感」才真正落到卡片上。
+   */
+  // 卡片 无 / 0 8px 32px(0.08) / 0 1px 3px(0.04) / 4px 4px 0 纯黑硬投影 / 无
   '--shadow-card': [
     'none',
     '0 8px 32px rgba(99, 102, 241, 0.08)',
     '0 1px 3px rgba(0, 0, 0, 0.04)',
-    '0 1px 2px rgba(0, 0, 0, 0.05)',
+    '4px 4px 0 #000000',
     'none',
   ],
+  // 悬停：glass 加深、bento 保持、neo 位移加大到 8px（硬投影只能靠位移表达层次）
   '--shadow-card-hover': [
     'none',
     '0 8px 32px rgba(99, 102, 241, 0.14)',
     '0 1px 3px rgba(0, 0, 0, 0.04)',
-    '0 1px 2px rgba(0, 0, 0, 0.05)',
+    '8px 8px 0 #000000',
     'none',
   ],
   // 提示框与下拉菜单共用同一档浮动阴影
@@ -557,13 +930,10 @@ const MATRIX = {
   ],
 
   /* ── 按钮行为 ─────────────────────────────────────────────── */
-  // 高度 40 / 48 / 44 / 52 / 36
-  '--btn-height': ['40px', '48px', '44px', '52px', '36px'],
-  // 内边距 12 20 / 14 28 / 12 24 / 16 36 / 10 20
-  '--btn-padding-y': ['12px', '14px', '12px', '16px', '10px'],
-  '--btn-padding-x': ['20px', '28px', '24px', '36px', '20px'],
-  // 字号 14 / 15 / 14 / 15 / 13
-  '--btn-font-size': ['14px', '15px', '14px', '15px', '13px'],
+
+
+
+
   // 字重 500 / 600 / 600 / 700 / 700
   '--btn-font-weight': ['500', '600', '600', '700', '700'],
   // mono 的主按钮靠边框变色表达悬停，其余为 0
@@ -666,17 +1036,12 @@ const MATRIX = {
   /* ══════════════ B. 组件层（尺寸规范表） ══════════════ */
 
   /* ── B1. 输入框 / 搜索框 ──────────────────────────────────── */
-  // 高度 40 / 48 / 44 / 48 / 36
-  '--input-height': ['40px', '48px', '44px', '48px', '36px'],
-  // 内边距 12 14 / 14 20 / 12 16 / 14 18 / 10 12
-  '--input-padding-y': ['12px', '14px', '12px', '14px', '10px'],
-  '--input-padding-x': ['14px', '20px', '16px', '18px', '12px'],
-  // 字号 14 / 15 / 14 / 15 / 13
-  '--input-font-size': ['14px', '15px', '14px', '15px', '13px'],
-  // 图标尺寸 16 / 18 / 16 / 18 / 14
-  '--input-icon-size': ['16px', '18px', '16px', '18px', '14px'],
-  // 图标间距 10 / 12 / 10 / 12 / 8
-  '--input-icon-gap': ['10px', '12px', '10px', '12px', '8px'],
+
+
+
+
+
+
   // 聚焦：边框变强调色 / glass 提到 blur(24px) / bento 无外发光 / neo 硬阴影 / mono 用 outline
   '--input-focus-border': ['#3b82f6', '#6366f1', '#d62872', '#000000', '#22c55e'],
   '--input-focus-shadow': [
@@ -697,26 +1062,20 @@ const MATRIX = {
   '--input-focus-outline-offset': ['0px', '0px', '0px', '0px', '2px'],
 
   /* ── B2. 图标按钮 ─────────────────────────────────────────── */
-  // 尺寸 40 / 44 / 40 / 44 / 32
-  '--icon-btn-size': ['40px', '44px', '40px', '44px', '32px'],
+
   // 圆角 8 / 9999 / 10 / 0 / 6
   '--icon-btn-radius': ['8px', '9999px', '10px', '0px', '6px'],
-  // 图标 18 / 20 / 18 / 20 / 16
-  '--icon-btn-icon-size': ['18px', '20px', '18px', '20px', '16px'],
+
 
   /* ── B3. 商品卡片 ─────────────────────────────────────────── */
-  // 宽度 280 / 300 / 小 280 大 400 / 280 / 260
-  '--card-width': ['280px', '300px', '280px', '280px', '260px'],
-  '--card-width-lg': ['280px', '300px', '400px', '280px', '260px'],
-  // 内边距 20 / 24 / 小 18 大 28 / 24 / 16
-  '--card-padding': ['20px', '24px', '18px', '24px', '16px'],
-  '--card-padding-lg': ['20px', '24px', '28px', '24px', '16px'],
-  // 图片区高度 200 / 220 / 小 180 大 280 / 200 / 180
-  '--card-image-height': ['200px', '220px', '180px', '200px', '180px'],
-  '--card-image-height-lg': ['200px', '220px', '280px', '200px', '180px'],
-  // 标题 14-16px / 副标题 12-13px
-  '--card-title-size': ['15px', '16px', '20px', '16px', '14px'],
-  '--card-sub-size': ['12px', '13px', '13px', '13px', '12px'],
+
+
+
+
+
+
+
+
 
   /* ── B4. 价格 ─────────────────────────────────────────────── */
   '--price-color': ['#fafafa', '#1e1b4b', '#d62872', '#000000', '#22c55e'],
@@ -724,58 +1083,43 @@ const MATRIX = {
   '--price-bg': ['transparent', 'transparent', 'transparent', 'transparent', '#141414'],
 
   /* ── B5. 提示框 Toast ─────────────────────────────────────── */
-  // 宽度 360 / 380 / 360 / 380 / 340
-  '--toast-width': ['360px', '380px', '360px', '380px', '340px'],
-  // 内边距 14 16 / 16 20 / 16 20 / 16 20 / 12 14
-  '--toast-padding-y': ['14px', '16px', '16px', '16px', '12px'],
-  '--toast-padding-x': ['16px', '20px', '20px', '20px', '14px'],
+
+
+
   // 圆角 12 / 16 / 12 / 0 / 4
   '--toast-radius': ['12px', '16px', '12px', '0px', '4px'],
-  // 图标 20 / 20 / 18 / 20 / 16，字号 14 / 14 / 14 / 14 / 13
-  '--toast-icon-size': ['20px', '20px', '18px', '20px', '16px'],
-  '--toast-font-size': ['14px', '14px', '14px', '14px', '13px'],
+
+
 
   /* ── B6. 模态框 ───────────────────────────────────────────── */
-  // 宽度 480 / 520 / 480 / 520 / 440
-  '--modal-width': ['480px', '520px', '480px', '520px', '440px'],
-  // 内边距 24 / 28 / 28 / 28 / 20
-  '--modal-padding': ['24px', '28px', '28px', '28px', '20px'],
-  // 关闭按钮 32 / 36 / 32 / 32 / 28
-  '--modal-close-size': ['32px', '36px', '32px', '32px', '28px'],
-  // 标题 20 / 24 / 20 / 24 / 20，正文 15 / 15 / 14 / 15 / 14
-  '--modal-title-size': ['20px', '24px', '20px', '24px', '20px'],
-  '--modal-body-size': ['15px', '15px', '14px', '15px', '14px'],
+
+
+
+
+
 
   /* ── B7. 下拉菜单 ─────────────────────────────────────────── */
-  // 宽度 200 / 220 / 200 / 220 / 180
-  '--dropdown-width': ['200px', '220px', '200px', '220px', '180px'],
-  // 上下内边距 6 / 8 / 6 / 8 / 4
-  '--dropdown-padding-y': ['6px', '8px', '6px', '8px', '4px'],
+
+
   // 圆角 12 / 16 / 12 / 0 / 4
   '--dropdown-radius': ['12px', '16px', '12px', '0px', '4px'],
-  // 选项高度 36 / 40 / 38 / 44 / 32
-  '--dropdown-item-height': ['36px', '40px', '38px', '44px', '32px'],
+
 
   /* ── B8. 标签 Tag / Badge ─────────────────────────────────── */
-  // 高度 22 / 26 / 24 / 26 / 20
-  '--tag-height': ['22px', '26px', '24px', '26px', '20px'],
-  // 内边距 2 8 / 4 12 / 3 10 / 4 12 / 2 6
-  '--tag-padding-y': ['2px', '4px', '3px', '4px', '2px'],
-  '--tag-padding-x': ['8px', '12px', '10px', '12px', '6px'],
+
+
+
   // 圆角 6 / 9999 / 8 / 0 / 4
   '--tag-radius': ['6px', '9999px', '8px', '0px', '4px'],
-  // 字号 11 / 12 / 11 / 12 / 11，字重 500 / 500 / 600 / 700 / 500
-  '--tag-font-size': ['11px', '12px', '11px', '12px', '11px'],
+
   '--tag-font-weight': ['500', '500', '600', '700', '500'],
 
   /* ── B9. 分页 ─────────────────────────────────────────────── */
-  // 按钮 36 / 40 / 38 / 44 / 32
-  '--pager-size': ['36px', '40px', '38px', '44px', '32px'],
+
   // 圆角 8 / 9999 / 10 / 0 / 4
   '--pager-radius': ['8px', '9999px', '10px', '0px', '4px'],
-  // 间距 6 / 8 / 6 / 8 / 4，字号 13 / 14 / 13 / 14 / 12
-  '--pager-gap': ['6px', '8px', '6px', '8px', '4px'],
-  '--pager-font-size': ['13px', '14px', '13px', '14px', '12px'],
+
+
   // 当前页：前三套是强调底白字，neo 是黑底白字 + 硬阴影，mono 是描边绿字
   '--pager-active-bg': ['#3b82f6', '#6366f1', '#d62872', '#000000', 'transparent'],
   '--pager-active-color': ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#22c55e'],
@@ -795,8 +1139,7 @@ const MATRIX = {
   ],
 
   /* ── B10. 进度条 / 加载 ───────────────────────────────────── */
-  // 高度 4 / 6 / 6 / 8 / 4
-  '--progress-height': ['4px', '6px', '6px', '8px', '4px'],
+
   // 圆角 9999 / 9999 / 9999 / 0 / 2
   '--progress-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
   // 轨道色
@@ -809,8 +1152,7 @@ const MATRIX = {
   ],
 
   /* ── B11. 头像 ────────────────────────────────────────────── */
-  // 产品里只有导航栏一处头像，取规范的中档 32 / 36 / 32 / 36 / 28
-  '--avatar-size': ['32px', '36px', '32px', '36px', '28px'],
+
   // 圆角 9999 / 9999 / 9999 / 9999 / 4
   '--avatar-radius': ['9999px', '9999px', '9999px', '9999px', '4px'],
   // 边框 无 / 2px 半透明白 / 无 / 2px 黑 / 1px
@@ -824,26 +1166,20 @@ const MATRIX = {
   ],
 
   /* ── B12. 复选框 ──────────────────────────────────────────── */
-  // 尺寸 18 / 20 / 18 / 22 / 16
-  '--checkbox-size': ['18px', '20px', '18px', '22px', '16px'],
+
   // 圆角 4 / 6 / 4 / 0 / 2
   '--checkbox-radius': ['4px', '6px', '4px', '0px', '2px'],
   // 勾选图标 12 / 14 / 12 / 14 / 10
 
   /* ── B14. 下拉 / 选择器（§1） ──────────────────────────── */
-  // 箭头尺寸 16 / 18 / 16 / 18 / 14
-  '--select-arrow-size': ['16px', '18px', '16px', '18px', '14px'],
+
   // 箭头颜色
   '--select-arrow-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
   // 面板阴影不单独登记：第三批 §1 的面板阴影与既有 --shadow-float 五套逐值相同
-  // 面板最大高度
-  '--dropdown-max-height': ['280px', '320px', '300px', '340px', '240px'],
-  // 面板与触发器的间距
-  '--dropdown-offset': ['6px', '8px', '6px', '4px', '4px'],
-  // 选项左右内边距（原为 5 套同值 16px，第三批改为逐风格）
-  '--dropdown-item-padding-x': ['14px', '18px', '16px', '18px', '12px'],
-  // 选项字号
-  '--dropdown-item-font-size': ['13px', '14px', '13px', '14px', '12px'],
+
+
+
+
   // 选项悬停底色
   '--dropdown-item-hover-bg': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#F7F7F5', '#FAFAFA', '#141414'],
   // 选项选中底色（neo 是纯色而非淡色叠加，无法复用 --accent-soft）
@@ -852,20 +1188,16 @@ const MATRIX = {
   '--dropdown-item-active-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#FFFFFF', '#E8E8E8'],
   // 选项禁用文字色
   '--dropdown-item-disabled-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#999999', '#6B6B6B'],
-  // 选中勾尺寸（mono 只用竖条，故为 0）
-  '--dropdown-check-size': ['14px', '16px', '14px', '16px', '0px'],
+
   // 选中勾颜色
   '--dropdown-check-color': ['#3B82F6', '#6366F1', '#D62872', '#FFFFFF', 'transparent'],
-  // 分组标题高度
-  '--dropdown-group-height': ['28px', '32px', '30px', '34px', '26px'],
-  // 分组标题字号
-  '--dropdown-group-font-size': ['11px', '12px', '11px', '12px', '11px'],
+
+
   // 分组标题字重
   '--dropdown-group-weight': ['600', '600', '600', '700', '500'],
   // 分组标题颜色
   '--dropdown-group-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
-  // 分组标题上边距
-  '--dropdown-group-gap': ['6px', '8px', '6px', '4px', '4px'],
+
   // 搜索命中文字高亮底（accent 20%，不加粗）
   '--dropdown-hit-bg': ['rgba(59, 130, 246, 0.2)', 'rgba(99, 102, 241, 0.2)', 'rgba(214, 40, 114, 0.2)', 'rgba(255, 107, 53, 0.2)', 'rgba(34, 197, 94, 0.2)'],
 
@@ -874,32 +1206,23 @@ const MATRIX = {
   '--checkbox-hover-border': ['#3F3F46', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
   // 选中背景
   '--checkbox-checked-bg': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
-  // 勾选框与标签的间距
-  '--checkbox-label-gap': ['10px', '12px', '10px', '12px', '8px'],
-  // 标签字号
-  '--checkbox-label-size': ['14px', '14px', '14px', '15px', '13px'],
-  // 不确定态中间横线宽度（颜色用 --text-on-accent）
-  '--checkbox-indeterminate-width': ['8px', '9px', '8px', '10px', '8px'],
+
+
+
 
   /* ── B16. 单选框（§3） ──────────────────────────── */
-  // 尺寸 18 / 20 / 18 / 22 / 16（与复选框同值但独立登记：两者是规范里的两行）
-  '--radio-size': ['18px', '20px', '18px', '22px', '16px'],
-  // 选中内圆尺寸
-  '--radio-dot-size': ['8px', '9px', '8px', '10px', '7px'],
+
+
   // 选中边框与内圆的颜色
   '--radio-checked-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
-  // 圆点与标签的间距
-  '--radio-label-gap': ['10px', '12px', '10px', '12px', '8px'],
+
 
   /* ── B17. 开关（§4） ──────────────────────────── */
-  // 轨道宽 40 / 44 / 42 / 48 / 36
-  '--switch-track-w': ['40px', '44px', '42px', '48px', '36px'],
-  // 轨道高
-  '--switch-track-h': ['22px', '24px', '24px', '26px', '20px'],
+
+
   // 轨道圆角
   '--switch-track-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
-  // 滑块尺寸
-  '--switch-thumb-size': ['18px', '20px', '20px', '22px', '16px'],
+
   // 滑块圆角
   '--switch-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
   // 关闭态轨道背景
@@ -910,16 +1233,14 @@ const MATRIX = {
   '--switch-transition': ['0.2s ease', '0.25s ease', '0.2s ease', '0.15s linear', '0.15s ease'],
 
   /* ── B18. 滑块（§5） ──────────────────────────── */
-  // 轨道高
-  '--slider-track-h': ['4px', '6px', '6px', '8px', '4px'],
+
   // 轨道圆角
   '--slider-track-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
   // 已选段颜色
   '--slider-fill': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
   // 未选段颜色
   '--slider-track': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
-  // 手柄尺寸
-  '--slider-thumb-size': ['18px', '20px', '20px', '24px', '16px'],
+
   // 手柄圆角
   '--slider-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
   // 手柄边框（组合值）
@@ -928,8 +1249,7 @@ const MATRIX = {
   '--slider-thumb-shadow': ['0 2px 8px rgba(0, 0, 0, 0.4)', '0 2px 12px rgba(99, 102, 241, 0.2)', '0 2px 8px rgba(0, 0, 0, 0.12)', '4px 4px 0 #000000', 'none'],
 
   /* ── B19. 步骤条（§6） ──────────────────────────── */
-  // 圆点尺寸
-  '--step-dot-size': ['28px', '32px', '30px', '36px', '24px'],
+
   // 圆点圆角
   '--step-dot-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
   // 连接线高度
@@ -940,54 +1260,40 @@ const MATRIX = {
   '--step-current-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
   // 未完成色
   '--step-todo-color': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
-  // 标签字号
-  '--step-label-size': ['13px', '14px', '13px', '14px', '12px'],
+
 
   /* ── B20. 手风琴（§7） ──────────────────────────── */
-  // 折叠项头高度
-  '--accordion-item-height': ['56px', '64px', '60px', '64px', '48px'],
-  // 头部上下内边距
-  '--accordion-padding-y': ['16px', '18px', '16px', '18px', '12px'],
-  // 头部左右内边距
-  '--accordion-padding-x': ['20px', '24px', '24px', '24px', '16px'],
+
+
+
   // 圆角
   '--accordion-radius': ['12px', '16px', '12px', '0px', '4px'],
-  // 标题字号
-  '--accordion-title-size': ['15px', '16px', '15px', '16px', '14px'],
+
   // 标题字重
   '--accordion-title-weight': ['500', '500', '600', '700', '500'],
-  // 展开图标尺寸（展开时旋转 180°）
-  '--accordion-icon-size': ['16px', '18px', '16px', '18px', '14px'],
+
   // 展开动画（图标旋转与标题同步）
   '--accordion-transition': ['0.25s ease', '0.3s ease', '0.25s ease', '0.15s linear', '0.15s ease'],
 
   /* ── B21. 选项卡（§8） ──────────────────────────── */
-  // 选项卡高
-  '--tab-height': ['40px', '44px', '42px', '48px', '36px'],
-  // 内边距（上下）
-  '--tab-padding-y': ['10px', '12px', '11px', '14px', '8px'],
-  // 内边距（左右）
-  '--tab-padding-x': ['16px', '20px', '18px', '20px', '14px'],
-  // 字号
-  '--tab-font-size': ['14px', '15px', '14px', '15px', '13px'],
+
+
+
+
   // 字重
   '--tab-font-weight': ['500', '500', '600', '700', '500'],
   // 未选中文字色
   '--tab-color': ['#6B7280', '#6B7280', '#8A8A8A', '#666666', '#6B6B6B'],
   // 选中文字色
   '--tab-active-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#000000', '#E8E8E8'],
-  // 指示条高度
-  '--tab-indicator-height': ['2px', '2px', '2px', '3px', '2px'],
+
   // 指示条颜色
   '--tab-indicator-color': ['#3B82F6', '#6366F1', '#D62872', '#FF6B35', '#22C55E'],
-  // 选项卡之间的间距
-  '--tab-gap': ['24px', '28px', '24px', '20px', '20px'],
+
 
   /* ── B22. 面包屑（§9） ──────────────────────────── */
-  // 整条高度
-  '--breadcrumb-height': ['24px', '28px', '26px', '28px', '22px'],
-  // 字号
-  '--breadcrumb-font-size': ['13px', '14px', '13px', '14px', '12px'],
+
+
   // 分隔符内容（带引号，直接给 content: 用）
   '--breadcrumb-separator': ['"/"', '"›"', '"/"', '"→"', '">"'],
   // 分隔符颜色
@@ -996,22 +1302,15 @@ const MATRIX = {
   '--breadcrumb-link-color': ['#6B7280', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
   // 当前页色
   '--breadcrumb-current-color': ['#FAFAFA', '#1E1B4B', '#1A1A1A', '#FF6B35', '#22C55E'],
-  // 项间距
-  '--breadcrumb-gap': ['8px', '10px', '8px', '10px', '8px'],
+
 
   /* ── B23. 表格（§10） ──────────────────────────── */
-  // 行高
-  '--table-row-height': ['48px', '56px', '52px', '56px', '40px'],
-  // 表头高
-  '--table-head-height': ['40px', '48px', '44px', '48px', '36px'],
-  // 单元格内边距（上下）
-  '--table-cell-padding-y': ['12px', '14px', '13px', '14px', '10px'],
-  // 单元格内边距（左右）
-  '--table-cell-padding-x': ['16px', '20px', '18px', '20px', '14px'],
-  // 正文字号
-  '--table-font-size': ['13px', '14px', '14px', '14px', '12px'],
-  // 表头字号
-  '--table-head-font-size': ['12px', '13px', '12px', '13px', '11px'],
+
+
+
+
+
+
   // 表头字重
   '--table-head-weight': ['600', '600', '600', '700', '500'],
   // 描边宽度（只画底边，neo 2px）
@@ -1026,14 +1325,11 @@ const MATRIX = {
   '--table-head-transform': ['uppercase', 'none', 'uppercase', 'uppercase', 'uppercase'],
 
   /* ── B24. 日期选择器（§11） ──────────────────────────── */
-  // 面板宽
-  '--datepicker-width': ['280px', '320px', '300px', '320px', '260px'],
-  // 面板内边距
-  '--datepicker-padding': ['16px', '20px', '18px', '20px', '14px'],
+
+
   // 面板圆角
   '--datepicker-radius': ['12px', '16px', '12px', '0px', '4px'],
-  // 日期单元格尺寸（正方形）
-  '--datepicker-cell-size': ['36px', '40px', '38px', '44px', '32px'],
+
   // 单元格圆角
   '--datepicker-cell-radius': ['8px', '9999px', '8px', '0px', '4px'],
   // 选中背景
@@ -1042,64 +1338,48 @@ const MATRIX = {
   '--datepicker-today-color': ['#3B82F6', '#6366F1', '#D62872', '#000000', '#22C55E'],
   // 今天标记：底部 2px 下划线 / 全框描边两种做法，统一用 box-shadow 表达（配色上面的 --datepicker-today-color + currentColor）
   '--datepicker-today-marker': ['inset 0 -2px 0 0 currentColor', '0 0 0 1px currentColor', 'inset 0 -2px 0 0 currentColor', '0 0 0 2px currentColor', 'inset 0 -2px 0 0 currentColor'],
-  // 日期字号
-  '--datepicker-font-size': ['13px', '14px', '13px', '14px', '12px'],
+
 
   /* ── B25. 文件上传（§12） ──────────────────────────── */
-  // 拖拽区高度
-  '--upload-height': ['160px', '180px', '160px', '180px', '140px'],
-  // 拖拽区内边距
-  '--upload-padding': ['24px', '28px', '24px', '28px', '20px'],
+
+
   // 圆角
   '--upload-radius': ['12px', '16px', '12px', '0px', '4px'],
-  // 图标尺寸
-  '--upload-icon-size': ['32px', '36px', '32px', '36px', '28px'],
-  // 主文案字号
-  '--upload-title-size': ['14px', '15px', '14px', '15px', '13px'],
-  // 副文案字号
-  '--upload-sub-size': ['12px', '13px', '12px', '13px', '11px'],
+
+
+
   // 拖拽激活态背景（accent 5%，边框同时变 --accent）
   '--upload-drag-bg': ['rgba(59, 130, 246, 0.05)', 'rgba(99, 102, 241, 0.05)', 'rgba(214, 40, 114, 0.05)', 'rgba(255, 107, 53, 0.05)', 'rgba(34, 197, 94, 0.05)'],
 
   /* ── B26. 评分（§13） ──────────────────────────── */
-  // 星尺寸
-  '--rating-star-size': ['16px', '18px', '16px', '20px', '14px'],
-  // 星间距
-  '--rating-star-gap': ['4px', '4px', '4px', '6px', '3px'],
+
+
   // 填充色
   '--rating-fill': ['#F59E0B', '#F59E0B', '#F59E0B', '#FF6B35', '#22C55E'],
   // 空星色
   '--rating-empty': ['#3F3F46', '#D1D5DB', '#EBEBEB', '#E5E5E5', '#2A2A2A'],
-  // 数字字号
-  '--rating-number-size': ['13px', '14px', '13px', '14px', '12px'],
+
 
   /* ── B27. 气泡提示（§14） ──────────────────────────── */
-  // 内边距（上下）
-  '--tooltip-padding-y': ['6px', '8px', '8px', '8px', '6px'],
-  // 内边距（左右）
-  '--tooltip-padding-x': ['10px', '14px', '12px', '12px', '10px'],
+
+
   // 圆角
   '--tooltip-radius': ['6px', '10px', '8px', '0px', '4px'],
   // 背景
   '--tooltip-bg': ['#27272A', 'rgba(30, 27, 75, 0.9)', '#1A1A1A', '#000000', '#1A1A1A'],
   // 文字色
   '--tooltip-color': ['#FAFAFA', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#E8E8E8'],
-  // 字号
-  '--tooltip-font-size': ['12px', '13px', '12px', '13px', '12px'],
-  // 箭头尺寸（neo 无箭头）
-  '--tooltip-arrow-size': ['6px', '8px', '6px', '0px', '4px'],
-  // 最大宽
-  '--tooltip-max-width': ['240px', '280px', '240px', '260px', '220px'],
+
+
+
   // 出现延迟（neo 无延迟）
   '--tooltip-delay': ['200ms', '200ms', '200ms', '0ms', '200ms'],
   // 阴影（neo 用硬阴影）
   '--tooltip-shadow': ['0 4px 12px rgba(0, 0, 0, 0.2)', '0 4px 12px rgba(0, 0, 0, 0.2)', '0 4px 12px rgba(0, 0, 0, 0.2)', '4px 4px 0 #000000', '0 4px 12px rgba(0, 0, 0, 0.2)'],
 
   /* ── B28. 抽屉（§15） ──────────────────────────── */
-  // 宽度
-  '--drawer-width': ['400px', '440px', '420px', '440px', '380px'],
-  // 内边距
-  '--drawer-padding': ['24px', '28px', '28px', '28px', '20px'],
+
+
   // 圆角：抽屉从右侧滑入，圆的必须是可见的左边缘两角（四值顺序 左上 右上 右下 左下）
   '--drawer-radius': ['16px 0 0 16px', '24px 0 0 24px', '20px 0 0 20px', '0px', '4px 0 0 4px'],
   // 阴影
@@ -1108,10 +1388,8 @@ const MATRIX = {
   '--drawer-scrim': ['rgba(0, 0, 0, 0.7)', 'rgba(30, 27, 75, 0.3)', 'rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 0.6)', 'rgba(0, 0, 0, 0.8)'],
   // 遮罩模糊（只有 glass 有）
   '--drawer-scrim-backdrop': ['none', 'blur(8px)', 'none', 'none', 'none'],
-  // 头部高
-  '--drawer-head-height': ['64px', '72px', '68px', '72px', '56px'],
-  // 底部高
-  '--drawer-foot-height': ['72px', '80px', '76px', '80px', '64px'],
+
+
 
   /* ── B29. 骨架屏（§16） ──────────────────────────── */
   // 循环时长（原为 5 套同值 1.5s，第三批改为逐风格）
@@ -1124,50 +1402,37 @@ const MATRIX = {
   '--skeleton-bg': ['#27272A', 'rgba(255, 255, 255, 0.4)', '#EBEBEB', '#E5E5E5', '#1A1A1A'],
   // 高亮色
   '--skeleton-highlight': ['#3F3F46', 'rgba(255, 255, 255, 0.7)', '#F7F7F5', '#FAFAFA', '#2A2A2A'],
-  // 文字行高
-  '--skeleton-line-height': ['16px', '16px', '16px', '16px', '14px'],
-  // 行间距（文字骨架宽度 100% / 80% / 60% 由使用点写死三档）
-  '--skeleton-line-gap': ['8px', '10px', '8px', '8px', '6px'],
+
+
 
   /* ── B30. 空状态（§17） ──────────────────────────── */
-  // 图标尺寸
-  '--empty-icon-size': ['64px', '72px', '64px', '72px', '56px'],
+
   // 图标颜色
   '--empty-icon-color': ['#3F3F46', '#6B7280', '#8A8A8A', '#000000', '#6B6B6B'],
-  // 标题字号
-  '--empty-title-size': ['18px', '20px', '18px', '20px', '16px'],
+
   // 标题字重
   '--empty-title-weight': ['600', '600', '600', '700', '500'],
-  // 描述字号
-  '--empty-desc-size': ['14px', '15px', '14px', '15px', '13px'],
+
   // 描述颜色
   '--empty-desc-color': ['#6B7280', '#6B7280', '#8A8A8A', '#666666', '#6B6B6B'],
-  // 按钮上边距
-  '--empty-btn-gap': ['24px', '28px', '24px', '28px', '20px'],
-  // 整块上边距
-  '--empty-padding-top': ['80px', '96px', '80px', '96px', '64px'],
+
+
 
   /* ── B31. 通知徽标（§18） ──────────────────────────── */
-  // 数字徽标高
-  '--badge-height': ['18px', '20px', '18px', '22px', '16px'],
-  // 内边距（左右）
-  '--badge-padding-x': ['5px', '6px', '5px', '6px', '4px'],
+
+
   // 圆角
   '--badge-radius': ['9999px', '9999px', '9999px', '0px', '4px'],
   // 背景
   '--badge-bg': ['#EF4444', '#EF4444', '#D62872', '#FF6B35', '#22C55E'],
   // 文字色（mono 是深字配绿底）
   '--badge-color': ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#0D0D0D'],
-  // 字号
-  '--badge-font-size': ['11px', '12px', '11px', '12px', '10px'],
-  // 最小宽
-  '--badge-min-width': ['18px', '20px', '18px', '22px', '16px'],
-  // 点状尺寸
-  '--badge-dot-size': ['8px', '10px', '8px', '10px', '6px'],
+
+
+
 
   /* ── B32. 滚动条（§19） ──────────────────────────── */
-  // 宽度
-  '--scrollbar-width': ['8px', '10px', '8px', '12px', '6px'],
+
   // 轨道色（glass 透明）
   '--scrollbar-track': ['#0A0A0A', 'transparent', '#F7F7F5', '#E5E5E5', '#0D0D0D'],
   // 滑块色
@@ -1176,13 +1441,12 @@ const MATRIX = {
   '--scrollbar-thumb-radius': ['9999px', '9999px', '9999px', '0px', '2px'],
   // 滑块悬停色
   '--scrollbar-thumb-hover': ['#3F3F46', 'rgba(99, 102, 241, 0.5)', '#8A8A8A', '#FF6B35', '#22C55E'],
-  // 滑块内边距（用 border 撑出）
-  '--scrollbar-padding': ['2px', '2px', '2px', '0px', '1px'],
+
 
   /* ── B33. 通用状态与交互（§21） ──────────────────────────── */
   // 所有控件的聚焦外环（输入框继续用自己的 --input-focus-shadow，当前两者同值）
   '--focus-ring': ['0 0 0 3px rgba(59, 130, 246, 0.15)', '0 0 0 3px rgba(99, 102, 241, 0.15)', '0 0 0 3px rgba(214, 40, 114, 0.15)', '0 0 0 3px rgba(255, 107, 53, 0.15)', '0 0 0 3px rgba(34, 197, 94, 0.15)'],
-  '--checkbox-icon-size': ['12px', '14px', '12px', '14px', '10px'],
+
 }
 
 /* ══════════════════════════════════════════════════════════════════

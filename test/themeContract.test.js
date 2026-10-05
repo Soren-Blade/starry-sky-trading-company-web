@@ -151,11 +151,13 @@ test('fontScale 只影响字号，不影响间距', () => {
 })
 
 test('density 只影响间距令牌', () => {
+  // 基准值已随「尺寸统一」改为 tech 的 8px（mono 原来是 4px）——
+  // 密度是**用户级缩放**，与「切主题不改尺寸」不冲突：它不随主题变化。
   const scaled = composeTokens('technical-monochrome', { density: 2 })
-  assert.equal(scaled['--space-unit'], '8px')
-  assert.equal(scaled['--section-gap'], '144px')
+  assert.equal(scaled['--space-unit'], '16px')
+  assert.equal(scaled['--section-gap'], '192px')
   // 字号不受影响
-  assert.equal(scaled['--fs-body'], '14px')
+  assert.equal(scaled['--fs-body'], '15px')
 })
 
 test('radiusScale 不缩放胶囊圆角', () => {
@@ -163,6 +165,38 @@ test('radiusScale 不缩放胶囊圆角', () => {
   assert.equal(scaled['--radius-card'], '0px')
   assert.equal(scaled['--radius-pill'], '9999px')
   assert.equal(scaled['--radius-input'], '9999px')
+})
+
+test('卡片悬停反馈：每套主题至少要有一个可见变化（阴影 / 位移 / 描边 / 图片缩放）', () => {
+  /*
+   * 「尺寸统一」之后，各套风格只能靠**样式**表达自己，悬停反馈就成了主要的层次手段；
+   * 一条什么都不变的悬停等于卡片不可点。逐套检查五个通道是否至少动了一个。
+   *
+   * （neo-brutalism 原来 `--shadow-card` 与 `--shadow-card-hover` 完全相同，
+   *   只靠描边 #e5e5e5→#000 传递反馈 —— 已改为硬投影 4px→8px，见 presets.js。）
+   */
+  const idle = []
+  for (const t of THEMES) {
+    const s = t.tokens
+    const changed =
+      s['--shadow-card'] !== s['--shadow-card-hover'] ||
+      s['--card-hover-transform'] !== 'none' ||
+      s['--border'] !== s['--card-hover-border'] ||
+      Number(s['--media-hover-scale']) > 1
+    if (!changed) idle.push(t.id)
+  }
+  assert.deepEqual(idle, [], `以下主题的卡片悬停没有任何可见变化：${idle.join(', ')}`)
+
+  // neo 的硬投影是它「尺寸被统一后」的主要身份表达，不能被改回软阴影
+  const neoCard = getTheme('neo-brutalism').tokens['--shadow-card']
+  const neoHover = getTheme('neo-brutalism').tokens['--shadow-card-hover']
+  assert.match(neoCard, /^\d+px \d+px 0 #000000$/, 'neo 的卡片阴影应为纯黑硬投影（无模糊）')
+  assert.match(neoHover, /^\d+px \d+px 0 #000000$/, 'neo 的悬停阴影同样应是硬投影')
+  const shift = (v) => Number(v.match(/^(\d+)px/)[1])
+  assert.ok(
+    shift(neoHover) > shift(neoCard),
+    `neo 悬停时硬投影位移要加大（${neoCard} → ${neoHover}）`
+  )
 })
 
 test('darken / withAlpha / parseHex：非法输入原样返回，不产出 undefined', () => {
@@ -232,101 +266,145 @@ test('fontFamily 覆盖只改标题与正文字体，不动等宽/价格字体',
 // ── 规范数值守卫（防止「凭手感改数值」） ───────────────────────
 
 /**
- * 组件尺寸速查总表（规范第十五节）逐格断言。
+ * 组件尺寸总表（原规范第十五节 + 第三批第二十节合并）
  *
- * 行 = 令牌，列 = 五套风格。这张表是「组件尺寸规范」的浓缩版；
- * 只要它能对上，输入框/按钮/卡片/导航/分页/进度条的尺寸就不会被手感改坏。
+ * **这些行在五套主题下取值必须完全相同** —— 这是「切换主题只改字体 / 颜色 / 风格」
+ * 这条产品约束的硬编码形式：凡会改变盒子几何的量（高 / 宽 / 内边距 / 间距 / 字号 /
+ * 行高 / 密度基准 / 控件与轨道尺寸）都不再逐主题取值，于是切主题时布局不跳动，
+ * 用户不会觉得「窗口变大或变小」。
+ *
+ * 取值统一以默认主题 tech-minimal 为基准（它同时是 variables.css 的回退值）。
+ * 历史上这张表是「五列逐格不同」的，改这一条即推翻了那个设计。
  */
-const COMPONENT_TABLE = {
-  // 组件               TechMin  LiquidGlass  Bento     NeoBrutal  TechMono
-  '--input-height': ['40px', '48px', '44px', '48px', '36px'],
-  '--radius-input': ['12px', '9999px', '24px', '8px', '6px'],
-  '--btn-height': ['40px', '48px', '44px', '52px', '36px'],
-  '--btn-radius': ['8px', '14px', '10px', '0px', '6px'],
-  '--icon-btn-size': ['40px', '44px', '40px', '44px', '32px'],
-  '--icon-btn-radius': ['8px', '9999px', '10px', '0px', '6px'],
-  '--card-width': ['280px', '300px', '280px', '280px', '260px'],
-  '--card-width-lg': ['280px', '300px', '400px', '280px', '260px'],
-  '--card-padding': ['20px', '24px', '18px', '24px', '16px'],
-  '--card-padding-lg': ['20px', '24px', '28px', '24px', '16px'],
-  '--radius-card': ['12px', '20px', '16px', '12px', '4px'],
-  '--grid-gap': ['16px', '20px', '14px', '16px', '12px'],
-  '--card-image-height': ['200px', '220px', '180px', '200px', '180px'],
-  '--card-image-height-lg': ['200px', '220px', '280px', '200px', '180px'],
-  '--radius-media': ['8px', '16px', '12px', '8px', '4px'],
-  '--fs-price': ['20px', '22px', '18px', '20px', '24px'],
-  '--toast-width': ['360px', '380px', '360px', '380px', '340px'],
-  '--modal-width': ['480px', '520px', '480px', '520px', '440px'],
-  '--dropdown-item-height': ['36px', '40px', '38px', '44px', '32px'],
-  '--tag-height': ['22px', '26px', '24px', '26px', '20px'],
-  '--navbar-height': ['64px', '72px', '68px', '72px', '56px'],
-  '--pager-size': ['36px', '40px', '38px', '44px', '32px'],
-  '--progress-height': ['4px', '6px', '6px', '8px', '4px'],
-  '--checkbox-size': ['18px', '20px', '18px', '22px', '16px'],
-  '--space-unit': ['8px', '8px', '8px', '8px', '4px'],
+const UNIFORM_COMPONENT_TABLE = {
+  // ── 第十五节 ──
+  '--input-height': '40px',
+  '--btn-height': '40px',
+  '--icon-btn-size': '40px',
+  '--card-width': '280px',
+  '--card-width-lg': '280px',
+  '--card-padding': '20px',
+  '--card-padding-lg': '20px',
+  '--grid-gap': '16px',
+  '--card-image-height': '200px',
+  '--card-image-height-lg': '200px',
+  '--fs-price': '20px',
+  '--toast-width': '360px',
+  '--modal-width': '480px',
+  '--dropdown-item-height': '36px',
+  '--tag-height': '22px',
+  '--navbar-height': '64px',
+  '--pager-size': '36px',
+  '--progress-height': '4px',
+  '--checkbox-size': '18px',
+  '--space-unit': '8px',
+  // ── 第三批 第二十节 ──
+  '--radio-size': '18px',
+  '--switch-track-w': '40px',
+  '--switch-track-h': '22px',
+  '--switch-thumb-size': '18px',
+  '--slider-track-h': '4px',
+  '--slider-thumb-size': '18px',
+  '--step-dot-size': '28px',
+  '--accordion-item-height': '56px',
+  '--tab-height': '40px',
+  '--breadcrumb-height': '24px',
+  '--table-row-height': '48px',
+  '--datepicker-width': '280px',
+  '--datepicker-cell-size': '36px',
+  '--upload-height': '160px',
+  '--rating-star-size': '16px',
+  '--tooltip-padding-y': '6px',
+  '--tooltip-padding-x': '10px',
+  '--drawer-width': '400px',
+  '--badge-height': '18px',
+  '--scrollbar-width': '8px',
 }
 
-test('组件尺寸速查总表：每格都必须与规范一致', () => {
+/**
+ * 圆角总表：**保持逐主题差异**。
+ *
+ * 圆角只改变描边的形状，不改变元素外框尺寸，所以不属于「会让窗口变大变小」的量；
+ * 它同时是各套风格最直观的身份特征（neo 全直角 0px、glass 胶囊 9999px）——
+ * 把圆角也统一了，五套就真的只剩颜色不同了。
+ */
+const RADIUS_TABLE = {
+  // 组件               TechMin  LiquidGlass  Bento     NeoBrutal  TechMono
+  '--radius-input': ['12px', '9999px', '24px', '8px', '6px'],
+  '--btn-radius': ['8px', '14px', '10px', '0px', '6px'],
+  '--icon-btn-radius': ['8px', '9999px', '10px', '0px', '6px'],
+  '--radius-card': ['12px', '20px', '16px', '12px', '4px'],
+  '--radius-media': ['8px', '16px', '12px', '8px', '4px'],
+  '--dropdown-radius': ['12px', '16px', '12px', '0px', '4px'],
+  '--checkbox-radius': ['4px', '6px', '4px', '0px', '2px'],
+  '--tooltip-radius': ['6px', '10px', '8px', '0px', '4px'],
+}
+
+test('组件尺寸在五套主题下完全一致（切主题不改变几何）', () => {
   const problems = []
-  for (const [token, column] of Object.entries(COMPONENT_TABLE)) {
-    THEMES.forEach((theme, index) => {
+  for (const [token, expected] of Object.entries(UNIFORM_COMPONENT_TABLE)) {
+    for (const theme of THEMES) {
       const actual = theme.tokens[token]
-      if (actual !== column[index]) {
-        problems.push(`${theme.id} / ${token}：期望 ${column[index]}，实际 ${actual}`)
+      if (actual !== expected) {
+        problems.push(`${theme.id} / ${token}：期望 ${expected}，实际 ${actual}`)
       }
-    })
+    }
   }
-  assert.deepEqual(problems, [], `组件尺寸与规范不符：\n  ${problems.join('\n  ')}`)
+  assert.deepEqual(problems, [], `尺寸未统一，切主题会让布局跳动：\n  ${problems.join('\n  ')}`)
 })
 
 /**
- * 组件套件速查总表（规范第三批 第二十节）逐格断言。
+ * 「切主题不改变尺寸」的**总守卫**：不局限于上面那张表，而是扫全部令牌。
  *
- * 与上面的 COMPONENT_TABLE 同构，只是换成第三批那 25 行。
- * 这两张表加起来覆盖了规范里所有「逐格给值」的尺寸，改错一个数字就会失败。
+ * 判据是会改变盒子几何的属性；三类看着像尺寸、其实不改变布局的量除外：
+ *   radius          只改描边形状，不改外框
+ *   outline*        轮廓不占空间（各套聚焦态的做法差异）
+ *   stroke/border   粗细只差 1–2px，是风格签名（neo 的 2px 黑边）
  */
-const KIT_TABLE = {
-  // 组件             TechMin  LiquidGlass  Bento     NeoBrutal  TechMono
-  '--input-height': ['40px', '48px', '44px', '48px', '36px'], // 下拉触发器高（复用输入框令牌）
-  '--dropdown-radius': ['12px', '16px', '12px', '0px', '4px'], // 下拉面板圆角
-  '--dropdown-item-height': ['36px', '40px', '38px', '44px', '32px'],
-  '--checkbox-size': ['18px', '20px', '18px', '22px', '16px'],
-  '--checkbox-radius': ['4px', '6px', '4px', '0px', '2px'],
-  '--radio-size': ['18px', '20px', '18px', '22px', '16px'],
-  '--switch-track-w': ['40px', '44px', '42px', '48px', '36px'],
-  '--switch-track-h': ['22px', '24px', '24px', '26px', '20px'],
-  '--switch-thumb-size': ['18px', '20px', '20px', '22px', '16px'],
-  '--slider-track-h': ['4px', '6px', '6px', '8px', '4px'],
-  '--slider-thumb-size': ['18px', '20px', '20px', '24px', '16px'],
-  '--step-dot-size': ['28px', '32px', '30px', '36px', '24px'],
-  '--accordion-item-height': ['56px', '64px', '60px', '64px', '48px'],
-  '--tab-height': ['40px', '44px', '42px', '48px', '36px'],
-  '--breadcrumb-height': ['24px', '28px', '26px', '28px', '22px'],
-  '--table-row-height': ['48px', '56px', '52px', '56px', '40px'],
-  '--datepicker-width': ['280px', '320px', '300px', '320px', '260px'],
-  '--datepicker-cell-size': ['36px', '40px', '38px', '44px', '32px'],
-  '--upload-height': ['160px', '180px', '160px', '180px', '140px'],
-  '--rating-star-size': ['16px', '18px', '16px', '20px', '14px'],
-  '--tooltip-padding-y': ['6px', '8px', '8px', '8px', '6px'],
-  '--tooltip-padding-x': ['10px', '14px', '12px', '12px', '10px'],
-  '--tooltip-radius': ['6px', '10px', '8px', '0px', '4px'],
-  '--drawer-width': ['400px', '440px', '420px', '440px', '380px'],
-  '--badge-height': ['18px', '20px', '18px', '22px', '16px'],
-  '--scrollbar-width': ['8px', '10px', '8px', '12px', '6px'],
-  // 骨架圆角规范写「同组件」，因此不登记令牌 —— 由使用点 inherit / --radius-card 决定
-}
+test('全部几何令牌在五套主题下一致 —— 切主题不会让窗口变大或变小', () => {
+  /*
+   * 注意 `--fs-`（字号）在判据里**不可省**：它不含 height/width/size 任何一个词根，
+   * 第一版迁移脚本就是漏了它，结果九条字号令牌仍逐主题取值 —— 而字号恰恰是
+   * 「窗口变大变小」观感最主要的来源。这条总守卫当时就是靠扫全量把它揪出来的。
+   */
+  const GEOMETRY =
+    /(height|width|padding|margin|gap|offset|\bsize\b|-size$|-w$|-h$|font-size|line-height|space-unit|indent|spacing|^-{2}fs-|^-{2}leading-)/
+  const EXEMPT = /(radius|outline|stroke-width|border-width|step-line-h|shadow|transform|scale|opacity)/
 
-test('组件套件速查总表（第三批 §20）：每格都必须与规范一致', () => {
+  const offenders = []
+  for (const name of TOKEN_NAMES) {
+    if (!GEOMETRY.test(name) || EXEMPT.test(name)) continue
+    const values = [...new Set(THEMES.map((t) => String(t.tokens[name])))]
+    if (values.length > 1) offenders.push(`${name}: ${values.join(' / ')}`)
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `以下几何令牌仍逐主题取值，切主题时布局会跳动：\n  ${offenders.join('\n  ')}`
+  )
+})
+
+test('圆角保持逐主题差异（风格特征，不影响盒子几何）', () => {
   const problems = []
-  for (const [token, column] of Object.entries(KIT_TABLE)) {
+  for (const [token, column] of Object.entries(RADIUS_TABLE)) {
     THEMES.forEach((theme, index) => {
-      const actual = theme.tokens[token]
-      if (actual !== column[index]) {
-        problems.push(`${theme.id} / ${token}：期望 ${column[index]}，实际 ${actual}`)
+      if (theme.tokens[token] !== column[index]) {
+        problems.push(`${theme.id} / ${token}：期望 ${column[index]}，实际 ${theme.tokens[token]}`)
       }
     })
   }
-  assert.deepEqual(problems, [], `组件套件尺寸与规范不符：\n  ${problems.join('\n  ')}`)
+  assert.deepEqual(problems, [], `圆角与规范不符：\n  ${problems.join('\n  ')}`)
+
+  // 圆角确实还在逐主题变化（否则「保留风格差异」名存实亡）
+  const radiusTokens = TOKEN_NAMES.filter((n) => /radius/.test(n))
+  const stillVarying = radiusTokens.filter(
+    (n) => new Set(THEMES.map((t) => String(t.tokens[n]))).size > 1
+  )
+  assert.ok(
+    stillVarying.length >= 20,
+    `圆角应保持逐主题差异，但只有 ${stillVarying.length} 个还在变化`
+  )
 })
 
 test('第三批 §16：骨架屏在 neo 用脉冲、其余用 shimmer（动画名逐风格不同）', () => {
@@ -364,11 +442,13 @@ test('第三批 §1：下拉面板阴影与 --shadow-float 逐套同值（因此
   )
 })
 
-test('第三批 §15/§19：抽屉遮罩模糊与滚动条只在 glass 有模糊、neo 无圆角', () => {
+test('第三批 §15/§19：抽屉遮罩模糊只在 glass 有；滚动条圆角逐风格、宽度统一', () => {
   assert.equal(getTheme('liquid-glass').tokens['--drawer-scrim-backdrop'], 'blur(8px)')
   assert.equal(getTheme('tech-minimal').tokens['--drawer-scrim-backdrop'], 'none')
+  // 圆角不影响盒子几何 → 仍逐风格（neo 全直角）
   assert.equal(getTheme('neo-brutalism').tokens['--scrollbar-thumb-radius'], '0px')
-  assert.equal(getTheme('technical-monochrome').tokens['--scrollbar-width'], '6px')
+  // 宽度属于几何 → 已统一到 tech 基准 8px（mono 原来是 6px）
+  assert.equal(getTheme('technical-monochrome').tokens['--scrollbar-width'], '8px')
 })
 
 test('聚焦态：五套风格各自的做法必须原样落地', () => {
@@ -431,7 +511,9 @@ test('价格：字号/字重/字体/颜色/小数处理按规范', () => {
 
   assert.equal(t('liquid-glass')['--fw-price'], '600')
   assert.match(t('liquid-glass')['--font-price'], /Geist Mono/)
-  assert.equal(t('liquid-glass')['--fs-price-decimals'], '15px')
+  // 字号已随「尺寸统一」与 tech 一致（原 glass 是 15px）：字重 / 字体 / 颜色仍逐风格，
+  // 但**字号**不再逐风格 —— 它是「窗口变大变小」观感的主要来源。
+  assert.equal(t('liquid-glass')['--fs-price-decimals'], '14px')
 
   assert.equal(t('bento-editorial')['--price-color'], '#d62872')
   assert.match(t('bento-editorial')['--font-price'], /Oxygen/)
@@ -539,7 +621,9 @@ test('基础层的风格语言（颜色/字体/阴影/动效）按规范', () =>
   assert.equal(t('technical-monochrome')['--shadow-float'], 'none')
   assert.equal(t('technical-monochrome')['--modal-shadow'], 'none')
   assert.equal(t('technical-monochrome')['--media-hover-scale'], '1')
-  assert.equal(t('technical-monochrome')['--leading-body'], '1.6')
+  // 行高已统一为 1.5（原 mono 是 1.6）：它决定每一行文本的高度，逐风格取值会让
+  // 整页高度随主题差十几像素 —— 见「尺寸统一」组的说明
+  assert.equal(t('technical-monochrome')['--leading-body'], '1.5')
   assert.equal(t('technical-monochrome')['--transition-interactive'], '0.15s ease')
   assert.match(t('technical-monochrome')['--font-display'], /JetBrains Mono/)
   assert.match(t('technical-monochrome')['--font-mono'], /JetBrains Mono/)

@@ -1,4 +1,4 @@
-﻿# starry-sky-trading-company-web
+# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -596,50 +596,84 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | --- | --- | --- | --- | --- |
 | `tech-minimal`（默认） | Tech Minimal 暗色科技极简 | `#0a0a0a` | `#3b82f6` | 无阴影、1px 边框分层；标题 Inter；价格 JetBrains Mono（小数小一号）；入场 translateY 12px，60ms 递增 |
 | `liquid-glass` | Liquid Glass Commerce 液态玻璃·电商 | 紫粉渐变网格 | `#6366f1` | 半透明面板 + `blur(16px) saturate(180%)`（悬停与聚焦提到 24px）；入场 scale 0.96 带弹性；背景网格 20s 流动 |
-| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Oxygen 且无小数；网格 gap 14px |
-| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 2px 纯黑描边 + 零模糊硬阴影；主按钮 `6px 6px 0 #000`、悬停 `translate(3px,3px)`、`0.1s linear`；标题压缩大写 |
-| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；4-6px 小圆角；基础间距单位 4px；价格 `$` 前缀 + `#141414` 底色、无小数；悬停只换边框色 |
+| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Oxygen 且无小数 |
+| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 2px 纯黑描边 + 零模糊硬阴影；主按钮 `6px 6px 0 #000`、悬停 `translate(3px,3px)`、`0.1s linear`；卡片硬投影 `4px→8px`；标题压缩大写 |
+| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；4-6px 小圆角；价格 `$` 前缀 + `#141414` 底色、无小数；悬停只换边框色（卡片描边转绿） |
 
-### 9.2 组件尺寸令牌（第二层）
+> **尺寸不参与风格区分。** 上表只描述颜色 / 字体 / 圆角 / 阴影 / 动效这些不改变盒子几何的差异；
+> 组件的高宽与间距五套完全相同，见 9.2。
 
-基础层令牌是「风格语言」，组件层令牌是**尺寸规范表**：
+### 9.2 尺寸统一（切主题不改变几何）
+
+**组件尺寸不再逐主题取值。** 凡是会改变盒子几何的量 —— 高 / 宽 / 内边距 / 间距 /
+字号 / 行高 / 密度基准 / 控件与轨道尺寸 —— 五套取值**完全相同**，统一以默认主题
+`tech-minimal` 为基准：
 
 ```
-组件           TechMin  LiquidGlass  Bento      NeoBrutal  TechMono
-输入框高度      40px     48px         44px       48px       36px
-输入框圆角      12px     9999px       24px       8px        6px
-主按钮高度      40px     48px         44px       52px       36px
-主按钮圆角      8px      14px         10px       0px        6px
-图标按钮        40×40    44×44        40×40      44×44      32×32
-卡片宽度        280px    300px        280/400px  280px      260px
-卡片内边距      20px     24px         18/28px    24px       16px
-卡片圆角        12px     20px         16/20px    12px       4px
-卡片图片高度    200px    220px        180/280px  200px      180px
-卡片间距        16px     20px         14px       16px       12px
-价格字号        20px     22px         18px       20px       24px
-提示框宽度      360px    380px        360px      380px      340px
-模态框宽度      480px    520px        480px      520px      440px
-下拉选项高度    36px     40px         38px       44px       32px
-标签高度        22px     26px         24px       26px       20px
-导航高度        64px     72px         68px       72px       56px
-分页按钮        36×36    40×40        38×38      44×44      32×32
-进度条高度      4px      6px          6px        8px        4px
-复选框          18px     20px         18px       22px       16px
-移动缩放系数    0.85     0.85         0.85       0.85       0.85
+组件              五套统一值
+输入框高度         40px
+主按钮高度         40px
+图标按钮           40×40
+卡片宽度           280px（大卡同宽）
+卡片内边距         20px
+卡片图片高度       200px
+卡片间距           16px
+价格字号           20px
+提示框宽度         360px
+模态框宽度         480px
+下拉选项高度       36px
+标签高度           22px
+导航高度           64px
+分页按钮           36×36
+进度条高度         4px
+复选框             18px
+间距单位           8px
+正文行高           1.5
+移动缩放系数       0.85
 ```
 
-完整矩阵（含聚焦态、悬停态、阴影、过渡时长）在 `src/theme/presets.js`，
-由 `test/themeContract.test.js` 的**组件尺寸速查总表**逐格断言 —— 改错一个数字就会失败。
+这样切换主题时布局不跳动，用户不会觉得「窗口变大或变小」。
+真机实测（1440 宽、同一份数据、逐套重载 `/home`）：整页高 **3761 ± 14px（0.37%）**，
+导航栏 64px 五套一致，页脚 428px；glass 与 mono 与默认主题**逐像素相同**。
+残留的十几像素只来自两个允许的来源：**字体族不同导致的文本换行差异**，
+以及 **neo 的 2px 描边**（它比其余四套粗 1px，是风格签名）。
+
+**按风格保留逐主题的是**（都不改变盒子几何）：颜色、字体族、字重/字距/大小写、
+圆角、阴影、滤镜、过渡与入场动效，以及描边粗细（1–2px）。
+
+```
+组件             TechMin  LiquidGlass  Bento   NeoBrutal  TechMono
+输入框圆角        12px     9999px       24px    8px        6px
+主按钮圆角        8px      14px         10px    0px        6px
+卡片圆角          12px     20px         16px    12px       4px
+卡片图片圆角      8px      16px         12px    8px        4px
+下拉面板圆角      12px     16px         12px    0px        4px
+复选框圆角        4px      6px          4px     0px        2px
+提示框圆角        6px      10px         8px     0px        4px
+描边粗细          1px      1px          1px     2px        1px
+```
+
+完整取值在 `src/theme/presets.js`（几何类集中在一个 `尺寸统一组` 注释块下的 `SHARED`，
+风格类留在逐主题 `MATRIX`）。两条守卫在 `test/themeContract.test.js`：
+
+1. **组件尺寸在五套主题下完全一致** —— 逐格断言上表的统一值；
+2. **全部几何令牌在五套主题下一致** —— 扫全部 415 个令牌兜底，判据里的 `--fs-`
+   与 `--leading-` 不可省（它们不含 height/width/size 任何词根，漏了就会静默漂移）。
+
+新增令牌时若它改变几何，却没有放进统一组，第 2 条会直接失败。
 
 移动端缩放统一在 `global.css` 末尾的三个媒体查询里用 `--mobile-*` 系数实现：
 控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95、圆角保持不变。
+（**注意**：主题在 `app.mount()` 之前就把令牌写成 `<html>` 的行内样式，行内样式优先于
+`:root`，所以**不能在 `@media` 里重定义令牌** —— 移动端缩放必须在每个使用点写成
+`calc(var(--x) * var(--mobile-*-scale))`。）
 
 ### 9.3 令牌的三层结构
 
 | 层 | 文件 | 职责 |
 | --- | --- | --- |
 | 名册与兜底 | `assets/styles/variables.css` | 令牌**名** + 默认主题的值；JS 执行前的首屏兜底 |
-| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源），写成「一行令牌 × 五列取值」的矩阵 |
+| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源）。分两块：`SHARED` = 五套同值（含几何统一组），`MATRIX` = 一行令牌 × 五列取值的逐主题差异（只剩风格类） |
 | 合成与应用 | `src/theme/compose.js` + `src/stores/theme.js` | 叠加「单项自定义」并把结果写到 `:root` |
 
 `main.js` 在 `app.mount()` **之前**调用 `useThemeStore(pinia).init()`，
