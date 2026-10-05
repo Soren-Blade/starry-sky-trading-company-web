@@ -38,8 +38,22 @@ function verifyCards(data) {
     return request.post(`${baseURL}/verifyCards`, data)
 }
 
+/**
+ * 我的工具授权列表（身份取自后端 JWT，不接受传 user_id）
+ *
+ * 与 getUserCards 的区别：那个回答「我兑换过哪些卡」，这个回答
+ * **「我现在能不能用某件工具」**。卡兑换过但授权已过期时，卡列表里仍有这张卡，
+ * 工具却已不能用 —— 所以工具页读这个，不读卡列表。
+ *
+ * 返回 data.entitlements[] 与 data.valid_tool_ids[]。
+ */
+function getMyEntitlements() {
+    return request.get(`${baseURL}/myEntitlements`)
+}
+
 export default {
     getUserCards,
+    getMyEntitlements,
     activateCard,
     verifyCard,
     verifyCards,

@@ -27,18 +27,50 @@
 
       <!-- Collection count moved to media section as badge -->
 
+      <!-- 需要卡密的工具要在**动手之前**就告知，因此标注放在按钮正上方：
+           放在媒体区会与「新」标记抢左上角，放在标题行又会被长分类名挤 -->
+      <p v-if="tool.requires_card" class="tool-access">
+        <span class="u-tag u-tag--warning tool-access-tag">
+          <AppIcon name="key" />
+          <span>{{ hasEntitlement ? TOOL_PAGE.activatedTag : TOOL_PAGE.needCardTag }}</span>
+        </span>
+        <span class="tool-access-hint">
+          {{ hasEntitlement ? TOOL_PAGE.activatedHint : TOOL_PAGE.needCardHint }}
+        </span>
+      </p>
+
       <div class="tool-actions">
-        <button class="tool-btn u-btn-primary" @click.stop="onOpenTool">打开工具</button>
+        <!-- 需要卡密且尚未激活：按钮变成入口，携带工具 id 跳到卡密激活页，
+             让用户在激活页就能看到「自己在激活哪件工具」，不必再选一次 -->
+        <RouterLink
+          v-if="tool.requires_card && !hasEntitlement"
+          class="tool-btn u-btn-primary tool-activate-link"
+          :to="{ path: '/user/kami', query: { tool_id: String(tool.id) } }"
+          @click.stop
+        >
+          {{ TOOL_PAGE.activateNow }}
+        </RouterLink>
+        <button v-else class="tool-btn u-btn-primary" @click.stop="onOpenTool">
+          {{ TOOL_PAGE.openTool }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import AppIcon from '@/components/AppIcon.vue'
+// 文案集中在 constants，改文案只碰一个文件
+import { TOOL_PAGE } from '@/constants/index.js'
 
 const props = defineProps({
   tool: { type: Object, required: true },
-  isFavorited: { type: Boolean, default: false }
+  isFavorited: { type: Boolean, default: false },
+  /**
+   * 当前用户是否已拥有这件工具的授权（由父组件从 /kamiApi/myEntitlements 的结果传入）。
+   * 不在这里自己请求：一张卡片一个请求会把列表打成 N+1 个 HTTP 调用。
+   */
+  hasEntitlement: { type: Boolean, default: false }
 });
 const emit = defineEmits(['open-tool', 'toggle-favorite']);
 
@@ -170,10 +202,42 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   overflow: hidden;
 }
 
+/* 需要卡密的标注行：标签 + 一句提示。放在按钮上方，尺寸与正文同档 */
+.tool-access {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  margin: 0;
+}
+
+.tool-access-tag {
+  /* .u-tag 给全高度/内边距/圆角/配色，这里只让它横向排图标与文字 */
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  flex-shrink: 0;
+}
+
+.tool-access-hint {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
 /* margin-top: auto 把操作区压到卡片底部，卡片等高时按钮在同一水平线 */
 .tool-actions {
   display: flex;
   margin-top: auto;
+}
+
+/* 激活入口是 RouterLink（真链接，可中键新开页），
+   因此要补齐 .u-btn-primary 在 <a> 上不会自动获得的排版属性 */
+.tool-activate-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 /* .u-btn-primary 提供底色/圆角/悬停位移与 disabled 样式，

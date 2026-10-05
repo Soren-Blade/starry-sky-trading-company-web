@@ -177,6 +177,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身
 | `/category/:id` | `CategoryDetail` | `pages/CategoryDetail.vue` | 分类商品 - 星辰商行 | |
 | `/cart` | `Cart` | `pages/Cart.vue` | 购物车 - 星辰商行 | |
 | `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 | |
+| `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 占位页，见下 |
 | `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
 | `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | |
 | `/other/appleId` | `appleId` | `pages/AppleId.vue` | appleId - 星辰商行 | |
@@ -271,7 +272,8 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
-| `Tool.vue` | 工具页：左侧分类轨（**≤991 单栏时分类换行，不做隐藏滚动条的横滚条**）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
+| `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
+| `VideoTool.vue` | 视频下载工具的**占位页**。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。给一个说明页，比让付过费的用户撞上 404 好：404 传达的是「这站坏了」，这一页传达的是「功能还没上线」。接上服务后只换这里的组件，`tool_path` 不用改 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
@@ -381,9 +383,46 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | --- | --- |
 | `toolData` | 工具数据。`fetchTools()` 会把接口返回的 `data` 与 `classifyToolsByClass()` 的结果合并进去，因此实际含 `tools` / `pagination` / `filters` / `classified` / `classes` |
 | `toolMeta` | 接口 `meta`（仅写入，未被读取） |
-| `activeCategory` | 当前选中分类，默认 `'all'` |
+| `activeCategory` | 当前选中分类，默认 `'all'`。除了真实 class（`dev`/`video`…）与 `all`，还接受两个**伪分类** `__card__`（需要卡密激活）与 `__free__`（免费工具）—— 见 `pages/Tool.vue` 的说明 |
 | `appleIds` | 共享 Apple ID 数据，实际是 `{ nanoCloud, fangQiangNan }` 对象 |
+| `validToolIds` | 当前用户**有效**的工具授权 id 数组。`null` = 不知道（未登录 / 查询失败），`[]` = 确定没有授权。两者对界面含义不同，不要合并 |
 | `fetchTools()` / `fetchAppleIds()` / `setActiveCategory()` / `init()` | 见 server README 的 `/toolApi` 接口说明 |
+| `fetchEntitlements()` | 拉 `/kamiApi/myEntitlements`。**失败时保留 `null`**：若写成 `[]`，一个已付费但查询失败的用户会被引导回激活页 |
+| `clearEntitlements()` | 退出登录时清空，避免同一标签页换账号后沿用上一个人的授权 |
+
+### 工具页的「使用方式」两个分类
+
+工具页左轨分两组，是**两根独立的轴**：
+
+| 组 | 回答的问题 | 取值 |
+| --- | --- | --- |
+| 使用方式 | **要不要卡密** | `__card__`（需要卡密激活）/ `__free__`（免费工具） |
+| 分类 | 工具的**主题** | `all` / `dev` / `image` / `video` / `outher` |
+
+两根轴不叠加：轨本身是单选的（同一个 `activeCategory`），
+所以不会出现「视频 + 免费」这种组合态，也**不需要第二套筛选状态**。
+实现上关键是分类过滤必须写成 `else if` —— 写成独立 `if` 的话，
+选「需要卡密」时还会再按 `class` 过滤一遍，得到空列表。
+
+需要卡密的工具由后端 `tools.requires_card` 标记（不是前端写死 id）。
+卡片按三态呈现：
+
+| 状态 | 标注 | 按钮 |
+| --- | --- | --- |
+| 不需要卡密 | 无 | 打开工具 |
+| 需要卡密、未激活 | 「需卡密激活」+ 一句提醒 | **立即激活** → `/user/kami?tool_id=<id>` |
+| 需要卡密、已激活 | 「已激活」 | 打开工具 |
+
+**已激活**的判定要同时满足三件事，缺一不可（`pages/Tool.vue` 的 `hasEntitlement`）：
+
+1. `tool.requires_card` 为真 —— 免费工具不存在「激活」，永远算可用
+2. 有身份（`userStore.userId`）—— 退出登录后不能沿用上一个账号留下的授权
+3. 授权**已查到** —— 查询失败时按未激活呈现。此时按钮指向激活页，
+   用户点进去能自助解决；反过来若把失败当成「已激活」，用户会看到一个点不动的按钮
+
+第 3 条是 `stores/tool.js` 里 `validToolIds` 用 `null`（不知道）而不是 `[]`（确定没有）
+的原因 —— 两者对界面含义不同。换账号时由 `pages/Tool.vue` 的 `watch(userStore.userId)`
+重取（清除或重新拉取），因此不需要在 logout 里反向调用 tool store。
 
 ### `theme.js` — `useThemeStore`
 
@@ -538,10 +577,18 @@ const requests = axios.create({
 | `userApi.js` | `getUserInfo`、`updateProfile(patch)`、`uploadAvatar({image})` | `GET /userApi/getUserInfo`、`PUT /userApi/profile`、`POST /userApi/avatar` |
 | `shop.js` | `getCategories(params)`、`getProducts(params)`、`getProduct(id)` | `/class/getCategories`、`/shop/getProducts`、`/shop/getProduct/:id` |
 | `toolApi.js` | `getTools`、`getToolClasses`、`getTool`、`getAppleIds` | `/toolApi/*` |
-| `kami.js` | `getUserCards(user_id, params)`、`activateCard(data)`、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
+| `kami.js` | `getUserCards(user_id, params)`、**`getMyEntitlements()`**、`activateCard(data)`、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
 | `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
 | `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
 | `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
+
+> `getMyEntitlements()` 与 `getUserCards()` 回答的是**两个不同问题**：
+> 后者是「我兑换过哪些卡」，前者是「我现在能不能用这件工具」。
+> 一张卡兑换过、授权已过期时，卡列表里仍有它，工具却已经不能用 ——
+> 工具页因此读前者，不读卡列表。
+>
+> `/uploadApi/image`（通用图片上传）目前**前端还没有调用方** ——
+> 头像是走 `uploadAvatar` 的 base64 路径。这个接口是给后续需要传图的场景准备的。
 
 `api/index.js` 把上述模块的具名导出汇总为一个对象并默认导出，组件里通过 `import api from '@/api/index'` 统一调用（如 `api.getProducts(params)`）。
 

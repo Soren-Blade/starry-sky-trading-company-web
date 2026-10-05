@@ -231,16 +231,64 @@ export async function createRenderEnv() {
       },
     })
 
+  /**
+   * 把 `to` 变成 href。
+   *
+   * **必须带上 query**：早先这里只取 `to.path`，于是 `:to="{ path, query }"`
+   * 渲染出来的 href 丢掉查询串 —— 于是「按钮跳转是否携带参数」这类断言
+   * 在 SSR 里根本无法覆盖（只能退化成源码级断言）。桩比真实行为少一块，
+   * 测试就会给出错误的信心，因此这里补齐（含数组值与 null 值的处理）。
+   */
+  const buildHref = (to) => {
+    if (typeof to === 'string') return to
+    if (!to || typeof to !== 'object') return '#'
+
+    const path = to.path || '/'
+    const query = to.query && typeof to.query === 'object' ? to.query : null
+    if (!query) return path
+
+    const search = new URLSearchParams()
+    for (const [key, value] of Object.entries(query)) {
+      if (value === null || value === undefined) continue
+      if (Array.isArray(value)) value.forEach((item) => search.append(key, String(item)))
+      else search.append(key, String(value))
+    }
+    const qs = search.toString()
+    return qs ? `${path}?${qs}` : path
+  }
+
   const routerLink = defineComponent({
     name: 'RouterLink',
     inheritAttrs: false,
     props: { to: { type: [String, Object], default: '/' } },
     setup(props, { slots, attrs }) {
-      const href = typeof props.to === 'string' ? props.to : props.to && props.to.path
-      return () => h('a', { class: 'stub-router-link', href: href || '#', ...attrs }, slots.default ? slots.default() : [])
+      return () =>
+        h('a', { class: 'stub-router-link', href: buildHref(props.to), ...attrs }, slots.default ? slots.default() : [])
     },
   })
 
+  /**
+   * 全局组件注册表。
+   *
+   * ⚠ **不要在这里补 PascalCase 别名。**
+   *
+   * 模板里的 `<RouterLink>` 只尝试 `registry['RouterLink']`、`camelize`、
+   * `capitalize(camelize(...))` 三种拼法，**不会**反推成 `router-link` ——
+   * 所以只注册 kebab 名时，`<RouterLink>` 会解析失败并被当成未知元素原样输出：
+   *
+   *   <RouterLink class="...">立即激活</RouterLink>
+   *
+   * 看着像该补一个 `RouterLink: routerLink`，但**别补**：真实应用里
+   * vue-router 插件已经以 PascalCase 注册了它，而调用方一旦按下面这样
+   * 同时传 `plugins: [router]` 与 `globalComponents`，重复注册会触发
+   * `Component "RouterLink" has already been registered` 警告，
+   * 而多个测试文件都在断言「渲染期间不得出现 Vue 警告」。
+   *
+   * 正确用法是**把 router 插件一起传进来**，让真的 RouterLink 生效：
+   *
+   *   const { globalComponents, router } = await createRenderEnv()
+   *   await renderComponent('components/ToolCard.vue', { props, plugins: [router], globalComponents })
+   */
   const globalComponents = {
     'router-link': routerLink,
     'router-view': passThrough('RouterView'),

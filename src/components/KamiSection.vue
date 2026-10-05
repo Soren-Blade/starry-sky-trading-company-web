@@ -197,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { notify } from '@/hooks/useToast/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
@@ -217,6 +218,7 @@ import {
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
 const toolStore = useToolStore()
+const route = useRoute()
 
 const { userKamis, pagination, loading, error } = storeToRefs(kamiStore)
 const { toolData } = storeToRefs(toolStore)
@@ -230,6 +232,29 @@ const canUseKami = computed(() => userStore.isLoggedIn && Boolean(userStore.user
 const tools = computed(() => (Array.isArray(toolData.value?.tools) ? toolData.value.tools : []))
 
 const toolOptions = computed(() => toToolOptions(tools.value))
+
+/**
+ * 深链预选：工具页的「立即激活」跳过来时带 `?tool_id=<id>`，
+ * 这里把它填进「选择工具」下拉，用户就不必再选一次。
+ *
+ * 两道关卡，缺一不可：
+ *   1. 工具列表必须已加载 —— 下拉选项不存在时赋值不会生效
+ *   2. id 必须真实存在于选项里 —— 手改 URL 传 `tool_id=999` 时**忽略**，
+ *      既不预选也不报错，页面其余部分照常可用
+ *
+ * @returns {boolean} 是否成功预选
+ */
+function applyToolFromQuery() {
+  const raw = route.query.tool_id
+  const wanted = Array.isArray(raw) ? raw[0] : raw
+  if (wanted == null || String(wanted).trim() === '') return false
+
+  const id = String(wanted).trim()
+  if (!toolOptions.value.some((option) => option.value === id)) return false
+
+  selectedToolId.value = id
+  return true
+}
 
 const tableColumns = KAMI_TABLE_COLUMNS
 const statusFilterOptions = STATUS_FILTER_OPTIONS
@@ -290,11 +315,24 @@ onMounted(async () => {
   if (!toolData.value?.tools?.length) {
     await toolStore.fetchTools()
   }
+  // 必须等工具列表到位，选项存在了才谈得上预选
+  applyToolFromQuery()
   // 身份可能仍在初始化，交给 watch 触发首次加载
   if (userStore.userId && canUseKami.value) {
     reload(1)
   }
 })
+
+/**
+ * 已在激活页时，从工具页点另一个工具的「立即激活」不会重新挂载组件，
+ * 只会改 query —— 因此还要监听 query 本身。
+ */
+watch(
+  () => route.query.tool_id,
+  () => {
+    applyToolFromQuery()
+  }
+)
 
 // 身份就绪（游客登录完成或账号登录成功）后再拉取卡密
 watch(

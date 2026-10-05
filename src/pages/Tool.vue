@@ -10,6 +10,32 @@
     <!-- 工作台两栏：左侧竖排筛选轨 + 右侧工具区 -->
     <div class="workspace-body">
       <aside class="workspace-rail" aria-label="工具筛选">
+        <!--
+          使用方式：与「分类」是**两根轴** —— 分类说的是主题（视频/开发/图片/其他），
+          这里说的是要不要卡密。轨是单选的，因此两者不会叠加，
+          选了一个就只看这一组的工具，不会出现「视频 + 免费」这种组合态。
+        -->
+        <div class="rail-group">
+          <p class="rail-label">使用方式</p>
+          <div class="rail-list">
+            <button
+              v-for="entry in accessEntries"
+              :key="entry.key"
+              type="button"
+              class="rail-item"
+              :class="{ 'rail-item--active': activeCategory === entry.key }"
+              :aria-pressed="activeCategory === entry.key"
+              @click="toolStore.setActiveCategory(entry.key)"
+            >
+              <span class="rail-icon" aria-hidden="true">
+                <AppIcon :name="entry.icon" />
+              </span>
+              <span class="rail-name">{{ entry.label }}</span>
+              <span class="rail-count">{{ entry.count }}</span>
+            </button>
+          </div>
+        </div>
+
         <div class="rail-group">
           <p class="rail-label">分类</p>
           <div class="rail-list">
@@ -77,6 +103,7 @@
             :key="tool.id"
             :tool="tool"
             :is-favorited="favoriteTools.has(Number(tool.id))"
+            :has-entitlement="hasEntitlement(tool)"
             :style="{ '--i': index }"
             @open-tool="handleOpenTool"
             @toggle-favorite="handleToggleFavorite"
@@ -106,8 +133,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import AppIcon from '@/components/AppIcon.vue'
 import ToolCard from '@/components/ToolCard.vue'
 import { useToolStore } from '@/stores/tool'
 import { useFavoriteStore } from '@/stores/favorite'
@@ -149,6 +177,48 @@ const railClasses = computed(() =>
 )
 
 /**
+ * 左轨「使用方式」两组的伪分类键。
+ *
+ * 用双下划线包起来，避免与后端可能出现的真实 class 值（`dev`/`video`…）相撞；
+ * 后端若真有一个叫 `__card__` 的 class，也只是这一组的筛选结果不对，不会串到别处。
+ */
+const ACCESS_CARD = '__card__'
+const ACCESS_FREE = '__free__'
+
+/** 工具是否**需要**卡密。缺字段按「不需要」处理，与数据库默认值 false 一致 */
+const requiresCard = (tool) => tool.requires_card === true
+
+/**
+ * 「需要卡密 / 免费」两组的条目与计数。
+ *
+ * 计数直接从当前工具列表算，不额外请求 —— 后端没有按这个维度聚合的接口，
+ * 而工具总数只有个位数，前端算一遍比多一个接口更省。
+ */
+const accessEntries = computed(() => {
+  const tools = toolData.value.tools || []
+  return [
+    { key: ACCESS_CARD, label: TOOL_PAGE.accessCard, icon: 'key', count: tools.filter(requiresCard).length },
+    { key: ACCESS_FREE, label: TOOL_PAGE.accessFree, icon: 'zap', count: tools.filter((t) => !requiresCard(t)).length },
+  ]
+})
+
+/**
+ * 当前用户对某件工具是否**已激活**。
+ *
+ * 三重要求，缺一不可：
+ *   · tool.requires_card —— 免费工具不存在「激活」，永远按可用处理
+ *   · hasIdentity —— 退出登录后不能沿用上一个账号留下的授权
+ *   · validToolIds 是**已查到**的（非 null）—— 查询失败时按未激活呈现，
+ *     按钮指向激活页，用户点进去能自助解决，而不是看到一个点不动的按钮
+ */
+const hasEntitlement = (tool) => {
+  if (!requiresCard(tool)) return true
+  if (!hasIdentity.value) return false
+  const ids = toolStore.validToolIds
+  return Array.isArray(ids) && ids.includes(Number(tool.id))
+}
+
+/**
  * 收藏集合来自 favorite store。
  *
  * 此前是组件内的 localStorage 逻辑；现在统一到 store，因为「我的收藏」页
@@ -163,8 +233,13 @@ const lower = (value) => (value == null ? '' : String(value).toLowerCase())
 const filteredTools = computed(() => {
   let list = toolData.value.tools || []
 
-  // 分类过滤
-  if (activeCategory.value !== 'all') {
+  // 使用方式过滤（需要卡密 / 免费）——与主题分类是两根轴，出现在同一轨里但互斥
+  if (activeCategory.value === ACCESS_CARD) {
+    list = list.filter(requiresCard)
+  } else if (activeCategory.value === ACCESS_FREE) {
+    list = list.filter((tool) => !requiresCard(tool))
+  } else if (activeCategory.value !== 'all') {
+    // 分类过滤
     list = list.filter((tool) => tool.class === activeCategory.value)
   }
 
@@ -212,7 +287,29 @@ onMounted(() => {
   toolStore.init()
   // 收藏与工具列表并行取；失败不影响工具网格
   favoriteStore.load()
+  // 授权同样并行取：它只影响需要卡密的工具的按钮文案，失败也不该挡住目录
+  toolStore.fetchEntitlements()
 })
+
+/**
+ * 身份变了就重取授权。
+ *
+ * 必要性：同一个标签页里 A 退出、B 登录时，A 的授权必须立刻作废 ——
+ * 否则 B 会看到 A 已激活的工具标成「已激活」。重取会直接覆盖，
+ * 因此不需要在 logout 里反向调用 tool store（少一条跨 store 依赖）。
+ * 退出登录（userId 变空）时显式清空。
+ */
+watch(
+  () => userStore.userId,
+  (next, prev) => {
+    if (next === prev) return
+    if (!next) {
+      toolStore.clearEntitlements()
+      return
+    }
+    toolStore.fetchEntitlements()
+  }
+)
 </script>
 
 <style scoped>

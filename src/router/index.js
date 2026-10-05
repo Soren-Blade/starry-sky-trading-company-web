@@ -95,6 +95,16 @@ const routes = [
     component: () => import('@/pages/AppleId.vue'),
     meta: { title: 'appleId - 星辰商行' }
   },
+  {
+    // 视频下载工具：解析服务暂停中，先给一个说明页。
+    // 数据库里 tool_path 已经是 /video/downloader，接通服务后只换这里的组件。
+    // 不加 requiresAuth：守卫在服务端（没有授权就用不了工具本身），
+    // 但页面本身只是说明文案，拦一道反而让用户不知道门票在哪买。
+    path: '/video/downloader',
+    name: 'videoDownloader',
+    component: () => import('@/pages/VideoTool.vue'),
+    meta: { title: '视频下载工具 - 星辰商行' }
+  },
   // ── 法务页（三页共用一个组件，由 meta.legalKey 选内容）───────
   {
     path: '/terms',
