@@ -2,7 +2,13 @@
   <div class="tool-card ui-card u-enter">
     <div class="ui-card-media">
       <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
-      <div v-else class="tool-icon" aria-hidden="true">{{ tool.icon }}</div>
+      <!-- 库里的 tools.icon 存的是 emoji（那是**数据**）：先映射成线性图标，
+           映射不到才原样显示 —— 运营随时可能录一个表里没有的 emoji，
+           不能因为不认识就渲染成空白 -->
+      <div v-else class="tool-icon" aria-hidden="true">
+        <AppIcon v-if="iconName" :name="iconName" />
+        <template v-else>{{ tool.icon }}</template>
+      </div>
       <span v-if="tool.is_new" class="u-tag u-tag--accent tool-new-badge">新</span>
       <button
         class="favorite-btn"
@@ -12,7 +18,10 @@
         :aria-label="isFavorited ? `取消收藏 ${tool.tool_name}` : `收藏 ${tool.tool_name}`"
         @click.stop="toggleFavorite"
       >
-        <span class="favorite-icon" aria-hidden="true">{{ isFavorited ? '❤️' : '🤍' }}</span>
+        <span class="favorite-icon" aria-hidden="true">
+          <!-- 实心/空心表达选中状态；颜色走 currentColor，仍是单色并随主题变化 -->
+          <AppIcon name="heart" :filled="isFavorited" />
+        </span>
         <span class="favorite-count">{{ tool.collection_count > 99 ? '99+' : tool.collection_count }}</span>
       </button>
     </div>
@@ -59,7 +68,9 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import { emojiToIconName } from '@/utils/iconSet.js'
 // 文案集中在 constants，改文案只碰一个文件
 import { TOOL_PAGE } from '@/constants/index.js'
 
@@ -72,7 +83,10 @@ const props = defineProps({
    */
   hasEntitlement: { type: Boolean, default: false }
 });
-const emit = defineEmits(['open-tool', 'toggle-favorite']);
+const emit = defineEmits(['open-tool', 'toggle-favorite'])
+
+/** 库里存的是 emoji，映射成图标名；映射不到返回空串（模板回退成原样显示） */
+const iconName = computed(() => emojiToIconName(props.tool?.icon))
 
 const onOpenTool = () => emit('open-tool', props.tool);
 const toggleFavorite = () => emit('toggle-favorite', props.tool);

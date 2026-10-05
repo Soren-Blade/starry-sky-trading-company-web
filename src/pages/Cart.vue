@@ -86,7 +86,9 @@
                 :aria-label="`查看 ${item.product_title || '商品'}`"
               >
                 <img v-if="item.product_image" :src="item.product_image" :alt="item.product_title" />
-                <span v-else class="cart-thumb-placeholder" aria-hidden="true">🛍️</span>
+                <span v-else class="cart-thumb-placeholder" aria-hidden="true">
+                  <AppIcon name="shopping-bag" />
+                </span>
               </router-link>
 
               <div class="cart-item-main">
@@ -237,6 +239,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/api/index'
+import AppIcon from '@/components/AppIcon.vue'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'

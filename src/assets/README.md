@@ -89,6 +89,26 @@ import 'ant-design-vue/dist/reset.css'   // antd 重置
 | --- | --- |
 | 输入框/搜索框 | `--input-height` `--input-padding-y/x` `--input-font-size` `--input-icon-size` `--input-icon-gap` `--input-focus-border/shadow/backdrop/outline/outline-offset` |
 | 图标按钮 | `--icon-btn-size` `--icon-btn-radius` `--icon-btn-icon-size` |
+
+## 图标：AppIcon + iconSet
+
+界面图标一律走 `components/AppIcon.vue` + `utils/iconSet.js`，**不用 emoji**。
+
+- **颜色只来自 `currentColor`**：AppIcon 里不写任何颜色，因此图标跟随所在位置的
+  文字色，也就跟随主题令牌。这是「图标颜色随主题变化」的唯一实现方式 ——
+  emoji 由字体渲染成彩色位图，CSS `color` 对它无效，所以用它当图标就不可能跟随主题。
+- **尺寸 `1em`**：跟着 font-size 走，因而自动跟随 `--fs-*` 与移动端缩放系数。
+- **线宽 `ICON_STROKE_WIDTH`（24 网格上 2.5）**：缩到项目里 16–20px 的图标格后
+  约 1.7–2px，与 1–2px 的描边体系同量级；圆滑由 `stroke-linecap/linejoin: round` 保证。
+- **`filled` prop**：实心填充（填充色仍是 currentColor），用于「收藏/未收藏」这类二元状态。
+- 需要与文字并排时靠 `AppIcon` 的 `vertical-align: -0.125em` 对齐，不要再包一层 span 调教。
+
+数据的 emoji（`sstc.tools.icon`、`product_categories.icon_url`）用
+`emojiToIconName()` 映射；**映射不到时调用方原样显示那个 emoji**（运营随时会录新的）。
+`emojiToIconName` 内部必须走 `utils/safeLookup.js` 的 `lookup` —— 键来自外部数据，
+`obj[key]` 会沿原型链取到 `toString` 这类函数。
+
+守卫：`test/noEmojiIcons.test.js`（界面不得出现 emoji + 映射表覆盖数据库实际取值）。
 | 卡片 | `--card-width(-lg)` `--card-padding(-lg)` `--card-image-height(-lg)` `--card-title-size` `--card-sub-size` |
 | 价格 | `--price-color` `--price-bg` `--micro-badge-padding` `--micro-badge-radius` |
 | 提示框 | `--toast-width` `--toast-padding-y/x` `--toast-radius` `--toast-icon-size` `--toast-font-size` `--toast-offset` `--toast-gap` |

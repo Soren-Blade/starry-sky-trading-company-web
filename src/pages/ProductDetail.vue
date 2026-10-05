@@ -33,7 +33,9 @@
         <!-- 媒体区 -->
         <figure class="product-media">
           <img v-if="product.main_image_url" :src="product.main_image_url" :alt="title" />
-          <div v-else class="product-media-placeholder" aria-hidden="true">🛍️</div>
+          <div v-else class="product-media-placeholder" aria-hidden="true">
+            <AppIcon name="shopping-bag" />
+          </div>
           <span v-if="isOut" class="u-tag u-tag--danger product-flag">
             {{ PRODUCT_GRID.soldOut }}
           </span>
@@ -137,7 +139,8 @@
               :aria-label="isFavorited ? `取消收藏 ${title}` : `收藏 ${title}`"
               @click="handleToggleFavorite"
             >
-              <span aria-hidden="true">{{ isFavorited ? '❤️' : '🤍' }}</span>
+              <!-- 实心/空心表达选中状态；颜色仍走 currentColor，因此仍是单色并随主题变化 -->
+              <AppIcon name="heart" :filled="isFavorited" />
             </button>
           </div>
 
@@ -180,6 +183,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import api from '@/api/index'
+import AppIcon from '@/components/AppIcon.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import { useShopStore } from '@/stores/shop'
 import { useThemeStore } from '@/stores/theme'

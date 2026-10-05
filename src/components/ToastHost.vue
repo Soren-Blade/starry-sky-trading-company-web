@@ -12,7 +12,7 @@
       @focusin="toast.pause(item.id)"
       @focusout="toast.resume(item.id)"
     >
-      <span class="u-toast-icon" aria-hidden="true">{{ toast.icon(item.type) }}</span>
+      <span class="u-toast-icon" aria-hidden="true"><AppIcon :name="toast.icon(item.type)" /></span>
       <span class="u-toast-text">{{ item.text }}</span>
       <button
         type="button"
@@ -34,6 +34,7 @@
  * 与 `--toast-*` 令牌；这里只负责把 store 里的条目渲染出来，
  * 以及把「悬停暂停」这条规范行为接到鼠标/键盘焦点上。
  */
+import AppIcon from '@/components/AppIcon.vue'
 import { useToastStore } from '@/stores/toast'
 
 const toast = useToastStore()

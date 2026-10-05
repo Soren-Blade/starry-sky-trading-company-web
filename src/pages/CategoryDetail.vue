@@ -27,7 +27,13 @@
       <ul class="children-list">
         <li v-for="child in children" :key="child.id">
           <router-link :to="`/category/${child.id}`" class="children-item">
-            <span class="children-icon" aria-hidden="true">{{ child.icon_url || '📦' }}</span>
+            <!-- 分类图标来自数据库（icon_url 里存的是 emoji）：先映射成线性图标，
+                 映射不到才原样显示 —— 运营随时可能录一个表里没有的 emoji，
+                 不能因为不认识就渲染成空白 -->
+            <span class="children-icon" aria-hidden="true">
+              <AppIcon v-if="childIconName(child)" :name="childIconName(child)" />
+              <template v-else>{{ child.icon_url }}</template>
+            </span>
             <span class="children-name">{{ child.category_name }}</span>
             <span class="children-arrow" aria-hidden="true">→</span>
           </router-link>
@@ -83,10 +89,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import api from '@/api/index'
+import AppIcon from '@/components/AppIcon.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import { useShopStore } from '@/stores/shop'
 import { useProductActions } from '@/hooks/useProductActions'
 import { resolveCategoryProducts } from '@/utils/categoryProducts.js'
+import { emojiToIconName } from '@/utils/iconSet.js'
 import { CATEGORY_PAGE, PAGES, PRODUCT_GRID } from '@/constants/index.js'
 
 const route = useRoute()
@@ -133,6 +141,14 @@ const children = computed(() => {
   if (found && Array.isArray(found.children) && found.children.length) return found.children
   return flatCategories.value.filter((item) => Number(item.parent_id) === categoryId.value)
 })
+
+/**
+ * 子分类的图标名。
+ *
+ * 数据库里存的是 emoji（`icon_url`），这里映射成线性图标名；
+ * 映射不到返回空串，调用方回退成原样显示那个 emoji。
+ */
+const childIconName = (child) => emojiToIconName(child?.icon_url)
 
 /**
  * 取某个分类自己的商品。

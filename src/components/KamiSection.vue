@@ -18,7 +18,7 @@
         <div class="console-side">
           <div class="panel activate-panel">
             <div class="panel-head">
-              <h3 class="panel-title"><span aria-hidden="true">✨</span> 激活新卡密</h3>
+              <h3 class="panel-title"><AppIcon name="sparkles" /> 激活新卡密</h3>
               <p class="panel-sub">选择工具后粘贴卡密号</p>
             </div>
 
@@ -60,7 +60,7 @@
             </p>
 
             <p class="activate-tips">
-              <span aria-hidden="true">⚡</span> 激活后可在"我的卡密"中查看详情
+              <AppIcon name="zap" /> 激活后可在"我的卡密"中查看详情
             </p>
           </div>
         </div>
@@ -85,7 +85,7 @@
                   role="status"
                   aria-label="加载中"
                 ></span>
-                <span v-else aria-hidden="true">🔄</span>
+                <AppIcon v-else name="refresh-cw" />
                 {{ loading ? '刷新中...' : '刷新' }}
               </button>
               <!--
@@ -157,7 +157,7 @@
 
               <span v-else-if="column.key === 'tool_id'">
                 <span v-if="getToolName(record.tool_id)" class="u-tag">
-                  <span aria-hidden="true">🔧</span> {{ getToolName(record.tool_id) }}
+                  <AppIcon name="wrench" /> {{ getToolName(record.tool_id) }}
                 </span>
                 <span v-else class="empty-small">未绑定工具</span>
               </span>
@@ -171,7 +171,7 @@
                   aria-label="复制脱敏卡号，仅用于核对"
                   @click="copyCardNo(record)"
                 >
-                  <span aria-hidden="true">📋</span>
+                  <AppIcon name="clipboard" />
                 </button>
               </div>
 
@@ -205,6 +205,7 @@ import { useToolStore } from '@/stores/tool'
 import api from '@/api/index'
 import { useKamiActivation } from '@/hooks/useKamiActivation'
 import SelectField from '@/components/SelectField.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import {
   KAMI_TABLE_COLUMNS,
   STATUS_FILTER_OPTIONS,

@@ -159,9 +159,17 @@ test('使用日期为空时显示「—」，有值时显示日期', async () =>
 })
 
 test('工具名按 tool_id 解析出来（数字与字符串 id 都能匹配）', async () => {
-  const tds = cells(await renderKami())
-  assert.equal(tds[6], '🔧 视频解析')
-  assert.equal(tds[14], '🔧 图片压缩')
+  const html = await renderKami()
+  const tds = cells(html)
+
+  // cells() 会剥掉标签，因此这里断言工具名文字 …
+  assert.equal(tds[6], '视频解析')
+  assert.equal(tds[14], '图片压缩')
+
+  // … 图标则以 AppIcon 的 SVG 形式出现在工具名旁边（不再是 emoji 字符）
+  const toolCells = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1])
+  assert.match(toolCells[6], /class="app-icon"/, `工具名前应有线性图标，实际 ${toolCells[6]}`)
+  assert.match(toolCells[14], /class="app-icon"/, `实际 ${toolCells[14]}`)
 })
 
 test('操作列：未使用的卡密显示「去激活」，已使用的显示占位', async () => {

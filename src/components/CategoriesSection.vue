@@ -24,13 +24,16 @@
             </span>
 
             <span class="category-visual" aria-hidden="true">
-              <!-- 分类色只作为低透明度的底纹出现：既保留分类辨识度，
-                   又不让高饱和渐变盖过主题的单一强调色 -->
-              <span
-                class="category-tint"
-                :style="{ backgroundImage: getEmojiGradient(category.icon_url) }"
-              ></span>
-              <span class="category-icon">{{ category.icon_url }}</span>
+              <!-- 底纹改用**主题强调色**（低透明度）：原先是从 emoji 算出来的
+                   多色渐变（useEmoji），既不受主题控制、又与「线性单色图标」
+                   的目标冲突。分类辨识度现在由图标本身承担。 -->
+              <span class="category-tint"></span>
+              <!-- 数据库里的 icon_url 存的是 emoji：映射成线性图标，
+                   映射不到才原样显示（运营随时可能录一个表里没有的） -->
+              <span class="category-icon">
+                <AppIcon v-if="categoryIconName(category)" :name="categoryIconName(category)" />
+                <template v-else>{{ category.icon_url }}</template>
+              </span>
             </span>
 
             <span class="category-name">{{ category.category_name }}</span>
@@ -75,8 +78,9 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useShopStore } from '@/stores/shop'
-import { getEmojiGradient } from '@/hooks/useEmoji'
+import AppIcon from '@/components/AppIcon.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
+import { emojiToIconName } from '@/utils/iconSet.js'
 import { SECTIONS } from '@/constants/index.js'
 
 const props = defineProps({
@@ -96,6 +100,14 @@ const isIndex = computed(() => props.variant === 'index')
 
 /** 索引行号：两位补零（01、02…），等宽字体下不会因位数变化而抖动 */
 const formatOrder = (index) => String(index + 1).padStart(2, '0')
+
+/**
+ * 分类的图标名。
+ *
+ * 数据库 `icon_url` 存的是 emoji（那是**数据**，改起来要动后台录入习惯），
+ * 这里映射成线性图标名；映射不到返回空串，模板回退成原样显示那个 emoji。
+ */
+const categoryIconName = (category) => emojiToIconName(category?.icon_url)
 
 /** 进入分类详情页（此前只 console.info 一句「待实现」） */
 const handleCategoryClick = (category) => {
@@ -160,11 +172,15 @@ const handleCategoryClick = (category) => {
 .category-tint {
   position: absolute;
   inset: 0;
+  /* 主题强调色 + 低透明度：不再由 emoji 决定颜色 */
+  background: var(--accent);
   opacity: 0.16;
 }
 
 .category-icon {
   position: relative;
+  /* 线性图标取强调色，跟随主题；emoji 回退时 color 对它无效（这正是要淘汰 emoji 的原因） */
+  color: var(--accent);
   font-size: var(--fs-h2);
   line-height: 1;
 }

@@ -50,10 +50,14 @@
               :aria-label="`查看 ${item.product_title}`"
             >
               <img v-if="item.product_image" :src="item.product_image" :alt="item.product_title" />
-              <span v-else class="detail-thumb-placeholder" aria-hidden="true">🛍️</span>
+              <span v-else class="detail-thumb-placeholder" aria-hidden="true">
+                <AppIcon name="shopping-bag" />
+              </span>
             </router-link>
             <span v-else class="detail-thumb">
-              <span class="detail-thumb-placeholder" aria-hidden="true">🛍️</span>
+              <span class="detail-thumb-placeholder" aria-hidden="true">
+                <AppIcon name="shopping-bag" />
+              </span>
             </span>
 
             <div class="detail-main">
@@ -170,6 +174,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api/index'
+import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'

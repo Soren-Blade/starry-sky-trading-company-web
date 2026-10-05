@@ -314,10 +314,18 @@ test('头像栏：上传按钮已收成图标（可见文字改成图标，文�
 
   const uploadAt = html.indexOf('class="u-icon-btn avatar-upload"')
   assert.ok(uploadAt > -1)
-  const button = html.slice(uploadAt, uploadAt + 500)
+  // 窗口给足：图标换成内联 SVG 后标记变长，截太短会把后面的可访问名切掉
+  const button = html.slice(uploadAt, uploadAt + 2000)
 
-  // 图标是文本字形，且对读屏隐藏（它只是装饰，语义由可访问名承担）
-  assert.match(button, /class="avatar-upload-icon" aria-hidden="true">↑</, '图标应是一个 aria-hidden 的字形')
+  // 图标是**线性 SVG**（AppIcon），且对读屏隐藏（它只是装饰，语义由可访问名承担）。
+  // 此前这里是一个 ↑ 文本字形 —— 换成 SVG 的原因正是「字形不受 CSS color 影响、
+  // 悬停变色与五套主题都会失效」，那对 emoji 同样成立。
+  assert.match(
+    button,
+    /class="app-icon avatar-upload-icon"/,
+    '图标应是 AppIcon 渲染的线性 SVG'
+  )
+  assert.match(button, /aria-hidden="true"/, '装饰性图标要对读屏隐藏')
 
   // 图标按钮必须有可访问名；且这段文字不能是可见文字
   assert.match(

@@ -27,9 +27,7 @@
     >
       <span class="select-value">
         <!-- icon 只是给文字做视觉标记，读屏念它反而是噪音 -->
-        <span v-if="selectedOption && selectedOption.icon" aria-hidden="true">
-          {{ selectedOption.icon }}
-        </span>
+        <AppIcon v-if="selectedOption && selectedOption.icon" :name="selectedOption.icon" />
         <span class="select-text" :class="{ 'select-text--empty': !selectedOption }">
           {{ selectedOption ? selectedOption.label : placeholder }}
         </span>
@@ -76,7 +74,7 @@
             :disabled="option.disabled"
             @click="handleSelect(option)"
           >
-            <span v-if="option.icon" aria-hidden="true">{{ option.icon }}</span>
+            <AppIcon v-if="option.icon" :name="option.icon" />
             <span class="select-option-text">
               <template v-for="(part, index) in splitSelectHit(option.label, keyword)" :key="index">
                 <mark v-if="part.hit" class="u-select-hit">{{ part.text }}</mark>
@@ -196,6 +194,7 @@ export function isSameSelectValue(a, b) {
 
 <script setup>
 import { computed, nextTick, ref, useAttrs, useId, watch } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { useClickOutside } from '@/hooks/useClickOutside/index.js'
 
 /** 面板内的固定文案：这里没有第二处消费方，因此不进 constants */

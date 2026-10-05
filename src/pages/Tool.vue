@@ -53,7 +53,7 @@
               :aria-pressed="activeCategory === category.class"
               @click="toolStore.setActiveCategory(category.class)"
             >
-              <span class="rail-icon" aria-hidden="true">{{ category.icon }}</span>
+              <span class="rail-icon" aria-hidden="true"><AppIcon :name="category.icon" /></span>
               <span class="rail-name">{{ category.class_name }}</span>
               <span v-if="Number.isFinite(Number(category.count))" class="rail-count">
                 {{ category.count }}
@@ -69,7 +69,7 @@
           :aria-pressed="showFavorites"
           @click="toggleFavorites"
         >
-          <span class="rail-icon" aria-hidden="true">❤️</span>
+          <span class="rail-icon" aria-hidden="true"><AppIcon name="heart" :filled="showFavorites" /></span>
           <span class="rail-name">{{ TOOL_PAGE.favorites }}</span>
         </button>
       </aside>
@@ -79,7 +79,7 @@
           <!-- 搜索框：图标定位与输入区让位来自共享类 .u-search / .u-search-icon -->
           <div class="u-search toolbar-search">
             <label class="visually-hidden" for="tool-search">搜索工具</label>
-            <span class="u-search-icon" aria-hidden="true">🔍</span>
+            <span class="u-search-icon" aria-hidden="true"><AppIcon name="search" /></span>
             <input
               id="tool-search"
               v-model="searchQuery"

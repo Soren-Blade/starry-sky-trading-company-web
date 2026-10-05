@@ -14,11 +14,12 @@
  * 后果分两类，本仓库都实际出现过：
  *
  * 1. **崩溃**：把函数的某个属性当数据用。
- *    `useEmoji.getEmojiInfo('toString')` 会取到函数，随后访问 `config.colors`
- *    得到 undefined，再索引 `finalColors[0]` 抛
+ *    本仓库实测过：一个「emoji → 渐变色」的映射被 `'toString'` 命中后取到函数，
+ *    随后访问 `config.colors` 得到 undefined，再索引 `finalColors[0]` 抛
  *    `TypeError: Cannot read properties of undefined (reading '0')`。
- *    实测确认（`toString` / `constructor` / `valueOf` / `hasOwnProperty` / `__proto__`
- *    均触发）。
+ *    （`toString` / `constructor` / `valueOf` / `hasOwnProperty` / `__proto__` 均触发。
+ *    那个映射属于「emoji 多色渐变」的旧方案，已随图标统一为线性单色而删除；
+ *    缺陷本身与 `lookup` 的价值不受影响。）
  *
  * 2. **数据被污染**：`typeof className === 'function'`，
  *    或 `if (!stats.x[key])` 对继承来的属性误判为「已存在」，导致真实数据不写入。

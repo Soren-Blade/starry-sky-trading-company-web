@@ -108,8 +108,7 @@ test('createBareMap：不污染全局 Object.prototype', () => {
 //
 // 说明：原先这里用 `styleUtils.getShadow`（utils/index.js）当真实调用点，
 // 但那个工具在生产代码里没有任何调用方，已随本次重构删除。
-// 现在真实调用点是 useEmoji（见 emojiProtoSafety.test.js）、
-// useClass 与 useKamiDisplay —— 都是**上线的**查表路径。
+// 现在真实调用点是 useClass 与 useKamiDisplay —— 都是**上线的**查表路径。
 
 test('useClass 的图标查表：原型链属性名回退到默认图标而不是取到函数', () => {
   for (const key of PROTO_KEYS) {
@@ -187,20 +186,16 @@ test('classifyToolsByClass：既有行为未受影响', () => {
   assert.equal(video.icon, video.icon, 'icon 应存在')
 })
 
-// ── useEmoji 的同源缺陷（实测曾抛 TypeError） ───────────────────
+// ── 原型链缺陷的根因演示 ────────────────────────────────────────
 
-test('useEmoji：原型链属性名曾抛 TypeError，现已修复', async () => {
-  const { getEmojiGradient } = await loadAppModule('/hooks/useEmoji/index.js')
-  for (const key of PROTO_KEYS) {
-    assert.doesNotThrow(() => getEmojiGradient(key), `getEmojiGradient(${JSON.stringify(key)})`)
-  }
-})
-
-test('safeLookup 与 useEmoji 的修复互相印证（同一根因）', () => {
-  // 直接演示根因：普通对象的原型链会让映射查询返回函数
-  const gradientMap = { '👤': { colors: ['#fff', '#000'] } }
-  const hitRaw = gradientMap['toString']
+test('safeLookup 挡住原型链取函数（同一根因的直接演示）', () => {
+  // 说明：这里原先用 `useEmoji.getEmojiGradient` 当真实调用点 ——
+  // 它曾因同一个根因抛 TypeError。useEmoji 是「emoji 多色渐变」那套旧方案，
+  // 已随「图标统一为线性单色」整体删除，因此这里改成直接演示根因本身，
+  // 真实调用点由上面 useClass / useKamiDisplay 两条用例覆盖。
+  const someMap = { '👤': { colors: ['#fff', '#000'] } }
+  const hitRaw = someMap['toString']
   assert.equal(typeof hitRaw, 'function')
   assert.equal(hitRaw.colors, undefined, '取到函数后 .colors 是 undefined —— 崩溃的根源')
-  assert.equal(lookup(gradientMap, 'toString', null), null, 'lookup 返回 null，后续可安全回退')
+  assert.equal(lookup(someMap, 'toString', null), null, 'lookup 返回 null，后续可安全回退')
 })

@@ -25,15 +25,15 @@
              不在这里再抄一遍邮箱地址 -->
         <dl class="help-contact">
           <div class="help-contact-row">
-            <dt><span aria-hidden="true">📞</span> 客服电话</dt>
+            <dt><AppIcon name="phone" /> 客服电话</dt>
             <dd><a :href="CONTACT.telHref">{{ CONTACT.phone }}</a></dd>
           </div>
           <div class="help-contact-row">
-            <dt><span aria-hidden="true">✉️</span> 客服邮箱</dt>
+            <dt><AppIcon name="mail" /> 客服邮箱</dt>
             <dd><a :href="CONTACT.mailtoHref">{{ CONTACT.email }}</a></dd>
           </div>
           <div class="help-contact-row">
-            <dt><span aria-hidden="true">🕐</span> 服务时间</dt>
+            <dt><AppIcon name="clock" /> 服务时间</dt>
             <dd>{{ CONTACT.hours }}</dd>
           </div>
         </dl>
@@ -64,6 +64,7 @@
  * 无障碍：模态约定（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）走
  * `useModalA11y`，与 LoginModal、ThemeSwitcher 是同一份实现。
  */
+import AppIcon from '@/components/AppIcon.vue'
 import { useModalA11y } from '@/hooks/useModalA11y'
 import { CONTACT } from '@/constants/index.js'
 

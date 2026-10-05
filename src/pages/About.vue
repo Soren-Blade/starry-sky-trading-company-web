@@ -68,23 +68,23 @@
           -->
           <dl class="contact-table">
             <div class="contact-row">
-              <dt class="contact-label"><span aria-hidden="true">📍</span> 地址</dt>
+              <dt class="contact-label"><AppIcon name="map-pin" /> 地址</dt>
               <dd class="contact-value">{{ CONTACT.address }}</dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><span aria-hidden="true">📞</span> 电话</dt>
+              <dt class="contact-label"><AppIcon name="phone" /> 电话</dt>
               <dd class="contact-value">
                 <a :href="CONTACT.telHref">{{ CONTACT.phone }}</a>
               </dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><span aria-hidden="true">✉️</span> 邮箱</dt>
+              <dt class="contact-label"><AppIcon name="mail" /> 邮箱</dt>
               <dd class="contact-value">
                 <a :href="CONTACT.mailtoHref">{{ CONTACT.email }}</a>
               </dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><span aria-hidden="true">🕐</span> 服务时间</dt>
+              <dt class="contact-label"><AppIcon name="clock" /> 服务时间</dt>
               <dd class="contact-value">{{ CONTACT.hours }}</dd>
             </div>
           </dl>
@@ -95,6 +95,7 @@
 </template>
 
 <script setup>
+import AppIcon from '@/components/AppIcon.vue'
 import { PAGES, CONTACT } from '@/constants/index.js'
 </script>
 

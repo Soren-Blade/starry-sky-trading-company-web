@@ -16,7 +16,8 @@
 export const SITE = {
   name: '星辰商行',
   nameEn: 'Starry Sky Trading Co.',
-  logo: '⭐',
+  /** AppIcon 的图标名（此前是 emoji ⭐，颜色不随主题变化） */
+  logo: 'star',
   tagline: '精选商品 · 品质生活',
 }
 
@@ -54,36 +55,42 @@ export const HERO = {
   primaryCta: '立即购物',
   secondaryCta: '了解更多',
   features: [
-    { icon: '🎁', text: '品质保证' },
-    { icon: '⚡', text: '快速配送' },
-    { icon: '💳', text: '安全支付' },
+    { icon: 'gift', text: '品质保证' },
+    { icon: 'zap', text: '快速配送' },
+    { icon: 'credit-card', text: '安全支付' },
   ],
 }
 
-/** 区块头文案（供 SectionHeader 使用） */
+/**
+ * 区块头文案（供 SectionHeader 使用）
+ *
+ * 这里的 `icon` 是 **AppIcon 的图标名**，不是 emoji ——
+ * emoji 不受 CSS `color` 影响，因此没法跟随主题变色，与
+ * 「线性单色图标 + 颜色随主题」的目标冲突。
+ */
 export const SECTIONS = {
   categories: {
-    icon: '🛍️',
+    icon: 'shopping-bag',
     title: '商品分类',
     description: '探索丰富多彩的商品世界，发现适合你的完美选择',
   },
   hot: {
-    icon: '🔥',
+    icon: 'flame',
     title: '热门商品',
     description: '精选热销商品，享受优质生活',
   },
   hotTools: {
-    icon: '🧰',
+    icon: 'wrench',
     title: '热门工具',
     description: '按收藏数排行的实用工具',
   },
   tools: {
-    icon: '🧰',
+    icon: 'wrench',
     title: '工具分享',
     description: '按分类浏览实用工具，收藏常用的那几个',
   },
   kami: {
-    icon: '🎴',
+    icon: 'ticket',
     title: '卡密管理',
     description: '查看并激活你的卡密',
   },
@@ -459,12 +466,13 @@ export const SEARCH_PAGE = {
    * 联系方式的取值来自 CONTACT，与「忘记密码」弹窗共用一份。
    */
   contacts: [
-    { key: 'phone', label: '客服电话', icon: '📞', href: CONTACT.telHref },
-    { key: 'email', label: '客服邮箱', icon: '✉️', href: CONTACT.mailtoHref },
+    { key: 'phone', label: '客服电话', icon: 'phone', href: CONTACT.telHref },
+    { key: 'email', label: '客服邮箱', icon: 'mail', href: CONTACT.mailtoHref },
   ],
   hoursLabel: '服务时间',
   paymentLabel: '结算方式',
-  paymentIcons: ['💳', '🏦', '📱'],
+  /** AppIcon 的图标名（此前是 emoji，颜色不随主题变化） */
+  paymentIcons: ['credit-card', 'landmark', 'smartphone'],
   copyright: '© 2024 星辰商行. All rights reserved.',
   /** 法务链接指向真实页面（Legal.vue），不再是 `#` */
   legalLinks: [

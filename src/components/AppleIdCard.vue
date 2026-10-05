@@ -24,7 +24,7 @@
             :aria-pressed="showPassword"
             @click.stop="togglePasswordVisibility"
           >
-            <span aria-hidden="true">{{ showPassword ? '🙈' : '👁️' }}</span>
+            <AppIcon :name="showPassword ? 'eye-off' : 'eye'" />
           </button>
         </div>
       </div>
@@ -46,7 +46,7 @@
         :aria-label="`复制账号 ${appleId.apple_id || ''}`"
         @click.stop="copyToClipboard(appleId.apple_id)"
       >
-        <span aria-hidden="true">📋</span> 复制账号
+        <AppIcon name="clipboard" /> 复制账号
       </button>
       <button
         v-if="appleId.password"
@@ -54,7 +54,7 @@
         aria-label="复制密码"
         @click.stop="copyToClipboard(appleId.password)"
       >
-        <span aria-hidden="true">🔑</span> 复制密码
+        <AppIcon name="key" /> 复制密码
       </button>
     </div>
   </div>
@@ -62,6 +62,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
 
 const props = defineProps({

@@ -5,7 +5,7 @@
       <div class="footer-content">
         <div class="footer-section about">
           <div class="footer-logo">
-            <span class="logo-icon" aria-hidden="true">{{ SITE.logo }}</span>
+            <AppIcon class="logo-icon" :name="SITE.logo" />
             <span class="logo-text">{{ SITE.name }}</span>
           </div>
           <p class="about-text">{{ FOOTER.about }}</p>
@@ -19,7 +19,7 @@
           <ul class="contact-links">
             <li v-for="item in FOOTER.contacts" :key="item.key">
               <a :href="item.href" class="contact-link" :aria-label="item.label">
-                <span aria-hidden="true">{{ item.icon }}</span>
+                <AppIcon :name="item.icon" />
                 <span>{{ item.label }}</span>
               </a>
             </li>
@@ -43,9 +43,8 @@
               v-for="(icon, index) in FOOTER.paymentIcons"
               :key="index"
               class="payment-icon"
-              aria-hidden="true"
             >
-              {{ icon }}
+              <AppIcon :name="icon" />
             </span>
           </div>
 
@@ -79,6 +78,7 @@
  * 链接全部指向真实路由（`/terms`、`/privacy`、`/rules`、`/about`）或真实协议
  * （`tel:` / `mailto:`）—— 改造前这里 6 个链接都是 `href="#"`。
  */
+import AppIcon from '@/components/AppIcon.vue'
 import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
 </script>
 

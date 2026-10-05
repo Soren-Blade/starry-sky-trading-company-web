@@ -62,7 +62,9 @@
           <ul class="order-thumbs">
             <li v-for="item in order.items.slice(0, 4)" :key="item.product_title" class="order-thumb">
               <img v-if="item.product_image" :src="item.product_image" :alt="item.product_title" />
-              <span v-else class="order-thumb-placeholder" aria-hidden="true">🛍️</span>
+              <span v-else class="order-thumb-placeholder" aria-hidden="true">
+                <AppIcon name="shopping-bag" />
+              </span>
               <span class="order-thumb-qty" aria-hidden="true">×{{ item.quantity }}</span>
             </li>
             <li v-if="order.items.length > 4" class="order-thumb order-thumb--more">
@@ -148,6 +150,7 @@
  */
 import { computed, onMounted, ref } from 'vue'
 import api from '@/api/index'
+import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'

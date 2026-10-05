@@ -21,7 +21,7 @@
 
         <ul class="hero-features u-enter" :style="{ '--i': 4 }">
           <li v-for="feature in HERO.features" :key="feature.text" class="hero-feature">
-            <span class="hero-feature-icon" aria-hidden="true">{{ feature.icon }}</span>
+            <AppIcon class="hero-feature-icon" :name="feature.icon" />
             <span>{{ feature.text }}</span>
           </li>
         </ul>
@@ -30,7 +30,7 @@
       <!-- 视觉面板：纯排版 + 一个品牌标记，不含装饰性渐变与光斑 -->
       <div class="hero-visual u-enter" :style="{ '--i': 2 }" aria-hidden="true">
         <div class="hero-panel">
-          <span class="hero-panel-mark">{{ SITE.logo }}</span>
+          <AppIcon class="hero-panel-mark" :name="SITE.logo" />
           <p class="hero-panel-text">{{ SITE.name }}</p>
           <p class="hero-panel-tagline">{{ SITE.tagline }}</p>
         </div>
@@ -50,6 +50,7 @@
  * 这些都属于规范明确排除的「装饰性渐变 / 多余光效 / 夸张动画」，
  * 且每套风格都要重新适配一次。现在视觉重量由排版、间距与一个表面面板承担。
  */
+import AppIcon from '@/components/AppIcon.vue'
 import { domUtils } from '@/utils/index.js'
 import { HERO, SITE } from '@/constants/index.js'
 

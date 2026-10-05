@@ -15,6 +15,7 @@
  *
  * 几何数据取自通用线性图标（Feather 风格）的公开形状。
  */
+import { lookup } from './safeLookup.js'
 
 /**
  * 线宽：24 网格上的值。
@@ -147,6 +148,101 @@ export const ICONS = {
     file: {
         paths: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6'],
     },
+    // ── 由界面 emoji 改造而来（2026-10-05「emoji → 线性图标」那次）──
+    gift: {
+        paths: ['M20 12v10H4V12', 'M2 7h20v5H2z', 'M12 22V7', 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z', 'M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'],
+    },
+    'credit-card': {
+        rects: [[2, 5, 20, 14, 2]],
+        paths: ['M2 10h20'],
+    },
+    /** 银行：柱廊立面 */
+    landmark: {
+        paths: ['M3 22h18', 'M6 18v-7', 'M10 18v-7', 'M14 18v-7', 'M18 18v-7', 'm12 2 9 5H3z'],
+    },
+    smartphone: {
+        rects: [[6, 2, 12, 20, 2]],
+        paths: ['M12 18h.01'],
+    },
+    flame: {
+        paths: [
+            'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+        ],
+    },
+    /** 票券：卡密（一张带缺口的凭据） */
+    ticket: {
+        paths: [
+            'M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z',
+            'M13 5v14',
+        ],
+    },
+    image: {
+        rects: [[3, 3, 18, 18, 2]],
+        circles: [[9, 9, 2]],
+        paths: ['m21 15-4.35-4.35a2 2 0 0 0-2.83 0L4 20'],
+    },
+    monitor: {
+        rects: [[2, 3, 20, 14, 2]],
+        paths: ['M8 21h8', 'M12 17v4'],
+    },
+    music: {
+        paths: ['M9 18V5l12-2v13'],
+        circles: [
+            [6, 18, 3],
+            [18, 16, 3],
+        ],
+    },
+    keyboard: {
+        rects: [[2, 6, 20, 12, 2]],
+        paths: ['M6 10h.01', 'M10 10h.01', 'M14 10h.01', 'M18 10h.01', 'M8 14h8'],
+    },
+    'check-circle': {
+        circles: [[12, 12, 10]],
+        paths: ['m9 12 2 2 4-4'],
+    },
+    /** 禁止：圈 + 斜杠（用于错误提示） */
+    ban: {
+        circles: [[12, 12, 10]],
+        paths: ['m4.9 4.9 14.2 14.2'],
+    },
+    info: {
+        circles: [[12, 12, 10]],
+        paths: ['M12 16v-4', 'M12 8h.01'],
+    },
+    'chevron-right': {
+        paths: ['m9 18 6-6-6-6'],
+    },
+    /** 闪光：装饰性强调（不画五角星，与 star 区分） */
+    sparkles: {
+        paths: [
+            'm12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z',
+            'M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z',
+        ],
+    },
+    'arrow-up': {
+        paths: ['M12 19V5', 'm5 12 7-7 7 7'],
+    },
+    /** 对话气泡：社媒/客服类分类（库里 icon_url 实际存的就是 💬） */
+    'message-circle': {
+        paths: ['M7.9 20A9 9 0 1 0 4 16.1L2 22z'],
+    },
+    /** 人群：多人共用的数据源（共享 Apple ID） */
+    users: {
+        paths: [
+            'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+            'M22 21v-2a4 4 0 0 0-3-3.87',
+            'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+            'M17 3.13a4 4 0 0 1 0 7.75',
+        ],
+    },
+    /** 盾牌告警：高风险提示（比 alert-triangle 更「防风险」的语义） */
+    'shield-alert': {
+        paths: [
+            'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z',
+            'M12 8v4',
+            'M12 16h.01',
+        ],
+    },
 }
 
 /**
@@ -160,6 +256,7 @@ export const ICONS = {
  * emoji（运营自己录一个 🚀），不能因为不在表里就渲染成空白。
  */
 export const EMOJI_TO_ICON = {
+    // 工具与商品
     '🎬': 'video',
     '📺': 'video',
     '🎥': 'video',
@@ -168,22 +265,83 @@ export const EMOJI_TO_ICON = {
     '📦': 'package',
     '🛠️': 'wrench',
     '🔧': 'wrench',
+    '🧰': 'wrench',
+    '📖': 'book-open',
+    '📋': 'clipboard',
+    // 状态与提示
     '⭐': 'star',
     '🌟': 'star',
-    '✨': 'star',
+    '✨': 'sparkles',
+    '✦': 'sparkles',
     '⚡': 'zap',
+    '🔥': 'flame',
+    '✅': 'check-circle',
+    '☑️': 'check-circle',
+    '✔️': 'check-circle',
+    '⛔': 'ban',
+    '❌': 'ban',
+    '🚫': 'ban',
+    'ℹ️': 'info',
+    '⚠️': 'alert-triangle',
+    '⚠': 'alert-triangle',
+    '🔄': 'refresh-cw',
+    '▶': 'chevron-right',
+    '▶️': 'chevron-right',
+    '↑': 'arrow-up',
+    // 账号与安全
     '🔑': 'key',
+    '🔐': 'key',
     '🔒': 'key',
     '❤️': 'heart',
+    '🤍': 'heart',
+    '👤': 'user',
+    '👥': 'users',
+    '👁️': 'eye',
+    '🙈': 'eye-off',
+    '🎴': 'ticket',
+    // 交易
     '🛒': 'shopping-cart',
     '🛍️': 'shopping-bag',
+    '💳': 'credit-card',
+    '🏦': 'landmark',
+    '🎁': 'gift',
+    // 分类与媒体
     '🔍': 'search',
-    '👤': 'user',
     '🎨': 'palette',
+    '🖼️': 'image',
+    '💻': 'monitor',
+    '🖥️': 'monitor',
+    '⌨️': 'keyboard',
+    '🎵': 'music',
+    '🎶': 'music',
+    // 联系方式
+    '📞': 'phone',
+    '✉️': 'mail',
+    '📧': 'mail',
+    '📨': 'mail',
+    '📩': 'mail',
+    '🕐': 'clock',
+    '📍': 'map-pin',
+    '📌': 'map-pin',
+    '📱': 'smartphone',
+    // 社媒与对话（分类 icon_url 里实际出现过 💬）
+    '💬': 'message-circle',
+    '🗨️': 'message-circle',
+    '💭': 'message-circle',
+    '📢': 'message-circle',
 }
 
-/** 查一个 emoji 对应的图标名；查不到返回空串 */
+/**
+ * 查一个 emoji 对应的图标名；查不到返回空串。
+ *
+ * ⚠ **必须走 `lookup` 而不是 `EMOJI_TO_ICON[x]`。**
+ * 键来自**外部数据**（数据库里的 `tools.icon` / `categories.icon_url`），
+ * 而普通对象的 `obj[key]` 会沿原型链查找 —— `EMOJI_TO_ICON['toString']`
+ * 会取到 `Object.prototype.toString` 那个**函数**并原样返回，
+ * 随后 AppIcon 找不到该名字，渲染成空 svg（不报错，只是图标没了）。
+ * 同一个根因在本仓库已经出现过一次，见 utils/safeLookup.js 的说明。
+ */
 export function emojiToIconName(emoji) {
     if (typeof emoji !== 'string') return ''
-    return EMOJI_TO_ICON[emoji.trim()] || ''
+    return lookup(EMOJI_TO_ICON, emoji.trim(), '')
 }

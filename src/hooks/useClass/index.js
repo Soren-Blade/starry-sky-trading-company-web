@@ -15,7 +15,7 @@ function classifyToolsByClass(tools, options = {}) {
     customClassMapping = {},     // 自定义class映射
     includeAllCategory = true,   // 是否包含"all"分类
     preserveAllTools = true,     // 是否在all中保留所有工具数据
-    allIcon = '🔧',             // all分类的图标
+    allIcon = 'wrench',         // all分类的图标（AppIcon 的图标名，不是 emoji）
     allName = '全部工具',        // all分类的名称
     allSortOrder = 0            // all分类的排序位置
   } = options;
@@ -234,22 +234,25 @@ function classifyToolsByClass(tools, options = {}) {
 export { classifyToolsByClass };
 
 /**
- * 分类缺少 icon 时的默认图标
+ * 分类缺少 icon 时的默认图标。
+ *
+ * 返回的是 **AppIcon 的图标名**，不再是 emoji —— 界面统一成线性单色图标，
+ * 颜色由 currentColor 跟随主题。调用方用 `<AppIcon :name="..." />` 渲染。
  * @param {string} toolClass
  * @returns {string}
  */
 function getDefaultIcon(toolClass) {
   const iconMap = {
-    video: '🎬',
-    image: '🖼️',
-    dev: '💻',
-    text: '📝',
-    audio: '🎵',
-    pdf: '📄',
-    code: '⌨️',
+    video: 'video',
+    image: 'image',
+    dev: 'monitor',
+    text: 'file',
+    audio: 'music',
+    pdf: 'file',
+    code: 'keyboard',
   };
   // 用自有属性查找：iconMap['toString'] 会取到 Object.prototype.toString
-  return lookup(iconMap, toolClass, '🔧');
+  return lookup(iconMap, toolClass, 'wrench');
 }
 
 /**

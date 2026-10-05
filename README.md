@@ -1,4 +1,4 @@
-# starry-sky-trading-company-web
+﻿# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -80,8 +80,7 @@ starry-sky-trading-company-web/
     │   ├── useAvatarUpload/index.js      # 头像：选图 → canvas 缩到 256px → 编码 data URL
     │   ├── useProductActions/index.js    # 商品的看详情 / 加购 / 立即下单（含未登录拦截）
     │   ├── useOpenTool/index.js          # 打开外部工具（地址校验、弹窗拦截、复用已开窗口）
-    │   ├── useClass/index.js             # 按 class 字段对工具分组
-    │   ├── useEmoji/index.js             # emoji → 渐变色（分类卡底纹用）
+    │   ├── useClass/index.js             # 按 class 字段对工具分组（图标取 AppIcon 的名字）
     │   ├── useKamiDisplay/index.js       # 卡密展示：状态文案/配色、列定义、工具名、日期
     │   ├── useKamiActivation/index.js    # 卡密激活流程：校验、提交、结果状态机
     │   ├── useToast/index.js             # 提示框门面（notify.success/warning/error/info）
@@ -548,7 +547,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | 组件 | 说明 |
 | --- | --- |
 | `HeroSection.vue` | 首屏 hero：eyebrow / 标题 / 副标题 / 双 CTA / 特性行 + 一个表面面板。**没有**随机星点、浮动 emoji 与光斑 —— 规范排除装饰性渐变与夸张动画 |
-| `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；`getEmojiGradient(category.icon_url)` 只作为 16% 透明度的底纹出现，不铺满整卡 |
+| `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；**底纹用 `--accent` + 16% 透明度**（跟随主题），分类图标经 `emojiToIconName` 转成线性 `AppIcon` |
 | `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.filteredProducts`（含搜索过滤），含加载 / 错误 / 空三种状态 |
 | `AppleIdSection.vue` | 汇总两个数据源的 Apple ID；加载与错误状态取自 `toolStore.appleIdsLoading` / `appleIdsError` |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
@@ -725,7 +724,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
 | `useBootScreen` | `visible` / `start()` / `finish()` | 首屏遮罩的三个时间闸（延迟出现 / 最短停留 / 最长等待），计时器可注入以便用假时钟测 |
 | `useRouteLoading` | `loading`（只读） / `markRouteLoading()` / `markRouteLoaded()` | 路由是否在切换（顶部进度条）。用开关而不是计数器：重定向会再触发一次 `beforeEach`，计数器会漂移 |
-| `useEmoji` | `getEmojiGradient` 等 | emoji → `linear-gradient(...)`。内含约 200 条 emoji 映射表 |
+| ~~`useEmoji`~~ | **已删除** | 原先提供 emoji → `linear-gradient(...)`（约 200 条映射），是「多色底纹由 emoji 决定」的旧方案。图标统一为线性单色后无人引用，连同它的两个测试文件一并删除 |
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
 | `useToast` | `notify.success/warning/error/info` | 提示框门面，供组件内外统一调用（路由守卫与 store action 也用它） |
 | `useKamiDisplay` | `getStatusText` / `getStatusColor` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与配色用 `lookupOr` 查表以避开原型链；工具 id 兼容数字与字符串 |
@@ -740,6 +739,43 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 全站支持**五套可切换的设计风格**，且每套风格从「风格语言」（颜色/字体/阴影/动效）
 到「组件尺寸」（输入框高度、按钮圆角、卡片宽度、模态框宽度……）都完全由设计令牌驱动。
 令牌清单与用法见 [`src/assets/README.md`](src/assets/README.md)。
+
+### 9.0 图标：一律用 `AppIcon` 的线性单色图标
+
+**界面里不得再用 emoji 当图标。** 这不是审美偏好，是两条硬约束：
+
+1. **emoji 的颜色不受 CSS 控制** —— 它由字体渲染成彩色位图，`color` 对它无效，
+   于是「悬停变色」「五套主题的强调色」在这些位置**全部失效**；
+2. 字形随平台/字体变化，同一个页面在不同系统上观感不一致。
+
+因此所有图标走 [`AppIcon.vue`](src/components/AppIcon.vue) + [`utils/iconSet.js`](src/utils/iconSet.js)：
+
+| 项 | 约定 |
+| --- | --- |
+| 颜色 | **只来自 `currentColor`**，组件里不写任何颜色 → 天然跟随主题令牌 |
+| 尺寸 | `1em`，跟着所在位置的 font-size（也就跟着主题的字号缩放）走走，不必逐个指定像素 |
+| 描边 | 24 网格上 2.5，`stroke-linecap/linejoin` 都是 round（线条偏粗且圆滑） |
+| 实心 | `filled` prop（填充色仍是 currentColor）—— 用于「收藏/未收藏」这类二元状态 |
+| 无障碍 | 默认 `aria-hidden`；图标按钮把 `aria-label` 给 `<button>` |
+
+**数据库里的 emoji 是「数据」，不改造数据。** `sstc.tools.icon` 与
+`product_categories.icon_url` 存的就是 emoji（运营录入习惯），渲染端用
+`emojiToIconName()` 映射成图标名；**映射不到时原样显示那个 emoji** ——
+运营随时可能录一个表里没有的（🚀），不能因为不认识就渲染成空白。
+
+> `emojiToIconName` 内部走 `utils/safeLookup.js` 的 `lookup`，**不能写成
+> `EMOJI_TO_ICON[key]`**：键来自外部数据，而普通对象会沿原型链查找，
+> `'toString'` 会取到 `Object.prototype.toString` 那个函数（本项目已踩过这个坑）。
+
+两个守卫测试把这件事钉住（`test/noEmojiIcons.test.js`）：
+
+- 剥掉注释后全仓扫描，任何 `.vue`/`.js` 里出现 emoji 即失败（`©` 与映射表本身除外）；
+- **映射表必须覆盖数据库里实际存在的 emoji**（当前是 `🎬 💻 📝 🖼️` 与 `💬`）——
+  这条是照真实数据定的，漏一个那张卡片就会渲染回彩色 emoji。
+
+> 历史：分类卡的底纹原先由 emoji 算出一个多色渐变（`hooks/useEmoji`），
+> 那是「颜色由 emoji 决定」的旧方案。图标统一后该模块无人引用，已连同它的
+> 两个测试文件删除；底纹改为 `--accent` + 低透明度（跟随主题）。
 
 ### 9.1 五套风格
 
@@ -1108,7 +1144,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 732 个用例）
+npm test             # 单元测试（node:test，共 711 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1199,9 +1235,10 @@ test/
 ├── modalLayering.test.js             # 「点不到」类缺陷守卫：关闭按钮的层叠层级与让位
 ├── useClass.test.js                  # 工具分类与统计（分组、排序、映射、缺字段兜底）
 ├── useSimpleTimeFormatter.test.js    # 时间格式化（时区、季度、相对时间、非法输入）
-├── useEmoji.test.js                  # emoji 渐变（已知/未知/空值/自定义/样式对象）
+├── noEmojiIcons.test.js                # 界面不得再用 emoji 当图标（剥注释后全仓扫描）+ 映射表覆盖数据库实际取值
 ├── useToken.test.js                  # token 双存储读写与响应头提取
-├── appIcon.test.js                    # 线性图标体系：颜色只来自 currentColor、模板引用的名字都存在`r`n├── navbarSearch.test.js              # 顶栏搜索：点击展开（悬停不展开）、**展开前后放大镜位置不变**、焦点只在本块内移动时不收起
+├── appIcon.test.js                    # 线性图标体系：颜色只来自 currentColor、模板引用的名字都存在
+├── navbarSearch.test.js              # 顶栏搜索：点击展开（悬停不展开）、**展开前后放大镜位置不变**、焦点只在本块内移动时不收起
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
@@ -1226,7 +1263,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 732 个用例。
+共 711 个用例。
 
 ### 主题契约测试
 

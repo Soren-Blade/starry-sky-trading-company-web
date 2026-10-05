@@ -17,8 +17,8 @@
               aria-controls="apple-id-guide"
               @click="showGuide = !showGuide"
             >
-              <span class="toggle-icon" aria-hidden="true">▶</span>
-              <span class="toggle-text"><span aria-hidden="true">📖</span> 使用说明（新手必看）</span>
+              <span class="toggle-icon" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+              <span class="toggle-text"><AppIcon name="book-open" /> 使用说明（新手必看）</span>
             </button>
 
             <!-- 展开内容留在左轨内部：窄栏排版（有序列表 + --fs-sm + --leading-body） -->
@@ -87,7 +87,7 @@
           <!-- 风险提示：语义色各取一份（--danger / --warning），标签走 .u-tag 语义变体 -->
           <div class="risk-warning">
             <div class="warning-item critical u-enter" :style="{ '--i': 0 }">
-              <span class="u-tag u-tag--danger"><span aria-hidden="true">⚠️</span>高风险</span>
+              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />高风险</span>
               <div class="warning-content">
                 <p class="warning-title">使用APP Store登录</p>
                 <p class="warning-text">
@@ -97,7 +97,7 @@
               </div>
             </div>
             <div class="warning-item scam u-enter" :style="{ '--i': 1 }">
-              <span class="u-tag u-tag--warning"><span aria-hidden="true">⚠️</span>防诈骗</span>
+              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />防诈骗</span>
               <div class="warning-content">
                 <p class="warning-title">防范诈骗行为</p>
                 <p class="warning-text">
@@ -197,6 +197,7 @@ import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
 import { useUserStore } from '@/stores/user'
 import AppleIdCard from '@/components/AppleIdCard.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { AUTH } from '@/constants/index.js'
 
 const toolStore = useToolStore()
@@ -312,7 +313,9 @@ onMounted(() => {
   border-color: var(--accent);
 }
 
-/* 箭头固定为 ▶，展开时转 90°：状态切换不改变字符宽度，也不换字形 */
+/* 图标固定为 chevron-right，展开时转 90°（指向下方）：状态切换只转不改尺寸，
+   与原先用 ▶ 字符时的取舍一致，但现在字形由我们自己的 SVG 决定，
+   不再随平台字体变化。 */
 .toggle-icon {
   display: inline-flex;
   align-items: center;

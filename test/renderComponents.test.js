@@ -199,14 +199,16 @@ test('渲染期间不产生 Vue 警告（模板绑错通常只表现为警告）
 
 test('SectionHeader：props 正确落到 DOM', async () => {
   const html = await render('/components/SectionHeader.vue', {
-    icon: '🎴',
+    icon: 'ticket',
     title: '卡密管理',
     description: '查看并激活你的卡密',
   })
   assert.match(html, /卡密管理/)
   assert.match(html, /查看并激活你的卡密/)
-  assert.match(html, /🎴/)
-  // 装饰性 emoji 必须有 aria-hidden
+  // icon 现在是 **AppIcon 的图标名**（此前是 emoji 字符）：渲染成线性 SVG
+  assert.match(html, /class="app-icon title-icon"/)
+  assert.match(html, /<svg[^>]*stroke="currentColor"/)
+  // 装饰性图标必须有 aria-hidden
   assert.match(html, /aria-hidden="true"/)
 })
 

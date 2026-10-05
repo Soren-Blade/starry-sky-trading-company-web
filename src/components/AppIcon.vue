@@ -1,8 +1,9 @@
 <template>
   <svg
     class="app-icon"
+    :class="{ 'app-icon--filled': filled }"
     viewBox="0 0 24 24"
-    fill="none"
+    :fill="filled ? 'currentColor' : 'none'"
     stroke="currentColor"
     :stroke-width="strokeWidth"
     stroke-linecap="round"
@@ -49,6 +50,14 @@ const props = defineProps({
     name: { type: String, required: true },
     /** 覆盖线宽（默认 2，24 网格上的常规值） */
     strokeWidth: { type: [Number, String], default: ICON_STROKE_WIDTH },
+    /**
+     * 实心填充。
+     *
+     * 用来表达「选中」这类二元状态（收藏 = 实心心，未收藏 = 空心）。
+     * 填充色仍是 `currentColor`，所以**依然是单色、依然随主题变化** ——
+     * 这与「多色 emoji 改成线性单色」的目标一致，只是多了一个实心/空心的维度。
+     */
+    filled: { type: Boolean, default: false },
 })
 
 const EMPTY = { paths: [], circles: [], rects: [] }

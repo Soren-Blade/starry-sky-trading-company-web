@@ -19,7 +19,7 @@
         <div class="profile-identity">
           <span class="u-avatar profile-avatar">
             <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" :alt="nickname || '用户头像'" />
-            <span v-else aria-hidden="true">👤</span>
+            <AppIcon v-else name="user" />
           </span>
           <div class="profile-identity-text">
             <p class="profile-name">{{ nickname || '未设置昵称' }}</p>
@@ -77,7 +77,7 @@
               <div class="avatar-profile">
                 <span class="u-avatar avatar-preview">
                   <img v-if="avatarShown" :src="avatarShown" :alt="nickname || '用户头像'" />
-                  <span v-else aria-hidden="true">👤</span>
+                  <AppIcon v-else name="user" />
                 </span>
 
                 <div class="avatar-desc">
@@ -106,9 +106,9 @@
                 :title="uploadLabel"
               >
                 <span v-if="preparing || uploading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-                <!-- 用文本字形而不是 emoji：emoji 不受 CSS color 影响，
-                     悬停变色与五套风格都会失效（✕ 关闭按钮也是同样的取舍） -->
-                <span v-else class="avatar-upload-icon" aria-hidden="true">↑</span>
+                <!-- 线性图标：颜色走 currentColor，因此悬停变色与五套主题都生效
+                     （这正是原先用 ↑ 文本字形的原因，现在由 AppIcon 正式承担） -->
+                <AppIcon v-else class="avatar-upload-icon" name="arrow-up" />
                 <span class="visually-hidden">{{ uploadLabel }}</span>
               </label>
             </div>
@@ -216,6 +216,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import AppIcon from '@/components/AppIcon.vue'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'

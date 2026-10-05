@@ -27,11 +27,17 @@ export const TOAST_MAX = 4
 const timers = new Map()
 let nextId = 1
 
+/**
+ * 提示类型 → **AppIcon 的图标名**（不再是 emoji）。
+ *
+ * 界面统一成线性单色图标：颜色由 currentColor 跟随主题，
+ * 语义色由 ToastHost 的 `.u-toast--{type}` 类决定。
+ */
 const ICONS = {
-  success: '✅',
-  warning: '⚠️',
-  error: '⛔',
-  info: 'ℹ️',
+  success: 'check-circle',
+  warning: 'alert-triangle',
+  error: 'ban',
+  info: 'info',
 }
 
 export const useToastStore = defineStore('toast', {
