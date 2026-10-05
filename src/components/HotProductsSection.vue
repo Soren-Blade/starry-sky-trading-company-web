@@ -146,15 +146,22 @@ const isBoard = computed(() => props.variant === 'board')
   min-width: 0;
 }
 
-/* 主推位：只有 bento 的规范定义了「大卡片 400px」，因此只有该主题跨两列。
- * 其余主题跨两列会变成一张 620×200 的横幅：图片被拉成 3:1、正文留出大片空白
- * （1440px 截图已确认）。 */
+/*
+ * 主推位：**五套主题都只跨一列**。
+ *
+ * 这里曾经有一条按主题分叉的规则 `:root[data-theme='bento-editorial']
+ * .products-cell--featured { grid-column: span 2 }`，理由是「只有 bento 的规范
+ * 定义了大卡片 400px」。那个 400px 已经随「尺寸统一」并入了 280px（见
+ * presets.js 的尺寸统一组），理由消失、规则却留着 —— 后果是真机实测出来的：
+ * 1199px 与 991px 下 bento 的九个商品从 3 行变 4 行，整页高比其余四套
+ * 多 475px（4942 vs 4467），正是「切主题让窗口变大」。
+ *
+ * 现在跨两列反而会变成一张 620×200 的横幅：图片被拉成 3:1、正文留出大片空白。
+ * 主题差异只能走令牌，不得在组件里按 data-theme 分叉 —— 这条由
+ * test/themeContract.test.js 的「组件样式不得按主题分叉」守住。
+ */
 .products-cell--featured {
   grid-column: span 1;
-}
-
-:root[data-theme='bento-editorial'] .products-cell--featured {
-  grid-column: span 2;
 }
 
 /* 骨架屏：高度按「卡片内边距 ×2 + 图片区 + 正文留白」拼出来，与真实卡片同形 */
@@ -204,10 +211,8 @@ const isBoard = computed(() => props.variant === 'board')
     grid-template-columns: 1fr;
   }
 
-  /* 单列时主推位不再跨列，否则会把栅格撑破。
-   * 必须连 bento 的高特异性选择器一起覆盖，否则会盖不住上面那条 :root[...] 规则。 */
-  .products-cell--featured,
-  :root[data-theme='bento-editorial'] .products-cell--featured {
+  /* 单列时主推位不再跨列，否则会把栅格撑破 */
+  .products-cell--featured {
     grid-column: span 1;
   }
 }

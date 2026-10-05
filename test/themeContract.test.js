@@ -167,6 +167,46 @@ test('radiusScale 不缩放胶囊圆角', () => {
   assert.equal(scaled['--radius-input'], '9999px')
 })
 
+test('组件样式不得按主题分叉：主题差异只能走令牌', () => {
+  /*
+   * 真机实测抓到的缺陷：`HotProductsSection.vue` 里有一条
+   *   `:root[data-theme='bento-editorial'] .products-cell--featured { grid-column: span 2 }`
+   * 理由是「只有 bento 的规范定义了大卡片 400px」。那个 400px 随「尺寸统一」
+   * 并入了 280px，理由消失而规则留着 —— 后果是 1199px / 991px 下 bento 的
+   * 九个商品从 3 行变 4 行，**整页高比其余四套多 475px**，正是
+   * 「切主题让窗口变大」。令牌层再干净，一条这样的规则就能绕过去。
+   *
+   * 所以这条守卫扫**全部** .vue 与 .css：剥掉注释后不得出现按主题分叉的选择器。
+   * （剥注释是必须的 —— 上面那段说明里就写着这个选择器本身。）
+   */
+  const files = []
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.(vue|css)$/.test(entry.name)) files.push(full)
+    }
+  }
+  walk(path.join(WEB_ROOT, 'src'))
+
+  const offenders = []
+  for (const file of files) {
+    const raw = fs.readFileSync(file, 'utf8')
+    const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '')
+    if (/\[data-theme=/.test(stripped)) {
+      const line = stripped.split('\n').findIndex((l) => /\[data-theme=/.test(l)) + 1
+      offenders.push(`${path.relative(WEB_ROOT, file)}:${line}`)
+    }
+  }
+
+  assert.ok(files.length > 30, `扫描面太小（只找到 ${files.length} 个 .vue/.css），守卫形同虚设`)
+  assert.deepEqual(
+    offenders,
+    [],
+    `以下文件按主题分叉了样式，切主题会改变布局，必须改为走令牌：\n  ${offenders.join('\n  ')}`
+  )
+})
+
 test('卡片悬停反馈：每套主题至少要有一个可见变化（阴影 / 位移 / 描边 / 图片缩放）', () => {
   /*
    * 「尺寸统一」之后，各套风格只能靠**样式**表达自己，悬停反馈就成了主要的层次手段；
