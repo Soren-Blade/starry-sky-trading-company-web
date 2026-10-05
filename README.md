@@ -646,9 +646,15 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Oxygen 且无小数 |
 | `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 2px 纯黑描边 + 零模糊硬阴影；主按钮 `6px 6px 0 #000`、悬停 `translate(3px,3px)`、`0.1s linear`；卡片硬投影 `4px→8px`；标题压缩大写 |
 | `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；4-6px 小圆角；价格 `$` 前缀 + `#141414` 底色、无小数；悬停只换边框色（卡片描边转绿） |
+| `bento-editorial` 补充 | — | — | — | 大标题的中文走 `Songti SC / Noto Serif SC / SimSun` 衬线回落（Playfair 无 CJK 字形），所以它的 `h1` 比其余四套窄约 28px —— 属「允许改字体」的范畴，不影响整页高 |
 
 > **尺寸不参与风格区分。** 上表只描述颜色 / 字体 / 圆角 / 阴影 / 动效这些不改变盒子几何的差异；
 > 组件的高宽与间距五套完全相同，见 9.2。
+>
+> 一处已知偏差：`technical-monochrome` 声明「等宽贯穿所有层级」，但等宽只对**拉丁与数字**
+> 成立 —— JetBrains Mono 不含 CJK 字形，中文回落到 `PingFang SC / Microsoft YaHei`
+> 这类**比例**字体。要真正等宽需引入固定宽度的中文字面（NSimSun / Sarasa Mono SC 等），
+> 那会改动全部中文的度量与换行，收益不明而风险明确，故**有意保留现状**。
 
 ### 9.2 尺寸统一（切主题不改变几何）
 

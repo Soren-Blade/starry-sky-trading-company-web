@@ -207,6 +207,48 @@ test('组件样式不得按主题分叉：主题差异只能走令牌', () => {
   )
 })
 
+test('组件不得在 JS / 模板层按主题分叉渲染（themeId 只允许出现在切换器与 store）', () => {
+  /*
+   * 上面那条守的是 CSS。JS 层同样能改变布局：`v-if="themeStore.themeId === 'x'"`
+   * 会让某个主题多渲染一整个区块。合法消费者只有主题系统自己 ——
+   * `theme/`（presets 的主题元数据、compose 按 id 合成取值）、`stores/theme.js`、
+   * 以及 `ThemeSwitcher.vue`（标记当前选项、渲染色板）。
+   *
+   * 注意**不禁止**读 store 的其它字段：`pricePrefix` / `priceDecimals` 是
+   * 主题提供的**数据**（mono 用 $ 且无小数），与布局无关，属正当用法。
+   */
+  const ALLOWED = [
+    'stores/theme.js',
+    'components/ThemeSwitcher.vue',
+  ]
+  const isAllowed = (rel) => rel.startsWith('theme/') || ALLOWED.includes(rel)
+
+  const files = []
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.(vue|js)$/.test(entry.name)) files.push(full)
+    }
+  }
+  walk(path.join(WEB_ROOT, 'src'))
+
+  const offenders = []
+  for (const file of files) {
+    const rel = path.relative(WEB_ROOT, file).split(path.sep).slice(1).join('/')
+    if (isAllowed(rel)) continue
+    const raw = fs.readFileSync(file, 'utf8')
+    const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '')
+    if (/\bthemeId\b/.test(stripped)) offenders.push(rel)
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `以下文件在 JS / 模板层引用了 themeId，主题差异应当走令牌：\n  ${offenders.join('\n  ')}`
+  )
+})
+
 test('卡片悬停反馈：每套主题至少要有一个可见变化（阴影 / 位移 / 描边 / 图片缩放）', () => {
   /*
    * 「尺寸统一」之后，各套风格只能靠**样式**表达自己，悬停反馈就成了主要的层次手段；
