@@ -3,6 +3,8 @@
     <HeroSection @shop-click="handleShopClick" />
     <CategoriesSection />
     <HotProductsSection />
+    <!-- 商品之后补一排工具：热门推荐不该只有商品 -->
+    <HotToolsSection />
   </div>
 </template>
 
@@ -10,6 +12,7 @@
 import HeroSection from '@/components/HeroSection.vue'
 import CategoriesSection from '@/components/CategoriesSection.vue'
 import HotProductsSection from '@/components/HotProductsSection.vue'
+import HotToolsSection from '@/components/HotToolsSection.vue'
 
 const handleShopClick = () => {
   const categoriesSection = document.querySelector('.categories-section')

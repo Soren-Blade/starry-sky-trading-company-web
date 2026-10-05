@@ -66,6 +66,53 @@ export function getAccessToken() {
     return readStorage('localStorage', ACCESS_KEY)
 }
 
+/**
+ * 解码 JWT 的载荷段（**不验签**）。
+ *
+ * 为什么不验签：这个 token 是我们自己签的，前端也没有密钥；验签本来就该由服务端做。
+ * 这里读 `exp` 只是为了「别带着一个必然过期的 token 出门」，读错了最坏的结果是
+ * 白跑一次刷新请求 —— 而服务端仍会照常拒绝被篡改的 token。**安全边界没有下移**。
+ *
+ * 解码失败（段数不对、base64 非法、不是 JSON）一律返回 null，绝不抛异常：
+ * 它会被请求拦截器**每个请求**调用一次，抛错等于整站不可用。
+ *
+ * @param {*} token
+ * @returns {object|null}
+ */
+export function decodeTokenPayload(token) {
+    if (typeof token !== 'string' || token === '') return null
+
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+
+    try {
+        // JWT 用 base64url：先换回标准 base64 再补齐 padding
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+
+        // atob 在 Node 与浏览器里都存在；不依赖 Buffer（浏览器里没有）
+        const json = globalThis.atob(padded)
+        const payload = JSON.parse(json)
+        return payload && typeof payload === 'object' ? payload : null
+    } catch {
+        return null
+    }
+}
+
+/**
+ * access token 距过期还有多少毫秒。
+ *
+ * @param {number} [nowMs] 便于测试注入
+ * @returns {number|null} 无 token / 无 exp / 解不开时返回 null（调用方按「不知道」处理）
+ */
+export function getAccessTokenRemainingMs(nowMs) {
+    const payload = decodeTokenPayload(getAccessToken())
+    if (!payload || typeof payload.exp !== 'number') return null
+
+    const now = typeof nowMs === 'number' ? nowMs : Date.now()
+    return payload.exp * 1000 - now
+}
+
 export function setAccessToken(token) {
     writeStorage('localStorage', ACCESS_KEY, token)
 }

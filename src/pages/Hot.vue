@@ -24,6 +24,10 @@
     </header>
 
     <HotProductsSection variant="board" />
+
+    <!-- 商品之后补一排工具。它自带区块头，因为上面的页头只讲商品
+         （「按销量与浏览量排序的精选商品」+「N 件在榜」） -->
+    <HotToolsSection variant="board" />
   </div>
 </template>
 
@@ -31,6 +35,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import HotProductsSection from '@/components/HotProductsSection.vue'
+import HotToolsSection from '@/components/HotToolsSection.vue'
 import { useShopStore } from '@/stores/shop'
 // 开场文案集中在 constants，改文案只碰一个文件
 import { PAGES } from '@/constants/index.js'
@@ -38,7 +43,12 @@ import { PAGES } from '@/constants/index.js'
 const shopStore = useShopStore()
 const { filteredProducts } = storeToRefs(shopStore)
 
-/** 在榜数量：与榜单区块同源（关键词过滤在数据层，见 stores/shop.js） */
+/**
+ * 在榜数量：与榜单区块同源（关键词过滤在数据层，见 stores/shop.js）。
+ *
+ * 这里仍然只数**商品** —— 上面的页头文案说的就是商品。
+ * 工具的条数由 HotToolsSection 自己的区块头呈现，两处不混算。
+ */
 const hitCount = computed(() => filteredProducts.value.length)
 </script>
 

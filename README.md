@@ -1,4 +1,4 @@
-# starry-sky-trading-company-web
+﻿# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -176,7 +176,8 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身
 | `/product/:id` | `ProductDetail` | `pages/ProductDetail.vue` | 商品详情 - 星辰商行 | |
 | `/category/:id` | `CategoryDetail` | `pages/CategoryDetail.vue` | 分类商品 - 星辰商行 | |
 | `/cart` | `Cart` | `pages/Cart.vue` | 购物车 - 星辰商行 | |
-| `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 | |
+| `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 |
+| `/search` | `SearchResults` | `pages/SearchResults.vue` | 搜索 - 星辰商行 | 关键词走 `?q=`，同时搜商品与工具 | |
 | `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 占位页，见下 |
 | `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
 | `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | |
@@ -266,9 +267,10 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 
 | 页面 | 结构 |
 | --- | --- |
-| `Home.vue` | `HeroSection` + `CategoriesSection` + `HotProductsSection`；Hero 的"去逛逛"按钮滚动到分类区块 |
+| `Home.vue` | `HeroSection` + `CategoriesSection` + `HotProductsSection` + `HotToolsSection`；Hero 的"去逛逛"按钮滚动到分类区块 |
 | `Categories.vue` | 页头 + `CategoriesSection` |
-| `Hot.vue` | 页头 + `HotProductsSection` |
+| `Hot.vue` | 页头（计数只数**商品**）+ `HotProductsSection` + `HotToolsSection` |
+| `SearchResults.vue` | 两个分区：商品 / 工具，各查各的接口（都带 `keyword`，服务端搜索）、各有一套加载/错误/空态。用 `Promise.allSettled` 让两个分区互不拖累。**工具分区需要身份**（接口是 JWT 保护的），无身份时给登录引导而不是报错 |
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
@@ -424,6 +426,38 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 的原因 —— 两者对界面含义不同。换账号时由 `pages/Tool.vue` 的 `watch(userStore.userId)`
 重取（清除或重新拉取），因此不需要在 logout 里反向调用 tool store。
 
+### 搜索：一个输入框，两级行为
+
+导航栏的搜索框有**两级**行为，这是刻意的：
+
+| 动作 | 发生什么 |
+| --- | --- |
+| 打字 | `v-model` 写入 `shopStore.searchKeyword`，首页/热卖榜的商品栅格**本地即时**过滤（零延迟反馈） |
+| 回车 | 跳到 `/search?q=<关键词>`，那里**同时**查商品与工具 |
+
+为什么要有第二级：工具的数据在另一个接口、另一个 store 里，**客户端过滤拿不到**。
+`/search` 是唯一能把两边结果放在一起的地方。
+
+两个接口**都已支持 `keyword`**（商品搜 `main_title`、工具搜 `tool_name`），
+因此结果页是服务端搜索，不需要新增后端接口，也不必把两份全量数据拉到前端。
+
+> ⚠ `/toolApi/getTools` 是 **JWT 保护**的（实测无 token 返回 401）。
+> 访客由 `App.vue` 的 init 自动创建，所以正常访问一定有身份；
+> 只有「刚退出登录 / 退出游客」例外。**任何调用工具接口的地方都必须先判断身份** ——
+> 否则用户看到的是「工具加载失败：token已失效或已过期」，像是页面坏了。
+> `Tool.vue`、`SearchResults.vue`、`HotToolsSection.vue` 三处都做了这个判断。
+
+### 热门工具
+
+`HotToolsSection` 与 `HotProductsSection` **并列**而不是合并：取数来源、排序字段、
+卡片组件都不同（商品按销量/浏览量，工具按 `collection_count`，卡片是 `ToolCard`）。
+硬塞进一个组件只会得到一堆 `isTool` 分支。
+
+- 排序用后端已有的 `sort_by=collection_count`，**不在前端重排**
+- **取不到工具就整块不渲染**：它是补充推荐，缺了不该留个空壳区块
+- 取数失败**静默**（不弹 toast）：首页不该为一块补充内容弹错误；收藏失败才提示（那是用户主动操作）
+- 榜单变体也**保留自己的区块头** —— 榜单页的页头（「热卖榜 / 按销量与浏览量排序的精选商品」+「N 件在榜」）讲的只是商品，第二个栅格没有标题的话用户会以为那还是商品
+
 ### `theme.js` — `useThemeStore`
 
 设计风格的运行时状态。**这里不写任何设计数值**（数值在 `src/theme/presets.js`）。
@@ -558,16 +592,53 @@ const requests = axios.create({
 > `baseURL` 在 **dev 下为空字符串**（请求走相对路径 → Vite 代理 → 后端，同源无 CORS），
 > 生产构建时注入 `.env.production` 里的绝对地址。详见 §10 与 §11。
 
-**请求拦截器**：每次请求从 localStorage 读取最新 token 并注入 `Authorization: Bearer <token>`。
-（不能在 `axios.create` 时求值 —— 那样拿到的永远是模块加载时的 `null`。）
+**请求拦截器**：
+1. 若调用方已显式设置 `Authorization`，**原样放行**（刷新请求就靠这个带上 refresh token）
+2. **主动刷新**：本地解 access token 的 `exp`，剩余不足 **30 秒**就先刷新再发请求
+3. 注入 `Authorization: Bearer <token>`（每次从 localStorage 读最新值 —— 不能在 `axios.create` 时求值，那样拿到的永远是模块加载时的 `null`）
 
 **响应拦截器**（成功分支）
 
-1. 读取响应头 `access-token` / `refresh-token` 并写入本地存储（后端头名为 `Access-Token` / `Refresh-Token`，axios 会小写化）
+1. 读取响应头 `access-token` / `refresh-token` 并写入本地存储（后端头名为 `Access-Token` / `Refresh-Token`，axios 会小写化）；拿到新凭据时**清掉刷新失败记录**
 2. 若响应体 `code === 401` 且不是刷新请求本身，则调用 `refreshToken()`，成功后用新 token 重放原请求；刷新失败则清理凭据并触发 `setAuthExpiredHandler`
 3. 最后返回 `res.data`（**所有调用方拿到的是服务端 JSON 报文，不是 axios response**）
 
 **响应拦截器**（失败分支）：把服务端 `message`/`status`/`code` 透传出去（不再压成固定字符串），超时会有专门提示。
+
+#### 长短 token 与无感刷新
+
+| 项 | 值 | 位置 |
+| --- | --- | --- |
+| access token（短） | 180 秒 | server `src/config/keyOptions.js` |
+| refresh token（长） | 7 天（**滑动**：每次刷新重签，活跃用户不掉线） | 同上 |
+| 提前刷新量 | 30 秒 | `request.js` 的 `REFRESH_SKEW_MS` |
+| 刷新失败冷却 | 5 秒 | `request.js` 的 `REFRESH_FAIL_COOLDOWN_MS` |
+
+**为什么要主动刷新。** 原先只在收到 401 时才刷新，于是每次过期都要白跑一趟：
+
+```
+请求 → 401 → 刷新 → 重放        3 个请求，第一个纯浪费，且这个请求的延迟翻倍
+```
+
+现在提前在本地判断（读 JWT 的 `exp`，**不发请求**）就能省掉那一趟：
+
+```
+刷新 → 请求                    2 个请求，没有一个白跑
+```
+
+两处刻意的设计：
+
+- **懒判断而不是定时器**：只有真要发请求时才检查，后台标签页因此不产生任何刷新流量（不需要 `visibilitychange` 逻辑）
+- **失败不阻断本次请求**：仍照常发出去，由 401 兜底路径接手。主动刷新只是「优化」，不该成为新的失败点
+
+**401 兜底路径完整保留。** 主动刷新覆盖不到两种情况：客户端时钟偏差、服务端提前失效
+（例如密钥轮换）。那时本地以为「还没过期」，只能靠 401 恢复 —— 这条路径没动，
+`test/request.test.js` 的 14 条用例全部照常通过。
+
+`decodeTokenPayload` **不验签**：token 是我们自己签的，前端也没有密钥，验签本来该由服务端做。
+读 `exp` 只是为了「别带着一个必然过期的 token 出门」，读错了最坏结果是一次多余的刷新请求；
+服务端仍会照常拒绝被篡改的 token，**安全边界没有下移**。解码失败一律返回 `null` 而不抛错 ——
+它会被每个请求调用一次，抛错等于整站不可用。
 
 ### `src/api/ask/`
 
@@ -1004,7 +1075,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 668 个用例）
+npm test             # 单元测试（node:test，共 724 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1122,7 +1193,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 668 个用例。
+共 724 个用例。
 
 ### 主题契约测试
 

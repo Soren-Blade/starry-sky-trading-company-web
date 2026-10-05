@@ -330,16 +330,30 @@ const toggleUserMenu = () => {
 }
 
 /**
- * 提交搜索：若当前页面不展示商品网格，则跳到热门推荐页，
- * 否则原地过滤（关键词已通过 v-model 实时写入 store）。
+ * 提交搜索：跳到搜索结果页，**商品与工具一起搜**。
+ *
+ * 此前这里的行为是「当前不在首页/热卖榜就跳热卖榜，否则什么都不做」——
+ * 也就是说它从来没有发起过一次搜索，只是把用户送到一个会被客户端过滤的栅格前，
+ * 而且那个栅格只有商品。工具的数据在另一个接口里，客户端过滤拿不到。
+ *
+ * 现在：
+ *   · 打字时仍由 v-model 写入 shopStore.searchKeyword，首页/热卖榜的栅格**即时**过滤商品
+ *     （本地零延迟的反馈，保留）；
+ *   · 回车才打开 `/search?q=`，那里同时查商品与工具。
+ *
+ * 两级行为是刻意的：即时反馈用本地过滤，完整搜索交给结果页。
  */
 const handleSearchSubmit = () => {
   menuOpen.value = false
   // 收起搜索框：结果已经在页面上了，留着展开只是占地方
   closeSearch()
-  if (route.name !== 'Home' && route.name !== 'Hot') {
-    router.push({ name: 'Hot' })
-  }
+
+  const keyword = String(shopStore.searchKeyword || '').trim()
+  // 空关键词不跳：结果页没有关键词时只会显示引导语，跳过去等于把用户从一个
+  // 空输入框送到另一个空页面
+  if (!keyword) return
+
+  router.push({ name: 'SearchResults', query: { q: keyword } })
 }
 
 // ── 搜索图标的展开 / 收起 ──────────────────────────────────────

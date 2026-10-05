@@ -27,6 +27,15 @@ const routes = [
     meta: { title: '工具分类 - 星辰商行' },
   },
   {
+    // 搜索结果页：关键词放 query，因此结果可以直接分享/收藏链接。
+    // 不用 /search/:q —— 路径段里的中文与特殊字符会带来额外的编码问题，
+    // 而 query 由 vue-router 负责编解码。
+    path: '/search',
+    name: 'SearchResults',
+    component: () => import('@/pages/SearchResults.vue'),
+    meta: { title: '搜索 - 星辰商行' },
+  },
+  {
     path: '/about',
     name: 'About',
     component: () => import('@/pages/About.vue'),

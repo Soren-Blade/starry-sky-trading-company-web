@@ -72,6 +72,11 @@ export const SECTIONS = {
     title: '热门商品',
     description: '精选热销商品，享受优质生活',
   },
+  hotTools: {
+    icon: '🧰',
+    title: '热门工具',
+    description: '按收藏数排行的实用工具',
+  },
   tools: {
     icon: '🧰',
     title: '工具分享',
@@ -180,7 +185,7 @@ export const PRODUCT_GRID = {
   errorPrefix: '商品加载失败：',
   /** 搜索图标按钮的无障碍名（图标型按钮必须有 aria-label） */
   searchLabel: '搜索',
-  searchPlaceholder: '搜索商品或分类',
+  searchPlaceholder: '搜索商品或工具',
   searchEmpty: (keyword) => `没有找到与「${keyword}」相关的商品`,
   soldOut: '缺货',
   viewsLabel: '浏览',
@@ -380,7 +385,7 @@ export const TOOL_PAGE = {
   invalidPath: '工具地址无效',
   popupBlocked: '浏览器拦截了新窗口，请允许本站弹出窗口',
   // ── 使用方式两个分类（与「分类」是两根轴：这里说的是要不要卡密）──
-  accessCard: '需要卡密激活',
+  accessCard: '卡密激活',
   accessFree: '免费工具',
   // 卡片上的标注与按钮
   needCardTag: '需卡密激活',
@@ -408,6 +413,35 @@ export const VIDEO_TOOL = {
     '授权时长会照常计算，服务上线后即可使用。',
   backToTools: '返回工具页',
   myCards: '查看我的卡密',
+}
+
+/**
+ * 搜索结果页
+ *
+ * 一个关键词**同时**搜商品与工具，两个分区各有自己的加载/错误/空态。
+ * `limit` 放在这里而不是页面里，是为了让「每类最多几条」只有一个出处。
+ */
+export const SEARCH_PAGE = {
+  eyebrow: 'SEARCH',
+  title: '搜索',
+  titleWith: (keyword) => `「${keyword}」的搜索结果`,
+  description: '同时搜索商品与工具。',
+  productSection: '商品',
+  toolSection: '工具',
+  countLabel: (n) => `${n} 条`,
+  limit: 12,
+  // 空关键词不请求，直接引导
+  emptyKeywordTitle: '想找什么？',
+  emptyKeywordHint: '在上方搜索框输入关键词，商品和工具会一起搜。',
+  goHot: '看热门推荐',
+  goTools: '逛工具页',
+  // 两个分区各自的三态文案
+  productErrorPrefix: '商品加载失败：',
+  toolErrorPrefix: '工具加载失败：',
+  productEmpty: (keyword) => `没有找到与「${keyword}」相关的商品`,
+  toolEmpty: (keyword) => `没有找到与「${keyword}」相关的工具`,
+  toolNeedIdentity: '登录后即可搜索工具。',
+  toolLoading: '正在加载工具…',
 }
 
 /** 页脚 */export const FOOTER = {
