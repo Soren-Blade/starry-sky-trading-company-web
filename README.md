@@ -1029,7 +1029,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
 | 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
 | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
-| 事务页外壳 | `.page-shell` / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
+| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（1000px，会员/积分族七个阅读型页面） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
 | 事务页面板 | `.page-panel(-head)` / `.page-note(--warning/--error)` / `.page-empty(-title/-hint)` / `.page-actions` |
 
 > **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：

@@ -1132,6 +1132,15 @@ button.u-tag:hover:not(.u-tag--accent) {
   padding: var(--section-gap) var(--container-padding);
 }
 
+/* 窄页变体：会员/积分族（会员中心、会员套餐、积分中心、积分明细、每日签到、
+   我的优惠券、个人中心）是「一条主叙事 + 若干信息块」的阅读型页面，
+   1320 宽会让卡片被拉成大片空白。这七个页面从一开始就写着这个修饰类，
+   但规则一直没落地（`--container-narrow` 此前只有 `.page-shell-desc` 用），
+   2026-10-12 的真实浏览器核验才发现 —— 所以它必须放在 `.page-shell` 之后。 */
+.page-shell--narrow {
+  max-width: var(--container-narrow);
+}
+
 /* 标题带：默认竖排；--row 变体让动作/计数贴右侧（列表页用） */
 .page-shell-head {
   display: flex;
