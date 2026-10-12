@@ -568,6 +568,48 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 ---
 
+### `member.js` — `useMemberStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、6 项权益解锁态、待办） |
+| `plans` / `levels` | 套餐列表与等级对照表。`levels` 原先被丢弃，`MemberPlans.vue` 的对照表需要它 |
+| `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编（支付通道未接入的如实说明） |
+| `isMember` / `level` / `levelName` / `points` / `benefits` / `todos` | 派生 getter |
+| `hasExpiringTodo` | 是否存在「会员即将到期」待办（按 `type` 在 `todos` 里找） |
+| `fetchOverview({silent})` / `fetchPlans({silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空 |
+
+两条纪律写在文件头：**不做本地乐观更新**（会员状态只能由服务端确认），
+以及「**不适用以键不存在表达**」—— 非会员的响应里没有 `points` / `coupons` /
+`days_left`，判断必须用 `!== undefined`，写 `=== 0` 会把「不适用」当成「零」。
+401 不算错误（未登录时 `error` 置空、数据置 `null`）。
+
+### `points.js` — `usePointsStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `account` / `calendar` | 积分账户与签到日历（两个独立接口，各自有加载态） |
+| `history` / `page` / `limit` / `total` / `totalPages` / `historyType` | 明细列表与筛选分页 |
+| `summary` | 明细的「累计获得 / 累计消耗」 |
+| `points` / `pointsValue` / `multiplier` / `isMember` / `expireSoon` | 派生 getter（`pointsValue` 是折抵金额，不是积分） |
+| `todayChecked` / `streak` | 签到派生状态，`streak` 供「连续签到 N 天」 |
+| `hasPrev` / `hasNext` | 分页按钮可用性（只有一页时不渲染控件） |
+| `fetchAccount` / `fetchHistory({page})` / `setHistoryType` / `fetchCalendar({month})` / `doCheckin` / `reset` | 动作 |
+
+**改筛选要把页码拉回第 1 页**（`setHistoryType` 已处理）：否则在第 3 页换类型
+会落到一个不存在的页码上。
+
+### `coupon.js` — `useCouponStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `list` / `status` / `page` / `limit` / `total` / `totalPages` | 券列表与三态页签 |
+| `counts` | 服务端给的角标（`available` / `used` / `expired` / `expiring_soon`）—— **前端不自己数** |
+| `availableCount` / `hasAny` / `hasExpiring` / `expiringCount` / `hasNext` | 派生 getter |
+| `fetchMine({page})` / `setStatus(status)` / `doClaim(templateId)` / `reset` | 动作 |
+
+角标来自服务端而不是本地 `filter`：列表是分页的，本地数出来的只会是当前页的数量。
+
 ## 6. 组件清单
 
 ### 布局与通用
@@ -725,6 +767,14 @@ const requests = axios.create({
 | `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
 | `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
 | `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
+| `member.js` | `getOverview`、`getPlans` | `/memberApi/getOverview`、`/memberApi/getPlans`（**游客可读**） |
+| `points.js` | `getAccount`、`getHistory(params)`、`checkin`、`getCheckinCalendar(params)` | `/pointsApi/*` |
+| `coupon.js` | `getMine(params)`、`claim(template_id)` | `/couponApi/*` |
+
+> `member.js` 只封了 P0 已实现的两个端点。`getGrowthHistory` / `getBenefits` 与
+> `task` / `invite` / `notify` / `hero` 四个模块**故意先不写** ——
+> 服务端这 14 个端点只有契约（见 `server/docs/API.md` §4），
+> 前端先建 API 层只会得到一批永远 404 的函数。
 
 > `getMyEntitlements()` 与 `getUserCards()` 回答的是**两个不同问题**：
 > 后者是「我兑换过哪些卡」，前者是「我现在能不能用这件工具」。
@@ -1185,7 +1235,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 711 个用例）
+npm test             # 单元测试（node:test，共 720 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1305,7 +1355,7 @@ test/
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 711 个用例。
+共 720 个用例。
 
 ### 主题契约测试
 
