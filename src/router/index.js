@@ -110,6 +110,12 @@ const routes = [
     meta: { title: '积分中心 - 星辰商行', requiresAuth: true }
   },
   {
+    path: '/points/history',
+    name: 'PointsHistory',
+    component: () => import('@/pages/PointsHistory.vue'),
+    meta: { title: '积分明细 - 星辰商行', requiresAuth: true }
+  },
+  {
     path: '/checkin',
     name: 'Checkin',
     component: () => import('@/pages/Checkin.vue'),
