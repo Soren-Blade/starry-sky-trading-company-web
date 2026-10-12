@@ -109,6 +109,12 @@ const routes = [
     component: () => import('@/pages/Points.vue'),
     meta: { title: '积分中心 - 星辰商行', requiresAuth: true }
   },
+  {
+    path: '/checkin',
+    name: 'Checkin',
+    component: () => import('@/pages/Checkin.vue'),
+    meta: { title: '每日签到 - 星辰商行', requiresAuth: true }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',
