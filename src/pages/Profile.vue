@@ -62,7 +62,7 @@
             <dd class="profile-member-value">
               {{ memberStore.points }}
               <span v-if="memberStore.overview.points_value" class="profile-member-sub">
-                ≈ ¥{{ memberStore.overview.points_value }}
+                ≈ ¥{{ formatPointsValue(memberStore.points) }}
               </span>
             </dd>
           </div>
@@ -310,6 +310,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
+import { formatPointsValue } from '@/constants/member.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
 // 性别用自绘下拉：原生 <select> 的弹出层同理，五套主题都管不到

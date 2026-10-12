@@ -1473,10 +1473,12 @@ button.u-tag:hover:not(.u-tag--accent) {
   .u-btn-secondary,
   .u-btn-ghost,
   .navbar-logo,
+  .user-avatar-btn,
   .legal-toc-link,
   .legal-switch-link,
   .link-btn,
   .category-back,
+  .history-filter-btn,
   .contact-link,
   .footer-bottom-links a,
   .copyright a,
@@ -1485,7 +1487,8 @@ button.u-tag:hover:not(.u-tag--accent) {
   }
 
   /* 按钮类（图标按钮 / 主次要幽灵按钮 / 站标）：视觉约 36–40px，
-     -12px 即到 60–64px，已稳超 44；且不过度膨胀以避免密集导航栏相邻环互相吞噬。 */
+     -12px 即到 56–64px，已稳超 44；且不过度膨胀以避免密集导航栏相邻环互相吞噬。
+     用户菜单按钮不在这里，它在下面单独一条（需要抬高叠放层级才能拿回被邻居吃掉的重叠带）。 */
   .u-icon-btn::after,
   .u-btn-primary::after,
   .u-btn-secondary::after,
@@ -1502,6 +1505,7 @@ button.u-tag:hover:not(.u-tag--accent) {
   .legal-switch-link::after,
   .link-btn::after,
   .category-back::after,
+  .history-filter-btn::after,
   .contact-link::after,
   .footer-bottom-links a::after,
   .copyright a::after {
@@ -1516,6 +1520,31 @@ button.u-tag:hover:not(.u-tag--accent) {
     content: "";
     position: absolute;
     inset: -18px;
+  }
+
+  /* ── 导航栏内部单独一套环（2026-10-12 实测补正）──
+   * 导航栏右侧图标间距只有 8px（390×844 实测：搜索 159–199、主题 207–243、
+   * 购物车 251–287、头像 295–327、汉堡 335–371，间距依次 9/8/8/8），
+   * 全局 -12px 的环在这里互相重叠，而命中测试是「后绘制者胜」——
+   * 实测用户菜单只有 29×55（比视觉宽度还窄）、购物车与汉堡各 43×57。
+   * 这里统一用 -6px（36 + 12 = 48 名义），重叠带按下面的优先级归属：
+   * 用户菜单视觉只有 32px（必须 6px 才到 44），给它最高层级先拿；
+   * 购物车与汉堡让出 4px 后实测 43×47（差 1px 是用户菜单的重叠带吃掉的），
+   * 汉堡右侧还有 19px 空白可吃。改前实测：用户菜单 29×55、购物车/汉堡各 43×57。
+   * 注意：放大镜（.search-toggle）不在这一套里 —— 它被 .search-field 的
+   * overflow: clip（Navbar.vue:717-722 为防聚焦抖动刻意加的）裁掉，改不动。 */
+  .navbar .u-icon-btn::after,
+  .navbar .navbar-cart::after,
+  .navbar .u-icon-btn.menu-toggle::after {
+    inset: -6px;
+  }
+
+  /* 用户菜单按钮不是 .u-icon-btn，这里必须自带 content/position（没有可继承的基础规则）。 */
+  .navbar .user-avatar-btn::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    z-index: 1;
   }
 }
 
