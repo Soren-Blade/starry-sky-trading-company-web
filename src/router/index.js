@@ -91,6 +91,18 @@ const routes = [
     component: () => import('@/pages/OrderDetail.vue'),
     meta: { title: '订单详情 - 星辰商行', requiresAuth: true }
   },
+  // ── 会员 / 积分 / 权益线（阶段 P0，2026-10-12）─────────────────
+  // 全部 requiresAuth：非会员也要能看到「权益全锁 + 开通引导」，
+  // 但**要先登录**才谈得上「你是谁」—— 守卫会打开登录弹窗并回跳。
+  //
+  // 路由随页面逐个落地：一次性把 13 条都加上会让构建引用到不存在的组件
+  // （Vite 在构建期解析动态 import，缺文件直接构建失败）。
+  {
+    path: '/member',
+    name: 'Member',
+    component: () => import('@/pages/Member.vue'),
+    meta: { title: '会员中心 - 星辰商行', requiresAuth: true }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',
