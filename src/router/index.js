@@ -103,6 +103,12 @@ const routes = [
     component: () => import('@/pages/Member.vue'),
     meta: { title: '会员中心 - 星辰商行', requiresAuth: true }
   },
+  {
+    path: '/points',
+    name: 'Points',
+    component: () => import('@/pages/Points.vue'),
+    meta: { title: '积分中心 - 星辰商行', requiresAuth: true }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',
