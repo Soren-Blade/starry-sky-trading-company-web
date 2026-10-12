@@ -125,10 +125,10 @@ test('useClass 的图标查表：原型链属性名回退到默认图标而不�
 })
 
 test('useKamiDisplay 的状态查表：原型链属性名返回字符串而不是函数', async () => {
-  const { getStatusText, getStatusColor } = await loadAppModule('/hooks/useKamiDisplay/index.js')
+  const { getStatusText, getStatusVariantClass } = await loadAppModule('/hooks/useKamiDisplay/index.js')
   for (const key of PROTO_KEYS) {
     assert.equal(typeof getStatusText(key), 'string', `getStatusText(${JSON.stringify(key)})`)
-    assert.equal(typeof getStatusColor(key), 'string', `getStatusColor(${JSON.stringify(key)})`)
+    assert.equal(typeof getStatusVariantClass(key), 'string', `getStatusVariantClass(${JSON.stringify(key)})`)
   }
 })
 

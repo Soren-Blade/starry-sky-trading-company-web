@@ -1,24 +1,20 @@
 /**
- * Node 模块解析钩子：模拟 Vite 的解析行为，并替换掉不适合在 Node 下加载的依赖
+ * Node 模块解析钩子：模拟 Vite 的解析行为
  *
- * 解决三件事：
+ * 解决两件事：
  *   1. `@/x` → `<src>/x`
  *   2. 省略扩展名与目录 index：`./ask/user` → `./ask/user.js`，
  *      `@/hooks/useToken` → `<src>/hooks/useToken/index.js`
- *   3. `ant-design-vue` → 测试替身（见下）
  *
  * 用 `module.registerHooks`（Node 20.6+，无需 --experimental-loader 子进程）注册，
  * 测试因此不依赖 jsdom、vitest 或任何打包器。
  *
- * ## 为什么替换 ant-design-vue
+ * ## 历史：这里曾有一个 ant-design-vue 替身
  *
- * 它的 `message` 在**模块加载期**就会访问 `document`（`getElementsByTagName`），
- * 并在展示时通过 Vue 渲染真实 DOM 节点。要让它跑通，就得一路补
- * `createElementNS`、`createComment`、`getComputedStyle`……
- * 那是「用桩去追一个 UI 库」，而不是在测试被测逻辑 —— 而且会不断有新的缺口。
- *
- * 被测代码只需要 `message.success()` 这类调用不抛错。因此这里直接给一个替身，
- * 并把调用记录下来供断言使用。组件渲染类测试若确有必要，应引入 jsdom 而不是扩桩。
+ * 从前模板里用着 `<a-table>` 等组件库标签，而它的 `message` 在模块加载期就会
+ * 访问 `document`，于是不得不在解析层把整个库换成一个只记录调用的替身。
+ * 项目改为全量使用自有的 `.u-*` 组件体系后，这条规则连同替身本身一并删除 ——
+ * 「为了一个不再需要的依赖去维护一套桩」本身就是应当避免的负担。
  *
  * 用法见 test/setup.js。
  */
@@ -53,34 +49,6 @@ function compileVueSfc(filename) {
   const compiled = compileScript(descriptor, { id, inlineTemplate: true })
   return compiled.content
 }
-
-/** ant-design-vue 替身的调用记录，供用例断言（见 setup.js 的 messageCalls） */
-const messageCalls = []
-globalThis.__SSTC_MESSAGE_CALLS__ = messageCalls
-
-const ANTD_STUB_SOURCE = `
-const calls = globalThis.__SSTC_MESSAGE_CALLS__ || (globalThis.__SSTC_MESSAGE_CALLS__ = []);
-const record = (type) => (content, ...rest) => {
-  calls.push({ type, content, rest });
-  return () => {};
-};
-const api = {
-  success: record('success'),
-  error: record('error'),
-  warning: record('warning'),
-  info: record('info'),
-  loading: record('loading'),
-  open: record('open'),
-  destroy: () => {},
-  config: () => {},
-};
-export const message = api;
-export const notification = api;
-export const Modal = { confirm: record('confirm'), info: record('info') };
-export default { message: api, notification: api, Modal };
-`
-
-const ANTD_STUB_URL = 'sstc-test:ant-design-vue-stub'
 
 /** 在 base 上尝试补扩展名与目录 index，返回存在的文件路径 */
 function resolveLoose(base) {
@@ -126,10 +94,10 @@ function resolveRelative(specifier, parentURL) {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    // 3) ant-design-vue 替身（含子路径，如 ant-design-vue/es/message）
-    if (specifier === 'ant-design-vue' || specifier.startsWith('ant-design-vue/')) {
-      return { url: ANTD_STUB_URL, shortCircuit: true }
-    }
+    // （已移除）ant-design-vue 替身：项目不再依赖该组件库，
+    // 模板里的 <a-*> 标签已全部换成原生标签 / 项目自有 .u-* 类，因此
+    // 「在解析层把库换成替身」这条规则连同它的 load 分支一并删除。
+    // 提示框改走自建的 hooks/useToast（见 stores/toast.js），与组件库无关。
 
     // 3b) （已移除）vue 替身：曾尝试在加载层把 vue 换成只含 onUnmounted 的替身，
     // 但因为 --test-isolation=none 让所有测试文件共享进程，这会切断其他文件
@@ -152,9 +120,6 @@ registerHooks({
   },
 
   load(url, context, nextLoad) {
-    if (url === ANTD_STUB_URL) {
-      return { format: 'module', source: ANTD_STUB_SOURCE, shortCircuit: true }
-    }
     // 4) .vue 单文件组件：编译成 ESM。
     //    必须在**本文件**注册（而不是在某个测试文件里再 registerHooks）——
     //    本文件是最早被 import 的钩子模块，而后续的 registerHooks 会晚于

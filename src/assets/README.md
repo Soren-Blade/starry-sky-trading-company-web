@@ -23,12 +23,15 @@ src/assets/
 
 ## 引入方式
 
-`main.js` 依次引入三份样式：
+`main.js` 依次引入六份样式（原先的第七份 `ant-design-vue/dist/reset.css` 已于 2026-10-12 随依赖一并移除）：
 
 ```js
-import './assets/styles/variables.css'   // 令牌名册（默认主题兜底）
-import './assets/styles/global.css'      // 全局样式 + 组件层共享类
-import 'ant-design-vue/dist/reset.css'   // antd 重置
+import './assets/styles/variables.css'    // 令牌名册（默认主题兜底）
+import './assets/styles/global.css'       // 全局样式 + 组件层共享类
+import './assets/styles/ui-kit-form.css'  // 组件套件：表单族
+import './assets/styles/ui-kit-nav.css'   // 组件套件：导航族
+import './assets/styles/ui-kit-data.css'  // 组件套件：数据族（表格 / 日期）
+import './assets/styles/ui-kit-feedback.css' // 组件套件：反馈族
 ```
 
 **不要**在 `global.css` 里再 `@import './variables.css'` —— 那会让 `:root` 被输出两次。

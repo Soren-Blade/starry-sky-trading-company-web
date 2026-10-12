@@ -644,6 +644,16 @@ img {
   border-color: var(--info);
 }
 
+/* 中性弱化：用于「已禁用」与未知状态。
+ * 由 useKamiDisplay 的 STATUS_VARIANT.disabled 与 getStatusVariantClass 的兜底产出，
+ * 2026-10-12 移除 ant-design-vue 时补上 —— 此前该类没有定义，标签会静默退化成基础 .u-tag。
+ * 比基础 .u-tag 再弱一档：文字用 --text-muted，底色用 --bg-surface-2。 */
+.u-tag--muted {
+  color: var(--text-muted);
+  background: var(--bg-surface-2);
+  border-color: var(--stroke-color);
+}
+
 /* 可点击的筛选标签：默认态同 .u-tag，选中态用强调底 */
 button.u-tag {
   cursor: pointer;

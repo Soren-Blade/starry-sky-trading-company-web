@@ -47,7 +47,8 @@ function compileSfc(filename) {
     inlineTemplate: true,
     templateOptions: {
       compilerOptions: {
-        // 组件是自动引入的（unplugin-vue-components），渲染时用 resolveComponent 兜底
+        // 模板里的标签一律按「组件」解析（本项目已无 `a-*` 自动引入，
+        // 未注册的标签会由 resolveComponent 抛错——这正是要暴露的信号）
         isCustomElement: () => false,
       },
     },
@@ -82,7 +83,7 @@ registerHooks({
  * @param {object} options
  * @param {Function} [options.setup] 传入后替换组件的 setup（用于注入桩数据）
  * @param {object} [options.props] 传给组件的 props
- * @param {object} [options.globalComponents] 全局注册的组件（替代 antd 自动引入）
+ * @param {object} [options.globalComponents] 全局注册的组件（本项目没有自动引入，故由调用方显式传入）
  * @param {Array<Function>} [options.plugins] 额外安装的插件（pinia、router 等）
  * @param {object} [options.provide] provide 注入
  * @returns {Promise<string>} 渲染出的 HTML
@@ -175,10 +176,13 @@ export async function createPiniaWithState(stateByStoreName = {}) {
 /**
  * 建一套**渲染环境桩**，让组件能在 Node 里被渲染而不产生噪音警告。
  *
- * 包含三类：
+ * 包含两类：
  *   1. `router-link` / `router-view` —— 真实项目里由 vue-router 提供
- *   2. `a-*`（ant-design-vue）—— 真实项目里由 unplugin-vue-components 自动注册
- *   3. 子组件的必需 props —— 渲染父组件时按需注入，避免 "Missing required prop"
+ *   2. 声明了必需 props 的子组件（SectionHeader / ProductCard / ToolCard /
+ *      AppleIdCard / HelpModal / AppIcon）—— 包一层默认值，避免 "Missing required prop"
+ *
+ * （原先还有第三类：ant-design-vue 的 `a-*` 组件替身。该依赖已于 2026-10-12 移除，
+ * 模板里不再有 `a-*` 标签，因此替身一并删除。）
  *
  * 目的不是模拟浏览器，而是**把环境噪音去掉**，这样「渲染期间出现 Vue 警告」
  * 这一断言才有信号价值。
@@ -292,73 +296,14 @@ export async function createRenderEnv() {
   const globalComponents = {
     'router-link': routerLink,
     'router-view': passThrough('RouterView'),
-    // ant-design-vue 的常用组件：渲染成带 class 的容器，保留插槽内容
-    'a-button': passThrough('AButton'),
-    'a-tag': passThrough('ATag'),
-    'a-input': passThrough('AInput'),
-    'a-select': passThrough('ASelect'),
-    'a-option': passThrough('AOption'),
-    'a-spin': passThrough('ASpin'),
-    'a-modal': passThrough('AModal'),
-    'a-empty': passThrough('AEmpty'),
-    'a-pagination': passThrough('APagination'),
-    // a-table 必须**真正渲染行**并调用 bodyCell 插槽，否则所有单元格模板都不会被执行，
-    // 渲染测试就看不到「表格里的绑定是否正确」。
-    'a-table': defineComponent({
-      name: 'ATable',
-      inheritAttrs: false,
-      props: {
-        columns: { type: Array, default: () => [] },
-        dataSource: { type: Array, default: () => [] },
-        rowKey: { type: [String, Function], default: 'id' },
-        locale: { type: Object, default: () => ({}) },
-        loading: { type: [Boolean, Object], default: false },
-        pagination: { type: [Object, Boolean], default: false },
-        scroll: { type: Object, default: () => ({}) },
-      },
-      setup(props, { slots, attrs }) {
-        return () =>
-          h('table', { class: 'stub-a-table', ...attrs }, [
-            h(
-              'thead',
-              {},
-              h(
-                'tr',
-                {},
-                props.columns.map((col) =>
-                  h('th', { key: col.key || col.dataIndex }, col.title)
-                )
-              )
-            ),
-            h(
-              'tbody',
-              {},
-              props.dataSource.length === 0
-                ? h('tr', {}, h('td', { colspan: String(props.columns.length || 1) }, slots.emptyText ? slots.emptyText() : (props.locale && props.locale.emptyText) || '暂无数据'))
-                : props.dataSource.map((record, index) => {
-                    const key =
-                      typeof props.rowKey === 'function'
-                        ? props.rowKey(record)
-                        : record[props.rowKey] ?? index
-                    return h(
-                      'tr',
-                      { key: String(key) },
-                      props.columns.map((col) =>
-                        h(
-                          'td',
-                          { key: col.key || col.dataIndex },
-                          // 与 antd 一致：bodyCell 插槽决定单元格内容
-                          slots.bodyCell
-                            ? slots.bodyCell({ column: col, record, index, text: record[col.dataIndex] })
-                            : String(record[col.dataIndex] ?? '')
-                        )
-                      )
-                    )
-                  })
-            ),
-          ])
-      },
-    }),
+    /*
+     * 这里原先注册了 ant-design-vue 的组件替身（a-button / a-tag / a-table …）。
+     * 项目已不再依赖该库 —— KamiSection 的表格改为原生 `table.u-table`，
+     * a-tag → `.u-tag`，a-button type="link" → 原生 `<button class="link-btn">`。
+     * 因此这些替身全部移除：**原生标签不需要注册，也就不会再被静默替换**，
+     * 渲染测试看到的就是真实 DOM 结构（此前 a-table 替身还复制了一份列渲染逻辑，
+     * 那部分逻辑与库的行为是否一致本身就无法保证）。
+     */
   }
 
   // 子组件必需 props：渲染父组件时注入，否则会报 Missing required prop

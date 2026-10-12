@@ -30,7 +30,15 @@
 ### 依赖
 
 前端依赖的契约版本为 **v1.1**（见后端 `docs/API.md`）。
-**未新增任何 npm 依赖。**
+本阶段**未新增任何 npm 依赖**；并于 2026-10-12 **移除两个依赖**：
+
+- `ant-design-vue`（`^4.2.6`）—— 界面全部改用项目自有的 `u-*` 组件类
+  （`KamiSection.vue` 的 `<a-table>` → 原生 `table.u-table`，`useKamiDisplay` 的状态色
+  从 antd Tag 颜色名改为 `u-tag--*` 变体类名）
+- `unplugin-vue-components`（`^28.0.0`）—— `AntDesignVueResolver` 自动引入一并删除；
+  现在所有组件都必须显式 `import`
+
+判据与回滚方式见工作区根 `docs/changes/2026-10-12-移除-ant-design-vue.md`。
 
 ---
 

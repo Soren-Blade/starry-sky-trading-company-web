@@ -199,10 +199,10 @@ class DOMExceptionLike extends Error {
  * 因此 `globalThis.document` 与 `globalThis.window.document` 是**同一个对象** ——
  * 早期只挂 `window.document`，导致裸 `document` 引用报 ReferenceError。
  *
- * **这不是 jsdom 替代品。** 曾经为了跑通 ant-design-vue 的 message 而在这里一路补
+ * **这不是 jsdom 替代品。** 曾经为了跑通某个组件库的 message 而在这里一路补
  * `createElementNS` / `createComment` / `getComputedStyle`…… 那是用桩去追一个 UI 库，
- * 缺口补不完。现在 ant-design-vue 已在解析层被替换为测试替身
- * （见 ./loaders/alias.mjs），这里因此可以保持较小。
+ * 缺口补不完。那个依赖已从项目移除（见 ./loaders/alias.mjs 的说明），
+ * 这里因此可以保持较小。
  *
  * 若将来确需**渲染组件**，应引入 jsdom，而不是继续往这里加 API
  * （实测仅补 DOM 桩会在 Vue 的 `SVGElement is not defined` 处失败）。

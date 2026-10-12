@@ -21,12 +21,18 @@ export const STATUS_TEXT = {
   disabled: '已禁用',
 }
 
-/** 卡密状态 -> ant-design-vue Tag 的颜色 */
-export const STATUS_COLOR = {
-  unused: 'blue',
-  used: 'green',
-  expired: 'red',
-  disabled: 'default',
+/**
+ * 卡密状态 -> 项目自有标签变体（`.u-tag--*` 的修饰名）。
+ *
+ * 此前映射的是 ant-design-vue Tag 的颜色名（'blue' / 'green' / …），
+ * 那是组件库私有的取值域；改用项目自己的语义变体后，
+ * 配色由 `--success` / `--danger` 等令牌决定，五套主题各自成立。
+ */
+export const STATUS_VARIANT = {
+  unused: 'accent',
+  used: 'success',
+  expired: 'danger',
+  disabled: 'muted',
 }
 
 /** 状态筛选下拉的选项（含「全部」） */
@@ -48,12 +54,17 @@ export function getStatusText(status) {
 }
 
 /**
- * 状态配色。
+ * 状态配色 -> `.u-tag` 的变体修饰类名。
+ *
+ * 返回的是**完整的类名片段**（如 `u-tag--success`），因为
+ * `--variant` 本身是样式层概念，用上它就走上了令牌，不再出现组件库的影子。
+ *
  * @param {string} status
- * @returns {string} 未识别时回退到 'default'
+ * @returns {string} 未识别时回退到默认变体（`u-tag--muted`）
  */
-export function getStatusColor(status) {
-  return lookupOr(STATUS_COLOR, status, 'default')
+export function getStatusVariantClass(status) {
+  const variant = lookupOr(STATUS_VARIANT, status, 'muted')
+  return variant === 'default' ? 'u-tag--muted' : `u-tag--${variant}`
 }
 
 /**
@@ -110,5 +121,7 @@ export const KAMI_TABLE_COLUMNS = [
   { title: '有效期至', dataIndex: 'valid_until', key: 'valid_until', width: 170 },
   { title: '使用日期', dataIndex: 'used_at', key: 'used_at', width: 170 },
   { title: '已关联工具', dataIndex: 'tool_id', key: 'tool_id', width: 180 },
-  { title: '操作', key: 'action', width: 120, align: 'center' },
+  // 2026-10-12 移除 ant-design-vue 时删掉了 align: 'center'：原生表格由 CSS 决定对齐，
+  // 操作列改为左对齐见 KamiSection.vue:645-648 的 .u-table-col-action 覆盖。
+  { title: '操作', key: 'action', width: 120 },
 ]

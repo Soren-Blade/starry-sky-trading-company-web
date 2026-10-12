@@ -123,10 +123,12 @@ const propsFor = (spec) => REQUIRED_PROPS[path.basename(spec)] || {}
 /**
  * 与渲染无关、但在此环境下必然出现的警告。
  *
- * `Failed to resolve component` 已通过全局桩消除；若仍出现，说明桩列表缺了某个
- * antd 组件 —— 那也是有价值的信号，因此**不**在此过滤。
+ * 这里**刻意留空**：`Failed to resolve component` 这类警告是「模板里写了一个
+ * 没有被注册的标签」的**唯一信号**，一旦加进忽略名单就等于把这类缺陷静音。
+ * 去掉 ant-design-vue 之后模板里已不存在 `<a-*>` 标签，因此也不再需要
+ * 为它开任何豁免 —— 任何解析失败都应当直接让用例失败。
  */
-const IGNORED_WARNINGS = [/^\[Vue warn\]: Failed to resolve component: a-/]
+const IGNORED_WARNINGS = []
 
 // ── 全体组件都能渲染 ───────────────────────────────────────────
 

@@ -12,7 +12,6 @@ import './assets/styles/ui-kit-form.css'
 import './assets/styles/ui-kit-nav.css'
 import './assets/styles/ui-kit-data.css'
 import './assets/styles/ui-kit-feedback.css'
-import 'ant-design-vue/dist/reset.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

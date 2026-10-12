@@ -1,4 +1,4 @@
-﻿# starry-sky-trading-company-web
+# starry-sky-trading-company-web
 
 星辰商行前端。Vue 3 单页应用，Vite 6 构建，部署在 Vercel。
 
@@ -14,7 +14,7 @@
 | 构建 | Vite 6（`@vitejs/plugin-vue`） |
 | 路由 | vue-router 4，`createWebHistory`（HTML5 history 模式） |
 | 状态 | Pinia 2 |
-| UI | ant-design-vue 4 + `unplugin-vue-components` 的 `AntDesignVueResolver` 按需自动引入 |
+| UI | **项目自有 UI 体系**：`src/assets/styles/ui-kit-*.css` 的 `u-*` 组件类 + `variables.css` 设计令牌，**不使用任何第三方组件库** |
 | HTTP | axios 1.7，统一封装于 `src/api/request.js` |
 | 日期 | dayjs（含 `utc`、`timezone` 插件） |
 | 开发辅助 | `vite-plugin-vue-devtools` |
@@ -22,11 +22,21 @@
 **使用** Vue 3 + Vite，但**不使用** TypeScript。已接入 ESLint 9（flat config，`eslint.config.cjs`）与
 `node:test` 单元测试（不需要 jsdom / vitest）；**未使用** Prettier。
 
-### 关于组件自动引入
+### 关于组件与自动引入
 
-`vite.config.js` 注册了 `unplugin-vue-components` + `AntDesignVueResolver`（`importStyle: false`）。因此模板中可以直接写 `<a-table>`、`<a-button>`、`<a-tag>` 等而无需 `import`；但**订阅式 API**（`message`、`Modal`）仍需显式 `import { message } from 'ant-design-vue'`。
+项目**不使用任何第三方组件库**，也没有配置 `unplugin-vue-components` / `unplugin-auto-import`。
+模板里出现的全是自有组件（`src/components/*.vue`）与自有组件类
+（`u-btn` / `u-card` / `u-table` / `u-tag` / `u-skeleton` …，定义在 `src/assets/styles/ui-kit-*.css`）。
+因此：
 
-注意：项目**没有**配置 `unplugin-auto-import`，所以 `ref`、`computed`、`defineStore` 等都必须手工 import。
+- 每个用到的组件都必须在 `<script setup>` 里显式 `import`（局部注册）；
+- `ref`、`computed`、`defineStore` 等也必须手工 import —— 没有任何「自动导入」的魔法。
+
+> **历史注记**：`vite.config.js` 曾在 2026-10-12 之前注册
+> `unplugin-vue-components` + `AntDesignVueResolver`（`importStyle: false`），
+> 模板里因此可以直接写 `<a-table>` / `<a-button>` / `<a-tag>`。
+> 该依赖已整体移除（见**工作区根**的 `docs/changes/2026-10-12-移除-ant-design-vue.md`；本仓库内没有 `docs/` 目录），
+> 保留这段是为了让后来者知道「为什么模板里没有 `a-*`、也没有自动导入」。
 
 ---
 
@@ -116,7 +126,11 @@ starry-sky-trading-company-web/
 ```js
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
-import 'ant-design-vue/dist/reset.css'
+// 组件套件四分片（表单 / 导航 / 数据 / 反馈），必须排在 global.css 之后
+import './assets/styles/ui-kit-form.css'
+import './assets/styles/ui-kit-nav.css'
+import './assets/styles/ui-kit-data.css'
+import './assets/styles/ui-kit-feedback.css'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -727,7 +741,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | ~~`useEmoji`~~ | **已删除** | 原先提供 emoji → `linear-gradient(...)`（约 200 条映射），是「多色底纹由 emoji 决定」的旧方案。图标统一为线性单色后无人引用，连同它的两个测试文件一并删除 |
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
 | `useToast` | `notify.success/warning/error/info` | 提示框门面，供组件内外统一调用（路由守卫与 store action 也用它） |
-| `useKamiDisplay` | `getStatusText` / `getStatusColor` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与配色用 `lookupOr` 查表以避开原型链；工具 id 兼容数字与字符串 |
+| `useKamiDisplay` | `getStatusText` / `getStatusVariantClass` / `STATUS_VARIANT` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与样式变体用 `lookupOr` 查表以避开原型链；`getStatusVariantClass` 产出 `u-tag--*` 类名（`disabled` 与未知状态走 `u-tag--muted`）；工具 id 兼容数字与字符串 |
 | `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated` |
 
 > `useKamiActivation` 有一条与其他 hook 不同的约定：**激活成功后若列表刷新失败，
@@ -1213,8 +1227,9 @@ ESLint 9 扁平配置，文件为 **`eslint.config.cjs`** —— 因 `package.js
 `flat/essential`。风格规则（缩进/引号/分号/`vue/html-indent` 等）全部关闭 ——
 历史代码风格不统一，开启它们只会淹没真正的问题。
 
-`vue/no-undef-components` 也已关闭：本项目用 `unplugin-vue-components` 自动导入
-`a-*` 组件，开启该规则会大面积误报。
+`vue/no-undef-components` 也已关闭：它按「模板标签是否在组件内注册」判断，而本项目
+大量使用原生标签与 `u-*` 组件类，开启后误报多于收益。
+（移除 `unplugin-vue-components` 之前，这条规则是因为 `a-*` 自动导入而关闭的。）
 
 ### 测试
 
@@ -1283,20 +1298,20 @@ test/
 
 ### 测试基础设施（无新增依赖）
 
-要让 `node:test` 直接跑 `src/` 里的源码，需要补掉三处 Vite 专有特性：
+要让 `node:test` 直接跑 `src/` 里的源码，需要补掉两处 Vite 专有特性：
 
 | 特性 | 方案 |
 | --- | --- |
 | `@/` 别名、省略扩展名的导入（`./ask/user`、`@/hooks/useToken`） | `test/loaders/alias.mjs` 用 `module.registerHooks` 注册同步 resolve 钩子 |
 | `import.meta.env` | `test/setup.js` 的 load 钩子注入最小实现（源码无需为可测试而改写） |
-| `ant-design-vue` 加载期访问 `document` | 在解析层替换为测试替身（记录 `message.*` 调用后返回空函数） |
 
-> **关于 ant-design-vue**：最初是给 `document` 打桩，然后一路补
+> **关于曾经存在的 ant-design-vue 测试替身**：最初是给 `document` 打桩，然后一路补
 > `getElementsByTagName` → `createElementNS` → `createComment` → `getComputedStyle`……
 > 每补一个就冒出下一个。那是**用桩去追一个 UI 库**，而不是测试被测逻辑。
-> 改为替身后，`setup.js` 的浏览器桩可以缩到极小（只剩 axios 平台探测需要的
-> `window.location`），也不再产生测试结束后的异步拒绝。
-> 若将来确需渲染组件，应引入 jsdom，而不是继续往桩里加 API。
+> 改为在解析层替换成替身后，`setup.js` 的浏览器桩缩到极小。
+> **2026-10-12 移除 ant-design-vue 之后，替身与那层桩都不再需要** ——
+> 现在渲染类测试走 `@vue/server-renderer`（见 `test/renderComponents.test.js`），
+> 不需要 jsdom。若将来确需真实 DOM，应引入 jsdom，而不是继续往桩里加 API。
 
 ### 接口契约测试
 

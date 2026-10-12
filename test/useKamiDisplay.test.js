@@ -12,7 +12,7 @@ const {
   STATUS_FILTER_OPTIONS,
   KAMI_TABLE_COLUMNS,
   getStatusText,
-  getStatusColor,
+  getStatusVariantClass,
   formatCardDate,
   resolveToolName,
   toToolOptions,
@@ -61,16 +61,24 @@ test('getStatusText：结果可安全 JSON 序列化（字段不会消失）', (
 
 // ── 状态配色 ───────────────────────────────────────────────────
 
-test('getStatusColor：已知状态返回对应颜色', () => {
-  assert.equal(getStatusColor('unused'), 'blue')
-  assert.equal(getStatusColor('used'), 'green')
-  assert.equal(getStatusColor('expired'), 'red')
-  assert.equal(getStatusColor('disabled'), 'default')
+test('getStatusVariantClass：已知状态返回对应 .u-tag 变体类名', () => {
+  assert.equal(getStatusVariantClass('unused'), 'u-tag--accent')
+  assert.equal(getStatusVariantClass('used'), 'u-tag--success')
+  assert.equal(getStatusVariantClass('expired'), 'u-tag--danger')
+  assert.equal(getStatusVariantClass('disabled'), 'u-tag--muted')
 })
 
-test('getStatusColor：原型链属性名与未知值都回退到 default', () => {
+test('getStatusVariantClass：原型链属性名与未知值都回退到中性变体', () => {
   for (const key of [...PROTO_KEYS, 'weird', '', null, undefined]) {
-    assert.equal(getStatusColor(key), 'default', `getStatusColor(${JSON.stringify(key)})`)
+    assert.equal(getStatusVariantClass(key), 'u-tag--muted', `getStatusVariantClass(${JSON.stringify(key)})`)
+  }
+})
+
+test('getStatusVariantClass：返回值一定是「单个 .u-tag--xxx」类名', () => {
+  // 组件把它直接拼进 :class，多一个空格或前缀都会让样式静默失效
+  for (const status of ['unused', 'used', 'expired', 'disabled', 'weird', null]) {
+    const cls = getStatusVariantClass(status)
+    assert.match(cls, /^u-tag--[a-z]+$/, `实际 ${cls}`)
   }
 })
 
@@ -196,7 +204,7 @@ test('KAMI_TABLE_COLUMNS：覆盖组件模板里用到的所有 column.key', () 
   ]) {
     assert.ok(keys.includes(expected), `列定义应包含 ${expected}`)
   }
-  assert.ok(keys.includes('card_name'), '应含默认渲染的卡密名称列')
+  assert.ok(keys.includes('card_name'), '应含卡密名称列')
 })
 
 test('KAMI_TABLE_COLUMNS：key 唯一', () => {

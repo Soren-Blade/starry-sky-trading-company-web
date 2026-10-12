@@ -109,85 +109,153 @@
 
           <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
 
-          <a-table
-            :columns="tableColumns"
-            :data-source="userKamis"
-            :pagination="{
-              current: pagination.page,
-              pageSize: pagination.limit,
-              total: pagination.total,
-              onChange: handlePaginationChange,
-              showTotal: (total) => `共 ${total} 条`,
-              showQuickJumper: true,
-            }"
-            :loading="loading"
-            :locale="{ emptyText: '暂无卡密' }"
-            class="kami-ant-table"
-            :scroll="{ x: 1200 }"
-            row-key="id"
-          >
-            <template #bodyCell="{ column, record }">
-              <!--
-                注意：一旦提供 #bodyCell，**所有**单元格都由这个插槽决定内容
-                （antd 不会对未命中的列回落到 dataIndex 默认渲染）。
-                因此每一列都必须有分支 —— 原先缺少 card_name 分支，
-                导致「卡密名称」整列为空。
-              -->
-              <span v-if="column.key === 'card_name'" class="card-name">
-                {{ record.card_name || '—' }}
-              </span>
+          <!--
+            原生表格（`table.u-table`）：列定义、表头文案与单元格内容仍由
+            `useKamiDisplay` 的 KAMI_TABLE_COLUMNS + 下面的分支决定，
+            只是渲染从 ant-design-vue 的 <a-table> 换成了项目自有的 .u-table 规范。
+            好处：列宽/内边距/字体/描边/悬停全部走 --table-* 令牌，
+            不再需要上百行 :deep() 去压掉库自带的白底与主题蓝。
+          -->
+          <div class="u-table-wrap">
+            <table class="u-table kami-table">
+              <thead>
+                <tr>
+                  <th
+                    v-for="column in tableColumns"
+                    :key="column.key"
+                    :class="{ 'u-table-col-action': column.key === 'action' }"
+                    :style="{ minWidth: `${column.width}px` }"
+                    scope="col"
+                  >
+                    {{ column.title }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="record in userKamis" :key="record.id">
+                  <!--
+                    逐列显式分支（而不是按 dataIndex 动态取名）：
+                    列名与取值一一对应，未来加列时缺分支会在页面上直接体现出来，
+                    不会像占位插槽那样静默留空。
+                  -->
+                  <td v-for="column in tableColumns" :key="column.key" :class="{ 'u-table-col-action': column.key === 'action' }">
+                    <template v-if="column.key === 'card_name'">
+                      <span class="card-name">{{ record.card_name || '—' }}</span>
+                    </template>
 
-              <span v-else-if="column.key === 'card_value'" class="card-value">
-                {{ record.card_value }}
-              </span>
+                    <template v-else-if="column.key === 'card_value'">
+                      <span class="card-value">{{ record.card_value }}</span>
+                    </template>
 
-              <a-tag v-else-if="column.key === 'status'" :color="getStatusColor(record.status)">
-                {{ record.status_text || getStatusText(record.status) }}
-              </a-tag>
+                    <template v-else-if="column.key === 'status'">
+                      <span class="u-tag" :class="getStatusVariantClass(record.status)">
+                        {{ record.status_text || getStatusText(record.status) }}
+                      </span>
+                    </template>
 
-              <span v-else-if="column.key === 'valid_until'">
-                <span v-if="record.valid_until" class="muted">{{ formatDate(record.valid_until) }}</span>
-                <span v-else class="permanent">永久有效</span>
-              </span>
+                    <template v-else-if="column.key === 'valid_until'">
+                      <span v-if="record.valid_until" class="muted">{{ formatDate(record.valid_until) }}</span>
+                      <span v-else class="permanent">永久有效</span>
+                    </template>
 
-              <span v-else-if="column.key === 'used_at'">
-                <span v-if="record.used_at" class="muted">{{ formatDate(record.used_at) }}</span>
-                <span v-else class="empty">—</span>
-              </span>
+                    <template v-else-if="column.key === 'used_at'">
+                      <span v-if="record.used_at" class="muted">{{ formatDate(record.used_at) }}</span>
+                      <span v-else class="empty">—</span>
+                    </template>
 
-              <span v-else-if="column.key === 'tool_id'">
-                <span v-if="getToolName(record.tool_id)" class="u-tag">
-                  <AppIcon name="wrench" /> {{ getToolName(record.tool_id) }}
-                </span>
-                <span v-else class="empty-small">未绑定工具</span>
-              </span>
+                    <template v-else-if="column.key === 'tool_id'">
+                      <span v-if="getToolName(record.tool_id)" class="u-tag">
+                        <AppIcon name="wrench" /> {{ getToolName(record.tool_id) }}
+                      </span>
+                      <span v-else class="empty-small">未绑定工具</span>
+                    </template>
 
-              <div v-else-if="column.key === 'card_no_display'" class="card-no-cell">
-                <span class="card-no-display">{{ record.card_no_display }}</span>
-                <button
-                  type="button"
-                  class="copy-icon-btn"
-                  title="复制脱敏卡号（含掩码，仅用于核对）"
-                  aria-label="复制脱敏卡号，仅用于核对"
-                  @click="copyCardNo(record)"
-                >
-                  <AppIcon name="clipboard" />
-                </button>
-              </div>
+                    <template v-else-if="column.key === 'card_no_display'">
+                      <div class="card-no-cell">
+                        <span class="card-no-display">{{ record.card_no_display }}</span>
+                        <button
+                          type="button"
+                          class="copy-icon-btn"
+                          title="复制脱敏卡号（含掩码，仅用于核对）"
+                          aria-label="复制脱敏卡号，仅用于核对"
+                          @click="copyCardNo(record)"
+                        >
+                          <AppIcon name="clipboard" />
+                        </button>
+                      </div>
+                    </template>
 
-              <div v-else-if="column.key === 'action'">
-                <a-button
-                  v-if="record.status === 'unused'"
-                  type="link"
-                  size="small"
-                  @click="focusActivate"
-                >
-                  去激活
-                </a-button>
-                <span v-else class="empty-small">已激活</span>
-              </div>
-            </template>
-          </a-table>
+                    <template v-else-if="column.key === 'action'">
+                      <div class="card-no-cell">
+                        <button
+                          v-if="record.status === 'unused'"
+                          type="button"
+                          class="link-btn kami-action-link"
+                          @click="focusActivate"
+                        >
+                          去激活
+                        </button>
+                        <span v-else class="empty-small">已激活</span>
+                      </div>
+                    </template>
+                  </td>
+                </tr>
+
+                <!-- 空态：整表只有一行提示，避免出现一条悬挂在表头下方的空线 -->
+                <tr v-if="!loading && !userKamis.length" class="kami-empty-row">
+                  <td :colspan="tableColumns.length">暂无卡密</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 加载态：盖在表格上方（表格本身保留表头，视觉上不跳） -->
+          <div v-if="loading" class="u-loading-block" role="status" aria-live="polite">
+            <span class="u-spinner" aria-hidden="true"></span>
+          </div>
+
+          <!--
+            分页：与 tableColumns 的页长契约一致（pagination.limit）。
+            前端分页不可靠 —— 数据是后端按页给的，因此这里只发请求，不做本地切片。
+            只有一页时不渲染，避免出现一个孤零零的「1」。
+            与 antd 版本的差异：不再提供 showQuickJumper（输入页码跳转），只能逐页点击。
+          -->
+          <nav v-if="pagination.total_pages > 1" class="kami-pager" aria-label="卡密分页">
+            <button
+              type="button"
+              class="u-icon-btn"
+              :disabled="!pagination.has_prev || loading"
+              aria-label="上一页"
+              @click="handlePaginationChange(pagination.page - 1)"
+            >
+              <AppIcon name="chevron-left" />
+            </button>
+
+            <button
+              v-for="pageNo in pagerItems"
+              :key="pageNo"
+              type="button"
+              class="u-icon-btn kami-pager-item"
+              :class="{ 'kami-pager-item--active': pageNo === pagination.page }"
+              :aria-current="pageNo === pagination.page ? 'page' : undefined"
+              :aria-label="`第 ${pageNo} 页`"
+              @click="handlePaginationChange(pageNo)"
+            >
+              {{ pageNo }}
+            </button>
+
+            <button
+              type="button"
+              class="u-icon-btn"
+              :disabled="!pagination.has_next || loading"
+              aria-label="下一页"
+              @click="handlePaginationChange(pagination.page + 1)"
+            >
+              <AppIcon name="chevron-right" />
+            </button>
+
+            <span class="kami-pager-total">共 {{ pagination.total }} 条</span>
+          </nav>
         </div>
       </div>
     </div>
@@ -210,7 +278,7 @@ import {
   KAMI_TABLE_COLUMNS,
   STATUS_FILTER_OPTIONS,
   formatCardDate,
-  getStatusColor,
+  getStatusVariantClass,
   getStatusText,
   resolveToolName,
   toToolOptions,
@@ -278,6 +346,26 @@ const reload = async (page = 1) => {
 }
 
 const handlePaginationChange = (page) => reload(page)
+
+/**
+ * 页码窗口：最多显示 7 个页码，当前页居中。
+ *
+ * 只做**展示用的窗口裁剪**，不改数据、不改请求 —— 页长与总数仍以后端
+ * 返回的 `pagination` 为准（它是唯一事实来源）。窗口在页数 ≤7 时直接就
+ * 返回全部页码，等于不做任何处理。
+ */
+const pagerItems = computed(() => {
+  const totalPages = pagination.value.total_pages || 0
+  const current = pagination.value.page || 1
+  const WINDOW = 7
+  if (totalPages <= WINDOW) return Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  let start = Math.max(1, current - Math.floor(WINDOW / 2))
+  const end = Math.min(totalPages, start + WINDOW - 1)
+  // 贴近末页时整体前移，保证窗口始终是满的（否则尾部会只剩两三个）
+  start = Math.max(1, end - WINDOW + 1)
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+})
 
 /** 激活输入框：表格「去激活」把光标送到左栏，而不是跳转/切页签 */
 const activateInput = ref(null)
@@ -531,139 +619,126 @@ watch(
   border-radius: var(--btn-radius);
 }
 
-/* 表格外框与工具条的左右内边距对齐，避免表格紧贴面板边缘 */
-.list-panel :deep(.kami-ant-table) {
+/* ── 表格 ─────────────────────────────────────────────────────
+ *
+ * 结构、内边距、字号、描边、悬停全部来自 ui-kit-data.css 的 `.u-table` 规范
+ * 与 `--table-*` 令牌 —— 这里只补三处这个页面**特有**的排版：
+ *   1. 表格外框与工具条的左右内边距对齐，避免表格紧贴面板边缘；
+ *   2. 空态整行居中；
+ *   3. 操作列里的链接按钮与单元格左对齐（.u-table-col-action 默认右对齐，
+ *      但「已激活」是个文字标记，靠左才能与「去激活」在同一列对齐）。
+ *
+ * 此前这里有一百多行 `:deep(.ant-*)` 覆盖，用来压掉组件库自带的白底、
+ * 深色文字与主题蓝分页。换成原生表格后，这些对抗性样式**全部不再需要** ——
+ * 它们存在的唯一原因就是「库的风格不是本站的风格」。
+ */
+.list-panel .u-table-wrap {
   padding: calc(var(--space-unit) * 2);
 }
 
-/* ── 表格（ant-design-vue 覆盖：沿用 :deep() 提高特异性，不用强制优先级）── */
-
-:deep(.kami-ant-table) {
-  font-size: var(--fs-sm);
+/* 列宽由 KAMI_TABLE_COLUMNS 的 width 通过行内 min-width 给出；
+   表格整体允许横向滚动（窄屏列不会被压扁） */
+.kami-table {
+  min-width: calc(var(--table-action-col-width) + 940px);
 }
 
-/* antd 自带的白底与深色文字会和主题表面冲突，交还给令牌 */
-:deep(.kami-ant-table .ant-table) {
-  color: var(--text-primary);
-  background: transparent;
+.kami-table .u-table-col-action,
+.kami-table td.u-table-col-action {
+  /* 操作列改左对齐：列内是「去激活」链接或「已激活」文字，都在同一左边界上 */
+  text-align: left;
 }
 
-:deep(.kami-ant-table .ant-table-thead > tr > th) {
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-  background-color: var(--bg-surface-2);
-  border-bottom: var(--stroke-width) solid var(--border);
+.kami-empty-row td {
+  padding: calc(var(--space-unit) * 4) var(--table-cell-padding-x);
+  color: var(--text-muted);
+  text-align: center;
 }
 
-:deep(.kami-ant-table .ant-table-tbody > tr > td) {
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
-  border-bottom: var(--stroke-width) solid var(--divider);
+/* 加载块叠在表格上方：高度不占位，只在没数据时给一块至少两行高的浅底 */
+.u-loading-block {
+  padding: calc(var(--space-unit) * 2) 0;
 }
 
-:deep(.kami-ant-table .ant-table-tbody > tr:hover > td) {
-  background-color: var(--bg-soft);
-}
-
-:deep(.kami-ant-table .ant-pagination) {
+/* ── 分页 ─────────────────────────────────────────────────────
+ * 尺寸 / 圆角 / 间距 / 字号四项全部来自 `--pager-*` 令牌，
+ * 与项目里其它分页（如订单页）同源，因此五套主题下自动成立。
+ * 页码按钮复用 `.u-icon-btn` 的盒子（正方形、居中），
+ * 当前页用一组 `--pager-active-*` 令牌（neo 是黑底硬阴影、mono 是描边绿字）。
+ */
+.kami-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--pager-gap);
   margin-top: calc(var(--space-unit) * 2);
   padding: 0 calc(var(--space-unit) * 2) calc(var(--space-unit) * 2);
   color: var(--text-secondary);
 }
 
-/* 分页：尺寸 / 圆角 / 间距 / 字号四项全部来自 --pager-* 令牌 */
-:deep(.kami-ant-table .ant-pagination-item),
-:deep(.kami-ant-table .ant-pagination-prev),
-:deep(.kami-ant-table .ant-pagination-next),
-:deep(.kami-ant-table .ant-pagination-jump-prev),
-:deep(.kami-ant-table .ant-pagination-jump-next) {
-  min-width: var(--pager-size);
+.kami-pager .u-icon-btn {
+  width: var(--pager-size);
   height: var(--pager-size);
-  margin-inline-end: var(--pager-gap);
   font-size: var(--pager-font-size);
-  line-height: var(--pager-size);
-  border-radius: var(--pager-radius);
-}
-
-/* 页码与「•••」跳页块：与卡片同一套表面 + 描边 */
-:deep(.kami-ant-table .ant-pagination-item),
-:deep(.kami-ant-table .ant-pagination-jump-prev),
-:deep(.kami-ant-table .ant-pagination-jump-next) {
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--stroke-color);
-}
-
-/* 上一页 / 下一页的边框长在内部按钮上，必须一并覆盖 */
-:deep(.kami-ant-table .ant-pagination-prev .ant-pagination-item-link),
-:deep(.kami-ant-table .ant-pagination-next .ant-pagination-item-link) {
   color: var(--text-secondary);
   background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--stroke-color);
   border-radius: var(--pager-radius);
 }
 
-:deep(.kami-ant-table .ant-pagination-item a),
-:deep(.kami-ant-table .ant-pagination-jump-prev .ant-pagination-item-ellipsis),
-:deep(.kami-ant-table .ant-pagination-jump-next .ant-pagination-item-ellipsis) {
-  color: var(--text-secondary);
-}
-
-/* 跳页提示图标（››）原本是 antd 的主题蓝，改用强调色 */
-:deep(.kami-ant-table .ant-pagination-item-link-icon) {
+.kami-pager .u-icon-btn:hover:not(:disabled) {
   color: var(--accent);
-}
-
-/* 悬停：描边与文字一起切到强调色 */
-:deep(.kami-ant-table .ant-pagination-item:hover),
-:deep(.kami-ant-table .ant-pagination-jump-prev:hover),
-:deep(.kami-ant-table .ant-pagination-jump-next:hover) {
   border-color: var(--accent);
 }
 
-:deep(.kami-ant-table .ant-pagination-item:hover a),
-:deep(.kami-ant-table .ant-pagination-prev:hover .ant-pagination-item-link),
-:deep(.kami-ant-table .ant-pagination-next:hover .ant-pagination-item-link) {
-  color: var(--accent);
-}
-
-:deep(.kami-ant-table .ant-pagination-prev:hover .ant-pagination-item-link),
-:deep(.kami-ant-table .ant-pagination-next:hover .ant-pagination-item-link) {
-  border-color: var(--accent);
-}
-
-/* 当前页：一组 --pager-active-* 令牌（neo 是黑底硬阴影、mono 是描边绿字） */
-:deep(.kami-ant-table .ant-pagination-item-active) {
+.kami-pager-item--active {
   background: var(--pager-active-bg);
   border-color: var(--pager-active-border);
   box-shadow: var(--pager-active-shadow);
-}
-
-:deep(.kami-ant-table .ant-pagination-item-active a) {
   color: var(--pager-active-color);
 }
 
-/* 到头时的上一页 / 下一页退到禁用色，而不是 antd 的浅灰 */
-:deep(.kami-ant-table .ant-pagination-disabled),
-:deep(.kami-ant-table .ant-pagination-disabled:hover) {
-  background: var(--disabled-bg);
-  border-color: var(--stroke-color);
+/* 当前页的配色压过 .u-icon-btn 的悬停反馈：它已经是「你在这里」的标记，
+   再随鼠标变色会让人以为又点了一次 */
+.kami-pager .u-icon-btn.kami-pager-item--active,
+.kami-pager .u-icon-btn.kami-pager-item--active:hover:not(:disabled) {
+  color: var(--pager-active-color);
+  border-color: var(--pager-active-border);
 }
 
-:deep(.kami-ant-table .ant-pagination-disabled .ant-pagination-item-link),
-:deep(.kami-ant-table .ant-pagination-disabled:hover .ant-pagination-item-link) {
+.kami-pager .u-icon-btn:disabled {
   color: var(--disabled-text);
   background: var(--disabled-bg);
   border-color: var(--stroke-color);
 }
 
-/* 快速跳页输入框：与表内控件同源，高度收到分页档 */
-:deep(.kami-ant-table .ant-pagination-options-quick-jumper input) {
-  height: var(--pager-size);
-  padding: 0 calc(var(--space-unit) * 0.75);
-  font-size: var(--pager-font-size);
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--pager-radius);
+.kami-pager-total {
+  margin-left: calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 操作列里的「去激活」：链接式按钮，配色走强调色（与 .link-btn 同规范） */
+.kami-action-link {
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-interactive);
+}
+
+.kami-action-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.kami-action-link:focus-visible {
+  box-shadow: var(--focus-ring);
+  border-radius: var(--btn-radius);
+  outline: none;
 }
 
 /* ── 单元格内容 ─────────────────────────────────────────────── */
@@ -798,15 +873,15 @@ watch(
     width: 100%;
   }
 
-  .list-panel :deep(.kami-ant-table) {
+  .list-panel .u-table-wrap {
     padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
   }
 
-  :deep(.kami-ant-table) {
+  .kami-table {
     font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
   }
 
-  :deep(.kami-ant-table .ant-pagination) {
+  .kami-pager {
     padding: 0 calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
       calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
   }

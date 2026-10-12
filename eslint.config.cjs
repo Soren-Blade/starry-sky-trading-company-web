@@ -5,10 +5,11 @@
  * 风格类规则一律不启用 —— 历史代码风格不统一，一次引入会产生大量噪音。
  *
  * 特别说明：
- * - 本项目**没有**使用 unplugin-auto-import，Vue API 必须在每个文件显式 import。
+ * - 本项目**没有**使用 unplugin-auto-import，也没有组件库的自动引入，
+ *   Vue API 必须在每个文件显式 import。
  *   因此 `vue/no-undef-components` 之类的规则会误报，已关闭。
- * - 组件采用了 `unplugin-vue-components` 的自动导入，模板里使用 `a-*` 组件时
- *   不会被解析为未定义，相关规则也一并关闭。
+ *   （2026-10-12 之前这条是因为 `unplugin-vue-components` 自动注册 `a-*` 而关闭；
+ *   依赖已移除，理由变成「模板里大量使用原生标签与自有 `u-*` 类」。）
  *
  * 运行：npm run lint
  */

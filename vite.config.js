@@ -1,8 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, loadEnv } from 'vite'
-import Components from 'unplugin-vue-components/vite'
-import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
@@ -12,16 +10,14 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_TARGET || env.VITE_API_BASE_URL || 'http://localhost:8080'
 
   return {
-    plugins: [
-      vue(),
-      Components({
-        resolvers: [
-          AntDesignVueResolver({
-            importStyle: false, // css in js
-          }),
-        ],
-      }),
-    ],
+    /*
+     * 这里原先挂了一个 `unplugin-vue-components` + `AntDesignVueResolver`，
+     * 用来给模板里的 `<a-table>` / `<a-tag>` / `<a-button>` 做按需自动注册。
+     * 这三处已全部替换为项目自有的 `.u-table` / `.u-tag` / 原生 `<button>`，
+     * 项目里不再有任何 `<a-*>` 标签 —— 自动注册器因此一并移除，
+     * 顺带省掉一个构建期依赖（unplugin-vue-components）。
+     */
+    plugins: [vue()],
 
     server: {
       hmr: true,
