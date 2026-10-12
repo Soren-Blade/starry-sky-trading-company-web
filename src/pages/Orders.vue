@@ -61,7 +61,13 @@
           <!-- 商品缩略：最多 4 件，多出的用 +N 表达，避免长订单撑高卡片 -->
           <ul class="order-thumbs">
             <li v-for="item in order.items.slice(0, 4)" :key="item.product_title" class="order-thumb">
-              <img v-if="item.product_image" :src="item.product_image" :alt="item.product_title" />
+              <SmartImage
+                v-if="item.product_image"
+                :src="item.product_image"
+                :alt="item.product_title"
+                fallback-icon="shopping-bag"
+                fallback-class="order-thumb-placeholder"
+              />
               <span v-else class="order-thumb-placeholder" aria-hidden="true">
                 <AppIcon name="shopping-bag" />
               </span>
@@ -151,6 +157,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import SmartImage from '@/components/SmartImage.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'

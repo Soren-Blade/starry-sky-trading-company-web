@@ -1024,10 +1024,13 @@ const MATRIX = {
     'ease',
   ],
   '--stagger-step': ['60ms', '80ms', '60ms', '0ms', '0ms'],
-  // 装饰性浮动：只有 glass 保留
+  // 装饰性浮动：**五套主题一律关闭**。
+  // 历史上只有 liquid-glass 保留 `float`（导航栏 logo / 首页 hero 图标 / 页脚 /
+  // 主题切换器都会缓慢上下浮动）；按要求去掉 Liquid Glass 的导航栏与首页图标动画后，
+  // 全站不再有这套装饰浮动。令牌保留（值统一为 none）以便日后按需恢复单个主题。
   '--decor-animation': [
     'none',
-    'float 5s ease-in-out infinite',
+    'none',
     'none',
     'none',
     'none',

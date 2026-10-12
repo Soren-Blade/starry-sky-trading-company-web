@@ -370,9 +370,27 @@ img {
   -webkit-backdrop-filter: var(--input-focus-backdrop);
 }
 
-/* 搜索框：图标内嵌在左侧，输入区让出图标宽度 */
+/* 搜索框：图标内嵌在左侧，输入区让出图标宽度
+ *
+ * ⚠ 这里的 `z-index: 0` 不是排版，是**层叠上下文隔离**，不能删。
+ *
+ * .u-input 在 liquid-glass 下带 `--effect-backdrop`（blur+saturate），
+ * 而「backdrop-filter 非 none」会**创建层叠上下文** —— 于是同一容器里的
+ * .u-search-icon 从「文档流层」落进这个定位层里，按 DOM 顺序被后画的
+ * 输入框盖住，深色笔画被 blur + saturate(1.8) 合成成近乎不可见的浅色。
+ * 实测：其余四套主题 --effect-backdrop 为 none，图标对比度 15+ 正常；
+ * 唯独玻璃主题渲染对比度只有 1.01（笔画 [222,229,255] 落在底 [221,228,255] 上）。
+ *
+ * 解法两步（缺一不可，见 .u-search-icon 的 z-index: 1）：
+ *   1. 共同祖先自成层叠上下文（z-index: 0），把 z-index **关在容器内**，
+ *      否则图标的 z-index 会跑到更高层，盖住将来的下拉 / 浮层；
+ *   2. 图标本身给一个**正的** z-index，压过输入框的背景层。
+ * z-index 不构成 backdrop root（backdrop root 由 filter / backdrop-filter /
+ * opacity / isolation / contain:paint 触发）→ 加 z-index **不会**破坏毛玻璃效果。
+ */
 .u-search {
   position: relative;
+  z-index: 0;
   display: flex;
   align-items: center;
   gap: var(--input-icon-gap);
@@ -391,6 +409,23 @@ img {
   font-size: var(--input-icon-size);
   line-height: 1;
   pointer-events: none;
+  /* 压过带 backdrop-filter 的输入框背景层（原因见 .u-search 上方说明）。 */
+  z-index: 1;
+  /*
+   * 颜色锚在 --text-secondary，**不是** --placeholder。
+   *
+   * 两者语义不同：--placeholder 是「占位符文字」色，规范明确要求它是
+   * **低对比**色（每套风格单列的一个弱值）——用它等于主动把图标压灰。
+   * 实测在真实输入框背景上，--placeholder 五套对比度是
+   * 1.57 / 3.98 / 3.08 / 5.13 / 3.46：极简主题深灰压深底只有 1.57，
+   * 便当 3.08、单色 3.46 也都达不到「清晰可辨」。
+   *
+   * --text-secondary 才是项目里「次级但必须看得清」的那一档
+   * （同一对比度口径下为 6.41 / 3.98 / 7.78 / 9.70 / 7.04，五套全部达标），
+   * 而且导航栏自带的 .search-toggle 放大镜按钮用的正是它 —— 展开前后
+   * 两颗放大镜同色，视觉上才是同一件东西。
+   */
+  color: var(--text-secondary);
 }
 
 .u-search .u-input {
@@ -1413,6 +1448,64 @@ button.u-tag:hover:not(.u-tag--accent) {
   .u-field-value {
     min-height: calc(var(--input-height) * var(--mobile-control-scale));
     padding: 0 calc(var(--input-padding-x) * var(--mobile-padding-scale));
+  }
+
+  /* ── 移动端触摸热区补偿（RESPONSIVE.md:217：最小可点区域 44×44）──
+   * 项目刻意用 --mobile-control-scale:0.9 把按钮 / 图标按钮收到 36px（视觉），
+   * 但规范同时要求「外层留 ≥44 热区」（见 .u-icon-btn 行）。此前这一层缺失：
+   * 实测 21 个路由在 390×844 下，图标按钮 / 文字链接 / 关闭按钮的有效命中区
+   * 只有 36×36 / 56×21 / 9×11 等，均 < 44。
+   * 用不可见的 ::after 扩展命中区，视觉尺寸与文档流完全不变；仅增强可点性。
+   * 注意：这是「命中区」补偿，不是放大控件，不触发 R11（圆角不缩放）/ R3
+   * （几何令牌不变），也不破坏「切主题布局不跳动」。 */
+  .u-icon-btn,
+  .u-btn-primary,
+  .u-btn-secondary,
+  .u-btn-ghost,
+  .navbar-logo,
+  .legal-toc-link,
+  .legal-switch-link,
+  .link-btn,
+  .category-back,
+  .contact-link,
+  .footer-bottom-links a,
+  .copyright a,
+  .u-toast-close {
+    position: relative;
+  }
+
+  /* 按钮类（图标按钮 / 主次要幽灵按钮 / 站标）：视觉约 36–40px，
+     -12px 即到 60–64px，已稳超 44；且不过度膨胀以避免密集导航栏相邻环互相吞噬。 */
+  .u-icon-btn::after,
+  .u-btn-primary::after,
+  .u-btn-secondary::after,
+  .u-btn-ghost::after,
+  .navbar-logo::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+
+  /* 文字链接类（法务目录 / 切换 / 返回 / 联系 / 页脚 / 版权）：实测高仅 16–21px，
+     -12px 仅补到 40–45px（不足 44）。-16px → 16 + 32 = 48px，稳达规范。 */
+  .legal-toc-link::after,
+  .legal-switch-link::after,
+  .link-btn::after,
+  .category-back::after,
+  .contact-link::after,
+  .footer-bottom-links a::after,
+  .copyright a::after {
+    content: "";
+    position: absolute;
+    inset: -16px;
+  }
+
+  /* 关闭按钮本身是 X 字形（9×11），-16px 仅到 41×43（仍 <44）；
+     -18px → 9 + 36 = 45，11 + 36 = 47，达 44。 */
+  .u-toast-close::after {
+    content: "";
+    position: absolute;
+    inset: -18px;
   }
 }
 

@@ -32,7 +32,14 @@
       <div class="product-layout">
         <!-- 媒体区 -->
         <figure class="product-media">
-          <img v-if="product.main_image_url" :src="product.main_image_url" :alt="title" />
+          <SmartImage
+            v-if="product.main_image_url"
+            :src="product.main_image_url"
+            :alt="title"
+            fallback-icon="shopping-bag"
+            fallback-class="product-media-placeholder"
+            loading="eager"
+          />
           <div v-else class="product-media-placeholder" aria-hidden="true">
             <AppIcon name="shopping-bag" />
           </div>
@@ -184,6 +191,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import SmartImage from '@/components/SmartImage.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import { useShopStore } from '@/stores/shop'
 import { useThemeStore } from '@/stores/theme'

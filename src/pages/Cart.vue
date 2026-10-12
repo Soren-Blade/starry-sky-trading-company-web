@@ -85,7 +85,13 @@
                 class="cart-thumb"
                 :aria-label="`查看 ${item.product_title || '商品'}`"
               >
-                <img v-if="item.product_image" :src="item.product_image" :alt="item.product_title" />
+                <SmartImage
+                  v-if="item.product_image"
+                  :src="item.product_image"
+                  :alt="item.product_title"
+                  fallback-icon="shopping-bag"
+                  fallback-class="cart-thumb-placeholder"
+                />
                 <span v-else class="cart-thumb-placeholder" aria-hidden="true">
                   <AppIcon name="shopping-bag" />
                 </span>
@@ -240,6 +246,7 @@ import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import SmartImage from '@/components/SmartImage.vue'
 import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
@@ -453,7 +460,7 @@ watch(
  *
  * 桌面两栏（条目列表 + 吸顶结算面板），991 以下单栏。
  * 条目行用 grid 排「勾选 / 缩略图 / 标题 / 数量 / 小计 / 移除」六段，
- * 不套 a-table —— 每行是可交互控件（步进器、勾选框），表格语义并不合适。
+ * 不套表格（`.u-table`）—— 每行是可交互控件（步进器、勾选框），表格语义并不合适。
  */
 
 .cart-empty-actions {

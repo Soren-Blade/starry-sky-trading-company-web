@@ -129,9 +129,17 @@
             @click="toggleUserMenu"
           >
             <span class="u-avatar">
-              <!-- 没有头像地址时退化成一个字形，而不是渲染空 src
-                   （空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
-              <img v-if="avatarUrl" :src="avatarUrl" :alt="nickname || '用户头像'" />
+              <!-- 没有头像地址、或头像地址加载失败（外链图床不可达）时，
+                   都退化为一个字形占位 —— 不再出现「碎图」，
+                   也不会渲染空 src（空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
+              <SmartImage
+                v-if="avatarUrl"
+                :src="avatarUrl"
+                :alt="nickname || '用户头像'"
+                fallback-icon="user"
+                fallback-class="avatar-fallback"
+                loading="eager"
+              />
               <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
             </span>
             <!-- 游客标记直接压在头像上：不展开菜单也能一眼看出当前不是正式账号 -->
@@ -248,6 +256,7 @@ import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
 import AppIcon from './AppIcon.vue'
+import SmartImage from './SmartImage.vue'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 const userStore = useUserStore()

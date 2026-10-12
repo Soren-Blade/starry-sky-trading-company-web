@@ -1,10 +1,15 @@
 <template>
   <div class="tool-card ui-card u-enter">
     <div class="ui-card-media">
-      <img v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" />
+      <SmartImage v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" fallback-class="tool-icon">
+        <AppIcon v-if="iconName" :name="iconName" />
+        <template v-else>{{ tool.icon }}</template>
+      </SmartImage>
       <!-- 库里的 tools.icon 存的是 emoji（那是**数据**）：先映射成线性图标，
            映射不到才原样显示 —— 运营随时可能录一个表里没有的 emoji，
-           不能因为不认识就渲染成空白 -->
+           不能因为不认识就渲染成空白。
+           封面图存在但加载失败时（外链图床不可达），SmartImage 会退化为
+           同一个 .tool-icon 占位观感，不再出现「碎图」。 -->
       <div v-else class="tool-icon" aria-hidden="true">
         <AppIcon v-if="iconName" :name="iconName" />
         <template v-else>{{ tool.icon }}</template>
@@ -70,6 +75,7 @@
 <script setup>
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import SmartImage from '@/components/SmartImage.vue'
 import { emojiToIconName } from '@/utils/iconSet.js'
 // 文案集中在 constants，改文案只碰一个文件
 import { TOOL_PAGE } from '@/constants/index.js'

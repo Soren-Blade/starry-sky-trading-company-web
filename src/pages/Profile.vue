@@ -18,7 +18,13 @@
 
         <div class="profile-identity">
           <span class="u-avatar profile-avatar">
-            <img v-if="userStore.avatarUrl" :src="userStore.avatarUrl" :alt="nickname || '用户头像'" />
+            <SmartImage
+              v-if="userStore.avatarUrl"
+              :src="userStore.avatarUrl"
+              :alt="nickname || '用户头像'"
+              fallback-icon="user"
+              loading="eager"
+            />
             <AppIcon v-else name="user" />
           </span>
           <div class="profile-identity-text">
@@ -76,7 +82,13 @@
             <div class="avatar-editor">
               <div class="avatar-profile">
                 <span class="u-avatar avatar-preview">
-                  <img v-if="avatarShown" :src="avatarShown" :alt="nickname || '用户头像'" />
+                  <SmartImage
+                    v-if="avatarShown"
+                    :src="avatarShown"
+                    :alt="nickname || '用户头像'"
+                    fallback-icon="user"
+                    loading="eager"
+                  />
                   <AppIcon v-else name="user" />
                 </span>
 
@@ -217,6 +229,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import AppIcon from '@/components/AppIcon.vue'
+import SmartImage from '@/components/SmartImage.vue'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'

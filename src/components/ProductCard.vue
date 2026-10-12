@@ -10,7 +10,11 @@
     @keydown.space.prevent="onGoDetail"
   >
     <div class="ui-card-media">
-      <img :src="product.main_image_url || product.image" :alt="title" />
+      <SmartImage
+        :src="product.main_image_url || product.image"
+        :alt="title"
+        fallback-icon="shopping-bag"
+      />
       <!-- 缺货标记：语义色 10% 底 + 语义色文字（规范第八节的颜色变体） -->
       <span v-if="isOut" class="u-tag u-tag--danger product-flag">
         {{ PRODUCT_GRID.soldOut }}
@@ -91,6 +95,7 @@ import { computed } from 'vue'
 import { formatUtils } from '@/utils/index.js'
 import { PRODUCT_GRID } from '@/constants/index.js'
 import { useThemeStore } from '@/stores/theme'
+import SmartImage from '@/components/SmartImage.vue'
 
 const props = defineProps({
   product: { type: Object, required: true },
