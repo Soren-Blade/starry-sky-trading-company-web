@@ -43,6 +43,11 @@ export default defineConfig(({ mode }) => {
         '/cartApi': { target: apiTarget, changeOrigin: true },
         '/orderApi': { target: apiTarget, changeOrigin: true },
         '/favoriteApi': { target: apiTarget, changeOrigin: true },
+        // v1.1.0 新增的三个前缀（会员 / 积分 / 优惠券）。漏配的后果见上方注释：
+        // dev 下请求会打到 dev server 自己，拿到 index.html，前端把它报成网络错误。
+        '/memberApi': { target: apiTarget, changeOrigin: true },
+        '/pointsApi': { target: apiTarget, changeOrigin: true },
+        '/couponApi': { target: apiTarget, changeOrigin: true },
         // 用户上传的文件（头像）。**必须代理**：`avatar_url` 存的是
         // `/uploads/avatars/xxx.webp` 这样的相对路径，不代理的话 dev 下
         // 会打到 dev server 自己（404），表现为「上传成功但头像不显示」。
