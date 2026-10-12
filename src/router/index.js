@@ -115,6 +115,12 @@ const routes = [
     component: () => import('@/pages/Checkin.vue'),
     meta: { title: '每日签到 - 星辰商行', requiresAuth: true }
   },
+  {
+    path: '/coupons',
+    name: 'Coupons',
+    component: () => import('@/pages/Coupons.vue'),
+    meta: { title: '我的优惠券 - 星辰商行', requiresAuth: true }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',
