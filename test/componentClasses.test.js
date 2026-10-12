@@ -40,12 +40,12 @@ const SHARED_STYLES = [
   'assets/styles/ui-kit-nav.css',
 ]
 
-/** 递归列出 src 下的 .vue 与 .css */
+/** 递归列出 src 下的 .vue / .css / .js（.js 用于核对动态拼出的类名字面量） */
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) walk(full, out)
-    else if (/\.(vue|css)$/.test(entry.name)) out.push(full)
+    else if (/\.(vue|css|js|mjs)$/.test(entry.name)) out.push(full)
   }
   return out
 }
@@ -201,4 +201,72 @@ test('共享容器类 .section-inner：基础规则在共享层，组件只允�
   }
 
   assert.deepEqual(redefined, [], `不该再重复定义基础规则：${redefined.join(', ')}`)
+})
+
+/**
+ * 设计系统前缀（`u-` / `ui-`）的类名必须真的存在。
+ *
+ * 上面的守卫只挡「定义在**别的组件**里」，对「任何地方都没有定义」是放过的
+ * （本项目有一批纯语义类名，如 `.cart-page` —— 它们本来就不产生样式）。
+ * 但 `u-` / `ui-` 是设计系统的保留前缀，这个前缀的类名**只会**来自共享样式：
+ * 模板里写了一个不存在的 `u-` 类，几乎一定是拼错或改名漏改。
+ *
+ * 曾经就是如此：`.u-card` 与 `.u-btn` 两个字面量在 5 个会员 / 积分页面里
+ * 从未有过定义，卡片与按钮的整套外观（底色、圆角、阴影、内边距）静默失效
+ * —— 不报错、不留痕、grep 还能搜到，只有真机能看出来。
+ */
+test('设计系统前缀 u- / ui- 的类名必须在共享样式或本组件样式里存在', () => {
+  const { files, shared, own } = collect()
+  const offenders = []
+
+  for (const file of files) {
+    if (!file.endsWith('.vue')) continue
+    const text = readFileSync(file, 'utf8')
+    const tpl = text.match(/<template>([\s\S]*)<\/template>/)
+    if (!tpl) continue
+
+    const rel = relative(SRC, file).replace(/\\/g, '/')
+    const mine = own.get(file) || new Set()
+
+    for (const name of classesUsedInTemplate(tpl[1])) {
+      if (!/^ui?-/.test(name)) continue
+      if (shared.has(name) || mine.has(name)) continue
+      offenders.push(`${rel} -> .${name}`)
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `这些设计系统类名在任何 CSS 里都没有定义，在本组件里等于零样式：\n  ${offenders.join('\n  ')}\n` +
+      '修法二选一：在共享样式里补上它（若它确实是设计系统的一部分），或改用已存在的类名。'
+  )
+})
+
+/**
+ * JS 里映射出来的标签变体同样要有定义。
+ *
+ * 模板扫描看不到 `u-tag--${variant}` 这种动态类名 —— `.u-tag--muted` 正是这样
+ * 漏掉的：`STATUS_VARIANT.disabled = 'muted'`，而 global.css 的标签族里只有
+ * accent / success / warning / danger / info，于是「已禁用」状态静默退化成
+ * 中性标签。当时的测试还精确断言了这个不存在的类名，形成假绿。
+ */
+test('状态标签变体映射里的每个变体都有 CSS 定义', () => {
+  const { shared } = collect()
+  const source = readFileSync(join(SRC, 'hooks/useKamiDisplay/index.js'), 'utf8')
+  const block = source.match(/STATUS_VARIANT\s*=\s*\{([\s\S]*?)\}/)
+
+  assert.ok(block, '应当能读到 STATUS_VARIANT 的定义（它改名后请同步本测试）')
+
+  const missing = []
+  for (const m of block[1].matchAll(/:\s*'([a-z][a-z-]*)'/g)) {
+    const cls = `u-tag--${m[1]}`
+    if (!shared.has(cls)) missing.push(cls)
+  }
+
+  assert.deepEqual(
+    missing,
+    [],
+    `这些标签变体在共享样式里没有定义，落到页面上会静默退化成基础 .u-tag：${missing.join(', ')}`
+  )
 })

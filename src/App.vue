@@ -89,6 +89,7 @@ import { useShopStore } from '@/stores/shop'
 import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useMemberStore } from '@/stores/member'
 // 首屏加载与路由进度
 import { useBootScreen } from '@/hooks/useBootScreen'
 import { useRouteLoading } from '@/hooks/useRouteLoading'
@@ -98,6 +99,7 @@ const shopStore = useShopStore()
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const favoriteStore = useFavoriteStore()
+const memberStore = useMemberStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -127,7 +129,11 @@ const scrollToTop = () => {
 const handleLoginSuccess = async () => {
   userStore.closeLoginModal()
 
-  await Promise.all([cartStore.fetch({ silent: true }), favoriteStore.load(true)])
+  await Promise.all([
+    cartStore.fetch({ silent: true }),
+    favoriteStore.load(true),
+    memberStore.fetchOverview({ silent: true }),
+  ])
 
   const redirect = route.query.redirect
   if (typeof redirect === 'string' && redirect.startsWith('/')) {
@@ -140,7 +146,8 @@ const handleLoginSuccess = async () => {
  *
  * 侦测点用 `userId` 而不是 `isLoggedIn`：登录前后**游客也有 id**，
  * 而从「游客 A」切到「注册用户 B」时两份购物车是完全不同的数据，
- * 必须都跟着 id 变，否则 B 会看到 A 的车。
+ * 必须都跟着 id 变，否则 B 会看到 A 的车。会员概览同理：换号后等级与积分
+ * 都换了主人，不重置就会把 A 的等级显示给 B。
  */
 watch(
   () => userStore.userId,
@@ -149,9 +156,14 @@ watch(
 
     cartStore.reset()
     favoriteStore.reset()
+    memberStore.reset()
 
     if (userStore.isLoggedIn) {
-      await Promise.all([cartStore.fetch({ silent: true }), favoriteStore.load(true)])
+      await Promise.all([
+        cartStore.fetch({ silent: true }),
+        favoriteStore.load(true),
+        memberStore.fetchOverview({ silent: true }),
+      ])
     }
   }
 )
@@ -183,12 +195,15 @@ onMounted(async () => {
   // 商品数据**不阻塞启动**：它有骨架屏，边渲染边加载的观感好过一个全屏遮罩。
   shopStore.init()
 
-  // 购物车与收藏是账号级数据，必须在身份就绪之后再取。
-  // 游客态下 /cartApi 会返回 403，store 会翻译成 needLogin；
-  // 这里只在已登录时请求，首屏不因为「没登录」而发无谓的请求。
+  // 购物车、收藏与会员概览都是账号级数据，必须在身份就绪之后再取。
+  // 游客态下 /cartApi 会返回 403，store 会翻译成 needLogin；会员接口对游客
+  // 返回 401，member store 会把错误静默吃掉。这里只在已登录时请求，
+  // 首屏不因为「没登录」而发无谓的请求。
   if (userStore.isLoggedIn) {
     cartStore.fetch({ silent: true })
     favoriteStore.load()
+    // 会员摘要条在个人中心与导航栏各出现一次，统一在这里取，两处共用一份数据
+    memberStore.fetchOverview({ silent: true })
   }
 })
 

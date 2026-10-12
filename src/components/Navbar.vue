@@ -153,6 +153,10 @@
                 <span v-if="isGuest" class="u-tag u-tag--warning user-badge">
                   {{ AUTH.guestBadge }}
                 </span>
+                <!-- 会员等级徽标：levelName 为空（非会员）时整块不渲染，不留空位 -->
+                <span v-else-if="memberStore.levelName" class="u-tag u-tag--accent user-badge">
+                  {{ memberStore.levelName }}
+                </span>
               </p>
               <p class="user-since">
                 {{ isGuest ? AUTH.guestSince : AUTH.registeredSince }}
@@ -195,6 +199,29 @@
             </router-link>
             <router-link class="u-dropdown-item" to="/user/kami" @click="handleMenuClick">
               卡密管理
+            </router-link>
+
+            <!--
+              会员与积分单独成组：上面四项是「账号资产」，这组是「会员权益」。
+              用分隔线 + 小组标题分开，否则下拉会变成一条九项的平铺长条。
+              消息铃铛（notifyApi）尚未实现，接口落地后再补 —— 不放点不开的入口。
+            -->
+            <div class="u-dropdown-divider"></div>
+            <p class="dropdown-group-label">会员权益</p>
+            <router-link class="u-dropdown-item" to="/member" @click="handleMenuClick">
+              会员中心
+            </router-link>
+            <router-link class="u-dropdown-item" to="/member/plans" @click="handleMenuClick">
+              会员套餐
+            </router-link>
+            <router-link class="u-dropdown-item" to="/points" @click="handleMenuClick">
+              积分中心
+            </router-link>
+            <router-link class="u-dropdown-item" to="/checkin" @click="handleMenuClick">
+              每日签到
+            </router-link>
+            <router-link class="u-dropdown-item" to="/coupons" @click="handleMenuClick">
+              我的优惠券
             </router-link>
             <div class="u-dropdown-divider"></div>
             <button type="button" class="u-dropdown-item logout" @click="handleLogout">
@@ -251,6 +278,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useMemberStore } from '@/stores/member'
 import { useCartStore } from '@/stores/cart'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
@@ -261,6 +289,7 @@ import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const memberStore = useMemberStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -340,8 +369,17 @@ const handleMenuClick = () => {
   userMenuOpen.value = false
 }
 
+/**
+ * 展开用户下拉时顺手刷新一次会员概览。
+ *
+ * 不在顶层 onMounted 里拉：会员等级会因为「客服确认结算」而在会话中途变化，
+ * 进站时的快照可能已经过期。下拉是用户主动查看「我是谁、我有什么」的动作，
+ * 在这个时刻拉一次，看到的才是当下真实的等级与积分。
+ * 游客不拉 —— 他没有会员数据，接口只会回 401。
+ */
 const toggleUserMenu = () => {
   userMenuOpen.value = !userMenuOpen.value
+  if (userMenuOpen.value && !isGuest.value) memberStore.fetchOverview({ silent: true })
 }
 
 /**
@@ -902,6 +940,19 @@ onUnmounted(() => {
   font-size: var(--tag-font-size);
   color: var(--text-muted);
   margin: 0;
+}
+
+/* 下拉里的小组标题：与 .legal-toc-title 同族（等宽、小号、静音色），
+   只负责分隔语义，不参与点击 */
+.dropdown-group-label {
+  margin: 0;
+  padding: calc(var(--space-unit) * 1.5) var(--dropdown-item-padding-x) calc(var(--space-unit) * 0.5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
 }
 
 .u-dropdown-item.logout {

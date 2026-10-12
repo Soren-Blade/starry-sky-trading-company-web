@@ -11,7 +11,7 @@
       <nav class="legal-toc" aria-label="页内目录">
         <p class="legal-toc-title">目录</p>
         <ul class="legal-toc-list">
-          <li v-for="(section, index) in doc.sections" :key="section.heading">
+          <li v-for="(section, index) in sections" :key="section.heading">
             <a :href="`#legal-${index}`" class="legal-toc-link">{{ section.heading }}</a>
           </li>
         </ul>
@@ -31,18 +31,26 @@
 
       <article class="legal-body">
         <section
-          v-for="(section, index) in doc.sections"
+          v-for="(section, index) in sections"
           :id="`legal-${index}`"
           :key="section.heading"
           class="legal-section"
         >
           <h2 class="legal-heading">{{ section.heading }}</h2>
-          <p v-for="(text, i) in section.paragraphs" :key="i" class="legal-text">
-            {{ text }}
+          <p v-for="(parts, i) in section.paragraphs" :key="i" class="legal-text">
+            <template v-for="(part, j) in parts" :key="j">
+              <strong v-if="part.type === 'strong'">{{ part.text }}</strong>
+              <code v-else-if="part.type === 'code'" class="legal-code">{{ part.text }}</code>
+              <template v-else>{{ part.text }}</template>
+            </template>
           </p>
-          <ul v-if="section.list && section.list.length" class="legal-list">
-            <li v-for="(item, i) in section.list" :key="i" class="legal-list-item">
-              {{ item }}
+          <ul v-if="section.list.length" class="legal-list">
+            <li v-for="(parts, i) in section.list" :key="i" class="legal-list-item">
+              <template v-for="(part, j) in parts" :key="j">
+                <strong v-if="part.type === 'strong'">{{ part.text }}</strong>
+                <code v-else-if="part.type === 'code'" class="legal-code">{{ part.text }}</code>
+                <template v-else>{{ part.text }}</template>
+              </template>
             </li>
           </ul>
         </section>
@@ -77,6 +85,38 @@ const route = useRoute()
 const key = computed(() => route.meta?.legalKey || 'terms')
 
 const doc = computed(() => LEGAL[key.value] || LEGAL.terms)
+
+/**
+ * 把一段文案拆成「纯文本 / 粗体 / 等宽」片段。
+ *
+ * 条款文案里一直写着 `**强调**` 与 `` `KEY` ``，但模板用的是插值，标记会原样
+ * 显示给用户。与其把标记从文案里删掉（丢掉语气和等宽的可读性），不如在这里
+ * 显式翻译一次 —— 不用 v-html，插值永远是纯文本，没有注入面。
+ */
+function segments(text) {
+  if (text === null || text === undefined || text === '') return []
+  return String(text)
+    .split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+    .filter(Boolean)
+    .map((chunk) => {
+      if (chunk.startsWith('**') && chunk.endsWith('**')) {
+        return { type: 'strong', text: chunk.slice(2, -2) }
+      }
+      if (chunk.startsWith('`') && chunk.endsWith('`')) {
+        return { type: 'code', text: chunk.slice(1, -1) }
+      }
+      return { type: 'text', text: chunk }
+    })
+}
+
+/** 目录与正文共用同一份切片结果，避免模板里两处各拆一次 */
+const sections = computed(() =>
+  (doc.value.sections || []).map((section) => ({
+    heading: section.heading,
+    paragraphs: (section.paragraphs || []).map(segments),
+    list: (section.list || []).map(segments),
+  })),
+)
 
 /** 眉标取 key 的大写（TERMS / PRIVACY / RULES），与其它页的等宽眉标同构 */
 const eyebrow = computed(() => String(key.value).toUpperCase())
@@ -192,6 +232,26 @@ const otherDocs = computed(() => ALL_DOCS.filter((item) => item.key !== key.valu
 
 .legal-text + .legal-text {
   margin-top: calc(var(--space-unit) * 1.5);
+}
+
+/*
+ * 条款文案里的 **强调** 与 `KEY`。
+ * 标记由脚本翻译成 <strong> / <code>，这里只负责观感：强调要能一眼看出，
+ * 等宽片段（localStorage key、HTTP 头）要与正文区分开。
+ */
+.legal-text strong,
+.legal-list-item strong {
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.legal-code {
+  padding: 0 calc(var(--space-unit) * 0.5);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--text-primary);
+  background: var(--bg-surface-2);
+  border-radius: calc(var(--radius-media) * 0.4);
 }
 
 .legal-list {

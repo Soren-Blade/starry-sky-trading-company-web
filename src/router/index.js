@@ -104,6 +104,12 @@ const routes = [
     meta: { title: '会员中心 - 星辰商行', requiresAuth: true }
   },
   {
+    path: '/member/plans',
+    name: 'MemberPlans',
+    component: () => import('@/pages/MemberPlans.vue'),
+    meta: { title: '会员套餐 - 星辰商行', requiresAuth: true }
+  },
+  {
     path: '/points',
     name: 'Points',
     component: () => import('@/pages/Points.vue'),

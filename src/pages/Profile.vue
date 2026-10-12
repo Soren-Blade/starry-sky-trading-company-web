@@ -11,6 +11,80 @@
       </span>
     </header>
 
+    <!--
+      会员权益摘要：等级 / 成长值 / 积分 / 优惠券四个数放在两栏面板之上。
+      未登录整块不渲染（这几个数都属于账号）；数据没回来时给骨架 —— 加载中
+      就写「还不是会员」是错的。数据由 App.vue 在登录态变化时统一拉取，
+      本页只负责展示与重试。
+    -->
+    <section
+      v-if="userStore.isLoggedIn && memberSummaryVisible"
+      class="ui-card profile-member"
+      aria-label="会员权益摘要"
+    >
+      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-member-skeleton">
+        <span class="u-skeleton profile-member-skeleton-line"></span>
+        <span class="u-skeleton profile-member-skeleton-line profile-member-skeleton-line--short"></span>
+      </div>
+
+      <p v-else-if="memberStore.error" class="profile-member-error" role="alert">
+        {{ memberStore.error }}
+        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
+      </p>
+
+      <template v-else-if="memberStore.overview">
+        <div class="profile-member-head">
+          <p class="profile-member-title">
+            <AppIcon name="star" aria-hidden="true" />
+            {{ memberStore.isMember ? memberStore.levelName : '还不是会员' }}
+          </p>
+          <p class="profile-member-note">
+            {{
+              memberStore.isMember && memberStore.overview.days_left
+                ? `有效期剩余 ${memberStore.overview.days_left} 天`
+                : '开通会员可享消费折扣与积分倍率'
+            }}
+          </p>
+        </div>
+
+        <dl class="profile-member-stats">
+          <div class="profile-member-stat">
+            <dt class="profile-member-term">成长值</dt>
+            <dd class="profile-member-value">
+              {{ memberStore.overview.growth ?? 0 }}
+              <span v-if="memberStore.overview.growth_threshold" class="profile-member-sub">
+                / {{ memberStore.overview.growth_threshold }}
+              </span>
+            </dd>
+          </div>
+          <div class="profile-member-stat">
+            <dt class="profile-member-term">积分</dt>
+            <dd class="profile-member-value">
+              {{ memberStore.points }}
+              <span v-if="memberStore.overview.points_value" class="profile-member-sub">
+                ≈ ¥{{ memberStore.overview.points_value }}
+              </span>
+            </dd>
+          </div>
+          <div class="profile-member-stat">
+            <dt class="profile-member-term">优惠券</dt>
+            <dd class="profile-member-value">{{ memberStore.overview.coupons ?? 0 }}</dd>
+          </div>
+        </dl>
+
+        <div class="profile-member-actions">
+          <router-link class="u-btn-secondary" to="/member">会员中心</router-link>
+          <router-link class="u-btn-secondary" to="/member/plans">套餐对比</router-link>
+        </div>
+
+        <p v-if="memberStore.overview.points_expiring" class="profile-member-remind">
+          <AppIcon name="clock" aria-hidden="true" />
+          {{ memberStore.overview.points_expiring.points }} 积分将于
+          {{ toDate(memberStore.overview.points_expiring.expire_at) }} 过期
+        </p>
+      </template>
+    </section>
+
     <div class="profile-layout">
       <!-- 左：账号信息（只读） -->
       <section class="page-panel" aria-label="账号信息">
@@ -228,6 +302,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import { useMemberStore } from '@/stores/member'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
@@ -241,7 +316,18 @@ import DatePickerField from '@/components/DatePickerField.vue'
 import SelectField from '@/components/SelectField.vue'
 
 const userStore = useUserStore()
+const memberStore = useMemberStore()
 const { userInfo, nickname } = storeToRefs(userStore)
+
+/**
+ * 会员摘要条什么时候出现。
+ *
+ * 三个条件缺一不可：已登录，且「数据在手上 / 正在拿 / 拿失败要报错」三者之一。
+ * 少最后一条会在「登录了但接口还没回」的那一瞬间渲染出一条空卡片。
+ */
+const memberSummaryVisible = computed(
+  () => Boolean(memberStore.overview) || memberStore.loadingOverview || Boolean(memberStore.error)
+)
 
 const saving = ref(false)
 const errorMessage = ref('')
@@ -477,6 +563,117 @@ onMounted(() => {
  * 个人中心：左只读信息 / 右可编辑表单。
  * 外壳来自 .page-shell 系列，字段来自 .u-field 系列，这里只写两栏比例与信息表。
  */
+
+/* ── 会员权益摘要：两栏面板之上的一条横向概览 ───────────────── */
+/* 两个类名合写提高优先级：global.css 的 .ui-card 是纵向 flex 卡片，
+   这里要的是横向摘要条，靠 .ui-card.profile-member 明确覆盖它的方向 */
+.ui-card.profile-member {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit) * 2.5);
+}
+
+.profile-member-head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-member-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-member-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.profile-member-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 3);
+  margin: 0;
+}
+
+.profile-member-stat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+}
+
+.profile-member-term {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-member-value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  color: var(--text-primary);
+}
+
+.profile-member-sub {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+/* 到期提醒横跨整行：它属于「需要你注意」的信息，不该挤在数字那一行 */
+.profile-member-remind {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
+  flex-basis: 100%;
+  margin: 0;
+  padding-top: calc(var(--space-unit) * 1.5);
+  border-top: var(--stroke-width) solid var(--divider);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.profile-member-error {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.profile-member-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit));
+  width: 100%;
+}
+
+.profile-member-skeleton-line {
+  display: block;
+  height: calc(var(--space-unit) * 2);
+  border-radius: var(--radius-media);
+}
+
+.profile-member-skeleton-line--short {
+  width: 40%;
+}
 
 .profile-layout {
   display: grid;

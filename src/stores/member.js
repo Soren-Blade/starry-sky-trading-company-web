@@ -20,6 +20,8 @@ export const useMemberStore = defineStore('member', {
     overview: null,
     /** 套餐与等级对照 */
     plans: null,
+    /** 等级对照表（`levels`），套餐页的「等级对照」用 */
+    levels: null,
     /** 接口里的说明文案（结算方式/退款口径），由服务端下发，前端不自己编 */
     paymentNotice: '',
     refundNotice: '',
@@ -67,12 +69,16 @@ export const useMemberStore = defineStore('member', {
       try {
         const { data } = await getPlans()
         this.plans = data.plans || []
+        // `levels` 与 `plans` 同一次响应下发（见 `sstc.get_member_plans`），
+        // 之前只存了 plans，套餐页的「等级对照」就没有数据源
+        this.levels = data.levels || []
         this.paymentNotice = data.payment_notice || ''
         this.refundNotice = data.refund_notice || ''
         return data
       } catch (error) {
         this.error = error?.message || '获取套餐失败'
         this.plans = null
+        this.levels = null
         return null
       } finally {
         this.loadingPlans = false
@@ -83,6 +89,7 @@ export const useMemberStore = defineStore('member', {
     reset() {
       this.overview = null
       this.plans = null
+      this.levels = null
       this.paymentNotice = ''
       this.refundNotice = ''
       this.error = ''
