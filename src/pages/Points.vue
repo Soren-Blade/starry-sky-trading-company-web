@@ -5,7 +5,7 @@
       <p class="page-shell-desc">签到、消费与任务都能获得积分，100 积分可抵 ¥1</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="u-card points-state">
+    <div v-if="!userStore.isLoggedIn" class="ui-card points-state">
       <AppIcon name="landmark" class="points-state-icon" />
       <p class="points-state-title">请先登录账号</p>
       <p class="points-state-desc">登录后可查看积分余额与明细</p>
@@ -15,21 +15,21 @@
     </div>
 
     <template v-else>
-      <div v-if="pointsStore.loadingAccount && !pointsStore.account" class="u-card points-skeleton">
+      <div v-if="pointsStore.loadingAccount && !pointsStore.account" class="ui-card points-skeleton">
         <span class="u-skeleton points-skeleton-line points-skeleton-line--lg"></span>
         <span class="u-skeleton points-skeleton-line"></span>
       </div>
 
-      <div v-else-if="pointsStore.error" class="u-card points-error" role="alert">
+      <div v-else-if="pointsStore.error" class="ui-card points-error" role="alert">
         <AppIcon name="alert-triangle" />
         <span>{{ pointsStore.error }}</span>
-        <button type="button" class="u-btn" @click="pointsStore.fetchAccount()">重试</button>
+        <button type="button" class="u-btn-secondary" @click="pointsStore.fetchAccount()">重试</button>
       </div>
 
       <template v-else>
         <!-- ① 余额大字。0 分时不显示「0 积分」，而是给获取路径 ——
              「暂无数据 ≠ 加载中」，也不该是「你有 0 元」这种没有信息量的陈述 -->
-        <section class="u-card points-balance">
+        <section class="ui-card points-balance">
           <template v-if="pointsStore.points > 0">
             <p class="points-balance-num">
               {{ pointsStore.points }}
@@ -44,13 +44,13 @@
               <button v-if="checkinAvailable" type="button" class="u-btn-primary" @click="goCheckin">
                 去签到
               </button>
-              <router-link v-else :to="{ name: 'Home' }" class="u-btn">去逛逛商品</router-link>
+              <router-link v-else :to="{ name: 'Home' }" class="u-btn-secondary">去逛逛商品</router-link>
             </div>
           </template>
         </section>
 
         <!-- ② 即将过期：没有将过期的批次时**整块不渲染**（键可能不存在） -->
-        <section v-if="pointsStore.expireSoon" class="u-card points-expiring">
+        <section v-if="pointsStore.expireSoon" class="ui-card points-expiring">
           <AppIcon name="clock" />
           <span>
             <strong>{{ pointsStore.expireSoon.points }}</strong> 积分将于
@@ -60,15 +60,15 @@
 
         <!-- ③ 构成与倍率 -->
         <section class="points-stats">
-          <div class="u-card points-stat">
+          <div class="ui-card points-stat">
             <span class="points-stat-label">本年度获得</span>
             <span class="points-stat-value">{{ summaryEarned }}</span>
           </div>
-          <div class="u-card points-stat">
+          <div class="ui-card points-stat">
             <span class="points-stat-label">本年度消耗</span>
             <span class="points-stat-value">{{ summarySpent }}</span>
           </div>
-          <div class="u-card points-stat">
+          <div class="ui-card points-stat">
             <span class="points-stat-label">积分倍率</span>
             <span class="points-stat-value">×{{ pointsStore.multiplier }}</span>
             <span class="points-stat-hint">{{ pointsStore.isMember ? '会员加成生效中' : '开通会员，消费积分 ×2' }}</span>
@@ -78,11 +78,11 @@
         <!-- ④ 快捷入口：只渲染已存在的路由，未落地的为禁用态（不死链） -->
         <nav class="points-shortcuts">
           <template v-for="entry in shortcuts" :key="entry.name">
-            <router-link v-if="entry.available" :to="{ name: entry.name }" class="u-card points-shortcut">
+            <router-link v-if="entry.available" :to="{ name: entry.name }" class="ui-card points-shortcut">
               <AppIcon :name="entry.icon" />
               <span>{{ entry.label }}</span>
             </router-link>
-            <span v-else class="u-card points-shortcut is-disabled" aria-disabled="true">
+            <span v-else class="ui-card points-shortcut is-disabled" aria-disabled="true">
               <AppIcon :name="entry.icon" />
               <span>{{ entry.label }}</span>
               <span class="points-shortcut-soon">即将上线</span>

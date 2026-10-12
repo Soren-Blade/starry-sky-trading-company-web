@@ -5,7 +5,7 @@
       <p class="page-shell-desc">下单时可选用，注意门槛与有效期</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="u-card coupons-state">
+    <div v-if="!userStore.isLoggedIn" class="ui-card coupons-state">
       <AppIcon name="ticket" class="coupons-state-icon" />
       <p class="coupons-state-title">请先登录账号</p>
       <p class="coupons-state-desc">登录后可查看你的优惠券</p>
@@ -32,18 +32,18 @@
         </button>
       </nav>
 
-      <div v-if="couponStore.loading && !couponStore.list.length" class="u-card coupons-skeleton">
+      <div v-if="couponStore.loading && !couponStore.list.length" class="ui-card coupons-skeleton">
         <span class="u-skeleton coupons-skeleton-line"></span>
         <span class="u-skeleton coupons-skeleton-line"></span>
       </div>
 
-      <div v-else-if="couponStore.error" class="u-card coupons-error" role="alert">
+      <div v-else-if="couponStore.error" class="ui-card coupons-error" role="alert">
         <AppIcon name="alert-triangle" />
         <span>{{ couponStore.error }}</span>
-        <button type="button" class="u-btn" @click="couponStore.fetchMine()">重试</button>
+        <button type="button" class="u-btn-secondary" @click="couponStore.fetchMine()">重试</button>
       </div>
 
-      <div v-else-if="!couponStore.list.length" class="u-card coupons-state">
+      <div v-else-if="!couponStore.list.length" class="ui-card coupons-state">
         <AppIcon name="ticket" class="coupons-state-icon" />
         <p class="coupons-state-title">{{ emptyTitle }}</p>
         <p class="coupons-state-desc">{{ emptyDesc }}</p>
@@ -54,7 +54,7 @@
           <li
             v-for="item in couponStore.list"
             :key="item.id"
-            class="u-card coupon"
+            class="ui-card coupon"
             :class="{ 'is-used': item.status === 'used', 'is-expired': item.status === 'expired' }"
           >
             <div class="coupon-amount">
@@ -92,7 +92,7 @@
         <div v-if="couponStore.totalPages > 1" class="coupons-pager">
           <button
             type="button"
-            class="u-btn"
+            class="u-btn-secondary"
             :disabled="!couponStore.hasPrev"
             @click="goPage(couponStore.page - 1)"
           >
@@ -101,7 +101,7 @@
           <span class="coupons-pager-info">{{ couponStore.page }} / {{ couponStore.totalPages }}</span>
           <button
             type="button"
-            class="u-btn"
+            class="u-btn-secondary"
             :disabled="!couponStore.hasNext"
             @click="goPage(couponStore.page + 1)"
           >

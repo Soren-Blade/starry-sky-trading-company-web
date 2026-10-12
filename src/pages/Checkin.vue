@@ -5,7 +5,7 @@
       <p class="page-shell-desc">连续签到积分更多：3 天起 15 分，7 天起 20 分</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="u-card checkin-state">
+    <div v-if="!userStore.isLoggedIn" class="ui-card checkin-state">
       <AppIcon name="check-circle" class="checkin-state-icon" />
       <p class="checkin-state-title">请先登录账号</p>
       <p class="checkin-state-desc">登录后即可每日签到赚积分</p>
@@ -16,7 +16,7 @@
 
     <template v-else>
       <!-- ① 主签到区 -->
-      <section class="u-card checkin-hero">
+      <section class="ui-card checkin-hero">
         <div class="checkin-hero-info">
           <p class="checkin-streak">
             已连续签到 <strong>{{ pointsStore.streak }}</strong> 天
@@ -47,11 +47,11 @@
           </span>
         </div>
 
-        <div v-if="!calendar" class="u-card checkin-skeleton">
+        <div v-if="!calendar" class="ui-card checkin-skeleton">
           <span class="u-skeleton checkin-skeleton-line"></span>
         </div>
 
-        <ul v-else class="u-card checkin-grid">
+        <ul v-else class="ui-card checkin-grid">
           <li
             v-for="day in calendar.days"
             :key="day.date"
@@ -69,7 +69,7 @@
         </ul>
 
         <!-- ③ 规则：连签档位与后端 sstc.checkin_base_points 必须一致 -->
-        <ul class="u-card checkin-rules">
+        <ul class="ui-card checkin-rules">
           <li v-for="rule in rules" :key="rule.text" class="checkin-rule">
             <AppIcon :name="rule.icon" />
             <span>{{ rule.text }}</span>

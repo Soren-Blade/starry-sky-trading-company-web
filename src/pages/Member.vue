@@ -6,7 +6,7 @@
     </header>
 
     <!-- 未登录：给登录引导而不是空数据（与工具页在无身份时的做法一致） -->
-    <div v-if="!userStore.isLoggedIn" class="u-card member-state">
+    <div v-if="!userStore.isLoggedIn" class="ui-card member-state">
       <AppIcon name="user" class="member-state-icon" />
       <p class="member-state-title">请先登录账号</p>
       <p class="member-state-desc">登录后可查看会员等级、积分与优惠券</p>
@@ -17,20 +17,20 @@
 
     <template v-else>
       <!-- 加载中给骨架屏而不是「暂无数据」：后者在数据回来前是错的 -->
-      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="u-card member-skeleton">
+      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="ui-card member-skeleton">
         <span class="u-skeleton member-skeleton-line member-skeleton-line--lg"></span>
         <span class="u-skeleton member-skeleton-line"></span>
       </div>
 
-      <div v-else-if="memberStore.error" class="u-card member-error" role="alert">
+      <div v-else-if="memberStore.error" class="ui-card member-error" role="alert">
         <AppIcon name="alert-triangle" />
         <span>{{ memberStore.error }}</span>
-        <button type="button" class="u-btn" @click="memberStore.fetchOverview()">重试</button>
+        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
       </div>
 
       <template v-else>
         <!-- ① 身份卡 -->
-        <section class="u-card member-identity">
+        <section class="ui-card member-identity">
           <div class="member-identity-main">
             <span class="u-tag member-badge" :class="{ 'u-tag--accent': memberStore.isMember }">
               <AppIcon :name="memberStore.isMember ? 'star' : 'user'" />
@@ -63,7 +63,7 @@
             <button v-if="plansAvailable" type="button" class="u-btn-primary" @click="goPlans">
               {{ memberStore.isMember ? '续费会员' : '开通会员' }}
             </button>
-            <button v-else type="button" class="u-btn" disabled title="套餐页即将上线">
+            <button v-else type="button" class="u-btn-secondary" disabled title="套餐页即将上线">
               {{ memberStore.isMember ? '续费会员' : '开通会员' }}（即将上线）
             </button>
           </div>
@@ -72,7 +72,7 @@
         <!-- ② 成长值进度（非会员没有「下一级」，整块不渲染） -->
         <section
           v-if="memberStore.isMember && memberStore.overview.growth_to_next !== undefined"
-          class="u-card member-growth"
+          class="ui-card member-growth"
         >
           <div class="member-growth-head">
             <span class="member-growth-title">成长值</span>
@@ -102,7 +102,7 @@
             <li
               v-for="item in benefits"
               :key="item.key"
-              class="u-card member-benefit"
+              class="ui-card member-benefit"
               :class="{ 'is-locked': !item.unlocked }"
             >
               <span class="member-benefit-icon"><AppIcon :name="item.icon" /></span>
@@ -119,7 +119,7 @@
         </section>
 
         <!-- ④ 待办提醒：通常 ≤3 条，堆叠即可，不做轮播 -->
-        <section v-if="memberStore.todos.length" class="u-card member-todos">
+        <section v-if="memberStore.todos.length" class="ui-card member-todos">
           <h2 class="member-section-title">待办提醒</h2>
           <ul>
             <li v-for="todo in memberStore.todos" :key="todo.type" class="member-todo">
@@ -132,11 +132,11 @@
         <!-- ⑤ 快捷入口四宫格：只渲染已存在的路由，未落地的为禁用态 -->
         <nav class="member-shortcuts">
           <template v-for="entry in shortcuts" :key="entry.name">
-            <router-link v-if="entry.available" :to="{ name: entry.name }" class="u-card member-shortcut">
+            <router-link v-if="entry.available" :to="{ name: entry.name }" class="ui-card member-shortcut">
               <AppIcon :name="entry.icon" />
               <span>{{ entry.label }}</span>
             </router-link>
-            <span v-else class="u-card member-shortcut is-disabled" aria-disabled="true">
+            <span v-else class="ui-card member-shortcut is-disabled" aria-disabled="true">
               <AppIcon :name="entry.icon" />
               <span>{{ entry.label }}</span>
               <span class="member-shortcut-soon">即将上线</span>

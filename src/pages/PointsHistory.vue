@@ -5,7 +5,7 @@
       <p class="page-shell-desc">每一笔积分的来去都可查，是客服核对的依据</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="u-card history-state">
+    <div v-if="!userStore.isLoggedIn" class="ui-card history-state">
       <AppIcon name="file" class="history-state-icon" />
       <p class="history-state-title">请先登录账号</p>
       <p class="history-state-desc">登录后可查看积分明细</p>
@@ -17,15 +17,15 @@
     <template v-else>
       <!-- 汇总：与积分中心同源（同一份 summary），两处数字不会打架 -->
       <section class="history-summary">
-        <div class="u-card history-stat">
+        <div class="ui-card history-stat">
           <span class="history-stat-label">获得</span>
           <span class="history-stat-value is-earn">+{{ summary.earned }}</span>
         </div>
-        <div class="u-card history-stat">
+        <div class="ui-card history-stat">
           <span class="history-stat-label">消耗</span>
           <span class="history-stat-value is-spend">-{{ summary.spent }}</span>
         </div>
-        <div class="u-card history-stat">
+        <div class="ui-card history-stat">
           <span class="history-stat-label">当前余额</span>
           <span class="history-stat-value">{{ pointsStore.points }}</span>
           <span class="history-stat-hint">可抵 ¥{{ formatPointsValue(pointsStore.points) }}</span>
@@ -47,17 +47,17 @@
         </button>
       </nav>
 
-      <div v-if="pointsStore.loadingHistory && !pointsStore.history.length" class="u-card history-skeleton">
+      <div v-if="pointsStore.loadingHistory && !pointsStore.history.length" class="ui-card history-skeleton">
         <span v-for="n in 3" :key="n" class="u-skeleton history-skeleton-line"></span>
       </div>
 
-      <div v-else-if="pointsStore.error" class="u-card history-error" role="alert">
+      <div v-else-if="pointsStore.error" class="ui-card history-error" role="alert">
         <AppIcon name="alert-triangle" />
         <span>{{ pointsStore.error }}</span>
-        <button type="button" class="u-btn" @click="pointsStore.fetchHistory()">重试</button>
+        <button type="button" class="u-btn-secondary" @click="pointsStore.fetchHistory()">重试</button>
       </div>
 
-      <div v-else-if="!pointsStore.history.length" class="u-card history-state">
+      <div v-else-if="!pointsStore.history.length" class="ui-card history-state">
         <AppIcon name="file" class="history-state-icon" />
         <p class="history-state-title">{{ emptyTitle }}</p>
         <p class="history-state-desc">签到、下单与任务都会在这里留下记录</p>
@@ -65,7 +65,7 @@
 
       <template v-else>
         <ul class="history-list">
-          <li v-for="row in pointsStore.history" :key="row.id" class="u-card history-item">
+          <li v-for="row in pointsStore.history" :key="row.id" class="ui-card history-item">
             <div class="history-item-main">
               <span class="history-item-type">{{ row.type_text }}</span>
               <span class="history-item-time">{{ formatTime(row.created_at) }}</span>
@@ -86,7 +86,7 @@
         <div v-if="pointsStore.totalPages > 1" class="history-pager">
           <button
             type="button"
-            class="u-btn"
+            class="u-btn-secondary"
             :disabled="!pointsStore.hasPrev"
             @click="goPage(pointsStore.page - 1)"
           >
@@ -95,7 +95,7 @@
           <span class="history-pager-info">{{ pointsStore.page }} / {{ pointsStore.totalPages }}（共 {{ pointsStore.total }} 条）</span>
           <button
             type="button"
-            class="u-btn"
+            class="u-btn-secondary"
             :disabled="!pointsStore.hasNext"
             @click="goPage(pointsStore.page + 1)"
           >
