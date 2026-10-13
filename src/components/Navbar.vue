@@ -93,6 +93,24 @@
         </router-link>
 
         <!--
+          会员中心入口：与购物车同样「有身份就显示」。
+          未开通的人也需要一个常驻入口（下拉里的「会员权益」组要展开才看得到，
+          会员体系本身要靠未开通的人转化）；等级徽标才是会员专属 ——
+          levelName 为空（未开通）时整块不渲染，那时它就是一枚普通图标。
+        -->
+        <router-link
+          v-if="userStore.userId"
+          to="/member"
+          class="u-icon-btn navbar-member"
+          :aria-label="memberLabel"
+        >
+          <AppIcon name="crown" />
+          <span v-if="memberStore.levelName" class="navbar-member-badge" aria-hidden="true">
+            {{ memberStore.levelName }}
+          </span>
+        </router-link>
+
+        <!--
           身份占位骨架：身份**还没解析出来**的那一瞬间。
           此时既不能显示登录按钮（几百毫秒后会变成头像，是一次刺眼的跳动），
           也不能留空（顶栏会先塌再撑开）。用一个与头像等尺寸的骨架占住位置。
@@ -338,6 +356,16 @@ const navMenu = NAV_MENU
 const cartCount = computed(() => cartStore.count)
 const cartLabel = computed(() =>
   cartCount.value > 0 ? `购物车，${cartCount.value} 件商品` : '购物车'
+)
+
+/**
+ * 会员入口的无障碍名：等级只在**已经拿到**会员概览时才读出来。
+ *
+ * 概览由 App.vue 在身份就绪后统一拉取（登录、换号、首屏各一次），这里不自己发请求 ——
+ * 顶栏拿不到的只有「未登录」这一种情况，那时读成「会员中心」即可，不编造等级。
+ */
+const memberLabel = computed(() =>
+  memberStore.levelName ? `会员中心，当前等级 ${memberStore.levelName}` : '会员中心'
 )
 
 /**
@@ -959,15 +987,19 @@ onUnmounted(() => {
   color: var(--danger);
 }
 
-/* ── 购物车入口与角标 ───────────────────────────────────── */
-.navbar-cart {
+/* ── 图标入口与角标（购物车件数 / 会员等级） ─────────────── */
+.navbar-cart,
+.navbar-member {
   position: relative;
   flex: none;
 }
 
 /* 角标压在图标按钮右上角：微型徽标圆角 + 强调底 + 反白字，
-   与 ToolCard 的收藏数徽标同构（描边取顶栏表面色，与背景连成一体） */
-.navbar-cart-badge {
+   与 ToolCard 的收藏数徽标同构（描边取顶栏表面色，与背景连成一体）。
+   两处共用一套规格：购物车是件数、会员是等级名（V1–V8，两位字符），
+   尺寸与字重完全一致才像同一套东西。 */
+.navbar-cart-badge,
+.navbar-member-badge {
   position: absolute;
   top: calc(var(--space-unit) * -0.5);
   right: calc(var(--space-unit) * -0.5);

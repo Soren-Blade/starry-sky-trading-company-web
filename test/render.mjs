@@ -137,7 +137,7 @@ export async function createPiniaPlugin() {
  * 这样才能渲染「已登录 + 有卡密列表」这类真实状态，而不只是空态。
  *
  * @param {Record<string, object>} stateByStoreName key 为 store id
- *   （'user' / 'kami' / 'tool' / 'shop' / 'cart' / 'favorite'）
+ *   （'user' / 'kami' / 'tool' / 'shop' / 'cart' / 'favorite' / 'member'）
  */
 export async function createPiniaWithState(stateByStoreName = {}) {
   const pinia = await createPiniaPlugin()
@@ -150,6 +150,7 @@ export async function createPiniaWithState(stateByStoreName = {}) {
     shop: async () => (await import('@/stores/shop')).useShopStore,
     cart: async () => (await import('@/stores/cart')).useCartStore,
     favorite: async () => (await import('@/stores/favorite')).useFavoriteStore,
+    member: async () => (await import('@/stores/member')).useMemberStore,
   }
 
   for (const [storeName, partial] of Object.entries(stateByStoreName)) {
