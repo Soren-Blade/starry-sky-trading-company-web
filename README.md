@@ -304,7 +304,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
 | `Member.vue` | 会员中心：身份卡 + 成长进度 + 六项权益矩阵 + 待办 + 快捷入口。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
-| `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级对照表 + 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
+| `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
 | `Points.vue` | 积分中心：积分账户（余额 / 折抵金额 / 即将过期）与明细入口。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」 |
 | `PointsHistory.vue` | 积分明细：类型筛选（选项来自 `constants`，与后端 `type` 取值一一对应）+ 分页。**只有一页时不渲染分页控件**，避免出现点不动的按钮 |
 | `Checkin.vue` | 每日签到：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）；下方列出奖励规则 |
@@ -573,7 +573,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | 成员 | 说明 |
 | --- | --- |
 | `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、6 项权益解锁态、待办） |
-| `plans` / `levels` | 套餐列表与等级对照表。`levels` 原先被丢弃，`MemberPlans.vue` 的对照表需要它 |
+| `plans` / `levels` | 套餐列表与等级阶梯表（8 档）。两者同一次 `getPlans` 响应下发；`MemberPlans.vue` 与成长值页的 `MemberLevelLadder` 都取 `levels` |
 | `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编（支付通道未接入的如实说明） |
 | `isMember` / `level` / `levelName` / `points` / `benefits` / `todos` | 派生 getter |
 | `hasExpiringTodo` | 是否存在「会员即将到期」待办（按 `type` 在 `todos` 里找） |
@@ -640,6 +640,12 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 所有卡片共用 `global.css` 里的 `.ui-card` 外壳（背景 / 圆角 / 阴影 / hover 位移），
 以及 `.ui-card-media`（媒体区固定比例 + 图片裁切 + hover 放大）。
 卡片组件本身只保留各自特有的内部布局。
+
+### 会员
+
+| 组件 | 说明 |
+| --- | --- |
+| `MemberLevelLadder.vue` | **等级阶梯表**（8 档：等级 / 成长值门槛 / 消费折扣 / 积分倍率），`/member/plans` 与成长值页共用一张表。数据是服务端 `getMemberPlans` 的 `levels[]`，**门槛与倍率原样展示**（前端不抄第二份数字），折扣只经 `constants/member.js` 的 `discountLabel` 翻译。`currentLevel` 标的是**生效等级**（付费档与成长值档取高者），只标记不参与计算；`levels` 为空时整块不渲染 |
 
 ### 弹窗（模态）约定
 

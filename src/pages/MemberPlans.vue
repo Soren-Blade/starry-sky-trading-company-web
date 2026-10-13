@@ -82,33 +82,9 @@
           </div>
         </section>
 
-        <section v-if="levels.length" class="ui-card plans-levels">
-          <h2 class="plans-section-title">等级对照</h2>
-          <div class="u-table-wrap">
-            <table class="u-table">
-              <thead>
-                <tr>
-                  <th scope="col">等级</th>
-                  <th scope="col">成长值门槛</th>
-                  <th scope="col">消费折扣</th>
-                  <th scope="col">积分倍率</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="level in levels"
-                  :key="level.level"
-                  :class="{ 'is-current': level.level === currentLevel }"
-                >
-                  <td>{{ level.name }}</td>
-                  <td class="plans-num">{{ level.growth_threshold }}</td>
-                  <td class="plans-num">{{ discountLabel(level.discount_rate) }}</td>
-                  <td class="plans-num">×{{ level.points_multiplier }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <!-- 等级阶梯与成长值页共用一张表（`MemberLevelLadder`）：
+             门槛/折扣/倍率都由服务端 `get_member_plans` 的 `levels[]` 下发 -->
+        <MemberLevelLadder :levels="levels" :current-level="currentLevel" />
 
         <!-- 结算与退款口径由服务端下发（`payment_notice` / `refund_notice`），
              没有就不渲染那一块 —— 前端不自己编一套说法 -->
@@ -144,7 +120,7 @@
  *   2. **`is_current` 只用于标记，不禁用按钮**。契约注释写的是「禁止重复购买同级」，
  *      但服务端 `sstc.create_membership_order` 并不校验等级，且
  *      `member_plans.duration_days` 的表注释写明「续费时**叠加**到 expires_at，不覆盖」。
- *      照注释禁用同级会把续费直接堵死（星辉会员只能升级、无法续期），
+ *      照注释禁用同级会把续费直接堵死（V1 会员只能升级、无法续期），
  *      因此这里只打「当前等级」标记。**这是有意偏离注释的地方。**
  *   3. **开通走订单链路**（下单 → 联系客服结算 → 客服确认后生效，不新建支付通道）：
  *      这里只调 `createOrder`，不写任何本地乐观状态 —— 会员状态只会由服务端改变。
@@ -159,6 +135,8 @@ import { useRouter } from 'vue-router'
 
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
+import { discountLabel } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
 import { notify } from '@/hooks/useToast/index.js'
@@ -199,13 +177,6 @@ const DURATION_LABELS = { 30: '月付', 90: '季付', 365: '年付' }
 /** 时长只说人话，天数由服务端给；出现没见过的档位就退回「N 天」 */
 function durationLabel(days) {
   return DURATION_LABELS[days] || `${days} 天`
-}
-
-/** 0.95 → 95 折。口径与后端列注释一致（`0.95 = 95 折，1.000 = 不打折`） */
-function discountLabel(rate) {
-  const value = Number(rate)
-  if (!Number.isFinite(value) || value <= 0 || value >= 1) return '无折扣'
-  return `${Math.round(value * 1000) / 10} 折`
 }
 
 /**
@@ -385,20 +356,11 @@ onMounted(() => {
   width: 100%;
 }
 
-/* 等级对照 */
+/* 结算 / 退款说明的卡片小节标题 */
 .plans-section-title {
   margin: 0 0 calc(var(--space-unit) * 1.5);
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
-}
-.plans-levels {
-  padding: calc(var(--space-unit) * 2.5);
-}
-.plans-levels tr.is-current {
-  color: var(--accent);
-}
-.plans-num {
-  font-family: var(--font-mono);
 }
 
 /* 结算 / 退款说明 */
