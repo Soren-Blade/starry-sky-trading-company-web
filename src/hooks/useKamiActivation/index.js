@@ -38,7 +38,12 @@ export function useKamiActivation({ activateCard, getUserId, onActivated } = {})
    * 提交激活。
    *
    * 返回结构化结果，便于调用方决定是否切换 tab 等：
-   *   { success: boolean, reason: 'empty_code' | 'empty_tool' | 'thrown' | 'server' | 'ok', message }
+   *   { success: boolean, reason: 'empty_code' | 'thrown' | 'server' | 'ok', message }
+   *
+   * **本地不校验工具**：积分卡（card_type = 'points'）不需要工具，而卡密是哪一类
+   * 只有服务端知道。「不是积分卡就必须能确定工具」由 sstc.use_card 判断，
+   * 缺少工具时它返回「请选择要激活的工具」且**不消耗卡密**，
+   * 前端把这个 message 原样显示即可（历史上有过的 `empty_tool` 分支因此删除）。
    *
    * **不会抛异常**：所有失败路径都转成 `activationResult`，与原有行为一致。
    *
@@ -47,12 +52,6 @@ export function useKamiActivation({ activateCard, getUserId, onActivated } = {})
   async function activate() {
     const code = String(activateCode.value || '').trim()
 
-    if (!selectedToolId.value) {
-      // 与原先一致：先校验工具，再校验卡密
-      const message = '请选择工具'
-      activationResult.value = { success: false, message }
-      return { success: false, reason: 'empty_tool', message }
-    }
     if (!code) {
       const message = '请输入卡密'
       activationResult.value = { success: false, message }
@@ -72,11 +71,16 @@ export function useKamiActivation({ activateCard, getUserId, onActivated } = {})
 
     try {
       const userId = typeof getUserId === 'function' ? getUserId() : undefined
-      const resp = await activateCard({
-        card_no: code,
-        user_id: userId,
-        tool_id: Number(selectedToolId.value),
-      })
+      const payload = { card_no: code, user_id: userId }
+
+      // 只有真的选了工具才下发 tool_id（契约：不适用就不下发该键）。
+      // 没选工具时下发 0 / NaN 只会让服务端多走一次「无效工具」判断。
+      const toolId = Number(selectedToolId.value)
+      if (selectedToolId.value && Number.isInteger(toolId) && toolId > 0) {
+        payload.tool_id = toolId
+      }
+
+      const resp = await activateCard(payload)
 
       // 服务端返回的报文直接用于展示（含 message 与 code）
       activationResult.value = resp || { success: false, message: '激活失败' }

@@ -16,7 +16,16 @@ function getUserCards(userId, params = {}) {
 
 /**
  * 激活卡密
- * @param {{card_no: string, user_id: number, tool_id: number}} data
+ *
+ * `tool_id` **可选**：积分卡（card_type = 'points'）不解锁工具，不需要传。
+ * 工具卡缺工具时服务端返回 400 USE_CARD_FAILED（提示「请选择要激活的工具」），
+ * 且**不消耗卡密**，用户补选工具后可以再试。
+ *
+ * 成功时 data 就是卡密信息（含 card_no / card_value / card_type / entitlement_expires_at）；
+ * 按面值兑奖的发放额在 `data.points_granted`（仅积分卡）与 `data.growth_granted`
+ * 两个键上 —— **不适用时这两个键不存在**，不要用 `> 0` 判断。
+ *
+ * @param {{card_no: string, user_id: number, tool_id?: number}} data
  */
 function activateCard(data) {
     return request.post(`${baseURL}/activateCard`, data)

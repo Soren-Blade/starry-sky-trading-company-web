@@ -19,7 +19,7 @@
           <div class="panel activate-panel">
             <div class="panel-head">
               <h3 class="panel-title"><AppIcon name="sparkles" /> 激活新卡密</h3>
-              <p class="panel-sub">选择工具后粘贴卡密号</p>
+              <p class="panel-sub">粘贴卡密号激活；工具卡请先选工具，积分卡无需选择</p>
             </div>
 
             <div class="activate-form">
@@ -43,7 +43,7 @@
               <button
                 type="button"
                 class="activate-btn u-btn-primary"
-                :disabled="!selectedToolId || !activateCode.trim() || activating"
+                :disabled="!activateCode.trim() || activating"
                 :aria-busy="activating"
                 @click="handleActivate"
               >
@@ -56,7 +56,7 @@
               :class="activationResult.success ? 'success-msg' : 'error-msg'"
               role="status"
             >
-              {{ activationResult.message }}
+              {{ activationResult.message }}<span v-if="activationRewards">，已发放 {{ activationRewards }}</span>
             </p>
 
             <p class="activate-tips">
@@ -382,6 +382,24 @@ const activation = useKamiActivation({
 })
 
 const { activateCode, selectedToolId, activationResult, activating } = activation
+
+/**
+ * 本次激活发放的积分 / 成长值，用于在成功提示后补一句「已发放 …」。
+ *
+ * 换算率不在这里 —— 服务端按卡密面值算好，放在响应 data 里（见迁移
+ * 2026-10-12-add-card-value-rewards.sql 的 card_points_reward / card_growth_reward）。
+ *
+ * 必须用 `!== undefined` 判断：契约规定「不适用」靠**不下发该键**表达，绝不给 0，
+ * 写成 `> 0` 会把「键缺失」和「值为 0」混在一起，改率时容易悄悄漏显示。
+ */
+const activationRewards = computed(() => {
+  const info = activationResult.value?.data
+  if (!info || typeof info !== 'object') return ''
+  const parts = []
+  if (info.points_granted !== undefined) parts.push(`${info.points_granted} 积分`)
+  if (info.growth_granted !== undefined) parts.push(`${info.growth_granted} 成长值`)
+  return parts.join('、')
+})
 
 const handleActivate = () => activation.activate()
 

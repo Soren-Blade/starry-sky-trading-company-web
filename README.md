@@ -686,7 +686,7 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 
 | 组件 | 说明 |
 | --- | --- |
-| `KamiSection.vue` | 卡密管理主体。两个 tab：`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏与复制）和激活表单（选工具 + 输卡密） |
+| `KamiSection.vue` | 卡密管理主体。两个 tab：`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏与复制）和激活表单（**工具可选**：工具卡先选工具，积分卡只填卡号；成功后补一句「已发放 N 积分 / N 成长值」） |
 | `AppleIdSection.vue` | 汇总两个数据源的 Apple ID，含加载态、错误提示与重试按钮 |
 
 ### 未被引用
@@ -769,7 +769,7 @@ const requests = axios.create({
 | `userApi.js` | `getUserInfo`、`updateProfile(patch)`、`uploadAvatar({image})` | `GET /userApi/getUserInfo`、`PUT /userApi/profile`、`POST /userApi/avatar` |
 | `shop.js` | `getCategories(params)`、`getProducts(params)`、`getProduct(id)` | `/class/getCategories`、`/shop/getProducts`、`/shop/getProduct/:id` |
 | `toolApi.js` | `getTools`、`getToolClasses`、`getTool`、`getAppleIds` | `/toolApi/*` |
-| `kami.js` | `getUserCards(user_id, params)`、**`getMyEntitlements()`**、`activateCard(data)`、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
+| `kami.js` | `getUserCards(user_id, params)`、**`getMyEntitlements()`**、`activateCard(data)`（`tool_id` 可选）、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
 | `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
 | `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
 | `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
@@ -825,7 +825,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useSimpleTimeFormatter` | `toDate` / `formatISOTime` / `parseISOTime` / `getFriendlyTime` 等 | 基于 dayjs + `utc`/`timezone` 插件的时间格式化，默认时区 `Asia/Shanghai` |
 | `useToast` | `notify.success/warning/error/info` | 提示框门面，供组件内外统一调用（路由守卫与 store action 也用它） |
 | `useKamiDisplay` | `getStatusText` / `getStatusVariantClass` / `STATUS_VARIANT` / `formatCardDate` / `resolveToolName` / `toToolOptions` / `STATUS_FILTER_OPTIONS` / `KAMI_TABLE_COLUMNS` | 卡密展示层**纯函数**。状态文案与样式变体用 `lookupOr` 查表以避开原型链；`getStatusVariantClass` 产出 `u-tag--*` 类名（`disabled` 与未知状态走 `u-tag--muted`）；工具 id 兼容数字与字符串 |
-| `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated` |
+| `useKamiActivation` | `activateCode` / `selectedToolId` / `activationResult` / `activating` / `activate()` / `resetForm()` / `clearResult()` | 卡密激活流程的状态与提交逻辑，依赖注入 `activateCard` / `getUserId` / `onActivated`。**不校验工具**：是否要工具由服务端按卡类型判断，没选工具时 payload 里**不带 `tool_id` 键**（不适用就不下发） |
 
 > `useKamiActivation` 有一条与其他 hook 不同的约定：**激活成功后若列表刷新失败，
 > 仍报告成功**（文案附「请手动刷新」）。因为卡密在服务端已经生效，

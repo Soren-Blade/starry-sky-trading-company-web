@@ -32,17 +32,38 @@ function stubApi(result) {
 
 // ── 本地校验（不发请求） ───────────────────────────────────────
 
-test('未选工具时直接失败，且不发起请求', async () => {
-  const { fn, calls } = stubApi({ success: true })
+test('未选工具也允许提交（积分卡不需要工具），且不下发 tool_id', async () => {
+  const { fn, calls } = stubApi({ success: true, message: '卡密使用成功' })
   const a = useKamiActivation({ activateCard: fn, getUserId: () => 7 })
 
   a.activateCode.value = 'CARD-1'
   const out = await a.activate()
 
-  assert.equal(out.success, false)
-  assert.equal(out.reason, 'empty_tool')
-  assert.equal(a.activationResult.value.message, '请选择工具')
-  assert.equal(calls.length, 0, '本地校验失败不应发请求')
+  assert.equal(out.success, true)
+  assert.equal(calls.length, 1, '积分卡不应被本地校验挡住（是否要工具由服务端按卡类型判断）')
+  assert.deepEqual(calls[0], { card_no: 'CARD-1', user_id: 7 })
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(calls[0], 'tool_id'),
+    false,
+    '契约：不适用就不下发该键，不能下发 0 或 NaN'
+  )
+})
+
+test('工具选择为空、为 0 或非数字时都不下发 tool_id', async () => {
+  for (const raw of ['', '0', 'abc', undefined]) {
+    const { fn, calls } = stubApi({ success: true })
+    const a = useKamiActivation({ activateCard: fn, getUserId: () => 1 })
+    a.selectedToolId.value = raw
+    a.activateCode.value = 'CARD-2'
+
+    await a.activate()
+
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(calls[0], 'tool_id'),
+      false,
+      `selectedToolId=${JSON.stringify(raw)} 时不应下发 tool_id`
+    )
+  }
 })
 
 test('未填卡密时直接失败，且不发起请求', async () => {
@@ -70,12 +91,15 @@ test('只填空白字符视为未填', async () => {
   assert.equal(calls.length, 0)
 })
 
-test('工具校验先于卡密校验（两者都空时报「请选择工具」）', async () => {
-  const { fn } = stubApi({ success: true })
+test('选了工具但没填卡密：仍然不发请求（工具不再是前置校验）', async () => {
+  const { fn, calls } = stubApi({ success: true })
   const a = useKamiActivation({ activateCard: fn })
 
+  a.selectedToolId.value = '3'
   const out = await a.activate()
-  assert.equal(out.reason, 'empty_tool')
+  assert.equal(out.reason, 'empty_code')
+  assert.equal(a.activationResult.value.message, '请输入卡密')
+  assert.equal(calls.length, 0)
 })
 
 // ── 成功路径 ───────────────────────────────────────────────────
