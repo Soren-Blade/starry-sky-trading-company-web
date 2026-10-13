@@ -1029,7 +1029,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
 | 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
 | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
-| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（1000px，会员/积分族七个阅读型页面） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
+| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（窄页族六个阅读型页面：会员中心、会员套餐、积分中心、积分明细、每日签到、我的优惠券） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
 | 事务页面板 | `.page-panel(-head)` / `.page-note(--warning/--error)` / `.page-empty(-title/-hint)` / `.page-actions` |
 
 > **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
@@ -1087,6 +1087,15 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 **装订线只有一条**：`--container-max`。原先 1320 与 1280 并存，会让导航栏的
 Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版有问题」的根因之一，
 `--container-content` 已删除。
+
+**窄页族另有一条宽度契约**（2026-10-12 统一）：会员中心 / 会员套餐 / 积分中心 /
+积分明细 / 每日签到 / 我的优惠券这六个阅读型页面用 `.page-shell--narrow`，
+宽度只认 `--container-page-narrow`（`clamp(960px, 72vw, 1180px)`，随视口收敛）。
+页面自己**不得**再声明 `max-width`，否则同族页面在宽屏上会各走各的比例 ——
+`test/componentClasses.test.js` 的「窄页族宽度契约」用例把关。
+`--container-narrow`（1000px）保持固定值不动：它是 2FA / Hero / KamiSection /
+NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体值会让那些
+派生宽度一起漂移。个人中心（`/user/profile`）**有意不进这一族**，它是双栏面板版式。
 
 带吸顶侧栏的页面统一用 `top: calc(var(--navbar-height) + var(--space-unit) * 2)`
 让出粘性顶栏的高度（`≤767px` 时顶栏是 `var(--navbar-height) * var(--mobile-nav-scale)`）。

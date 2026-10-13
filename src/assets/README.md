@@ -10,7 +10,7 @@
 ```
 src/assets/
 ├── styles/
-│   ├── variables.css   # 令牌名册（204 个）+ 默认主题（tech-minimal）兜底值
+│   ├── variables.css   # 令牌名册（205 个）+ 默认主题（tech-minimal）兜底值
 │   └── global.css      # 重置、**组件层共享类**、共享动效、移动端缩放
 └── README.md
 ```
@@ -75,7 +75,7 @@ import './assets/styles/ui-kit-feedback.css' // 组件套件：反馈族
 | 字号/字重 | `--fs-display/h1/h2/h3/body/sm/label/price/price-decimals/price-original`、`--fw-display/heading/body/label/price` |
 | 排版细节 | `--tracking-display` `--tracking-label` `--leading-body` `--leading-title` `--heading-transform` `--label-transform` |
 | 圆角 | `--radius-card` `--radius-card-lg` `--radius-panel` `--radius-input` `--radius-media` `--radius-pill` `--btn-radius` |
-| 间距与布局 | `--space-unit` `--grid-gap` `--section-gap` `--container-max/content/narrow/padding` |
+| 间距与布局 | `--space-unit` `--grid-gap` `--section-gap` `--container-max` `--container-narrow` `--container-page-narrow`（会员/积分族窄页容器，`clamp()` 流体值，只给 `.page-shell--narrow` 用） `--container-padding` |
 | 导航 | `--navbar-height` `--nav-padding-x` `--nav-border-color` `--nav-logo-height` `--nav-menu-gap` `--nav-link-size` `--nav-backdrop` `--nav-scrolled-backdrop` `--nav-scrolled-shadow` |
 | 阴影与毛玻璃 | `--shadow-card(-hover)` `--shadow-float` `--modal-shadow` `--effect-backdrop(-hover)` |
 | 按钮行为 | `--btn-height/padding-y/padding-x/font-size/font-weight/border-width/border-color/shadow` `--btn-hover-bg/transform/shadow/border` `--btn-active-transform/shadow` `--btn-secondary-bg` |

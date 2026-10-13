@@ -166,6 +166,13 @@
    * 否则 Logo 左边缘对不上下方的卡片与表格。 */
   --container-max: 1320px;
   --container-narrow: 1000px;
+  /* 窄页族的容器宽度（只有 .page-shell--narrow 用，见 global.css）。
+   * 为什么不直接把 --container-narrow 改成流体值：它同时是 6 处派生宽度的
+   * **固定基准**（2FA 的 640px = 0.64×、Hero 搜索框 0.38×、KamiSection 的半宽与
+   * 0.34×、NotFound 的 0.6×），改成 vw 会让这些派生宽度随视口漂移。
+   * 所以另开一条令牌：窄页容器随视口收敛（宽屏不再拖出大片空白），
+   * 既有派生宽度一个都不动。 */
+  --container-page-narrow: clamp(960px, 72vw, 1180px);
   --container-padding: 20px;
 
   /* ── A11. 导航栏 ──────────────────────────────────────────── */

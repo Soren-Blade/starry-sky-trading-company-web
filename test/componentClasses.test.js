@@ -270,3 +270,75 @@ test('状态标签变体映射里的每个变体都有 CSS 定义', () => {
     `这些标签变体在共享样式里没有定义，落到页面上会静默退化成基础 .u-tag：${missing.join(', ')}`
   )
 })
+
+/**
+ * 窄页族（会员 / 积分）的宽度契约。
+ *
+ * 这一族是「一条主叙事 + 若干信息块」的阅读型版式，宽度**只能**由
+ * `.page-shell--narrow` 消费一条令牌（`--container-page-narrow`）决定。
+ * 页面自己再写一个 `max-width`，同族页面在宽屏上就会各走各的比例 ——
+ * 2026-10-12 之前的状态正是如此：六个页面都写着 `.page-shell--narrow`，
+ * 但该修饰类在任何 CSS 里都没有定义，于是它们按 `--container-max`（1320）
+ * 全宽渲染，与设计意图不符且不报任何错。
+ *
+ * 另外两处相邻的坑，这个用例一并挡住：
+ *   - 令牌被换成固定值（失去「随视口收敛」的比例语义）；
+ *   - 有人把 `--container-narrow` 直接改成流体值 —— 它同时是 2FA / Hero /
+ *     KamiSection / NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的
+ *     **固定基准**，改掉会让那些派生宽度随视口漂移。
+ */
+const NARROW_PAGE_FAMILY = [
+  'pages/Member.vue',
+  'pages/MemberPlans.vue',
+  'pages/Points.vue',
+  'pages/PointsHistory.vue',
+  'pages/Checkin.vue',
+  'pages/Coupons.vue',
+]
+
+test('窄页族宽度契约：用 page-shell--narrow，且不得自设 max-width', () => {
+  const globalCss = readFileSync(join(SRC, 'assets/styles/global.css'), 'utf8')
+  const variablesCss = readFileSync(join(SRC, 'assets/styles/variables.css'), 'utf8')
+
+  assert.match(
+    variablesCss,
+    /--container-page-narrow:\s*clamp\(/,
+    'variables.css 应定义 --container-page-narrow，且必须是 clamp() 流体值'
+  )
+  assert.match(
+    globalCss,
+    /\.page-shell--narrow\s*\{\s*max-width:\s*var\(--container-page-narrow\)/,
+    '.page-shell--narrow 必须消费 --container-page-narrow（唯一宽度出口）'
+  )
+
+  const missing = []
+  const offenders = []
+
+  for (const rel of NARROW_PAGE_FAMILY) {
+    const full = join(SRC, rel)
+    assert.ok(existsSync(full), `${rel} 应存在`)
+
+    const text = readFileSync(full, 'utf8')
+    const tpl = text.match(/<template>([\s\S]*)<\/template>/)?.[1] || ''
+    if (!/class="[^"]*\bpage-shell--narrow\b/.test(tpl)) missing.push(rel)
+
+    for (const block of [...text.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1])) {
+      // 先去掉注释（说明里提到 max-width 不算），再去掉媒体查询（断点覆写允许）
+      const base = stripMediaQueries(block.replace(/\/\*[\s\S]*?\*\//g, ''))
+      for (const m of base.matchAll(/max-width:\s*([^;]+);/g)) {
+        offenders.push(`${rel} -> max-width: ${m[1].trim()}`)
+      }
+    }
+  }
+
+  assert.deepEqual(
+    missing,
+    [],
+    `这些页面必须带 page-shell--narrow（整族宽度的唯一出口）：${missing.join(', ')}`
+  )
+  assert.deepEqual(
+    offenders,
+    [],
+    `窄页族的基础规则里不得自设 max-width，宽度只能来自 .page-shell--narrow：\n  ${offenders.join('\n  ')}`
+  )
+})

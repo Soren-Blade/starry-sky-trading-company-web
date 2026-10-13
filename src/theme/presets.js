@@ -107,9 +107,13 @@ const SHARED = {
   /* 页面内容栅格宽度。
    * 刻意只保留**一个**宽度：导航栏、Hero、各区块、页脚共用同一条装订线，
    * 否则 Logo 左边缘会对不上下方的卡片/表格（此前 1320 与 1280 并存，就是这个问题）。
-   * `--container-narrow` 供 2FA / 关于我们这类窄内容列使用。 */
+   * `--container-narrow` 供 2FA / 关于我们这类窄内容列使用；
+   * `--container-page-narrow` 是会员/积分族**窄页容器**的宽度（`.page-shell--narrow` 专用），
+   * 用 clamp 让它随视口收敛。它是独立令牌，因此那 6 处
+   * `calc(var(--container-narrow) * N)` 的派生宽度不会跟着漂移。 */
   '--container-max': '1320px',
   '--container-narrow': '1000px',
+  '--container-page-narrow': 'clamp(960px, 72vw, 1180px)',
   '--container-padding': '20px',
 
   /* 背景层默认值：不覆盖主题自带背景，也不留空转的网格动画 */
