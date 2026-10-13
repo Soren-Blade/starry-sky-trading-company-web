@@ -89,6 +89,9 @@
           </div>
           <p class="member-growth-tip">
             再消费得 {{ memberStore.overview.growth_to_next }} 成长值即可升级到 {{ memberStore.overview.next_level_name }}
+            <router-link v-if="growthAvailable" :to="{ name: 'Growth' }" class="member-growth-link">
+              查看成长值明细
+            </router-link>
           </p>
         </section>
 
@@ -228,6 +231,7 @@ function todoIcon(type) {
  */
 const SHORTCUTS = [
   { name: 'Points', label: '积分中心', icon: 'landmark' },
+  { name: 'Growth', label: '成长值', icon: 'flame' },
   { name: 'Coupons', label: '我的优惠券', icon: 'ticket' },
   { name: 'Checkin', label: '每日签到', icon: 'check-circle' },
   { name: 'PointsHistory', label: '积分明细', icon: 'file' },
@@ -238,6 +242,7 @@ const shortcuts = computed(() =>
 )
 
 const plansAvailable = computed(() => router.hasRoute('MemberPlans'))
+const growthAvailable = computed(() => router.hasRoute('Growth'))
 
 function goPlans() {
   if (router.hasRoute('MemberPlans')) router.push({ name: 'MemberPlans' })
@@ -379,6 +384,16 @@ onMounted(() => {
   margin: var(--space-unit) 0 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
+}
+/* 成长值明细入口：这一行是「成长值怎么涨」的最佳落点，别让用户自己找 */
+.member-growth-link {
+  margin-left: var(--space-unit);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.member-growth-link:hover {
+  text-decoration: underline;
 }
 
 /* 权益矩阵 */

@@ -10,8 +10,8 @@
           <tr>
             <th scope="col">等级</th>
             <th scope="col">成长值门槛</th>
-            <th scope="col">消费折扣</th>
-            <th scope="col">积分倍率</th>
+            <th v-if="showRewards" scope="col">消费折扣</th>
+            <th v-if="showRewards" scope="col">积分倍率</th>
           </tr>
         </thead>
         <tbody>
@@ -26,8 +26,8 @@
               <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">当前</span>
             </td>
             <td class="level-ladder-num">{{ level.growth_threshold }}</td>
-            <td class="level-ladder-num">{{ discountLabel(level.discount_rate) }}</td>
-            <td class="level-ladder-num">×{{ level.points_multiplier }}</td>
+            <td v-if="showRewards" class="level-ladder-num">{{ discountLabel(level.discount_rate) }}</td>
+            <td v-if="showRewards" class="level-ladder-num">×{{ level.points_multiplier }}</td>
           </tr>
         </tbody>
       </table>
@@ -42,7 +42,7 @@
  * ## 为什么做成组件
  *
  * 这张表原先内联在 `/member/plans`（`MemberPlans.vue` 的 `section.plans-levels`），
- * 而「成长值怎么涨、涨到哪一级」的展示页（`/member/growth`）需要**同一张表**。
+ * 而「成长值怎么涨、涨到哪一级」的展示页（`/growth`）需要**同一张表**。
  * 抄一份的下场是可预见的：两处门槛数字迟早不一致，且没人会收到报错
  * （页面各自渲染成功，只是一个说 3000、一个说 1500）。
  *
@@ -56,10 +56,18 @@
  *
  * ## 「当前」标记的两个口径
  *
- *   - `currentLevel` 由调用页从 `plans[].is_current` 反推（`is_current` 比较的是**等级**，
- *     所以同级的月/季/年三档会同时为 true，`find()` 取到的是等级而不是某一档套餐）；
+ *   - `currentLevel` 由调用页给出：套餐页从 `plans[].is_current` 反推（`is_current` 比较的是
+ *     **等级**，所以同级的月/季/年三档会同时为 true，`find()` 取到的是等级而不是某一档套餐）；
  *   - 它标的是 `get_member_snapshot` 返回的**生效等级**（付费等级与成长值等级取高者），
  *     即用户此刻真正享有的权益档位 —— 所以只标记、不参与任何计算。
+ *     成长值页则标**成长值挣到的档**（那页讲的是「攒到哪一级」），两者可能不同，
+ *     所以由调用页决定传哪个，组件不自己猜。
+ *
+ * ## `showRewards`
+ *
+ * 成长值页只从 `getGrowthHistory` 拿到 `thresholds`（`{level, name, growth_threshold}`），
+ * 没有折扣与倍率 —— 那种情况下把两列藏掉（`showRewards=false`），
+ * 而不是渲染出两列 `undefined`。折扣/倍率仍由套餐页展示，信息来源只有服务端一份。
  */
 import { discountLabel } from '@/constants/member.js'
 
@@ -72,6 +80,8 @@ defineProps({
   title: { type: String, default: '等级阶梯' },
   /** 标题下的说明（成长值规则由调用页给，这里不预设口径） */
   description: { type: String, default: '' },
+  /** 是否展示「消费折扣 / 积分倍率」两列（只有门槛数据时传 false） */
+  showRewards: { type: Boolean, default: true },
 })
 </script>
 

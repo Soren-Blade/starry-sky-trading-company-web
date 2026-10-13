@@ -204,6 +204,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身
 | `/member/plans` | `MemberPlans` | `pages/MemberPlans.vue` | 会员套餐 - 星辰商行 | ✅ |
 | `/points` | `Points` | `pages/Points.vue` | 积分中心 - 星辰商行 | ✅ |
 | `/points/history` | `PointsHistory` | `pages/PointsHistory.vue` | 积分明细 - 星辰商行 | ✅ |
+| `/growth` | `Growth` | `pages/Growth.vue` | 成长值 - 星辰商行 | ✅ |
 | `/checkin` | `Checkin` | `pages/Checkin.vue` | 每日签到 - 星辰商行 | ✅ |
 | `/coupons` | `Coupons` | `pages/Coupons.vue` | 我的优惠券 - 星辰商行 | ✅ |
 | `/terms` | `Terms` | `pages/Legal.vue` | 用户协议 - 星辰商行 | |
@@ -303,10 +304,11 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `VideoTool.vue` | 视频下载工具的**占位页**。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。给一个说明页，比让付过费的用户撞上 404 好：404 传达的是「这站坏了」，这一页传达的是「功能还没上线」。接上服务后只换这里的组件，`tool_path` 不用改 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
-| `Member.vue` | 会员中心：身份卡 + 成长进度 + 六项权益矩阵 + 待办 + 快捷入口。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
+| `Member.vue` | 会员中心：身份卡 + 成长进度 + 六项权益矩阵 + 待办 + 快捷入口。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容。成长进度块（`growth_to_next !== undefined` 才渲染）下方带一条「查看成长值明细」入口（`router.hasRoute('Growth')` 兜底） |
 | `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
 | `Points.vue` | 积分中心：积分账户（余额 / 折抵金额 / 即将过期）与明细入口。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」 |
 | `PointsHistory.vue` | 积分明细：类型筛选（选项来自 `constants`，与后端 `type` 取值一一对应）+ 分页。**只有一页时不渲染分页控件**，避免出现点不动的按钮 |
+| `Growth.vue` | 成长值：汇总三数（累计 / 当前档 / 生效档）、升级进度条、**来源说明**（四条规则文案由服务端 `getGrowthHistory` 的 `rules` 下发）、等级门槛表（复用 `MemberLevelLadder` 并关掉折扣/倍率列）、明细分页。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`） |
 | `Checkin.vue` | 每日签到：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）；下方列出奖励规则 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
@@ -575,9 +577,11 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、6 项权益解锁态、待办） |
 | `plans` / `levels` | 套餐列表与等级阶梯表（8 档）。两者同一次 `getPlans` 响应下发；`MemberPlans.vue` 与成长值页的 `MemberLevelLadder` 都取 `levels` |
 | `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编（支付通道未接入的如实说明） |
+| `growth` / `growthSummary` / `growthRules` / `growthPage` / `growthTotal` / `growthTotalPages` / `loadingGrowth` | 成长值页（`/growth`）的全部状态，来源是 `getGrowthHistory` 一条响应（`list` / `summary` / `rules` + 分页元数据） |
 | `isMember` / `level` / `levelName` / `points` / `benefits` / `todos` | 派生 getter |
+| `growthTotalValue` / `growthHasPrev` / `growthHasNext` | 成长值派生 getter（分页控件与「还能翻页吗」的判断） |
 | `hasExpiringTodo` | 是否存在「会员即将到期」待办（按 `type` 在 `todos` 里找） |
-| `fetchOverview({silent})` / `fetchPlans({silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空 |
+| `fetchOverview({silent})` / `fetchPlans({silent})` / `fetchGrowthHistory({page, silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空；`reset()` 也清成长值（`App.vue` 登出时统一调） |
 
 两条纪律写在文件头：**不做本地乐观更新**（会员状态只能由服务端确认），
 以及「**不适用以键不存在表达**」—— 非会员的响应里没有 `points` / `coupons` /
@@ -616,7 +620,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在四套主题里明显长大变方）、`ThemeSwitcher`、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在四套主题里明显长大变方）、`ThemeSwitcher`、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（下拉的「会员权益」组含 会员中心 / 会员套餐 / 积分中心 / **成长值** / 每日签到 / 我的优惠券）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
@@ -645,7 +649,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 | 组件 | 说明 |
 | --- | --- |
-| `MemberLevelLadder.vue` | **等级阶梯表**（8 档：等级 / 成长值门槛 / 消费折扣 / 积分倍率），`/member/plans` 与成长值页共用一张表。数据是服务端 `getMemberPlans` 的 `levels[]`，**门槛与倍率原样展示**（前端不抄第二份数字），折扣只经 `constants/member.js` 的 `discountLabel` 翻译。`currentLevel` 标的是**生效等级**（付费档与成长值档取高者），只标记不参与计算；`levels` 为空时整块不渲染 |
+| `MemberLevelLadder.vue` | **等级阶梯表**（8 档：等级 / 成长值门槛 / 消费折扣 / 积分倍率），`/member/plans` 与成长值页共用一张表。数据是服务端 `getMemberPlans` 的 `levels[]`，**门槛与倍率原样展示**（前端不抄第二份数字），折扣只经 `constants/member.js` 的 `discountLabel` 翻译。`currentLevel` 标的是**生效等级**（付费档与成长值档取高者），只标记不参与计算；`levels` 为空时整块不渲染。`showRewards=false` 时藏掉折扣与倍率两列（成长值页只有门槛数据，留着会渲染成一片空白） |
 
 ### 弹窗（模态）约定
 
@@ -773,7 +777,7 @@ const requests = axios.create({
 | `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
 | `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
 | `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
-| `member.js` | `getOverview`、`getPlans` | `/memberApi/getOverview`、`/memberApi/getPlans`（**游客可读**） |
+| `member.js` | `getOverview`、`getPlans`、`getGrowthHistory` | `/memberApi/getOverview`、`/memberApi/getPlans`（**游客可读**）、`/memberApi/getGrowthHistory`（成长值明细 + 汇总 + 来源规则） |
 | `points.js` | `getAccount`、`getHistory(params)`、`checkin`、`getCheckinCalendar(params)` | `/pointsApi/*` |
 | `coupon.js` | `getMine(params)`、`claim(template_id)` | `/couponApi/*` |
 
@@ -1250,7 +1254,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 720 个用例）
+npm test             # 单元测试（node:test，共 739 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1367,11 +1371,12 @@ test/
 ├── renderComponents.test.js          # 组件渲染（SSR）：全部 .vue 渲染、无警告/插值事故
 ├── renderKamiData.test.js            # 注入真实 store 数据渲染：逐格断言 8 列内容与状态分支
 ├── renderTradeData.test.js           # 注入 store 数据渲染交易页：购物车/收藏/个人中心/法务的具体内容
+├── growthPage.test.js                # 成长值页：汇总/进度/来源规则/明细/空态/错误态/分页，满级时进度块整块不渲染
 ├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 720 个用例。
+共 739 个用例。
 
 ### 主题契约测试
 
@@ -1469,6 +1474,11 @@ render 函数。它**不引入任何新依赖** —— `@vue/server-renderer` �
 > 未命中的列**不会**回落到 `dataIndex` 默认渲染 —— 因此每列都必须有分支。
 > `render.mjs` 里的 `a-table` 桩也按这个语义真正渲染 `data-source` 并调用插槽，
 > 否则单元格模板根本不会执行（这一点是能发现上述缺陷的前提）。
+
+`growthPage.test.js` 用同一套办法测成长值页，其中两个用例专门守「不适用」的口径：
+满级时服务端**不下发** `next_level` 三键，进度块必须整块不渲染、且页面里不出现
+`undefined`；未登录时登录引导之外的汇总与明细区**都不渲染**（判据用章节 `id`
+与 `role="progressbar"`，不要用会出现在文案里的词 —— 第一版就是这么挂的）。
 
 `package.json` 中的脚本带 `--test-isolation=none`：默认的按文件进程隔离会派生子进程，
 在受限环境下会被拒绝，同进程运行即可。**代价是所有测试文件共享进程，因此新测试不得依赖执行顺序** ——

@@ -3,7 +3,7 @@ import request from '../request'
 /**
  * 会员接口（阶段 P0）
  *
- * 契约见后端 `docs/API.md` §4.1 / §4.2。
+ * 契约见后端 `docs/API.md` §4.1 / §4.2 / §4.3。
  *
  * ⚠ **响应里「不适用」的字段是「键不存在」，不是 0 也不是 null。**
  * 后端对非会员不下发 `points` / `coupons` / `days_left` / `growth_to_next` 等键，
@@ -23,4 +23,14 @@ function getPlans() {
   return request.get(`${baseURL}/getPlans`)
 }
 
-export { getOverview, getPlans }
+/**
+ * 成长值明细 + 进阶 + 来源说明（成长值页的唯一数据源）
+ *
+ * 满级时后端**不下发** `next_level` / `next_level_name` / `next_level_threshold` /
+ * `growth_to_next` 四个键（不是给 0），页面判的是 `!== undefined`。
+ */
+function getGrowthHistory(params = {}) {
+  return request.get(`${baseURL}/getGrowthHistory`, { params })
+}
+
+export { getOverview, getPlans, getGrowthHistory }

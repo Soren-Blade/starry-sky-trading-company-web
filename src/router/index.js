@@ -116,6 +116,13 @@ const routes = [
     meta: { title: '积分中心 - 星辰商行', requiresAuth: true }
   },
   {
+    // 成长值页与积分页同级：两者都是「我的资产怎么涨的」，只是口径不同
+    path: '/growth',
+    name: 'Growth',
+    component: () => import('@/pages/Growth.vue'),
+    meta: { title: '成长值 - 星辰商行', requiresAuth: true }
+  },
+  {
     path: '/points/history',
     name: 'PointsHistory',
     component: () => import('@/pages/PointsHistory.vue'),

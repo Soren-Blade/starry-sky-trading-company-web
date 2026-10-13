@@ -9,6 +9,37 @@
 
 ---
 
+## [1.2.0] — 2026-10-12 · 阶段 P1（已发布）
+
+八档会员等级、卡密按面值兑奖、顶栏会员入口与**成长值展示页** —— 对应后端的 P1 端点 `GET /memberApi/getGrowthHistory`。
+
+### 新增
+
+| 类别 | 内容 |
+| --- | --- |
+| 页面 | `/growth`（成长值）：汇总三数 + 升级进度条 + 来源说明 + 等级门槛表 + 明细分页 |
+| 组件 | `components/MemberLevelLadder.vue` —— 等级阶梯表，套餐页与成长值页**共用一张**（门槛/折扣/倍率只用服务端数字） |
+| store | `stores/member.js` 新增成长值切片（`growth` / `growthSummary` / `growthRules` / 分页元数据）+ `fetchGrowthHistory()` |
+| api 模块 | `api/ask/member.js` 新增 `getGrowthHistory(params)` |
+| 图标 | `utils/iconSet.js` 新增 `crown`（顶栏会员入口；成长值快捷入口复用既有的 `flame`） |
+
+### 变更
+
+- **会员等级 v1–v8**：`constants/member.js` 的 `MEMBER_LEVELS` 改为 `none` + `v1`–`v8`（只登记 id 与展示名，门槛 / 折扣 / 倍率一律用服务端下发的数字，防前端抄第二份）；`MEMBER_BENEFITS` 的 `requiredLevel` 由 `star`×4 / `galaxy`×2 改为 `v1`×4 / `v4`×2
+- **折扣文案下沉**：`discountLabel(rate)` 从 `MemberPlans.vue` 提到 `constants/member.js` 并加测试（`0.95`→`95 折`、`0.9`→`9 折`；`<=0` 或 `>=1` 一律 `无折扣`，不渲染成「0 折」）
+- **卡密激活支持积分卡**：`useKamiActivation` 不再把「选工具」当前置校验，没选工具时 payload **不带 `tool_id` 键**；`KamiSection.vue` 的按钮只要求卡号，成功后补一句「已发放 N 积分 / N 成长值」（键不存在就不显示）
+- **顶栏会员入口**：`crown` 图标 + `/member`，与购物车同一条「有身份就显示」规则（游客也算）；等级徽标 `navbar-member-badge` 只对已开通用户渲染，等级只由 `aria-label` 读出
+- **窄页族宽度契约**：新增令牌 `--container-page-narrow: clamp(960px, 72vw, 1180px)`，六个阅读型页面由 `.page-shell--narrow` 统一消费（此前该修饰类只有类名、没有 CSS，六个页面实际按 1320 全宽渲染）；`--container-narrow` 保持定值（它同时是 6 处 `calc()` 的固定基准）
+- **成长值口径落定**：开会员赠值、订单按实付 1:1、签到 +5、卡密按面值 ×10；只升不降、不过期，会员倍率不参与
+- `package.json` 版本号 `1.1.0` → `1.2.0`，与后端保持一致
+
+### 验收
+
+- `npm run lint` / `npm test`（739 例）/ `npm run build` 全绿；`npm run verify:dev` 的 17 项代理断言包含 `/memberApi`（成长值页依赖它）
+- 真实浏览器：桌面 1440 与移动 390 下顶栏入口 40×40 / 36×36 不溢出；成长值页与六个窄页在 1920 / 1440 / 1280 三档宽度实测
+
+---
+
 ## [1.1.0] — 2026-10-12 · 阶段 P0（已发布）
 
 会员 / 积分 / 权益优惠券 / 成长 —— **前端的 P0 部分已交付**，

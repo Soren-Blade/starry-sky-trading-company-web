@@ -235,6 +235,9 @@
             <router-link class="u-dropdown-item" to="/points" @click="handleMenuClick">
               积分中心
             </router-link>
+            <router-link class="u-dropdown-item" to="/growth" @click="handleMenuClick">
+              成长值
+            </router-link>
             <router-link class="u-dropdown-item" to="/checkin" @click="handleMenuClick">
               每日签到
             </router-link>

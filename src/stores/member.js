@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { getOverview, getPlans } from '@/api/ask/member.js'
+import { getOverview, getPlans, getGrowthHistory } from '@/api/ask/member.js'
 
 /**
  * 会员状态（阶段 P0）
@@ -26,8 +26,18 @@ export const useMemberStore = defineStore('member', {
     paymentNotice: '',
     refundNotice: '',
 
+    /** 成长值明细（`/growth` 页） */
+    growth: [],
+    growthSummary: null,
+    growthRules: [],
+    growthPage: 1,
+    growthLimit: 20,
+    growthTotal: 0,
+    growthTotalPages: 1,
+
     loadingOverview: false,
     loadingPlans: false,
+    loadingGrowth: false,
     /** 错误信息；与「空数据」分开：出错不该显示成「暂无」 */
     error: '',
   }),
@@ -43,6 +53,10 @@ export const useMemberStore = defineStore('member', {
     /** 会员即将到期（阈值与 hero 文案同为 60 天，由服务端算好并放进 todos） */
     hasExpiringTodo: (state) =>
       (state.overview?.todos || []).some((t) => t.type === 'member_expiring'),
+    /** 成长值累计（成长值页汇总卡用；缺数据时给 0） */
+    growthTotalValue: (state) => Number(state.growthSummary?.growth ?? 0),
+    growthHasPrev: (state) => state.growthPage > 1,
+    growthHasNext: (state) => state.growthPage < state.growthTotalPages,
   },
 
   actions: {
@@ -85,6 +99,40 @@ export const useMemberStore = defineStore('member', {
       }
     },
 
+    /**
+     * 成长值明细。分页与汇总来自同一份响应 —— 服务端把「当前成长值档 / 下一档 /
+     * 八档门槛 / 来源说明」都放在 `summary` 与 `rules` 里，页面不再自己算。
+     *
+     * 翻页时**不**清空旧列表：等新数据覆盖，避免出现一瞬「暂无记录」。
+     */
+    async fetchGrowthHistory({ page } = {}) {
+      if (page) this.growthPage = page
+      this.loadingGrowth = true
+      this.error = ''
+      try {
+        const { data } = await getGrowthHistory({
+          page: this.growthPage,
+          limit: this.growthLimit,
+        })
+        this.growth = data.list || []
+        this.growthSummary = data.summary || null
+        this.growthRules = data.rules || []
+        this.growthTotal = data.pagination?.total ?? 0
+        this.growthTotalPages = data.pagination?.total_pages ?? 1
+        return data
+      } catch (error) {
+        this.error = error?.response?.status === 401 ? '' : (error?.message || '获取成长值明细失败')
+        this.growth = []
+        this.growthSummary = null
+        this.growthRules = []
+        this.growthTotal = 0
+        this.growthTotalPages = 1
+        return null
+      } finally {
+        this.loadingGrowth = false
+      }
+    },
+
     /** 切换账号时必须清空：否则会短暂显示上一个用户的等级与权益 */
     reset() {
       this.overview = null
@@ -92,9 +140,16 @@ export const useMemberStore = defineStore('member', {
       this.levels = null
       this.paymentNotice = ''
       this.refundNotice = ''
+      this.growth = []
+      this.growthSummary = null
+      this.growthRules = []
+      this.growthPage = 1
+      this.growthTotal = 0
+      this.growthTotalPages = 1
       this.error = ''
       this.loadingOverview = false
       this.loadingPlans = false
+      this.loadingGrowth = false
     },
   },
 })
