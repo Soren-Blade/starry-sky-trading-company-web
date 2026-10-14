@@ -2,150 +2,202 @@
   <div class="page-shell page-shell--narrow member-page">
     <header class="page-shell-head">
       <h1 class="page-shell-title">会员中心</h1>
-      <p class="page-shell-desc">查看会员等级、成长进度与六项权益</p>
+      <p class="page-shell-desc">
+        等级、成长值与八项权益都在这里；权益数值按当前生效等级显示，未解锁的项给出解锁条件。
+      </p>
     </header>
 
-    <!-- 未登录：给登录引导而不是空数据（与工具页在无身份时的做法一致） -->
     <div v-if="!userStore.isLoggedIn" class="ui-card member-state">
-      <AppIcon name="user" class="member-state-icon" />
+      <AppIcon name="star" class="member-state-icon" aria-hidden="true" />
       <p class="member-state-title">请先登录账号</p>
-      <p class="member-state-desc">登录后可查看会员等级、积分与优惠券</p>
+      <p class="member-state-desc">登录后可查看会员等级、成长值与权益数值</p>
       <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看会员中心')">
         立即登录
       </button>
     </div>
 
     <template v-else>
-      <!-- 加载中给骨架屏而不是「暂无数据」：后者在数据回来前是错的 -->
       <div v-if="memberStore.loadingOverview && !memberStore.overview" class="ui-card member-skeleton">
-        <span class="u-skeleton member-skeleton-line member-skeleton-line--lg"></span>
-        <span class="u-skeleton member-skeleton-line"></span>
+        <span v-for="n in 3" :key="n" class="u-skeleton member-skeleton-line"></span>
       </div>
 
       <div v-else-if="memberStore.error" class="ui-card member-error" role="alert">
-        <AppIcon name="alert-triangle" />
+        <AppIcon name="alert-triangle" aria-hidden="true" />
         <span>{{ memberStore.error }}</span>
         <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
       </div>
 
       <template v-else>
-        <!-- ① 身份卡 -->
+        <!-- ① 身份区：等级、到期倒计时、续费/开通入口 -->
         <section class="ui-card member-identity">
           <div class="member-identity-main">
-            <span class="u-tag member-badge" :class="{ 'u-tag--accent': memberStore.isMember }">
-              <AppIcon :name="memberStore.isMember ? 'star' : 'user'" />
-              {{ levelLabel }}
+            <span class="u-tag member-identity-tag" :class="{ 'u-tag--accent': memberStore.isMember }">
+              {{ identityTag }}
             </span>
-            <p class="member-nickname">{{ userStore.userInfo?.nickname || '星辰会员' }}</p>
+            <p class="member-identity-title">
+              {{ memberStore.isMember ? '会员生效中' : '尚未开通会员' }}
+            </p>
+            <p class="member-identity-expiry" :class="{ 'is-warning': expiringSoon }">
+              <template v-if="memberStore.isMember">
+                到期 {{ formatDate(overview.expires_at) }}（剩余 {{ overview.days_left }} 天）
+              </template>
+              <template v-else> 开通会员即可解锁八项权益，成长值到账即时生效 </template>
+            </p>
           </div>
-
-          <div class="member-identity-meta">
-            <template v-if="memberStore.isMember && memberStore.overview.days_left !== undefined">
-              <span class="member-meta-item" :class="{ 'is-warning': isExpiringSoon }">
-                <AppIcon name="clock" />
-                剩余 {{ memberStore.overview.days_left }} 天
-              </span>
-              <span v-if="isExpiringSoon" class="member-warning-text">
-                会员即将到期，建议及时续费
-              </span>
-            </template>
-            <template v-else>
-              <span class="member-meta-item">
-                <AppIcon name="info" />
-                尚未开通会员
-              </span>
-            </template>
-          </div>
-
-          <div class="member-identity-cta">
-            <!-- 套餐页尚未落地：给禁用按钮而不是死链（点进去 404 更糟）。
-                 available 由路由表推断，页面落地后自动变可点。 -->
-            <button v-if="plansAvailable" type="button" class="u-btn-primary" @click="goPlans">
+          <div class="member-identity-actions">
+            <router-link
+              v-if="memberPlansAvailable"
+              :to="{ name: 'MemberPlans' }"
+              class="u-btn-primary"
+            >
               {{ memberStore.isMember ? '续费会员' : '开通会员' }}
-            </button>
-            <button v-else type="button" class="u-btn-secondary" disabled title="套餐页即将上线">
-              {{ memberStore.isMember ? '续费会员' : '开通会员' }}（即将上线）
-            </button>
+            </router-link>
+            <router-link :to="{ name: 'MemberBenefits' }" class="u-btn-secondary">权益详解</router-link>
           </div>
         </section>
 
-        <!-- ② 成长值进度（非会员没有「下一级」，整块不渲染） -->
-        <section
-          v-if="memberStore.isMember && memberStore.overview.growth_to_next !== undefined"
-          class="ui-card member-growth"
-        >
-          <div class="member-growth-head">
-            <span class="member-growth-title">成长值</span>
-            <span class="member-growth-num">{{ memberStore.overview.growth }} / {{ nextThreshold }}</span>
-          </div>
-          <div
-            class="member-growth-bar"
-            role="progressbar"
-            :aria-valuenow="memberStore.overview.growth"
-            aria-valuemin="0"
-            :aria-valuemax="nextThreshold"
-          >
-            <span class="member-growth-fill" :style="{ width: `${growthPercent}%` }"></span>
-          </div>
-          <p class="member-growth-tip">
-            再消费得 {{ memberStore.overview.growth_to_next }} 成长值即可升级到 {{ memberStore.overview.next_level_name }}
-            <router-link v-if="growthAvailable" :to="{ name: 'Growth' }" class="member-growth-link">
-              查看成长值明细
+        <!-- ② 资产概览：三卡就地显示数值，不写「去查看」 -->
+        <section class="member-assets" aria-label="资产概览">
+          <router-link :to="{ name: 'Points' }" class="ui-card member-asset">
+            <span class="member-asset-label">积分</span>
+            <span class="member-asset-value">{{ overview.points ?? 0 }}</span>
+            <span class="member-asset-hint">可抵 ¥{{ formatPointsValue(overview.points ?? 0) }}</span>
+            <span v-if="pointsTodo" class="member-asset-tip">{{ pointsTodo }}</span>
+            <span class="member-asset-link">查看明细</span>
+          </router-link>
+
+          <router-link :to="{ name: 'Coupons' }" class="ui-card member-asset">
+            <span class="member-asset-label">优惠券</span>
+            <span class="member-asset-value">{{ overview.coupons ?? 0 }}<span class="member-asset-unit">张</span></span>
+            <span class="member-asset-hint">可用于下单抵扣</span>
+            <span v-if="couponTodo" class="member-asset-tip">{{ couponTodo }}</span>
+            <span class="member-asset-link">查看券包</span>
+          </router-link>
+
+          <div class="ui-card member-asset">
+            <span class="member-asset-label">会员到期日</span>
+            <span class="member-asset-value member-asset-value--date">{{ expiryValue }}</span>
+            <span class="member-asset-hint">{{ expiryHint }}</span>
+            <span v-if="memberTodo" class="member-asset-tip">{{ memberTodo }}</span>
+            <router-link
+              v-if="memberPlansAvailable"
+              :to="{ name: 'MemberPlans' }"
+              class="member-asset-link"
+            >
+              {{ memberStore.isMember ? '去续费' : '去开通' }}
             </router-link>
+          </div>
+        </section>
+
+        <!-- ③ 成长值进度：门槛与还差多少都来自服务端，前端只算百分比 -->
+        <section class="ui-card member-growth">
+          <div class="member-growth-head">
+            <h2 class="member-section-title">成长值进度</h2>
+            <router-link :to="{ name: 'MemberGrowth' }" class="member-growth-link">成长值明细</router-link>
+          </div>
+          <p class="member-growth-num">
+            当前成长值 <strong>{{ overview.growth ?? 0 }}</strong>
+          </p>
+          <template v-if="hasNext">
+            <div
+              class="member-growth-track"
+              role="progressbar"
+              :aria-valuemin="0"
+              :aria-valuemax="100"
+              :aria-valuenow="growthPercent"
+              :aria-valuetext="`已攒 ${overview.growth}，还差 ${overview.growth_to_next}`"
+            >
+              <span class="member-growth-fill" :style="{ width: growthPercent + '%' }"></span>
+            </div>
+            <p class="member-growth-hint">
+              距离 {{ overview.next_level_name }}（门槛 {{ growthNextThreshold }}）还差
+              {{ overview.growth_to_next }} 成长值
+            </p>
+          </template>
+          <p v-else-if="memberStore.isMember" class="member-growth-hint">
+            成长值只升不降、长期有效；已是最高等级，继续累计不影响权益。
+          </p>
+          <!-- 非会员同样没有 next_level，但这里不能复用满级那句 —— 0 成长值的人
+               被告知「已是最高等级」是直接说反。分开写，两者的下一步动作也不同。 -->
+          <p v-else class="member-growth-hint">
+            成长值只升不降、长期有效；开通会员后按成长值门槛定档，到账即时生效。
           </p>
         </section>
 
-        <!-- ③ 六项权益矩阵：文案来自 constants（唯一实例），解锁状态来自后端 -->
-        <section class="member-benefits">
-          <div class="member-section-head">
-            <h2 class="member-section-title">我的权益</h2>
-            <span class="member-section-hint">已解锁 {{ unlockedCount }} / {{ benefits.length }} 项</span>
-          </div>
+        <!-- ④ 权益卡区：八张卡显示当前值；未解锁显示「V{n} 解锁」而不是 0 -->
+        <section class="member-benefits" aria-labelledby="member-benefits-title">
+          <h2 id="member-benefits-title" class="member-section-title">我的权益</h2>
           <ul class="member-benefit-grid">
             <li
-              v-for="item in benefits"
+              v-for="item in benefitCards"
               :key="item.key"
               class="ui-card member-benefit"
               :class="{ 'is-locked': !item.unlocked }"
             >
-              <span class="member-benefit-icon"><AppIcon :name="item.icon" /></span>
-              <span class="member-benefit-name">{{ item.name }}</span>
-              <span class="member-benefit-desc">{{ item.desc }}</span>
-              <span v-if="item.unlocked" class="member-benefit-state is-on">
-                <AppIcon name="check-circle" /> 已解锁
-              </span>
-              <span v-else class="member-benefit-state">
-                <AppIcon name="arrow-up" /> 升级到{{ requiredLevelName(item.requiredLevel) }}解锁
-              </span>
+              <div class="member-benefit-head">
+                <AppIcon :name="item.icon" class="member-benefit-icon" aria-hidden="true" />
+                <span class="member-benefit-name">{{ item.name }}</span>
+              </div>
+              <p class="member-benefit-value">{{ item.displayText }}</p>
+              <p class="member-benefit-foot">{{ item.footText }}</p>
             </li>
           </ul>
         </section>
 
-        <!-- ④ 待办提醒：通常 ≤3 条，堆叠即可，不做轮播 -->
-        <section v-if="memberStore.todos.length" class="ui-card member-todos">
-          <h2 class="member-section-title">待办提醒</h2>
-          <ul>
-            <li v-for="todo in memberStore.todos" :key="todo.type" class="member-todo">
-              <AppIcon :name="todoIcon(todo.type)" />
-              <span>{{ todo.text }}</span>
-            </li>
-          </ul>
-        </section>
-
-        <!-- ⑤ 快捷入口四宫格：只渲染已存在的路由，未落地的为禁用态 -->
-        <nav class="member-shortcuts">
-          <template v-for="entry in shortcuts" :key="entry.name">
-            <router-link v-if="entry.available" :to="{ name: entry.name }" class="ui-card member-shortcut">
-              <AppIcon :name="entry.icon" />
-              <span>{{ entry.label }}</span>
+        <!-- ⑤ 下一档预告：再赚 N 成长值到 V{n}，并列出下一档会变好的项 -->
+        <section class="ui-card member-next" aria-labelledby="member-next-title">
+          <h2 id="member-next-title" class="member-section-title">下一档预告</h2>
+          <template v-if="nextTier">
+            <p class="member-next-title">
+              再赚 <strong>{{ nextTier.toNext }}</strong> 成长值到 {{ nextTier.name }}
+              <span v-if="nextTier.threshold !== null" class="member-next-sub">（门槛 {{ nextTier.threshold }}）</span>
+            </p>
+            <ul v-if="nextUpgrades.length" class="member-next-list">
+              <li v-for="item in nextUpgrades" :key="item.key" class="member-next-item">
+                <AppIcon :name="item.icon" class="member-next-icon" aria-hidden="true" />
+                <span class="member-next-name">{{ item.name }}</span>
+                <span class="member-next-value">{{ item.valueText }} → {{ item.nextText }}</span>
+              </li>
+            </ul>
+            <router-link :to="{ name: 'MemberBenefits', hash: '#levels' }" class="u-btn-secondary">
+              看完整对照表
             </router-link>
-            <span v-else class="ui-card member-shortcut is-disabled" aria-disabled="true">
-              <AppIcon :name="entry.icon" />
-              <span>{{ entry.label }}</span>
-              <span class="member-shortcut-soon">即将上线</span>
-            </span>
           </template>
+          <template v-else>
+            <p class="member-next-empty">
+              开通会员后，八项权益立即按生效等级下发；成长值跨过门槛也会即时升级。
+            </p>
+            <router-link
+              v-if="memberPlansAvailable"
+              :to="{ name: 'MemberPlans' }"
+              class="u-btn-secondary"
+            >
+              查看套餐
+            </router-link>
+          </template>
+        </section>
+
+        <!-- ⑥ 快捷入口：全部指向已存在的路由，不留「即将上线」占位 -->
+        <nav class="member-shortcuts" aria-label="快捷入口">
+          <router-link
+            v-for="entry in shortcuts"
+            :key="entry.label"
+            :to="entry.to"
+            class="ui-card member-shortcut"
+          >
+            <AppIcon :name="entry.icon" aria-hidden="true" />
+            <span>{{ entry.label }}</span>
+          </router-link>
         </nav>
+
+        <!-- ⑦ 底部链接到权益详解 -->
+        <p class="page-note member-footer">
+          想看清每一项权益的逐档数值？
+          <router-link :to="{ name: 'MemberBenefits' }">查看权益详解</router-link>
+          ，或
+          <router-link :to="{ name: 'MemberBenefits', hash: '#rules' }">阅读规则与常见问题</router-link>
+          。
+        </p>
       </template>
     </template>
   </div>
@@ -153,103 +205,177 @@
 
 <script setup>
 /**
- * 会员中心（`/member`）
+ * 会员中心枢纽（`/member`）—— 方案 §3.3 / 实施计划 M1
  *
- * 设计要点（方案 §P0-1）：
- *   1. **非会员不隐藏页面** —— 权益矩阵渲染成「全部未解锁 + 引导开通」，
- *      比「你不是会员」的空白页更有说服力；
- *   2. **数字与首页 hero 同源** —— 都取自后端 `get_member_snapshot`，
- *      因此「还剩多少天」两处必然一致；
- *   3. **权益文案取 `constants/member.js`**（唯一实例），只把后端的解锁状态合进去。
- *      后端刻意不返回名称与描述，就是为了避免出现第二份文案事实。
- *   4. **不适用于「键不存在」** —— 非会员响应里没有 `days_left` / `growth_to_next`
- *      这些键，因此判断用 `!== undefined`，**不能用 `=== 0`**。
+ * 七区块：① 身份区 ② 资产概览三卡 ③ 成长值进度 ④ 权益卡区
+ *         ⑤ 下一档预告 ⑥ 快捷入口 ⑦ 底部链接到权益详解
+ *
+ * 三条纪律：
+ *   1. **数值只用服务端给的**：概览的 `points` / `coupons` / `expires_at` / `growth`，
+ *      权益卡用 `benefits[].value`，下一档用 `value.next` + `value.next_level`。
+ *      页面里不出现写死的「×2.5」「95 折」。
+ *   2. **未解锁 ≠ 0**：`value` 键缺席时显示「V{n} 解锁」（`formatBenefitValue` 兜底）。
+ *   3. **不新增后端调用**：资产三卡全部取自已拉取的 `getOverview`；
+ *      `getPlans` 只在需要下一档门槛且尚未加载时补一次。
  */
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppIcon from '@/components/AppIcon.vue'
-import { useMemberStore } from '@/stores/member.js'
-import { useUserStore } from '@/stores/user.js'
 import {
   MEMBER_BENEFITS,
+  MEMBER_BENEFIT_MAP,
   MEMBER_EXPIRING_DAYS,
-  memberLevelLabel,
-  memberLevelName,
+  formatBenefitNext,
+  formatBenefitValue,
+  formatPointsValue,
 } from '@/constants/member.js'
+import { useMemberStore } from '@/stores/member.js'
+import { useUserStore } from '@/stores/user.js'
 
 const memberStore = useMemberStore()
 const userStore = useUserStore()
 const router = useRouter()
 
-const levelLabel = computed(() => memberLevelLabel(memberStore.level) || '非会员')
+const overview = computed(() => memberStore.overview || {})
 
-/** 到期提醒阈值与 hero 文案 `member-expiring` 相同（60 天），两处必须一致 */
-const isExpiringSoon = computed(() => {
-  const days = memberStore.overview?.days_left
-  return typeof days === 'number' && days <= MEMBER_EXPIRING_DAYS
+const identityTag = computed(() => memberStore.levelName || '非会员')
+
+const expiringSoon = computed(
+  () => memberStore.isMember && (overview.value.days_left ?? 0) <= MEMBER_EXPIRING_DAYS
+)
+
+const memberPlansAvailable = computed(() => router.hasRoute('MemberPlans'))
+
+/** 待办提醒来自概览的 `todos`，按类型取文案，不额外请求任何接口 */
+function todoText(type) {
+  const todo = (memberStore.todos || []).find((item) => item.type === type)
+  if (!todo) return ''
+  return todo.count ? `${todo.text}（${todo.count}）` : todo.text
+}
+const memberTodo = computed(() => todoText('member_expiring'))
+const couponTodo = computed(() => todoText('coupon_expiring'))
+const pointsTodo = computed(() => todoText('points_expiring'))
+
+/** 满级或非会员时后端会整块拿掉 next_level / growth_to_next —— 用 undefined 判断，不比大小 */
+const hasNext = computed(
+  () => overview.value.next_level != null && overview.value.growth_to_next != null
+)
+
+const growthPercent = computed(() => {
+  const growth = overview.value.growth ?? 0
+  const toNext = overview.value.growth_to_next ?? 0
+  const total = growth + toNext
+  if (total <= 0) return 0
+  return Math.round((growth / total) * 100)
 })
 
-/** 把后端的解锁状态合进本地文案 */
-const benefits = computed(() =>
-  MEMBER_BENEFITS.map((item) => {
-    const remote = memberStore.benefits.find((b) => b.key === item.key)
-    return { ...item, unlocked: Boolean(remote?.unlocked) }
+/** 下一档门槛：优先用 getPlans 的 levels[]，取不到就退回「当前成长值 + 还差多少」 */
+const growthNextThreshold = computed(() => {
+  const o = overview.value
+  const fromPlans = (memberStore.levels || []).find((level) => level.level === o.next_level)
+  if (fromPlans && fromPlans.growth_threshold != null) return fromPlans.growth_threshold
+  return (o.growth ?? 0) + (o.growth_to_next ?? 0)
+})
+
+const nextTier = computed(() => {
+  const o = overview.value
+  if (!o.next_level) return null
+  return {
+    name: o.next_level_name || o.next_level,
+    threshold: growthNextThreshold.value,
+    toNext: o.growth_to_next ?? 0,
+  }
+})
+
+/** 未登录/概览缺失时按「全部未解锁」渲染，页面不留白 */
+const remoteBenefits = computed(() => {
+  const list = memberStore.benefits
+  if (list && list.length) return list
+  return MEMBER_BENEFITS.map((item) => ({
+    key: item.key,
+    unlocked: false,
+    required_level: item.requiredLevel,
+  }))
+})
+
+const benefitCards = computed(() =>
+  remoteBenefits.value.map((remote) => {
+    const meta = MEMBER_BENEFIT_MAP[remote.key] || {}
+    const valueText = formatBenefitValue(remote.value, meta.tierLabels)
+    const nextText = formatBenefitNext(remote.value, meta.tierLabels)
+    return {
+      key: remote.key,
+      name: meta.name || remote.key,
+      desc: meta.desc || '',
+      icon: meta.icon || 'info',
+      unlocked: Boolean(remote.unlocked),
+      valueText,
+      nextText,
+      displayText: remote.unlocked ? valueText || '已解锁' : requiredLabel(remote.required_level),
+      footText: remote.unlocked
+        ? nextText
+          ? `下一档 ${nextText}`
+          : '已达最高档'
+        : meta.desc || '',
+    }
   })
 )
 
-const unlockedCount = computed(() => benefits.value.filter((b) => b.unlocked).length)
-
-const nextThreshold = computed(() => {
-  const o = memberStore.overview
-  if (!o || o.growth_to_next === undefined) return 0
-  return Number(o.growth || 0) + Number(o.growth_to_next || 0)
-})
-
-const growthPercent = computed(() => {
-  if (!nextThreshold.value) return 100
-  const pct = (Number(memberStore.overview?.growth || 0) / nextThreshold.value) * 100
-  return Math.min(100, Math.max(0, Math.round(pct)))
-})
-
-function requiredLevelName(level) {
-  return memberLevelName(level) || '更高等级'
-}
-
-const TODO_ICONS = {
-  member_expiring: 'clock',
-  coupon_expiring: 'ticket',
-  points_expiring: 'landmark',
-}
-function todoIcon(type) {
-  return TODO_ICONS[type] || 'info'
-}
-
-/**
- * 快捷入口。`available` 由**路由表**推断而不是手写布尔 ——
- * 手写的话页面落地后很容易忘了改，入口就永远停在「即将上线」。
- */
-const SHORTCUTS = [
-  { name: 'Points', label: '积分中心', icon: 'landmark' },
-  { name: 'Growth', label: '成长值', icon: 'flame' },
-  { name: 'Coupons', label: '我的优惠券', icon: 'ticket' },
-  { name: 'Checkin', label: '每日签到', icon: 'check-circle' },
-  { name: 'PointsHistory', label: '积分明细', icon: 'file' },
-]
-
-const shortcuts = computed(() =>
-  SHORTCUTS.map((entry) => ({ ...entry, available: router.hasRoute(entry.name) }))
+/** 下一档会变好的项：`value.next` 存在且与当前值不同 */
+const nextUpgrades = computed(() =>
+  benefitCards.value
+    .filter((item) => item.unlocked && item.nextText && item.nextText !== item.valueText)
+    .map((item) => ({
+      key: item.key,
+      name: item.name,
+      icon: item.icon,
+      valueText: item.valueText,
+      nextText: item.nextText,
+    }))
 )
 
-const plansAvailable = computed(() => router.hasRoute('MemberPlans'))
-const growthAvailable = computed(() => router.hasRoute('Growth'))
-
-function goPlans() {
-  if (router.hasRoute('MemberPlans')) router.push({ name: 'MemberPlans' })
+function requiredLabel(level) {
+  if (!level || level === 'none') return '未解锁'
+  return `V${String(level).replace(/^v/i, '')} 解锁`
 }
 
+function formatDate(value) {
+  if (!value) return '——'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return '——'
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const expiryValue = computed(() => {
+  if (!memberStore.isMember) return '尚未开通'
+  return formatDate(overview.value.expires_at)
+})
+
+const expiryHint = computed(() => {
+  if (!memberStore.isMember) return '开通后立即生效'
+  if (overview.value.days_left == null) return '到期时间以服务端为准'
+  return `剩余 ${overview.value.days_left} 天`
+})
+
+/** 可用性由路由表推断，不手写布尔（手写会忘了改，入口会指向 404） */
+const SHORTCUTS = [
+  { label: '每日签到', icon: 'check-circle', to: { name: 'UserCheckin' } },
+  { label: '我的优惠券', icon: 'ticket', to: { name: 'Coupons' } },
+  { label: '积分明细', icon: 'file', to: { name: 'Points', query: { tab: 'history' } } },
+  { label: '消息中心', icon: 'mail', to: { name: 'Mail' } },
+  { label: '会员套餐', icon: 'credit-card', to: { name: 'MemberPlans' } },
+  { label: '权益详解', icon: 'book-open', to: { name: 'MemberBenefits' } },
+]
+
+const shortcuts = computed(() => SHORTCUTS.filter((entry) => router.hasRoute(entry.to.name)))
+
 onMounted(() => {
-  if (userStore.isLoggedIn) memberStore.fetchOverview()
+  if (!userStore.isLoggedIn) return
+  memberStore.fetchOverview()
+  // 下一档门槛要读 levels[]；已加载过就不再请求
+  if (!memberStore.hasLevels) memberStore.fetchPlans({ silent: true })
 })
 </script>
 
@@ -260,7 +386,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 空态 */
+/* 未登录 / 骨架 / 错误 */
 .member-state {
   display: flex;
   flex-direction: column;
@@ -271,7 +397,7 @@ onMounted(() => {
 }
 .member-state-icon {
   font-size: var(--fs-h2);
-  color: var(--text-muted);
+  color: var(--accent);
 }
 .member-state-title {
   margin: 0;
@@ -282,8 +408,6 @@ onMounted(() => {
   margin: 0;
   color: var(--text-muted);
 }
-
-/* 骨架与错误 */
 .member-skeleton {
   display: flex;
   flex-direction: column;
@@ -291,11 +415,8 @@ onMounted(() => {
   padding: calc(var(--space-unit) * 3);
 }
 .member-skeleton-line {
-  height: calc(var(--space-unit) * 2);
+  height: calc(var(--space-unit) * 3);
   border-radius: var(--radius-media);
-}
-.member-skeleton-line--lg {
-  height: calc(var(--space-unit) * 4);
 }
 .member-error {
   display: flex;
@@ -305,10 +426,18 @@ onMounted(() => {
   color: var(--danger);
 }
 
-/* 身份卡 */
+.member-section-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+}
+
+/* ① 身份区 */
 .member-identity {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 3);
 }
@@ -316,63 +445,106 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-unit);
+  min-width: 0;
 }
-.member-badge {
+.member-identity-tag {
   align-self: flex-start;
 }
-.member-nickname {
+.member-identity-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: var(--fw-heading);
 }
-.member-identity-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  grid-column: 1 / -1;
-  font-size: var(--fs-sm);
+.member-identity-expiry {
+  margin: 0;
   color: var(--text-muted);
 }
-.member-meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-}
-.member-meta-item.is-warning {
+.member-identity-expiry.is-warning {
   color: var(--warning);
 }
-.member-warning-text {
+.member-identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-unit);
+}
+
+/* ② 资产概览 */
+.member-assets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: calc(var(--space-unit) * 2);
+}
+.member-asset {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 2);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition-interactive);
+}
+a.member-asset:hover {
+  border-color: var(--accent);
+}
+.member-asset-label {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.member-asset-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h2);
+  color: var(--accent);
+}
+.member-asset-unit {
+  margin-left: var(--space-unit);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+}
+.member-asset-value--date {
+  font-size: var(--fs-h3);
+}
+.member-asset-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.member-asset-tip {
   font-size: var(--fs-label);
   color: var(--warning);
 }
-.member-identity-cta {
-  grid-row: 1;
-  grid-column: 2;
-  align-self: center;
+.member-asset-link {
+  margin-top: auto;
+  font-size: var(--fs-label);
+  color: var(--accent);
 }
 
-/* 成长值进度 */
+/* ③ 成长值进度 */
 .member-growth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-unit);
   padding: calc(var(--space-unit) * 3);
 }
 .member-growth-head {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-unit);
+  gap: var(--space-unit);
 }
-.member-growth-title {
-  font-weight: var(--fw-heading);
+.member-growth-link {
+  font-size: var(--fs-label);
+  color: var(--accent);
 }
 .member-growth-num {
-  font-family: var(--font-mono);
+  margin: 0;
 }
-.member-growth-bar {
-  height: var(--space-unit);
+.member-growth-track {
+  position: relative;
+  height: calc(var(--space-unit) * 1);
   overflow: hidden;
-  background: var(--bg-surface-2);
-  border-radius: var(--radius-media);
+  background: var(--divider);
+  border-radius: var(--radius-pill);
 }
 .member-growth-fill {
   display: block;
@@ -380,42 +552,21 @@ onMounted(() => {
   background: var(--accent);
   transition: width var(--transition-interactive);
 }
-.member-growth-tip {
-  margin: var(--space-unit) 0 0;
+.member-growth-hint {
+  margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
-}
-/* 成长值明细入口：这一行是「成长值怎么涨」的最佳落点，别让用户自己找 */
-.member-growth-link {
-  margin-left: var(--space-unit);
-  color: var(--accent);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.member-growth-link:hover {
-  text-decoration: underline;
 }
 
-/* 权益矩阵 */
-.member-section-head {
+/* ④ 权益卡区 */
+.member-benefits {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: calc(var(--space-unit) * 2);
-}
-.member-section-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.member-section-hint {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
 }
 .member-benefit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: calc(var(--space-unit) * 2);
   margin: 0;
   padding: 0;
@@ -427,6 +578,14 @@ onMounted(() => {
   gap: var(--space-unit);
   padding: calc(var(--space-unit) * 2);
 }
+.member-benefit.is-locked {
+  opacity: 0.72;
+}
+.member-benefit-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-unit);
+}
 .member-benefit-icon {
   font-size: var(--fs-h3);
   color: var(--accent);
@@ -434,47 +593,64 @@ onMounted(() => {
 .member-benefit-name {
   font-weight: var(--fw-heading);
 }
-.member-benefit-desc {
-  font-size: var(--fs-label);
+.member-benefit-value {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+}
+.member-benefit.is-locked .member-benefit-value {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
   color: var(--text-muted);
 }
-.member-benefit-state {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  margin-top: auto;
+.member-benefit-foot {
+  margin: 0;
   font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.member-benefit-state.is-on {
-  color: var(--success);
-}
-/* 未解锁降饱和但保留可见：用户需要看到「有什么可以解锁」 */
-.member-benefit.is-locked {
-  opacity: 0.72;
-}
-.member-benefit.is-locked .member-benefit-icon {
   color: var(--text-muted);
 }
 
-/* 待办 */
-.member-todos {
+/* ⑤ 下一档预告 */
+.member-next {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-unit);
   padding: calc(var(--space-unit) * 3);
 }
-.member-todos ul {
+.member-next-title {
+  margin: 0;
+}
+.member-next-sub {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.member-next-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.member-todo {
+.member-next-item {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 0.5) 0;
-  color: var(--warning);
+  gap: var(--space-unit);
+}
+.member-next-icon {
+  color: var(--accent);
+}
+.member-next-name {
+  color: var(--text-muted);
+}
+.member-next-value {
+  font-family: var(--font-mono);
+}
+.member-next-empty {
+  margin: 0;
+  color: var(--text-muted);
 }
 
-/* 快捷入口 */
+/* ⑥ 快捷入口 */
 .member-shortcuts {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -494,25 +670,9 @@ onMounted(() => {
   color: var(--accent);
   border-color: var(--accent);
 }
-.member-shortcut.is-disabled {
-  opacity: 0.6;
-}
-.member-shortcut-soon {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
 
-/* 窄屏：身份卡改单列，CTA 另起一行（否则按钮文字会被压成竖排） */
-@media (max-width: 575px) {
-  .member-identity {
-    grid-template-columns: 1fr;
-  }
-  .member-identity-cta {
-    grid-row: auto;
-    grid-column: 1;
-  }
-  .member-identity-cta button {
-    width: 100%;
-  }
+/* ⑦ 底部 */
+.member-footer {
+  margin: 0;
 }
 </style>

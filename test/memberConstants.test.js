@@ -19,12 +19,17 @@ import { MEMBER_BENEFITS, MEMBER_LEVELS, discountLabel } from '../src/constants/
  *
  * ## 还守什么
  *
- * 六项权益的 `requiredLevel` 必须与后端 `sstc.get_member_snapshot` 里的
- * 映射一致（1-4 需 v1、5-6 需 v4）。不一致会出现「矩阵说未解锁、后端说已解锁」，
+ * 八项权益的 `requiredLevel` 必须与后端 `sstc.get_member_snapshot` 里的
+ * 映射一致（v1: discount / points_boost / coupon_pack / points_deduct / free_tool，
+ * v3: identity，v4: birthday / support）。不一致会出现「矩阵说未解锁、后端说已解锁」，
  * 两边都不报错 —— 这类静默分叉只能靠断言发现。
+ *
+ * v1.4.0 起还多守一项：`valueType`（前端副本）必须等于后端 `value.type`
+ * （迁移 `2026-10-15-member-level-values-v2.sql` 的 `d.vtype`）。它不参与渲染，
+ * 只为「加权益时两边一起改」留一道门。
  */
 
-test('六项权益的图标名都必须在 ICONS 里存在（动态绑定，模板门禁查不到）', () => {
+test('八项权益的图标名都必须在 ICONS 里存在（动态绑定，模板门禁查不到）', () => {
   const missing = MEMBER_BENEFITS
     .filter((b) => !ICONS[b.icon])
     .map((b) => `${b.key} → ${b.icon}`)
@@ -36,28 +41,30 @@ test('六项权益的图标名都必须在 ICONS 里存在（动态绑定，模�
   )
 })
 
-test('六项权益恰好 6 项，且 key 不重复', () => {
-  // hero 文案 `member-level` 写死「已解锁 6 项」—— 多一项少一项都是说谎
-  assert.equal(MEMBER_BENEFITS.length, 6, '权益必须是 6 项（hero 文案写死的）')
+test('八项权益恰好 8 项，且 key 不重复', () => {
+  // hero 文案 `member-level` 写死「已解锁 8 项」—— 多一项少一项都是说谎
+  assert.equal(MEMBER_BENEFITS.length, 8, '权益必须是 8 项（hero 文案写死的）')
   const keys = MEMBER_BENEFITS.map((b) => b.key)
   assert.equal(new Set(keys).size, keys.length, `key 有重复：${keys.join(', ')}`)
 })
 
-test('权益的 key 与后端 get_member_snapshot 的映射逐一对应', () => {
-  // 后端 sstc.get_member_snapshot 里的固定顺序与所需等级
-  // （v1.2.0 起八档：前四项付费即解锁 v1，后两项要爬到 v4）
+test('权益的 key / requiredLevel / valueType 与后端 get_member_snapshot 逐一对应', () => {
+  // 后端 sstc.get_member_snapshot 里的固定顺序、所需等级与 value.type
+  // （v1.4.0 起八项：五项成长型权益自 v1 解锁，档位差异体现在数值上）
   const BACKEND = [
-    ['discount', 'v1'],
-    ['coupon_pack', 'v1'],
-    ['points_deduct', 'v1'],
-    ['free_tool', 'v1'],
-    ['birthday', 'v4'],
-    ['support', 'v4'],
+    ['discount', 'v1', 'rate'],
+    ['points_boost', 'v1', 'multiplier'],
+    ['coupon_pack', 'v1', 'money'],
+    ['points_deduct', 'v1', 'percent'],
+    ['free_tool', 'v1', 'quota'],
+    ['identity', 'v3', 'tier'],
+    ['birthday', 'v4', 'money'],
+    ['support', 'v4', 'tier'],
   ]
   assert.deepEqual(
-    MEMBER_BENEFITS.map((b) => [b.key, b.requiredLevel]),
+    MEMBER_BENEFITS.map((b) => [b.key, b.requiredLevel, b.valueType]),
     BACKEND,
-    '前端权益的顺序或所需等级与后端不一致 —— 会出现「矩阵说未解锁、后端说已解锁」'
+    '前端权益的顺序 / 所需等级 / 数值类型与后端不一致 —— 会出现「矩阵说未解锁、后端说已解锁」或「数值画错单位」'
   )
 })
 
@@ -65,6 +72,17 @@ test('每项权益都有名称与描述（空文案会渲染出空白卡片）',
   for (const b of MEMBER_BENEFITS) {
     assert.ok(b.name && b.name.trim() !== '', `${b.key} 缺少 name`)
     assert.ok(b.desc && b.desc.trim() !== '', `${b.key} 缺少 desc`)
+  }
+})
+
+test('权益 detail 是「一段字符串」，不是字符串数组', () => {
+  // 页面直接 {{ item.detail }} 渲染。若哪天把它改成数组（或写成 `|| []`），
+  // 而模板又用 v-for 逐项渲染，字符串就会被**按字符展开**成一个汉字一行 ——
+  // 这是实测踩到的坑：lint / test / build 全绿，只有截图能看出来。
+  for (const b of MEMBER_BENEFITS) {
+    assert.equal(Array.isArray(b.detail), false, `${b.key} 的 detail 必须是字符串，不能是数组`)
+    assert.equal(typeof b.detail, 'string', `${b.key} 的 detail 必须是字符串`)
+    assert.notEqual(b.detail.trim(), '', `${b.key} 的 detail 不能为空（空的话整段不渲染）`)
   }
 })
 

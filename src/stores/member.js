@@ -47,12 +47,23 @@ export const useMemberStore = defineStore('member', {
     level: (state) => state.overview?.level || 'none',
     levelName: (state) => state.overview?.level_name || '',
     points: (state) => state.overview?.points,
-    /** 六项权益的解锁状态（后端只给 key + unlocked + required_level） */
+    /** 八项权益的解锁状态与数值（后端给 key + unlocked + required_level，已解锁的另带 value） */
     benefits: (state) => state.overview?.benefits || [],
     todos: (state) => state.overview?.todos || [],
     /** 会员即将到期（阈值与 hero 文案同为 60 天，由服务端算好并放进 todos） */
     hasExpiringTodo: (state) =>
       (state.overview?.todos || []).some((t) => t.type === 'member_expiring'),
+    /**
+     * 等级对照表是否已经拿到（`getPlans` 的 `levels[]`）。
+     *
+     * 页面用 `if (!memberStore.hasLevels) fetchPlans()` 代替
+     * `if (!memberStore.levels.length)`：`levels` 的初值是 `null`（不是 `[]`），
+     * 在 `onMounted` 里直接取 `.length` 会在全新会话首屏抛
+     * `TypeError: Cannot read properties of null`，把整个挂载钩子打断，
+     * 后面的请求与副作用都不会执行。这类错误 lint / build / SSR 都看不见，
+     * 所以把「有没有」收进 getter，页面不再自己判 `null`。
+     */
+    hasLevels: (state) => Array.isArray(state.levels) && state.levels.length > 0,
     /** 成长值累计（成长值页汇总卡用；缺数据时给 0） */
     growthTotalValue: (state) => Number(state.growthSummary?.growth ?? 0),
     growthHasPrev: (state) => state.growthPage > 1,

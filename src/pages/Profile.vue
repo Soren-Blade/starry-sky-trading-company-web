@@ -85,6 +85,23 @@
       </template>
     </section>
 
+    <!--
+      每日签到：非会员同样每天签到赚积分，所以它是**个人中心功能**，
+      入口挂在 `/user/checkin`（旧 `/checkin` 在路由里重定向过去）。
+      今日状态读会员摘要里已有的 `checkin_available`，不额外发请求。
+    -->
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-checkin" aria-label="每日签到">
+      <div class="profile-checkin-text">
+        <p class="profile-checkin-title">每日签到</p>
+        <p class="profile-checkin-desc">
+          {{ checkinAvailable ? '今天还没签到，连签 7 天以上每天得 20 积分' : '今天已签到，明天再来' }}
+        </p>
+      </div>
+      <router-link class="u-btn-secondary" to="/user/checkin">
+        {{ checkinAvailable ? '去签到' : '查看签到日历' }}
+      </router-link>
+    </section>
+
     <div class="profile-layout">
       <!-- 左：账号信息（只读） -->
       <section class="page-panel" aria-label="账号信息">
@@ -329,6 +346,14 @@ const { userInfo, nickname } = storeToRefs(userStore)
 const memberSummaryVisible = computed(
   () => Boolean(memberStore.overview) || memberStore.loadingOverview || Boolean(memberStore.error)
 )
+
+/**
+ * 今日是否还能签到。
+ *
+ * 判据直接用会员摘要里的 `checkin_available`（后端内置 `=== true` 的布尔），
+ * 为的是**不再多发一次日历请求** —— 这一栏只是个入口，点进去才有完整日历。
+ */
+const checkinAvailable = computed(() => memberStore.overview?.checkin_available === true)
 
 const saving = ref(false)
 const errorMessage = ref('')
@@ -819,6 +844,30 @@ onMounted(() => {
   margin-top: calc(var(--space-unit));
 }
 
+/* ── 每日签到入口（个人中心功能，`/user/checkin`） ───────────── */
+.profile-checkin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2);
+}
+.profile-checkin-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+.profile-checkin-title {
+  margin: 0;
+  font-weight: var(--fw-heading);
+}
+.profile-checkin-desc {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
   .profile-layout {
@@ -852,6 +901,12 @@ onMounted(() => {
   /* 说明文字在小屏让它自己换行即可，不必压到按钮底下 */
   .avatar-hint {
     max-width: none;
+  }
+
+  /* 签到入口窄屏改竖排：按钮占满一行，避免说明被压成单字一列 */
+  .profile-checkin {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

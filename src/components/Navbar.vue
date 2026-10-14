@@ -237,6 +237,13 @@
             <router-link class="u-dropdown-item" to="/user/kami" @click="handleMenuClick">
               卡密管理
             </router-link>
+            <!--
+              每日签到归「账号资产」而不是「会员权益」：非会员同样每天签到赚积分，
+              它是个人中心功能（`/user/checkin`），不是会员门槛。
+            -->
+            <router-link class="u-dropdown-item" to="/user/checkin" @click="handleMenuClick">
+              每日签到
+            </router-link>
 
             <!--
               消息中心：同样只给注册用户（理由见顶栏信封入口的注释）。
@@ -270,11 +277,8 @@
             <router-link class="u-dropdown-item" to="/points" @click="handleMenuClick">
               积分中心
             </router-link>
-            <router-link class="u-dropdown-item" to="/growth" @click="handleMenuClick">
+            <router-link class="u-dropdown-item" to="/member/growth" @click="handleMenuClick">
               成长值
-            </router-link>
-            <router-link class="u-dropdown-item" to="/checkin" @click="handleMenuClick">
-              每日签到
             </router-link>
             <router-link class="u-dropdown-item" to="/coupons" @click="handleMenuClick">
               我的优惠券

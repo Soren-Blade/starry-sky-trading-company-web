@@ -1,8 +1,13 @@
 <template>
   <div class="page-shell page-shell--narrow checkin-page">
     <header class="page-shell-head">
+      <p class="page-shell-eyebrow">
+        <router-link class="checkin-back" :to="{ name: 'Profile' }">个人中心</router-link>
+      </p>
       <h1 class="page-shell-title">每日签到</h1>
-      <p class="page-shell-desc">连续签到积分更多：3 天起 15 分，7 天起 20 分</p>
+      <p class="page-shell-desc">
+        连续签到积分更多：3 天起 15 分，7 天起 20 分；会员等级倍率对签到积分同样生效
+      </p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card checkin-state">
@@ -82,7 +87,16 @@
 
 <script setup>
 /**
- * 每日签到（`/checkin`）—— 方案 §P0-5
+ * 每日签到（`/user/checkin`，旧 `/checkin` 重定向到此）—— 方案 §P0-5
+ *
+ * 语义归属：签到是**个人中心功能**，不是会员权益 —— 非会员同样每天签到赚积分，
+ * 所以它挂在 `/user/*` 下，入口在顶栏下拉与个人中心，而不是会员中心。
+ *
+ * 与会员的关系只剩一处，且**方向是「会员影响签到」而不是「签到属于会员」**：
+ * 服务端 `sstc.checkin` 会拿 `get_member_snapshot(...)->>'points_multiplier'`
+ * 乘在每天的基础积分上（`v_points := round(v_base * v_mult)`），
+ * 即等级倍率对签到积分同样生效。文案必须照实说 —— 早期版本写的是
+ * 「会员消费积分另有等级倍率加成」，读起来像「签到不吃倍率」，与库里的公式相反。
  *
  * 三条纪律：
  *   1. **签到不传日期**：服务端按 `Asia/Shanghai` 判定「今天」。客户端传日期会让
@@ -133,7 +147,7 @@ const rules = [
   { icon: 'check-circle', text: `连续签到 1-2 天：每天 10 积分` },
   { icon: 'check-circle', text: `连续签到 3-6 天：每天 15 积分` },
   { icon: 'check-circle', text: `连续签到 7 天以上：每天 20 积分` },
-  { icon: 'landmark', text: `会员另有积分倍率加成（100 积分 = ¥1）` },
+  { icon: 'landmark', text: `会员等级倍率对每天的基础积分同样生效；成长值固定 +5（100 积分 = ¥1）` },
   { icon: 'clock', text: `断签后连续天数从头计算；积分有效期 12 个月` },
 ]
 
@@ -308,5 +322,13 @@ onMounted(() => {
   .checkin-btn {
     width: 100%;
   }
+}
+
+/* 返回个人中心（签到是个人中心功能，不是会员权益） */
+.checkin-back {
+  color: var(--accent);
+}
+.checkin-back:hover {
+  text-decoration: underline;
 }
 </style>

@@ -290,9 +290,12 @@ test('状态标签变体映射里的每个变体都有 CSS 定义', () => {
 const NARROW_PAGE_FAMILY = [
   'pages/Member.vue',
   'pages/MemberPlans.vue',
+  // 会员中心的详情子页与枢纽同一族：同一套「一条主叙事 + 若干信息块」版式
+  'pages/MemberBenefits.vue',
+  'pages/MemberGrowth.vue',
   'pages/Points.vue',
-  'pages/PointsHistory.vue',
-  'pages/Checkin.vue',
+  // 签到移到个人中心（`/user/checkin`），权限归属变了，版式仍属这一族
+  'pages/UserCheckin.vue',
   'pages/Coupons.vue',
   // 消息中心与上面几页同一族：一条主叙事（通知流）+ 若干信息块（偏好 / 邮件台账），
   // 宽度同样只能来自 .page-shell--narrow

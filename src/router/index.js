@@ -110,29 +110,46 @@ const routes = [
     meta: { title: '会员套餐 - 星辰商行', requiresAuth: true }
   },
   {
+    // 权益详解：8 项权益的逐档数值矩阵 + 规则 FAQ。
+    // 刻意**不要求登录**——权益规则是公开信息，游客也该能先看清再决定是否开会员。
+    path: '/member/benefits',
+    name: 'MemberBenefits',
+    component: () => import('@/pages/MemberBenefits.vue'),
+    meta: { title: '会员权益详解 - 星辰商行' }
+  },
+  {
+    // 成长值页是会员中心的详情子页：它回答「怎么升档、升上去多拿什么」
+    path: '/member/growth',
+    name: 'MemberGrowth',
+    component: () => import('@/pages/MemberGrowth.vue'),
+    meta: { title: '成长值 - 星辰商行', requiresAuth: true }
+  },
+  {
+    // 旧地址一律留重定向：外链、收藏、历史通知里的链接都不该 404
+    path: '/growth',
+    redirect: '/member/growth'
+  },
+  {
     path: '/points',
     name: 'Points',
     component: () => import('@/pages/Points.vue'),
     meta: { title: '积分中心 - 星辰商行', requiresAuth: true }
   },
   {
-    // 成长值页与积分页同级：两者都是「我的资产怎么涨的」，只是口径不同
-    path: '/growth',
-    name: 'Growth',
-    component: () => import('@/pages/Growth.vue'),
-    meta: { title: '成长值 - 星辰商行', requiresAuth: true }
+    // 积分明细已并入积分中心（`/points?tab=history`），旧地址重定向过去
+    path: '/points/history',
+    redirect: '/points'
   },
   {
-    path: '/points/history',
-    name: 'PointsHistory',
-    component: () => import('@/pages/PointsHistory.vue'),
-    meta: { title: '积分明细 - 星辰商行', requiresAuth: true }
+    // 签到是个人中心功能：非会员同样每天签到赚积分，因此挂在 /user 下
+    path: '/user/checkin',
+    name: 'UserCheckin',
+    component: () => import('@/pages/UserCheckin.vue'),
+    meta: { title: '每日签到 - 星辰商行', requiresAuth: true }
   },
   {
     path: '/checkin',
-    name: 'Checkin',
-    component: () => import('@/pages/Checkin.vue'),
-    meta: { title: '每日签到 - 星辰商行', requiresAuth: true }
+    redirect: '/user/checkin'
   },
   {
     path: '/coupons',
