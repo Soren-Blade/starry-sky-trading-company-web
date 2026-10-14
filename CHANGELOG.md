@@ -9,6 +9,63 @@
 
 ---
 
+## [1.4.0] — 2026-10-15 · 会员中心重构与签到独立（已发布）
+
+会员中心从「一个页面塞下所有东西」重构为 **1 个枢纽 + 3 个子页**，权益由 6 项扩为 **8 项**，
+并且**逐档数值第一次真正显示出来**（券包金额、积分抵扣上限、免卡密额度、生日礼遇、客服档、身份档）。
+签到按用户要求**独立到个人中心**（`/user/checkin`），与会员**结构解绑但保留倍率加成**。
+
+### 新增
+
+| 类别 | 内容 |
+| --- | --- |
+| 页面 | `/member/benefits`（权益详解：八项规则 + **8×8 数值矩阵** + FAQ，**不要求登录**）、`/member/growth`（成长值，自 `/growth` 迁入并补八档对照表）、`/user/checkin`（每日签到，自 `/checkin` 迁入个人中心） |
+| 路由 | 上述三条；`/growth` → `/member/growth`、`/points/history` → `/points`、`/checkin` → `/user/checkin` 三条**旧路由重定向**（删除 `Growth` / `Checkin` / `PointsHistory` 三个路由名） |
+| 常量 | `SUPPORT_TIER_LABELS`（标准 / 优先 / 专属客服经理）、`IDENTITY_TIER_LABELS`（会员徽章 / 专属称号 / 限定标识）；`MEMBER_BENEFITS` 扩为 8 项并带 `valueType` |
+| 函数 | `formatBenefitValue(value, labels)` / `formatBenefitNext(value, labels)` —— **权益数值的唯一翻译入口**（rate / multiplier / money / percent / quota / tier 六种 type），未知类型返回空串、绝不产出 `undefined` |
+| store | `memberStore.hasLevels` getter |
+| 测试 | `memberBenefitValue.test.js`（11 例）、`stores.member.test.js`（8 例） |
+
+### 变更
+
+- **权益数值只从服务端来**：`getOverview.benefits[].value = { type, current, next, next_level }`，
+  已解锁项才带 `value`（未解锁时**整个键不存在**，不是给 0）；满级项不带 `next` / `next_level`。
+  前端 `constants/member.js` 只放规则文案与翻译表，**`detail` 里不写任何折扣 / 倍率 / 金额 / 档位数字** ——
+  写死会与 `member_levels` 漂移且两边都不报错
+- **8×8 矩阵**取 `getPlans.levels[]` 的六个新列（`coupon_pack_value` / `points_deduct_cap` /
+  `free_tool_quota` / `birthday_value` / `support_tier` / `identity_tier`），窄屏降级为「每档一张卡」，
+  当前档高亮；矩阵数据是**公开**的，所以这个页面不加 `requiresAuth`
+- **签到与会员结构解绑、倍率保留**：`/user/checkin` 只调 `/pointsApi/checkin`（服务端未改），
+  但文案与页面归属改为个人中心；服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的
+  `points_multiplier` 放大积分（成长值固定 +5），页面因此写「会员等级倍率对签到积分同样生效」
+- **积分明细并入积分中心**：`/points` 两个页签（概览 / 流水），`PointsHistory.vue` 删除，
+  `/points/history` 重定向过来（旧链接与收藏不失效）
+- **窄页族换血**：`Checkin` / `PointsHistory` 退出，`MemberBenefits` / `MemberGrowth` / `UserCheckin`
+  加入，仍受 `test/componentClasses.test.js` 的 `NARROW_PAGE_FAMILY` 守卫
+- `package.json` 版本号 `1.3.0` → `1.4.0`，与后端保持一致
+
+### 修复
+
+- **首屏空指针**：`Member.vue` 与 `MemberBenefits.vue` 曾写 `if (!memberStore.levels.length)`，
+  而 `levels` 的初值是 `null`（不是 `[]`）—— 全新会话首屏必抛 `TypeError` 并打断 `onMounted` 的后续请求。
+  lint / build / SSR 渲染**都看不见**（SSR 不跑 `onMounted`）。改为 `memberStore.hasLevels`，
+  并由 `stores.member.test.js` 钉住「初值 null、脏值也不抛」
+- **权益详解的详情文字被按字符渲染**：`detail` 是**一段字符串**，模板却用 `v-for` 逐项渲染，
+  于是「折扣与优惠券」被渲染成「折 / 扣 / 与 / 优 / 惠 / 券」一列竖排。改为 `<p>{{ item.detail }}</p>`，
+  并在 `memberConstants.test.js` 里断言 `detail` 必须是字符串（防回归）
+- **成长值页对非会员说错话**：非会员曾看到「已是最高等级」，现在按成长值门槛说「按成长值门槛定档、到账即时生效」
+- `constants/member.js` 的 `quota` 翻译会因 `Number(null) === 0` 把「未下发」渲染成「0 个」，
+  现在先挡 `null` / `undefined` / 空串
+
+### 验收
+
+- `npm run lint` 0 问题；`npm test` **888 例**全部通过（869 → 888，本轮 +19）；`npm run build` 成功
+- **真浏览器走查**（桌面 1440 + 移动 390）：游客与 V5 会员两种身份下的 `/member`、`/member/benefits`、
+  `/member/growth`、`/points`（两个页签）、`/user/checkin`，以及三条旧路由重定向；
+  签到实测 **+35 积分 = 基础 10 × V5 倍率 3.5**、成长值 +5，矩阵与权益卡数值与库内 `member_levels` 逐格一致
+
+---
+
 ## [1.3.0] — 2026-10-14 · 消息中心与客服中心（已发布）
 
 站内消息中心 `/mail`、游客可用的客服中心 `/support`，以及顶栏未读角标、页脚与帮助弹窗入口 —— 对应后端新增的 `/mailApi`（6 个端点）与 `/supportApi`（4 个端点）。

@@ -4,9 +4,11 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `1.3.0`**（2026-10-14 发布）：新增消息中心 `/mail`（通知 / 通知偏好 / 邮件记录）与
-> 客服中心 `/support`（游客可用），顶栏未读角标、页脚与帮助弹窗入口。完整清单见 [CHANGELOG.md](CHANGELOG.md)。
-> 后端契约 v1.3（`/mailApi` 6 个端点 + `/supportApi` 4 个端点），版本号两仓库共用。
+> **当前版本 `1.4.0`**（2026-10-15 发布）：会员中心重构为 **1 个枢纽 + 3 个子页**
+> （`/member` 七区块 / `/member/benefits` 权益详解与 8×8 数值矩阵 / `/member/growth` 成长值 /
+> `/user/checkin` 每日签到），权益由 6 项扩为 **8 项**且逐档数值全部由服务端下发
+> （`benefits[].value`），积分明细并入 `/points` 的两个页签。完整清单见 [CHANGELOG.md](CHANGELOG.md)。
+> 后端契约 v1.4（`member_levels` 新增 6 列 + `getOverview`/`getPlans`/`getGrowthHistory` 同步下发），版本号两仓库共用。
 
 ---
 
@@ -210,10 +212,13 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/user/orders/:orderNo` | `OrderDetail` | `pages/OrderDetail.vue` | 订单详情 - 星辰商行 | ✅ |
 | `/member` | `Member` | `pages/Member.vue` | 会员中心 - 星辰商行 | ✅ |
 | `/member/plans` | `MemberPlans` | `pages/MemberPlans.vue` | 会员套餐 - 星辰商行 | ✅ |
+| `/member/benefits` | `MemberBenefits` | `pages/MemberBenefits.vue` | 会员权益详解 - 星辰商行 | **不要求登录**，见下 |
+| `/member/growth` | `MemberGrowth` | `pages/MemberGrowth.vue` | 成长值 - 星辰商行 | ✅ |
 | `/points` | `Points` | `pages/Points.vue` | 积分中心 - 星辰商行 | ✅ |
-| `/points/history` | `PointsHistory` | `pages/PointsHistory.vue` | 积分明细 - 星辰商行 | ✅ |
-| `/growth` | `Growth` | `pages/Growth.vue` | 成长值 - 星辰商行 | ✅ |
-| `/checkin` | `Checkin` | `pages/Checkin.vue` | 每日签到 - 星辰商行 | ✅ |
+| `/user/checkin` | `UserCheckin` | `pages/UserCheckin.vue` | 每日签到 - 星辰商行 | ✅ |
+| `/growth` | → `/member/growth` | — | 旧路由重定向 | |
+| `/points/history` | → `/points` | — | 旧路由重定向（并进「流水」页签） | |
+| `/checkin` | → `/user/checkin` | — | 旧路由重定向 | |
 | `/coupons` | `Coupons` | `pages/Coupons.vue` | 我的优惠券 - 星辰商行 | ✅ |
 | `/mail` | `Mail` | `pages/Mail.vue` | 消息中心 - 星辰商行 | ✅ |
 | `/support` | `Support` | `pages/Support.vue` | 客服中心 - 星辰商行 | **游客可用**，见下 |
@@ -227,6 +232,12 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 唯一「没有账号邮箱、也永远收不到站内通知」的身份，客服中心是他唯一的求助通道，关掉它
 等于把人堵死。游客登录态同样带 access token 与 `users.id`，所以「我的会话」的归属判断
 对两种身份是同一份代码；差别只有一处：**游客必须自己填联系邮箱**（回执与客服回复只发到那里）。
+
+**为什么 `/member/benefits` 也不要求登录**：权益规则是公开信息（先知道能拿到什么才会考虑开通），
+所以它是八项权益的唯一公开说明页，同时给非会员与会员看。数据来自 `getPlans` 的 `levels[]`（公开的
+八档数值矩阵）与 `getOverview` 的 `benefits[]`（只有本人登录后才有）；未登录时卡片只显示解锁等级、
+不显示数值，矩阵照常显示全部八档 —— 页面标题下方那句「数值全部来自服务端，页面上不写死任何折扣或倍率」
+是这个文件的存在理由。
 
 **导航守卫**有三个：
 
@@ -320,12 +331,13 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `VideoTool.vue` | 视频下载工具的**占位页**。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。给一个说明页，比让付过费的用户撞上 404 好：404 传达的是「这站坏了」，这一页传达的是「功能还没上线」。接上服务后只换这里的组件，`tool_path` 不用改 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字） |
-| `Member.vue` | 会员中心：身份卡 + 成长进度 + 六项权益矩阵 + 待办 + 快捷入口。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容。成长进度块（`growth_to_next !== undefined` 才渲染）下方带一条「查看成长值明细」入口（`router.hasRoute('Growth')` 兜底） |
+| `Member.vue` | 会员中心（**枢纽，七区块**）：身份区（等级徽标 / 有效期 / 开通或续费 + 权益详解入口）、资产三卡（积分 / 优惠券 / 会员到期日，**就地显示已有数值**，不新增后端调用）、成长值进度（`growth_to_next` 存在才渲染）、八项权益卡（已解锁显示服务端下发的当前值，未解锁显示解锁等级）、下一档预告（用 `benefits[].value.next` 与 `next_level`）、快捷入口（含每日签到）。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
+| `MemberBenefits.vue` | 会员权益详解（**公开页，不要求登录**）：权益说明（八项，逐项给规则与当前值）、**8×8 数值矩阵**（全部来自 `getPlans.levels[]` 的六个新列，当前档高亮，窄屏降级成「每档一张卡」）、规则与常见问题。**页面上不写死任何折扣 / 倍率 / 金额 / 档位数字** —— 数字只有服务端一份，改档位不用改页面 |
+| `MemberGrowth.vue` | 成长值（原 `/growth`）：汇总三数（累计 / 成长值等级 / **当前生效等级**）、升级进度、来源说明（四条规则文案由 `getGrowthHistory` 的 `rules` 下发）、八档门槛对照表。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`）；非会员不写「已是最高等级」，而是说「按成长值门槛定档、到账即时生效」 |
+| `Growth.vue` | 12 行的**转发薄壳**：渲染 `MemberGrowth.vue`。留着它的唯一理由是 `test/growthPage.test.js` 直接渲染这个文件路径，而路由已迁到 `/member/growth` |
 | `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
-| `Points.vue` | 积分中心：积分账户（余额 / 折抵金额 / 即将过期）与明细入口。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」 |
-| `PointsHistory.vue` | 积分明细：类型筛选（选项来自 `constants`，与后端 `type` 取值一一对应）+ 分页。**只有一页时不渲染分页控件**，避免出现点不动的按钮 |
-| `Growth.vue` | 成长值：汇总三数（累计 / 当前档 / 生效档）、升级进度条、**来源说明**（四条规则文案由服务端 `getGrowthHistory` 的 `rules` 下发）、等级门槛表（复用 `MemberLevelLadder` 并关掉折扣/倍率列）、明细分页。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`） |
-| `Checkin.vue` | 每日签到：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）；下方列出奖励规则 |
+| `Points.vue` | 积分中心：**两个页签** —— 「概览」（余额 / 折抵金额 / 积分倍率与「会员加成生效中」/ 即将过期提醒）与「流水」（原 `PointsHistory` 的类型筛选 + 分页整体并进来，只有一页时不渲染分页控件）。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」 |
+| `UserCheckin.vue` | 每日签到（**挂在个人中心下**，`/user/checkin`）：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）、奖励规则。签到与会员**结构解绑、倍率保留**：服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的 `points_multiplier` 放大积分（成长值固定 +5），所以文案是「会员等级倍率对签到积分同样生效」，不能写成消费专属 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |
 | `Mail.vue` | 消息中心：三个页签（通知 / 通知偏好 / 邮件记录）+ 顶栏下拉入口的未读角标。通知页每条可单条或全部标为已读，**未读圆点只看服务端的 `is_read`**；偏好页六个开关直接对应 `notification_preferences` 的六列，改动只提交差异项（`master` 总开关的后果写在界面上，不藏在注释里）；邮件记录页是自查用的投递台账（状态、重试次数、时间），**不含正文**。游客能看到的是登录引导而不是空列表 |
 | `Support.vue` | 客服中心：两个页签（提交反馈 / 我的会话），**游客与注册用户共用同一个页面**。提交成功后第一件事是把**回执号**摆到最显眼处（游客丢了登录态就只剩邮件里的回执号），因此有复制、深链 `/support?thread=FB…`、「再提一条」三个出口；「我的会话」内部再分列表与详情（状态、分类、联系邮箱、消息记录 + 追问）；会话对外**只有回执号**，404 一律说「没找到」而不区分「不存在」与「不是你的」（防枚举）。长度上限 `maxlength`、邮箱预填与「必填」提示都按身份分叉，频次上限（24 小时 5 次）写在表单下方 |
@@ -592,12 +604,13 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 | 成员 | 说明 |
 | --- | --- |
-| `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、6 项权益解锁态、待办） |
-| `plans` / `levels` | 套餐列表与等级阶梯表（8 档）。两者同一次 `getPlans` 响应下发；`MemberPlans.vue` 与成长值页的 `MemberLevelLadder` 都取 `levels` |
+| `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、**8 项权益解锁态与逐档数值**、待办） |
+| `plans` / `levels` | 套餐列表与等级阶梯表（8 档）。两者同一次 `getPlans` 响应下发；`MemberPlans.vue`、`MemberBenefits.vue` 的 8×8 矩阵与成长值页的 `MemberLevelLadder` 都取 `levels`，**新六列（券包 / 抵扣上限 / 免卡密额度 / 生日 / 客服档 / 身份档）也在里面** |
 | `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编（支付通道未接入的如实说明） |
-| `growth` / `growthSummary` / `growthRules` / `growthPage` / `growthTotal` / `growthTotalPages` / `loadingGrowth` | 成长值页（`/growth`）的全部状态，来源是 `getGrowthHistory` 一条响应（`list` / `summary` / `rules` + 分页元数据） |
+| `growth` / `growthSummary` / `growthRules` / `growthPage` / `growthTotal` / `growthTotalPages` / `loadingGrowth` | 成长值页（`/member/growth`）的全部状态，来源是 `getGrowthHistory` 一条响应（`list` / `summary` / `rules` / `thresholds` + 分页元数据） |
 | `isMember` / `level` / `levelName` / `points` / `benefits` / `todos` | 派生 getter |
 | `growthTotalValue` / `growthHasPrev` / `growthHasNext` | 成长值派生 getter（分页控件与「还能翻页吗」的判断） |
+| `hasLevels` | `Array.isArray(levels) && levels.length > 0`。**`levels` 的初值是 `null` 而不是 `[]`**，页面里写 `memberStore.levels.length` 会在首屏抛 `TypeError` 并打断 `onMounted` 的后续请求 —— lint / build / SSR 渲染都看不见（SSR 不跑 `onMounted`），所以统一走这个 getter，由 `test/stores.member.test.js` 钉住 |
 | `hasExpiringTodo` | 是否存在「会员即将到期」待办（按 `type` 在 `todos` 里找） |
 | `fetchOverview({silent})` / `fetchPlans({silent})` / `fetchGrowthHistory({page, silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空；`reset()` 也清成长值（`App.vue` 登出时统一调） |
 
@@ -855,10 +868,13 @@ const requests = axios.create({
 | `mail.js` | `getMessages(params)`、`getUnreadCount()`、`markRead(ids)`、`getPreferences()`、`updatePreferences(patch)`、`getMailLog(params)` | `/mailApi/*`（6 个端点，见 `server/docs/API.md` §4.23） |
 | `support.js` | `createThread(payload)`、`getThreads(params)`、`getThread(threadNo)`、`reply(threadNo, body)` | `/supportApi/*`（4 个端点，**游客可用**，见 §4.24）；会话对外只有回执号 `FB…`，401 是「没带 token」，404 一律 `THREAD_NOT_FOUND` |
 
-> `member.js` 只封了 P0 已实现的两个端点。`getGrowthHistory` / `getBenefits` 与
+> `member.js` 封了三个**已实现**的端点。`getBenefits` 与
 > `task` / `invite` / `notify` / `hero` 四个模块**故意先不写** ——
-> 服务端这 14 个端点只有契约（见 `server/docs/API.md` §4），
+> 服务端这些端点只有契约（见 `server/docs/API.md` §4），
 > 前端先建 API 层只会得到一批永远 404 的函数。
+> 权益详解页 `/member/benefits` 因此**不依赖 `getBenefits`**：规则文案来自
+> `constants/member.js`（八项权益的唯一实例），数值来自 `getPlans.levels[]`
+> 与 `getOverview.benefits[]` —— 加一档权益时改常量与服务端，不改页面。
 
 > `getMyEntitlements()` 与 `getUserCards()` 回答的是**两个不同问题**：
 > 后者是「我兑换过哪些卡」，前者是「我现在能不能用这件工具」。
@@ -1113,7 +1129,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
 | 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
 | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
-| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（窄页族八个阅读型页面：会员中心、会员套餐、积分中心、积分明细、每日签到、我的优惠券、消息中心、客服中心） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
+| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（窄页族九个阅读型页面：会员中心、会员权益详解、成长值、每日签到、会员套餐、积分中心、我的优惠券、消息中心、客服中心） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
 | 事务页面板 | `.page-panel(-head)` / `.page-note(--warning/--error)` / `.page-empty(-title/-hint)` / `.page-actions` |
 
 > **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
@@ -1172,8 +1188,9 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版有问题」的根因之一，
 `--container-content` 已删除。
 
-**窄页族另有一条宽度契约**（2026-10-12 统一，2026-10-13 加入消息中心，2026-10-14 加入客服中心）：
-会员中心 / 会员套餐 / 积分中心 / 积分明细 / 每日签到 / 我的优惠券 / 消息中心 / **客服中心**这八个
+**窄页族另有一条宽度契约**（2026-10-12 统一，2026-10-13 加入消息中心，2026-10-14 加入客服中心，
+2026-10-15 随会员体系重构换血：`Checkin` / `PointsHistory` 退出，`MemberBenefits` / `MemberGrowth` / `UserCheckin` 加入）：
+会员中心 / 会员权益详解 / 成长值 / 每日签到 / 会员套餐 / 积分中心 / 我的优惠券 / 消息中心 / **客服中心**这些
 阅读型页面用 `.page-shell--narrow`，
 宽度只认 `--container-page-narrow`（`clamp(960px, 72vw, 1180px)`，随视口收敛）。
 页面自己**不得**再声明 `max-width`，否则同族页面在宽屏上会各走各的比例 ——
@@ -1337,7 +1354,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 869 个用例）
+npm test             # 单元测试（node:test，共 888 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1463,11 +1480,13 @@ test/
 ├── stores.support.test.js             # 客服 store：开单记回执号与连点保护、会话列表与详情、404 文案、追问后重拉详情、reset
 ├── supportPage.test.js                # 客服中心页（SSR + 源码断言）：游客/注册的邮箱提示分叉、表单上限、回执卡取代表单、无 Vue 警告
 ├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
+├── stores.member.test.js             # 会员 store：levels 初值 null 与 hasLevels 判据、benefits 未解锁项无 value 键、fetchPlans 六列原样保留、失败回退
+├── memberBenefitValue.test.js        # 权益数值翻译：rate/multiplier/money/percent/quota/tier 六种 type 与「0 与不限」的区别、未知类型不产出 undefined
 ├── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 └── devProxy.test.js                  # dev 代理覆盖：每条 API 调用路径都能被 vite proxy 接住（静态，不需起服务）
 ```
 
-共 869 个用例。
+共 888 个用例。
 
 ### 主题契约测试
 
