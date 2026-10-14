@@ -264,3 +264,27 @@ test('路由：/support 游客可进（无 requiresAuth），/mail 仍要登录'
   const mailEntry = mail.slice(0, mail.indexOf('},') + 2)
   assert.match(mailEntry, /requiresAuth: true/)
 })
+
+// ── 源码断言：文本域的高度与圆角（textarea 吃掉单行框令牌会变胶囊） ──
+
+test('源码：两处文本域都用 .support-textarea，且高度固定、圆角固定', () => {
+  // --radius-input 是「单行输入框」的令牌，五套主题各一档（液态玻璃下是
+  // 9999px 全胶囊）。单行框用胶囊很好看，但文本域高度一大，四角就变成夸张的
+  // 尖胶囊 —— 高度越大越明显。所以文本域自己锁定卡片档圆角，并把高度固定住。
+  const at = SUPPORT_SOURCE.indexOf('.support-textarea {')
+  assert.ok(at > -1, '应有 .support-textarea 规则')
+  const body = SUPPORT_SOURCE.slice(at, SUPPORT_SOURCE.indexOf('}', at))
+
+  assert.equal(/height:\s*auto/.test(body), false, '不能是 height:auto（高度随内容涨，圆角跟着变形）')
+  assert.match(body, /height: calc\(var\(--space-unit\) \* 18\)/)
+  assert.match(body, /border-radius: var\(--radius-card\)/)
+  assert.equal(/border-radius: var\(--radius-input\)/.test(body), false)
+  assert.match(body, /resize: vertical/, '仍是「可竖直拖拽」的普通文本域')
+
+  // 新建会话与追问两处都要挂这个类，漏一处就白改
+  const textareas = SUPPORT_SOURCE.match(/<textarea[\s\S]*?>/g) || []
+  assert.equal(textareas.length, 2, '客服中心共两处文本域')
+  for (const tag of textareas) {
+    assert.match(tag, /class="u-input support-textarea"/)
+  }
+})

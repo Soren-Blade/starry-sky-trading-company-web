@@ -598,6 +598,10 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--space-unit) * 2.5);
+  /* .ui-card 自己没有外边距，.profile-page 也不是 flex 容器，
+     因此这三块（摘要条 / 签到入口 / 两栏面板）之间的竖向间距必须显式给，
+     否则它们会紧贴在一起。取与会员中心页面卡片相同的节奏（24px）。 */
+  margin-bottom: calc(var(--space-unit) * 3);
 }
 
 .profile-member-head {
@@ -845,12 +849,15 @@ onMounted(() => {
 }
 
 /* ── 每日签到入口（个人中心功能，`/user/checkin`） ───────────── */
-.profile-checkin {
-  display: flex;
+/* 同 .profile-member：合写类名压过 .ui-card 的纵向方向（否则「文案左、按钮右」
+   会变成垂直居中堆叠），并补上与上一张卡之间的外边距。 */
+.ui-card.profile-checkin {
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 3);
 }
 .profile-checkin-text {
   display: flex;
@@ -903,8 +910,9 @@ onMounted(() => {
     max-width: none;
   }
 
-  /* 签到入口窄屏改竖排：按钮占满一行，避免说明被压成单字一列 */
-  .profile-checkin {
+  /* 签到入口窄屏改竖排：按钮占满一行，避免说明被压成单字一列。
+     选择器必须与上面那条同优先级（.ui-card 也在里面），否则压不过它。 */
+  .ui-card.profile-checkin {
     flex-direction: column;
     align-items: stretch;
   }

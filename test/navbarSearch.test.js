@@ -180,7 +180,7 @@ test('放大镜绝对定位贴框右缘：位置与宽度动画**数学上无关
   assert.equal(/flex-shrink/.test(body), false, '已经脱离文档流，不再需要 flex 属性')
 })
 
-test('框里不设 gap、也不用 flex 排版（任何按状态切换的间距都会在首帧溢出）', () => {
+test('框里不设 gap、也不按状态切换间距（留白由表单内边距承担）', () => {
   const fieldRule = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('.search-field {'))
   const body = fieldRule.slice(0, fieldRule.indexOf('}')).replace(/\/\*[\s\S]*?\*\//g, '')
 
@@ -190,16 +190,49 @@ test('框里不设 gap、也不用 flex 排版（任何按状态切换的间距�
     false,
     '按钮已脱离文档流，框里只剩输入区一个流内元素，不需要 flex',
   )
+
+  // 按状态切换**间距**曾经让首帧溢出（展开动画开始时框只有图标那样宽，
+  // 任何 padding/gap 都会把内容顶出去）。收起态允许存在的规则只有一条：
+  // 隐藏 UA 的搜索清除按钮 —— 它是纯装饰，不参与布局，也不会位移任何东西。
+  const stateRules =
+    NAVBAR_SOURCE.match(/\.navbar-search:not\(\.search-open\) \.search-field[^{]*\{[^}]*\}/g) || []
+  assert.equal(stateRules.length, 1, '收起态规则只应有「隐藏原生清除按钮」这一条')
+  assert.match(stateRules[0], /input::-webkit-search-cancel-button/, '它只能作用于原生清除按钮')
   assert.equal(
-    /\.navbar-search:not\(\.search-open\) \.search-field/.test(NAVBAR_SOURCE),
+    /padding|gap|margin|width|flex/.test(stateRules[0].replace(/^[^{]*/, '')),
     false,
-    '不应再有「按状态切换间距」这类规则'
+    '收起态规则不得改动任何间距或尺寸',
   )
 
-  // 间距改由输入区右侧内边距提供，文字不会钻到放大镜底下
+  // 左右留白都由 .u-search 的内边距给：文字不贴左缘，也不会钻到放大镜底下
   const formAt = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-search) {')
   const formBody = NAVBAR_SOURCE.slice(formAt, NAVBAR_SOURCE.indexOf('}', formAt))
-  assert.match(formBody, /padding-right: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2\)/)
+  assert.match(formBody, /padding-left: var\(--input-padding-x\)/)
+  assert.match(
+    formBody,
+    /padding-right: calc\(var\(--icon-btn-size\) - var\(--stroke-width\) \* 2 \+ var\(--input-padding-x\)\)/,
+  )
+})
+
+test('输入框自己不留横向内边距：收起时它的盒子必须真正是 0', () => {
+  // 内边距会把输入框的盒子撑得比内容宽 —— 收起后这个「看不见的盒子」
+  // 正好压在绝对定位的放大镜底下，并给原生 ✕ 提供了绘制位置。
+  const at = NAVBAR_SOURCE.indexOf('.search-field :deep(.u-input) {')
+  assert.ok(at > -1)
+  const body = NAVBAR_SOURCE
+    .slice(at, NAVBAR_SOURCE.indexOf('}', at))
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  assert.match(body, /padding-left: 0/)
+  assert.match(body, /padding-right: 0/)
+})
+
+test('收起态隐藏原生清除按钮：✕ 与放大镜不得重叠', () => {
+  assert.match(
+    NAVBAR_SOURCE,
+    /\.navbar-search:not\(\.search-open\) \.search-field :deep\(\.u-input::-webkit-search-cancel-button\) \{\s*display: none/,
+    '搜索后回车收起、鼠标仍停在框内时，✕ 会画在放大镜上',
+  )
 })
 
 test('框用 overflow: clip 而不是 hidden（hidden 仍可被程序滚动，聚焦会横向位移）', () => {

@@ -544,10 +544,15 @@ onMounted(async () => {
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
 }
+/* 每行内容横向排版：类型 · 时间 · 说明 · 单号 一行，右侧 +35 余额 35 一行。
+   全列排版会把每条记录拉到三行高，条数一多就翻不到底；横向后一屏能看更多条。
+   两处都允许换行（wrap），窄屏也不会互相挤压。 */
 .history-item-main {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.25);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 1.5);
   min-width: 0;
 }
 .history-item-type {
@@ -567,9 +572,11 @@ onMounted(async () => {
 }
 .history-item-right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: calc(var(--space-unit) * 0.25);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: calc(var(--space-unit) * 1.5);
   flex-shrink: 0;
 }
 .history-item-delta {
@@ -597,5 +604,19 @@ onMounted(async () => {
 .history-pager-info {
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
+@media (max-width: 575px) {
+  /* 极窄屏：横向那行「+35 余额 35」放不下，退回上下两行 */
+  .history-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-unit);
+  }
+
+  .history-item-right {
+    justify-content: space-between;
+  }
 }
 </style>

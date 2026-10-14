@@ -634,12 +634,19 @@ onMounted(() => {
   padding: calc(var(--space-unit) * 2.5);
 }
 
-/* .u-input 是固定高度（--input-height）的单行控件，多行输入要自己放开高度 */
+/* .u-input 是固定高度（--input-height）的单行控件，多行输入要自己定高。
+ *
+ * 高度**固定**、圆角也**固定**：`--radius-input` 是「单行输入框」的令牌，五套
+ * 主题各一档（液态玻璃下是 9999px 全胶囊）。单行框用胶囊很好看，但文本域一长高，
+ * 四角就变成夸张的尖胶囊 —— 高度越大越明显。
+ * 这里改用卡片档圆角（主题里 12–20px，永远不会退化成胶囊），高度固定 144px，
+ * 内容超出时由文本域自己滚动；用户仍可手动向下拖拽（圆角恒定，不会失控）。
+ */
 .support-textarea {
-  height: auto;
-  min-height: calc(var(--space-unit) * 14);
+  height: calc(var(--space-unit) * 18);
   padding-top: calc(var(--space-unit) * 1.25);
   line-height: var(--leading-body);
+  border-radius: var(--radius-card);
   resize: vertical;
 }
 

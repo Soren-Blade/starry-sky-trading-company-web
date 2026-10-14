@@ -884,20 +884,24 @@ onUnmounted(() => {
 
 /* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
  * 图标也让位（放大镜就是外面那个按钮）。
- * 右侧留出「按钮宽 + 一点间距」，文字才不会钻到放大镜底下。 */
+ * 左右留白**全部由这一层给**（见下方 .u-input 的注释），右侧留出
+ * 「按钮宽 + 一点间距」，文字才不会钻到放大镜底下。 */
 .search-field :deep(.u-search) {
   width: 100%;
   height: 100%;
   min-width: 0;
-  padding-right: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
+  padding-left: var(--input-padding-x);
+  padding-right: calc(var(--icon-btn-size) - var(--stroke-width) * 2 + var(--input-padding-x));
 }
 
+/* 输入框自己不留横向内边距：内边距会把它的盒子撑得比内容宽，
+ * 收起时就是这个「看不见的盒子」压在绝对定位的放大镜底下，并给原生的
+ * 清除按钮（✕）提供了绘制位置。留白改由外层 .u-search 承担后，
+ * 输入框的盒子 = 表单的内容盒，收起时真正是 0。 */
 .search-field :deep(.u-input) {
   height: 100%;
-  /* 左侧留白由输入框自己给；右侧的 padding-right 承担
-   * 「文字与放大镜之间的间距」——因此外层不需要 gap */
-  padding-left: var(--input-padding-x);
-  padding-right: var(--input-padding-x);
+  padding-left: 0;
+  padding-right: 0;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -914,6 +918,22 @@ onUnmounted(() => {
 .search-field :deep(.u-input:focus) {
   border-color: transparent;
   box-shadow: none;
+}
+
+/* ── 收起态：原生清除按钮必须消失 ──────────────────────────────
+ *
+ * 输入框是 type="search"，Chromium 会在里面画一个原生的 ✕
+ * （::-webkit-search-cancel-button，位于内容盒右缘）。收起后输入框只剩
+ * 图标那样宽，而这个 ✕ 仍然会在「鼠标停留在框内 / 框仍有焦点」时被画出来，
+ * 正好落在绝对定位的放大镜上 —— 就是用户看到的图标重叠。
+ *
+ * 收起态直接不画它；展开态照旧（那里有足够的空间，位置在放大镜左侧十几像素）。
+ * 这里只隐藏 UA 装饰、不动任何间距，因此不存在「按状态切换间距导致首帧溢出」
+ * 那一类老问题。 */
+.navbar-search:not(.search-open) .search-field :deep(.u-input::-webkit-search-cancel-button) {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */
