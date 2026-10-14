@@ -1303,14 +1303,22 @@ npm run dev        # http://localhost:5173
 axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**前端跑在哪个端口都无所谓**
 （5173 被占用时 Vite 自动退到 5174、5175……，`strictPort: false`），也不需要后端 CORS 白名单配合。
 
-`vite.config.js` 已为 `/user/login`、`/user/register`、`/user/visitorLogin`、`/user/refreshToken`、
-`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、`/cartApi`、`/orderApi`、`/favoriteApi`、
-`/uploads`、`/userBackend`、`/health` 配置了开发代理，
+`vite.config.js` 为每个后端前缀逐条配置了开发代理：`/user/login`、`/user/register`、
+`/user/visitorLogin`、`/user/refreshToken`、`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、
+`/cartApi`、`/orderApi`、`/favoriteApi`、`/memberApi`、`/pointsApi`、`/couponApi`、`/mailApi`、
+`/supportApi`、`/uploads`、`/userBackend`、`/health`，
 默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
 由于 `/user` 下既有后端接口也有前端路由（`/user/kami`、`/user/orders` 是页面），代理只列了四个具体接口
 而非 `/user` 前缀 —— **新增后端接口时若路径不在上述之内，需要同步在这里加代理规则**，
 否则该接口在 dev 下会 404（打到 dev server 自己，不会转发给后端，而且返回的是 index.html，
 前端拿到一段 HTML 去解析，报的却是「网络错误」，排查方向会被带偏）。
+
+> **这条规矩有机器守卫了**：`test/devProxy.test.js` 把「`src/api/ask/*.js` 的每条调用路径」
+> 与「`vite.config.js` 的 proxy 键」做静态比对（整条路径命中，或它的第一段命中），
+> 跑 `npm test` 就会拦下漏配。`npm run verify:dev` 在此基础上再**真实请求**三个交易前缀、
+> `/mailApi`、`/supportApi` 与 `/uploads`，确认返回的是 JSON 而不是 index.html。
+> 本项目踩过两次同一个坑（v1.1.0 的 member/points/coupon，v1.3.0 的 mail/support），
+> 第二次是被 `verify:dev` 抓住的 —— 但它要起服务，所以同一套判定规则也进了默认门禁。
 
 > `/uploads` 这条尤其容易漏：它不是 `request()` 调用而是 `<img src>`，
 > 漏了的表现是「**头像上传成功但图片不显示**」，几乎不会有人联想到代理配置。
@@ -1329,7 +1337,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 739 个用例）
+npm test             # 单元测试（node:test，共 869 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1455,10 +1463,11 @@ test/
 ├── stores.support.test.js             # 客服 store：开单记回执号与连点保护、会话列表与详情、404 文案、追问后重拉详情、reset
 ├── supportPage.test.js                # 客服中心页（SSR + 源码断言）：游客/注册的邮箱提示分叉、表单上限、回执卡取代表单、无 Vue 警告
 ├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
-└── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
+├── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
+└── devProxy.test.js                  # dev 代理覆盖：每条 API 调用路径都能被 vite proxy 接住（静态，不需起服务）
 ```
 
-共 862 个用例。
+共 869 个用例。
 
 ### 主题契约测试
 
