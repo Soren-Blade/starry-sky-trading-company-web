@@ -152,6 +152,19 @@ const routes = [
     component: () => import('@/pages/Mail.vue'),
     meta: { title: '消息中心 - 星辰商行', requiresAuth: true }
   },
+  {
+    // 客服中心：提交反馈 + 我的会话（列表 / 详情 / 追问）。
+    //
+    // **不加 requiresAuth**：游客的登录态同样带 access token 与 users.id，
+    // 服务端 `/supportApi` 也没挂 `requireRegisteredAccount`（见 src/index.js:254），
+    // 因此归属判断对两种身份是同一份代码。游客的诉求（有问题找不到人问）
+    // 恰恰是本站最需要兜住的那一类，拦在登录弹窗后面等于没做。
+    // 入口有两处：页脚（FOOTER.bottomLinks）与登录/帮助弹窗（HelpModal）。
+    path: '/support',
+    name: 'Support',
+    component: () => import('@/pages/Support.vue'),
+    meta: { title: '客服中心 - 星辰商行' }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',

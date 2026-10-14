@@ -40,6 +40,11 @@
       </div>
 
       <div class="u-modal-foot">
+        <!-- 客服中心对游客开放（`/support` 没有 requiresAuth），所以这个入口
+             不需要先登录 —— 弹窗里说「请联系客服」，就得给一个真能到达的地方 -->
+        <router-link v-if="feedback" to="/support" class="u-btn-secondary" @click="$emit('close')">
+          去提交反馈
+        </router-link>
         <router-link to="/about" class="u-btn-secondary" @click="$emit('close')">
           查看关于我们
         </router-link>
@@ -60,6 +65,8 @@
  * 为什么不是一句「请联系客服」了事：那样用户仍然不知道该找谁、怎么找。
  * 这里把**可点的电话与邮箱**（`tel:` / `mailto:`，手机可直接唤起）摆出来，
  * 并说明自助重置为什么不可用 —— 这是能给的、诚实的答案。
+ * 底部的「去提交反馈」再往前一步：`/support` 对游客开放，用户看完说明
+ * 可以立刻把问题写下来（`feedback` 属性默认开启，见 defineProps 的注释）。
  *
  * 无障碍：模态约定（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）走
  * `useModalA11y`，与 LoginModal、ThemeSwitcher 是同一份实现。
@@ -75,6 +82,14 @@ defineProps({
   intro: { type: String, default: '' },
   /** 编号步骤（可选） */
   steps: { type: Array, default: () => [] },
+  /**
+   * 是否显示「去提交反馈」入口（默认显示）
+   *
+   * 弹窗里写着「请联系客服」，如果只给电话与邮箱，用户还得自己找一圈；
+   * 客服中心是站内的闭环通道（游客也能用），所以默认就摆出来。
+   * 需要纯说明的场景（例如未来某个只讲规则、不引导提问的弹窗）可以关掉。
+   */
+  feedback: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['close'])

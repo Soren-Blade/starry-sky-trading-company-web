@@ -297,6 +297,9 @@ const NARROW_PAGE_FAMILY = [
   // 消息中心与上面几页同一族：一条主叙事（通知流）+ 若干信息块（偏好 / 邮件台账），
   // 宽度同样只能来自 .page-shell--narrow
   'pages/Mail.vue',
+  // 客服中心：提交表单 + 会话流 + 详情，同族；页面本身**对游客开放**，
+  // 与上面几个必须登录的页面在权限上不同族，但版式上仍是窄页
+  'pages/Support.vue',
 ]
 
 test('窄页族宽度契约：用 page-shell--narrow，且不得自设 max-width', () => {

@@ -79,7 +79,7 @@ starry-sky-trading-company-web/
     ├── components/               # 区块、卡片与弹窗组件（见 §6）
     ├── constants/
     │   ├── index.js              # 常量出口（只 re-export content.js）
-    │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / FOOTER / 主题弹窗
+    │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / SUPPORT / FOOTER / 主题弹窗
     ├── hooks/
     │   ├── useToken/index.js             # localStorage 读写 token（含「记住我」）
 │   ├── useBootScreen/index.js        # 首屏遮罩的三个时间闸（延迟/最短/最长）
@@ -165,8 +165,12 @@ try {
   booting.value = false; finishBoot()   // 无论成败都必须放行
 }
 shopStore.init()                 // 商品数据**不阻塞**启动（有骨架屏）
-if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身份就绪后再取
+if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读数是账号级数据，身份就绪后再取
 ```
+
+`watch(() => userStore.userId)` 里做的事与登录对称：先 `reset()` 掉
+`cart` / `favorite` / `member` / `mail` / `support`，再在已登录时重新拉一遍 ——
+否则换号后页面上留着的是上一个人的角标、通知与会话回执号。
 
 `userStore.init()` 必须**先于** `shopStore.init()`：商品接口要鉴权，两者赛跑会让
 冷启动的商品请求先发出并 401，进而触发「登录态失效」回调把深链悄悄带回首页。
@@ -208,10 +212,17 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏是账号级数据，身
 | `/checkin` | `Checkin` | `pages/Checkin.vue` | 每日签到 - 星辰商行 | ✅ |
 | `/coupons` | `Coupons` | `pages/Coupons.vue` | 我的优惠券 - 星辰商行 | ✅ |
 | `/mail` | `Mail` | `pages/Mail.vue` | 消息中心 - 星辰商行 | ✅ |
+| `/support` | `Support` | `pages/Support.vue` | 客服中心 - 星辰商行 | **游客可用**，见下 |
 | `/terms` | `Terms` | `pages/Legal.vue` | 用户协议 - 星辰商行 | |
 | `/privacy` | `Privacy` | `pages/Legal.vue` | 隐私政策 - 星辰商行 | |
 | `/rules` | `Rules` | `pages/Legal.vue` | 平台规则 - 星辰商行 | |
 | `/:pathMatch(.*)*` | `NotFound` | `pages/NotFound.vue` | 页面未找到 - 星辰商行 | |
+
+**为什么 `/support` 没有 `requiresAuth`**：服务端 `/supportApi` 也没挂
+`requireRegisteredAccount`（`server/src/index.js:254` 的注释解释了原因）—— 游客是一期里
+唯一「没有账号邮箱、也永远收不到站内通知」的身份，客服中心是他唯一的求助通道，关掉它
+等于把人堵死。游客登录态同样带 access token 与 `users.id`，所以「我的会话」的归属判断
+对两种身份是同一份代码；差别只有一处：**游客必须自己填联系邮箱**（回执与客服回复只发到那里）。
 
 **导航守卫**有三个：
 
@@ -313,6 +324,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Checkin.vue` | 每日签到：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）；下方列出奖励规则 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |
 | `Mail.vue` | 消息中心：三个页签（通知 / 通知偏好 / 邮件记录）+ 顶栏下拉入口的未读角标。通知页每条可单条或全部标为已读，**未读圆点只看服务端的 `is_read`**；偏好页六个开关直接对应 `notification_preferences` 的六列，改动只提交差异项（`master` 总开关的后果写在界面上，不藏在注释里）；邮件记录页是自查用的投递台账（状态、重试次数、时间），**不含正文**。游客能看到的是登录引导而不是空列表 |
+| `Support.vue` | 客服中心：两个页签（提交反馈 / 我的会话），**游客与注册用户共用同一个页面**。提交成功后第一件事是把**回执号**摆到最显眼处（游客丢了登录态就只剩邮件里的回执号），因此有复制、深链 `/support?thread=FB…`、「再提一条」三个出口；「我的会话」内部再分列表与详情（状态、分类、联系邮箱、消息记录 + 追问）；会话对外**只有回执号**，404 一律说「没找到」而不区分「不存在」与「不是你的」（防枚举）。长度上限 `maxlength`、邮箱预填与「必填」提示都按身份分叉，频次上限（24 小时 5 次）写在表单下方 |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板 + 联系备注 + 状态时间线 + 动作行 |
@@ -643,18 +655,45 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 `test/mailConstants.test.js` 直接读服务端的迁移 SQL（`docs/migrations/*.sql` 的 CHECK 约束与列清单）
 做交叉校验 —— 哪一边先漂移都会在测试里红掉。
 
+### `support.js` — `useSupportStore`
+
+| 成员 | 说明 |
+| --- | --- |
+| `threads` / `threadsPage` / `threadsLimit` / `threadsTotal` / `threadsTotalPages` / `threadsUnread` / `loadingThreads` / `threadsError` | 我的会话（分页）与总未读（页签角标的唯一来源） |
+| `currentNo` / `current` / `messages` / `loadingThread` / `threadError` | 当前打开的会话详情（`current` 含 `contact_email`，`messages` 是全文） |
+| `creating` / `created` / `createError` | 提交反馈：进行中标志、成功后的 `{thread_no, message_id, status}`、错误文案 |
+| `replying` / `replyError` / `replySent` | 追问的三态（`replySent` 只表示「刚发出去」，刷新后由详情本身说明状态） |
+| `hasThreads` / `threadsHasPrev` / `threadsHasNext` / `hasThreadsUnread` / `threadsUnreadLabel` / `hasCreated` / `createdThreadNo` / `hasCurrent` / `hasMessages` / `currentStatus` / `currentEmail` | 派生 getter |
+| `createThread(payload)` / `fetchThreads({page})` / `fetchThread(threadNo)` / `reply(body)` / `closeThread()` / `clearCreated()` / `reset` | 动作 |
+
+四条约定值得记住：
+
+1. **`createThread` 成功即返回回执号**，并把 `created` 与 `currentNo` 一起置上；
+   失败时**连旧回执号一起清掉** —— 留着旧号会让人以为这次也提交成功了。
+2. **追问成功后重新拉一次详情**，不在本地插一条：服务端会同时改状态（用户发言推回
+   `open`）与 `message_count`，本地拼一行必然对不上。
+3. **404 一律是「没找到这条会话」**：服务端对「不存在」与「不是你的」回同一个码
+   （刻意的防枚举），前端不要试图区分。
+4. **换号 / 登出必须 `reset()`**（`App.vue` 里 `watch(userId)` 负责）：游客换成另一个
+   游客时，上一个人的回执号与会话列表留在页面上等于越权。
+
+文案与枚举都在 `src/constants/support.js`：两个页签、六个分类、四个状态 → `.u-tag--*` 变体、
+作者与来源的中文名、四个长度上限。`test/supportConstants.test.js` 逐项对着服务端的
+`docs/migrations/*.sql` CHECK 约束与 `src/utils/notification.js` 的常量断言（分类、状态、
+作者、来源、上限、邮箱正则），**中文名只在前端存在一份**。
+
 ## 6. 组件清单
 
 ### 布局与通用
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在四套主题里明显长大变方）、`ThemeSwitcher`、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（下拉的「会员权益」组含 会员中心 / 会员套餐 / 积分中心 / **成长值** / 每日签到 / 我的优惠券；**消息中心**与未读角标在头像下拉里，`mail` 图标 + `u-tag--danger` 数字）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在四套主题里明显长大变方）、`ThemeSwitcher`、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（下拉的「会员权益」组含 会员中心 / 会员套餐 / 积分中心 / **成长值** / 每日签到 / 我的优惠券；**消息中心**与未读角标在头像下拉里，`mail` 图标 + `u-tag--danger` 数字）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数。**游客看不到这个信封**：游客的站内通知永远是空的（服务端 `enqueue_notification` 对非注册用户直接返回 false），给一个点进去什么都没有的入口不如不给 —— 游客的诉求（问客服）走 `/support`，入口在页脚与帮助弹窗里）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
-| `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE` |
+| `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE`。底部链接的第一项是**客服中心 `/support`** —— 顶栏信封只给注册用户，游客要有一个不带身份门槛的入口 |
 | `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。「忘记密码」与新窗口「微信/QQ 登录」都指向 `HelpModal`（如实说明第三方登录尚未接入）。模态约定见下 |
-| `HelpModal.vue` | 通用「说明 + 联系方式」弹窗：标题、引导段、编号步骤、可点的 `tel:`/`mailto:` 联系方式。联系方式取自 `constants/CONTACT`，与页脚、关于我们共用一份 |
+| `HelpModal.vue` | 通用「说明 + 联系方式」弹窗：标题、引导段、编号步骤、可点的 `tel:`/`mailto:` 联系方式，以及**「去提交反馈」→ `/support`**（`feedback` 属性默认 `true`，弹窗里既然写了「请联系客服」，就得给一个真能到达的地方；`/support` 不需要登录，所以这个按钮对游客同样有效）。联系方式取自 `constants/CONTACT`，与页脚、关于我们共用一份 |
 | `SectionHeader.vue` | **区块头**（icon + title + description）。样式定义在 `global.css` 的 `.section-header` 系列，供各 Section 组件复用 |
 | ~~`PageHeader.vue`~~ | **已删除**（第三轮）。除主页外的页面不再套同一个页头，各自设计开场 —— 见 §9.9 |
 
@@ -810,6 +849,7 @@ const requests = axios.create({
 | `points.js` | `getAccount`、`getHistory(params)`、`checkin`、`getCheckinCalendar(params)` | `/pointsApi/*` |
 | `coupon.js` | `getMine(params)`、`claim(template_id)` | `/couponApi/*` |
 | `mail.js` | `getMessages(params)`、`getUnreadCount()`、`markRead(ids)`、`getPreferences()`、`updatePreferences(patch)`、`getMailLog(params)` | `/mailApi/*`（6 个端点，见 `server/docs/API.md` §4.23） |
+| `support.js` | `createThread(payload)`、`getThreads(params)`、`getThread(threadNo)`、`reply(threadNo, body)` | `/supportApi/*`（4 个端点，**游客可用**，见 §4.24）；会话对外只有回执号 `FB…`，401 是「没带 token」，404 一律 `THREAD_NOT_FOUND` |
 
 > `member.js` 只封了 P0 已实现的两个端点。`getGrowthHistory` / `getBenefits` 与
 > `task` / `invite` / `notify` / `hero` 四个模块**故意先不写** ——
@@ -1069,7 +1109,7 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | 下拉 | `.u-dropdown` / `.u-dropdown-item(--active)` / `.u-dropdown-divider` |
 | 进度与加载 | `.u-progress(-bar)` / `.u-spinner(-sm/-lg)` / `.u-loading-block` / `.u-skeleton` |
 | 头像与复选框 | `.u-avatar` / `.u-checkbox` / `.u-checkbox-box` |
-| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（窄页族七个阅读型页面：会员中心、会员套餐、积分中心、积分明细、每日签到、我的优惠券、消息中心） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
+| 事务页外壳 | `.page-shell` / `.page-shell--narrow`（窄页族八个阅读型页面：会员中心、会员套餐、积分中心、积分明细、每日签到、我的优惠券、消息中心、客服中心） / `.page-shell-head(--row)` / `.page-shell-eyebrow/title/title-link/desc` |
 | 事务页面板 | `.page-panel(-head)` / `.page-note(--warning/--error)` / `.page-empty(-title/-hint)` / `.page-actions` |
 
 > **事务页外壳为什么可以共享，而 `.page-header` 当年必须删掉**：
@@ -1128,8 +1168,9 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版有问题」的根因之一，
 `--container-content` 已删除。
 
-**窄页族另有一条宽度契约**（2026-10-12 统一，2026-10-13 加入消息中心）：会员中心 / 会员套餐 / 积分中心 /
-积分明细 / 每日签到 / 我的优惠券 / **消息中心**这七个阅读型页面用 `.page-shell--narrow`，
+**窄页族另有一条宽度契约**（2026-10-12 统一，2026-10-13 加入消息中心，2026-10-14 加入客服中心）：
+会员中心 / 会员套餐 / 积分中心 / 积分明细 / 每日签到 / 我的优惠券 / 消息中心 / **客服中心**这八个
+阅读型页面用 `.page-shell--narrow`，
 宽度只认 `--container-page-narrow`（`clamp(960px, 72vw, 1180px)`，随视口收敛）。
 页面自己**不得**再声明 `max-width`，否则同族页面在宽屏上会各走各的比例 ——
 `test/componentClasses.test.js` 的「窄页族宽度契约」用例把关。
@@ -1405,11 +1446,15 @@ test/
 ├── mailConstants.test.js              # 消息中心文案/枚举 ⇄ 服务端迁移 SQL 交叉校验（通知级别、偏好六列、邮件状态、总开关）
 ├── stores.mail.test.js                # 消息 store：角标静默失败、标已读的连点保护与本地同步、偏好只提交差异、台账与 reset
 ├── mailPage.test.js                   # 消息中心页（SSR）：三页签、未读圆点与按钮、空/骨架/错误态、分页、无 Vue 警告
+├── navbarMail.test.js                 # 两个入口的身份边界：注册用户才见顶栏信封与未读角标；页脚与帮助弹窗的 /support 对游客开放
+├── supportConstants.test.js           # 客服中心文案/枚举 ⇄ 服务端迁移 SQL 与 constants 交叉校验（分类、状态、作者、来源、四个上限、邮箱正则）
+├── stores.support.test.js             # 客服 store：开单记回执号与连点保护、会话列表与详情、404 文案、追问后重拉详情、reset
+├── supportPage.test.js                # 客服中心页（SSR + 源码断言）：游客/注册的邮箱提示分叉、表单上限、回执卡取代表单、无 Vue 警告
 ├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
 └── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 ```
 
-共 794 个用例。
+共 862 个用例。
 
 ### 主题契约测试
 

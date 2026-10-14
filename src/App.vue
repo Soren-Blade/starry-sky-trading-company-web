@@ -91,6 +91,7 @@ import { useCartStore } from '@/stores/cart'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useMemberStore } from '@/stores/member'
 import { useMailStore } from '@/stores/mail'
+import { useSupportStore } from '@/stores/support'
 // 首屏加载与路由进度
 import { useBootScreen } from '@/hooks/useBootScreen'
 import { useRouteLoading } from '@/hooks/useRouteLoading'
@@ -102,6 +103,9 @@ const cartStore = useCartStore()
 const favoriteStore = useFavoriteStore()
 const memberStore = useMemberStore()
 const mailStore = useMailStore()
+// 客服中心的会话按身份归属（游客也是身份），换号后必须清空，
+// 否则上一个身份的回执号与消息会留在页面上
+const supportStore = useSupportStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -164,6 +168,7 @@ watch(
     favoriteStore.reset()
     memberStore.reset()
     mailStore.reset()
+    supportStore.reset()
 
     if (userStore.isLoggedIn) {
       await Promise.all([

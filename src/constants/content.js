@@ -454,6 +454,74 @@ export const SEARCH_PAGE = {
   toolLoading: '正在加载工具…',
 }
 
+/**
+ * 客服中心（`/support`）
+ *
+ * 页面文案集中在这里，理由与其它页面相同：改一句提示不必碰组件。
+ * 三条口径（与 `constants/support.js` 顶部注释一致，写文案时不要越界）：
+ *
+ * 1. **不承诺时效**：后台没有 SLA，也没有「工单」概念，只说「会尽快回复」；
+ * 2. **不承诺邮件**：注册用户的邮件取决于通知偏好，游客只有反馈回执 ——
+ *    说「我们会邮件通知你」在偏好关掉时就是假话；
+ * 3. **客服入口不是密码找回通道**：平台没有邮件/短信服务，重置密码仍需人工核验。
+ */
+export const SUPPORT = {
+  eyebrow: '支持',
+  title: '客服中心',
+  desc: '提交问题、查看客服回复。游客也可以提问 —— 填一个能收到信的邮箱就行。',
+  guestNote:
+    '你当前是游客身份：没有账号邮箱，回执与客服回复只会发到你填写的那一个邮箱，请务必记下回执号。',
+
+  categoryLabel: '问题分类',
+  subjectLabel: '问题标题',
+  subjectPlaceholder: '一句话说明问题，例如「订单 2026… 一直没收到」',
+  bodyLabel: '详细描述',
+  bodyPlaceholder: '把订单号、卡密、时间点和已经试过的操作写清楚，能省一轮往返',
+  emailLabel: '联系邮箱',
+  emailPlaceholder: 'name@example.com',
+  emailHintRegistered: '已按账号邮箱预填，可以改成别的',
+  emailHintMissing: '账号还没有填邮箱，请手动填一个',
+  emailHintGuest: '必填 —— 这是游客唯一的收信地址',
+  submit: '提交反馈',
+  submitting: '正在提交…',
+  formNote:
+    '同一身份 24 小时内最多提交 5 次。提交后可以继续在会话里追问，不必重复开新会话。',
+
+  receiptTitle: '已受理，请记下回执号',
+  receiptHint: '凭回执号可以在客服中心找回这条会话；登录态丢失时也只能靠它人工查询。',
+  receiptMailHint: '回执已经发往你填写的邮箱；注册用户还会在消息中心收到一条通知。',
+  copyReceipt: '复制回执号',
+  copiedReceipt: '已复制',
+  viewThread: '查看这条会话',
+  submitAnother: '再提一条',
+  copyFailed: '复制失败，请手动选中回执号',
+
+  listTitle: '我的会话',
+  refresh: '刷新',
+  listEmptyTitle: '还没有提交过反馈',
+  listEmptyDesc: '在「提交反馈」里填一条，客服回复会出现在这里。',
+  listCount: (total) => `共 ${total} 条会话`,
+  messageCount: (count) => `${count} 条消息`,
+  backToList: '返回会话列表',
+  detailTitle: '消息记录',
+  noMessages: '这条会话里还没有消息',
+  factsReceiptNo: '回执号',
+  factsCategory: '分类',
+  factsEmail: '联系邮箱',
+  factsCreatedAt: '提交于',
+  factsLastMessage: '最后消息',
+
+  replyLabel: '继续追问',
+  replyPlaceholder: '补充信息或追问；发送后状态会回到「待客服回复」',
+  reply: '发送',
+  replying: '正在发送…',
+  replySent: '已发送',
+  replyNote: '追问不会重复发一封回执，但运营侧的会话列表会把它标成待回复。',
+  replyEmpty: '请先写点内容再发送',
+
+  threadNotFoundHint: '回执号抄错一位就会找不到，请对照邮件或截图再试一次。',
+}
+
 /** 页脚 */export const FOOTER = {
   about:
     '星辰商行致力于为用户带来精选商品和优质服务。每一件商品都经过严格筛选，确保品质与美学的完美结合。',
@@ -480,6 +548,7 @@ export const SEARCH_PAGE = {
     { label: '隐私政策', to: '/privacy' },
   ],
   bottomLinks: [
+    { label: '客服中心', to: '/support' },
     { label: '平台规则', to: '/rules' },
     { label: '关于我们', to: '/about' },
     { label: '联系我们', to: '/about#about-contact' },
