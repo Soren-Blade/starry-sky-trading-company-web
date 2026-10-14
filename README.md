@@ -4,6 +4,10 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
+> **当前版本 `1.3.0`**（2026-10-14 发布）：新增消息中心 `/mail`（通知 / 通知偏好 / 邮件记录）与
+> 客服中心 `/support`（游客可用），顶栏未读角标、页脚与帮助弹窗入口。完整清单见 [CHANGELOG.md](CHANGELOG.md)。
+> 后端契约 v1.3（`/mailApi` 6 个端点 + `/supportApi` 4 个端点），版本号两仓库共用。
+
 ---
 
 ## 1. 技术栈

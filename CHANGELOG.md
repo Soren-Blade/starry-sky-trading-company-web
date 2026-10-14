@@ -9,6 +9,39 @@
 
 ---
 
+## [1.3.0] — 2026-10-14 · 消息中心与客服中心（已发布）
+
+站内消息中心 `/mail`、游客可用的客服中心 `/support`，以及顶栏未读角标、页脚与帮助弹窗入口 —— 对应后端新增的 `/mailApi`（6 个端点）与 `/supportApi`（4 个端点）。
+
+### 新增
+
+| 类别 | 内容 |
+| --- | --- |
+| 页面 | `/mail`（消息中心）：通知 / 通知偏好 / 邮件记录三页签，懒加载后两者；`/support`（客服中心）：提交反馈 + 我的会话（列表 / 详情 / 追问），**游客可用**，支持 `?thread=FB…` 深链 |
+| api 模块 | `api/ask/mail.js`（`getMessages` / `getUnreadCount` / `markRead` / `getPreferences` / `updatePreferences` / `getMailLog`）、`api/ask/support.js`（`createThread` / `getThreads` / `getThread` / `reply`） |
+| store | `stores/mail.js`、`stores/support.js` |
+| 常量 | `constants/mail.js`（通知类型与级别、台账状态、六个偏好开关与兜底函数）、`constants/support.js`（分类 / 状态 / 作者 / 来源 / 长度上限与兜底函数） |
+| 入口 | 顶栏信封图标 + 未读数徽标（仅注册用户）、头像下拉「消息中心」、页脚「客服中心」、帮助弹窗「去提交反馈」 |
+
+### 变更
+
+- **游客边界**：`/mail` 与整个 `/mailApi` 只对注册用户开放（站内通知的唯一生产者 `enqueue_notification` 对非注册直接返回 false，游客的站内信箱恒空）；`/support` 与 `/supportApi` **刻意不挂 `requireRegisteredAccount`**，游客能提交反馈并看到自己的会话，唯一的收信地址是提交时填写的邮箱
+- **客服开单频次上限**：同一身份 24 小时最多 5 次，超限时页面原样展示服务端的 429 文案；游客必填联系邮箱（并提示「这是游客唯一的收信地址」），注册用户按账号邮箱预填、可改
+- **未读角标的数字只来自服务端**：`markRead` 后按服务端回传的 `unread` 覆盖本地；标已读就地改本地 `is_read`、失败不谎报；角标刷新失败静默且**不清零**已有数字
+- **偏好只提交差异项**：六个开关（总开关 `email_enabled` + 订单 / 会员 / 积分 / 优惠券 / 客服）保存时只发与本地已知状态不同的键；页面说明写明「站内通知不受偏好影响，偏好只管邮件」
+- **换号/登出必须 reset**：`App.vue` 在 `watch(() => userStore.userId)` 里同时重置 cart / favorite / member / mail / support 五个 store，避免上一个账号的未读数与会话闪给下一个人
+- **中文文案与枚举归前端**：`test/mailConstants.test.js` 与 `test/supportConstants.test.js` 直接读服务端的迁移 SQL 与 `src/utils/notification.js` 做交叉校验（分类 / 状态 / 作者 / 来源 / 长度上限都有唯一事实源），不在前端抄第二份
+- **窄页族扩到八个页面**：`/mail` 与 `/support` 一并进 `page-shell--narrow` 族，受 `test/componentClasses.test.js` 的 `NARROW_PAGE_FAMILY` 守卫（必须有窄壳、基础样式不得自设 `max-width`）
+- `package.json` 版本号 `1.2.0` → `1.3.0`，与后端保持一致
+
+### 验收
+
+- `npm run lint` 0 问题；`npm test` **862 例**全部通过（739 → 862，本轮共 +123：消息中心 13 + 28 + 14、客服中心 16 + 24 + 16 + 12）
+- `npm run build` 成功；`npm run verify:dev` 的代理断言包含 `/mailApi` 与 `/supportApi`
+- 真实浏览器核验：桌面 1440 与移动 390 下 `/mail`（登录态三页签、标已读、未读角标）与 `/support`（游客提交反馈 → 拿到回执号 → 看到自己的会话；登录态列表与详情），游客态看不到信封入口
+
+---
+
 ## [1.2.0] — 2026-10-12 · 阶段 P1（已发布）
 
 八档会员等级、卡密按面值兑奖、顶栏会员入口与**成长值展示页** —— 对应后端的 P1 端点 `GET /memberApi/getGrowthHistory`。

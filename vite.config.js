@@ -48,6 +48,11 @@ export default defineConfig(({ mode }) => {
         '/memberApi': { target: apiTarget, changeOrigin: true },
         '/pointsApi': { target: apiTarget, changeOrigin: true },
         '/couponApi': { target: apiTarget, changeOrigin: true },
+        // v1.3.0 新增的两个前缀（消息中心 / 客服中心）。`verify:dev` 会静态比对
+        // 「源码里出现的 API 路径」与「这里的代理表」，漏配会直接失败（DEV_PROBE 17/17）。
+        // `/mailCron` 只有运维定时器会用，浏览器不发，故不代理。
+        '/mailApi': { target: apiTarget, changeOrigin: true },
+        '/supportApi': { target: apiTarget, changeOrigin: true },
         // 用户上传的文件（头像）。**必须代理**：`avatar_url` 存的是
         // `/uploads/avatars/xxx.webp` 这样的相对路径，不代理的话 dev 下
         // 会打到 dev server 自己（404），表现为「上传成功但头像不显示」。
