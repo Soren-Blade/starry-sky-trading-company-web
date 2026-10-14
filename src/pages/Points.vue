@@ -110,7 +110,7 @@
           </nav>
         </section>
 
-        <section v-else class="u-tabs-content points-panel" aria-label="积分流水">
+        <section v-else-if="tab === 'history'" class="u-tabs-content points-panel" aria-label="积分流水">
           <!-- 类型筛选：选项来自 constants，与后端 type 取值一一对应 -->
           <nav class="history-filter" aria-label="流水类型筛选">
             <button
@@ -185,6 +185,121 @@
             </div>
           </template>
         </section>
+
+        <!-- 商城（1.5.0 M3 的服务端清单）：库存一律显示服务端实时值，
+             `null` 是「不限量」而不是「没有」——两者的文案必须不一样 -->
+        <section v-else-if="tab === 'mall'" class="u-tabs-content points-panel" aria-label="积分商城">
+          <p class="points-panel-desc">
+            兑换即扣分：券类立刻进「我的优惠券」，实物类生成 0 元兑换单（在订单里发货）。
+          </p>
+
+          <div v-if="pointsStore.loadingMall && !pointsStore.hasMallItems" class="ui-card history-skeleton">
+            <span v-for="n in 2" :key="n" class="u-skeleton history-skeleton-line"></span>
+          </div>
+
+          <div
+            v-else-if="pointsStore.error && !pointsStore.hasMallItems"
+            class="ui-card history-error"
+            role="alert"
+          >
+            <AppIcon name="alert-triangle" />
+            <span>{{ pointsStore.error }}</span>
+            <button type="button" class="u-btn-secondary" @click="pointsStore.fetchMall()">重试</button>
+          </div>
+
+          <div v-else-if="!pointsStore.hasMallItems" class="ui-card history-state">
+            <AppIcon name="ticket" class="history-state-icon" />
+            <p class="history-state-title">商城暂时没有可兑换的条目</p>
+            <p class="history-state-desc">上新后会出现在这里</p>
+          </div>
+
+          <ul v-else class="mall-list">
+            <li v-for="item in pointsStore.mallItems" :key="item.item_id" class="ui-card mall-item">
+              <AppIcon :name="item.icon" class="mall-item-icon" />
+              <div class="mall-item-main">
+                <p class="mall-item-name">
+                  {{ item.name }}
+                  <span v-if="item.member_only" class="mall-item-tag">会员专属</span>
+                </p>
+                <p class="mall-item-desc">{{ item.desc }}</p>
+                <p class="mall-item-meta">
+                  <span class="mall-item-cost">{{ item.cost }} 积分</span>
+                  <span class="mall-item-stock">{{ mallStockText(item) }}</span>
+                </p>
+                <p v-if="redeemState(item).reason" class="mall-item-hint">
+                  {{ redeemState(item).reason }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="u-btn-primary mall-item-btn"
+                :disabled="!redeemState(item).ok || Boolean(pointsStore.redeemingId)"
+                @click="doRedeem(item)"
+              >
+                {{ pointsStore.redeemingId === item.item_id ? '兑换中…' : '兑换' }}
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- 任务（1.5.0 M5）：进度由服务端每次现算，前端不累加；
+             签到任务只展示状态（奖励由签到接口发），按钮给「已领」而不是藏起来 -->
+        <section v-else class="u-tabs-content points-panel" aria-label="任务中心">
+          <div class="tasks-head">
+            <p class="points-panel-desc">每日与每月任务，完成后领积分奖励。</p>
+            <p v-if="taskStore.claimablePoints > 0" class="tasks-claimable">
+              可领 <strong>{{ taskStore.claimablePoints }}</strong> 积分
+            </p>
+          </div>
+
+          <div v-if="taskStore.loading && !taskStore.hasTasks" class="ui-card history-skeleton">
+            <span v-for="n in 3" :key="n" class="u-skeleton history-skeleton-line"></span>
+          </div>
+
+          <div v-else-if="taskStore.error && !taskStore.hasTasks" class="ui-card history-error" role="alert">
+            <AppIcon name="alert-triangle" />
+            <span>{{ taskStore.error }}</span>
+            <button type="button" class="u-btn-secondary" @click="taskStore.fetchTasks()">重试</button>
+          </div>
+
+          <div v-else-if="!taskStore.hasTasks" class="ui-card history-state">
+            <AppIcon name="clipboard" class="history-state-icon" />
+            <p class="history-state-title">暂时没有任务</p>
+            <p class="history-state-desc">活动上线后会出现在这里</p>
+          </div>
+
+          <ul v-else class="tasks-list">
+            <li v-for="task in taskStore.tasks" :key="task.task_id" class="ui-card task-item">
+              <AppIcon :name="task.icon" class="task-item-icon" />
+              <div class="task-item-main">
+                <p class="task-item-name">
+                  {{ task.name }}
+                  <span class="task-item-period">{{ periodText(task.period) }}</span>
+                </p>
+                <p class="task-item-desc">{{ task.desc }}</p>
+                <p class="task-item-progress">
+                  <span class="task-item-bar">
+                    <span
+                      class="task-item-bar-fill"
+                      :style="{ width: progressPercent(task) + '%' }"
+                    ></span>
+                  </span>
+                  <span class="task-item-progress-text">{{ task.progress }} / {{ task.target }}</span>
+                  <span class="task-item-reward">+{{ task.reward_points }} 积分</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="u-btn-primary task-item-btn"
+                :disabled="!canClaimTask(task) || Boolean(taskStore.claimingId)"
+                :title="taskButtonHint(task)"
+                @click="doClaim(task)"
+              >
+                {{ taskButtonLabel(task) }}
+              </button>
+            </li>
+          </ul>
+        </section>
       </template>
     </template>
   </div>
@@ -212,10 +327,23 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AppIcon from '@/components/AppIcon.vue'
 import { usePointsStore } from '@/stores/points.js'
+import { useTaskStore } from '@/stores/task.js'
+import { useToastStore } from '@/stores/toast.js'
 import { useUserStore } from '@/stores/user.js'
 import { POINTS_LEDGER_TYPES, formatPointsValue } from '@/constants/member.js'
+import {
+  canClaimTask,
+  mallRedeemState,
+  mallStockText,
+  periodText,
+  progressPercent,
+  taskButtonHint,
+  taskButtonLabel,
+} from '@/utils/taskDisplay.js'
 
 const pointsStore = usePointsStore()
+const taskStore = useTaskStore()
+const toastStore = useToastStore()
 const userStore = useUserStore()
 const route = useRoute()
 const router = useRouter()
@@ -224,9 +352,18 @@ const router = useRouter()
 const TABS = [
   { value: 'overview', label: '概览' },
   { value: 'history', label: '流水' },
+  { value: 'mall', label: '商城' },
+  { value: 'tasks', label: '任务' },
 ]
 
-const tab = ref(route.query.tab === 'history' ? 'history' : 'overview')
+const TAB_VALUES = TABS.map((item) => item.value)
+
+/** 认不出的 `tab`（旧链接、手改地址）一律回「概览」，不要渲染出一片空白 */
+function normalizeTab(value) {
+  return typeof value === 'string' && TAB_VALUES.includes(value) ? value : 'overview'
+}
+
+const tab = ref(normalizeTab(route.query.tab))
 
 /** 「本年度获得/消耗」来自明细接口的 summary；还没拉过明细时显示 0 而不是空白 */
 const summaryEarned = computed(() => pointsStore.summary?.earned ?? 0)
@@ -254,18 +391,31 @@ function formatTime(value) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/**
+ * 切到某段时按需拉数据：**不在 `onMounted` 一口气拉四段** ——
+ * 首屏就打四个接口，其中三段用户可能根本不会看。
+ */
+function ensureTabData(value) {
+  if (value === 'history' && !pointsStore.history.length) pointsStore.fetchHistory({ page: 1 })
+  if (value === 'mall' && !pointsStore.mallLoaded) pointsStore.fetchMall({ silent: true })
+  if (value === 'tasks' && !taskStore.loaded) taskStore.fetchTasks({ silent: true })
+}
+
 function switchTab(value) {
   if (value === tab.value) return
   tab.value = value
-  router.replace({ name: 'Points', query: value === 'history' ? { tab: 'history' } : {} })
-  if (value === 'history' && !pointsStore.history.length) pointsStore.fetchHistory({ page: 1 })
+  router.replace({ name: 'Points', query: value === 'overview' ? {} : { tab: value } })
+  ensureTabData(value)
 }
 
 watch(
   () => route.query.tab,
   (value) => {
-    const next = value === 'history' ? 'history' : 'overview'
-    if (next !== tab.value) tab.value = next
+    const next = normalizeTab(value)
+    if (next !== tab.value) {
+      tab.value = next
+      ensureTabData(next)
+    }
   }
 )
 
@@ -296,11 +446,60 @@ const shortcuts = computed(() =>
   SHORTCUTS.map((entry) => ({ ...entry, available: router.hasRoute(entry.name) }))
 )
 
+// ── 商城（契约 §4.10–§4.11）─────────────────────────────────────────
+
+/**
+ * 兑换按钮的可点性与理由。
+ *
+ * 纯逻辑在 `@/utils/taskDisplay.js`（可单测），这里只负责把 store 里的
+ * 「是不是会员、有多少积分」传进去 —— util 不读 store，避免出现第二个真相源。
+ */
+function redeemState(item) {
+  return mallRedeemState(item, { isMember: pointsStore.isMember, points: pointsStore.points })
+}
+
+async function doRedeem(item) {
+  if (pointsStore.redeemingId) return
+  try {
+    const data = await pointsStore.redeemItem(item.item_id)
+    if (!data) return
+    // 券类即时到账、实物类生成兑换单 —— 提示语要说清「东西去哪了」
+    if (data.coupon) {
+      toastStore.success(`兑换成功：「${item.name}」已放进我的优惠券`)
+    } else if (data.order_no) {
+      toastStore.success(`兑换成功：兑换单 ${data.order_no} 已生成，可在订单里查看`)
+    } else {
+      toastStore.success('兑换成功')
+    }
+  } catch (error) {
+    toastStore.error(error?.response?.data?.message || '兑换失败，请稍后重试')
+  }
+}
+
+// ── 任务（契约 §4.16–§4.17）─────────────────────────────────────────
+// 文案四态与进度条算法都在 `@/utils/taskDisplay.js`，有单测钉住
+// （「自动发放」只给 reward_points<=0 的签到任务，不能用 claimable 判断）。
+
+async function doClaim(task) {
+  if (taskStore.claimingId) return
+  try {
+    const data = await taskStore.claimTask(task.task_id)
+    if (!data) return
+    // 余额用服务端返回的整份快照，与签到的处理一致（不做本地 +N）
+    pointsStore.applyBalance(data)
+    toastStore.success(`领取成功，+${data.awarded} 积分`)
+  } catch (error) {
+    toastStore.error(error?.response?.data?.message || '领取失败，请稍后重试')
+  }
+}
+
 onMounted(async () => {
   if (!userStore.isLoggedIn) return
   await pointsStore.fetchAccount()
   // 明细里的 summary 用于「本年度」两项，概览段也要用；取一页即可（不需要翻页）
   if (!pointsStore.history.length) pointsStore.fetchHistory()
+  // 直接落在「商城」「任务」段（分享链接 / 刷新）时补拉该段数据
+  ensureTabData(tab.value)
 })
 </script>
 
@@ -539,6 +738,9 @@ onMounted(async () => {
 }
 .history-item {
   display: flex;
+  /* 必须显式写 row：行上同时挂了全局 .ui-card，它声明的是 flex-direction: column。
+     只写 display: flex 会被 .ui-card 的列方向覆盖，整行竖排成「图标/内容/金额」三行。 */
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
@@ -606,6 +808,127 @@ onMounted(async () => {
   color: var(--text-muted);
 }
 
+/* 商城 / 任务：共用的面板说明与列表骨架 */
+.points-panel-desc {
+  margin: 0;
+  color: var(--text-muted);
+}
+.mall-list,
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-unit);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mall-item,
+.task-item {
+  display: flex;
+  /* 同 .history-item：卡片挂了两层类，全局 .ui-card 的 column 会盖掉这里的排版意图。 */
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2);
+}
+.mall-item-icon,
+.task-item-icon {
+  flex-shrink: 0;
+  font-size: var(--fs-h2);
+  color: var(--accent);
+}
+.mall-item-main,
+.task-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  flex: 1;
+  min-width: 0;
+}
+.mall-item-name,
+.task-item-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-unit);
+  margin: 0;
+  font-weight: var(--fw-heading);
+}
+.mall-item-tag,
+.task-item-period {
+  padding: 0 calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-body);
+  color: var(--accent);
+  border: var(--stroke-width) solid var(--accent);
+  border-radius: var(--radius-media);
+}
+.task-item-period {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.mall-item-desc,
+.task-item-desc {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.mall-item-meta,
+.task-item-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  font-size: var(--fs-label);
+}
+.mall-item-cost,
+.task-item-reward {
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+.mall-item-stock,
+.task-item-progress-text {
+  color: var(--text-muted);
+}
+.mall-item-hint {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--warning);
+}
+.mall-item-btn,
+.task-item-btn {
+  flex-shrink: 0;
+  min-width: calc(var(--space-unit) * 10);
+}
+
+/* 任务进度条：宽度按进度内联给，这里只管外观 */
+.task-item-bar {
+  display: inline-block;
+  width: calc(var(--space-unit) * 12);
+  height: calc(var(--space-unit) * 0.75);
+  overflow: hidden;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+}
+.task-item-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--transition-interactive);
+}
+.tasks-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-unit);
+}
+.tasks-claimable {
+  margin: 0;
+  color: var(--accent);
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 575px) {
   /* 极窄屏：横向那行「+35 余额 35」放不下，退回上下两行 */
@@ -617,6 +940,17 @@ onMounted(async () => {
 
   .history-item-right {
     justify-content: space-between;
+  }
+
+  /* 极窄屏：图标 + 正文 + 按钮挤一行放不下，按钮独占一行 */
+  .mall-item,
+  .task-item {
+    flex-wrap: wrap;
+  }
+
+  .mall-item-btn,
+  .task-item-btn {
+    width: 100%;
   }
 }
 </style>

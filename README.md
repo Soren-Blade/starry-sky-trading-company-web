@@ -9,6 +9,12 @@
 > `/user/checkin` 每日签到），权益由 6 项扩为 **8 项**且逐档数值全部由服务端下发
 > （`benefits[].value`），积分明细并入 `/points` 的两个页签。完整清单见 [CHANGELOG.md](CHANGELOG.md)。
 > 后端契约 v1.4（`member_levels` 新增 6 列 + `getOverview`/`getPlans`/`getGrowthHistory` 同步下发），版本号两仓库共用。
+>
+> **`1.5.0` 开发中**（2026-10-16，前端侧 M7）：把服务端这一版新落的七条端点接到界面上 ——
+> `/member/benefits` 改用 `getBenefits`（文案与档位矩阵都来自服务端，取不到时逐字段回落到内置说明）；
+> `/points` 由两个页签扩为**四个**（新增「商城」`getMallItems`/`redeem` 与「任务」`getTasks`/`claim`）；
+> 购物车结算面板接 `getAvailable` 选券 + `previewUse` 试算，下单带 `coupon_code`/`use_points`；
+> 订单详情复用同一份金额明细。三条 P2（`inviteApi` ×2、`heroApi` ×1）顺延 1.6.0。
 
 ---
 
@@ -75,8 +81,14 @@ starry-sky-trading-company-web/
     │       ├── toolApi.js        # /toolApi
     │       ├── kami.js           # /kamiApi
     │       ├── cart.js           # /cartApi
-    │       ├── order.js          # /orderApi
-    │       └── favorite.js       # /favoriteApi
+    │       ├── order.js          # /orderApi（含 1.5.0 M2 的 coupon_code / use_points）
+    │       ├── favorite.js       # /favoriteApi
+    │       ├── member.js         # /memberApi（含 1.5.0 M6 的 getBenefits）
+    │       ├── points.js         # /pointsApi（含 1.5.0 M3 商城、M4 补签）
+    │       ├── coupon.js         # /couponApi（含 1.5.0 M1 的 getAvailable / previewUse）
+    │       ├── task.js           # /taskApi（1.5.0 M5：任务清单与领奖）
+    │       ├── mail.js           # /mailApi
+    │       └── support.js        # /supportApi
     ├── assets/
     │   ├── styles/
     │   │   ├── variables.css     # 设计令牌名册（+ 默认主题 tech-minimal 的兜底值）
@@ -111,6 +123,13 @@ starry-sky-trading-company-web/
     │   ├── kami.js
     │   ├── cart.js               # 购物车（服务端为唯一事实来源）
     │   ├── favorite.js           # 收藏（登录走服务端、游客的工具有 localStorage 兜底）
+    │   ├── member.js             # 会员概览 / 档位 / 成长值 / 权益公开页数据
+    │   ├── points.js             # 积分账户 / 流水 / 签到 / 积分商城
+    │   ├── coupon.js             # 我的优惠券
+    │   ├── checkout.js           # 结算试算（1.5.0 M7）：券列表、积分、试算结果
+    │   ├── task.js               # 任务中心（1.5.0 M7）：清单与领奖
+    │   ├── mail.js               # 站内信
+    │   ├── support.js            # 客服工单
     │   └── theme.js              # 设计风格：切换、单项自定义、持久化、写入 :root
     ├── theme/                    # 设计风格（样式体系的运行时层）
     │   ├── presets.js            # 五套风格的完整令牌取值 + 可调项定义
@@ -120,6 +139,8 @@ starry-sky-trading-company-web/
         ├── index.js              # throttle / domUtils.smoothScroll / formatUtils
         ├── assetUrl.js           # 后端静态资源地址解析（/uploads/... → API 基地址）
         ├── avatarFile.js         # 头像纯函数：文件校验、等比缩放尺寸、data URL 体积
+        ├── checkout.js           # 结算口径纯函数：积分校验、上限换算、明细行、券选项文案
+        ├── taskDisplay.js        # 任务与商城的展示纯函数：周期文案、进度百分比、按钮四态
         └── clipboard.js          # 剪贴板写入（两级策略 + 失败提示）
 ```
 
@@ -326,24 +347,24 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `SearchResults.vue` | 两个分区：商品 / 工具，各查各的接口（都带 `keyword`，服务端搜索）、各有一套加载/错误/空态。用 `Promise.allSettled` 让两个分区互不拖累。**工具分区需要身份**（接口是 JWT 保护的），无身份时给登录引导而不是报错 |
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
-| `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（联系方式、备注、提交订单） |
+| `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（**1.5.0 M7 起含选券、积分抵扣与试算明细**，再是联系方式、备注、提交订单）。结算面板**不自己算钱**：选中项一变就（250ms 防抖）调 `POST /couponApi/previewUse`，明细行原样展示服务端返回的六个数；提交时发的是 **试算后的 `points_used`** 而不是输入框里的数字，且只带 `coupon_code` / `use_points` 这两个意图字段 |
 | `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
 | `VideoTool.vue` | 视频下载工具的**占位页**。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。给一个说明页，比让付过费的用户撞上 404 好：404 传达的是「这站坏了」，这一页传达的是「功能还没上线」。接上服务后只换这里的组件，`tool_path` 不用改 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字）。两栏之上还有两张**独立卡片**：会员权益摘要与每日签到入口。`.ui-card` 自己不设外边距、`.profile-page` 也不是 flex 容器，所以这两张卡的下外边距必须显式给（否则三块会紧贴在一起）；签到卡还必须合写类名 `.ui-card.profile-checkin` 才压得过 `.ui-card` 的纵向方向（文案左、按钮右） |
 | `Member.vue` | 会员中心（**枢纽，七区块**）：身份区（等级徽标 / 有效期 / 开通或续费 + 权益详解入口）、资产三卡（积分 / 优惠券 / 会员到期日，**就地显示已有数值**，不新增后端调用）、成长值进度（`growth_to_next` 存在才渲染）、八项权益卡（已解锁显示服务端下发的当前值，未解锁显示解锁等级）、下一档预告（用 `benefits[].value.next` 与 `next_level`）、快捷入口（含每日签到）。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
-| `MemberBenefits.vue` | 会员权益详解（**公开页，不要求登录**）：权益说明（八项，逐项给规则与当前值）、**8×8 数值矩阵**（全部来自 `getPlans.levels[]` 的六个新列，当前档高亮，窄屏降级成「每档一张卡」）、规则与常见问题。**页面上不写死任何折扣 / 倍率 / 金额 / 档位数字** —— 数字只有服务端一份，改档位不用改页面 |
+| `MemberBenefits.vue` | 会员权益详解（**公开页，不要求登录**）：权益说明（八项，逐项给规则与当前值）、**8×8 数值矩阵**（全部来自服务端 `levels[]` 的六个新列，当前档高亮，窄屏降级成「每档一张卡」）、规则与常见问题。**页面上不写死任何折扣 / 倍率 / 金额 / 档位数字** —— 数字只有服务端一份，改档位不用改页面。**1.5.0 M6/M7 起文案与矩阵也走服务端**（`GET /memberApi/getBenefits`）：`benefitDetails` 按字段回落（服务端缺哪个字段就用内置的那一条），`faq` 优先服务端、`detail` 归一成数组逐行渲染，矩阵取 `memberStore.matrixLevels`（服务端 `benefitsPage.levels` → `plans.levels` → `[]`） |
 | `MemberGrowth.vue` | 成长值（原 `/growth`）：汇总三数（累计 / 成长值等级 / **当前生效等级**）、升级进度、来源说明（四条规则文案由 `getGrowthHistory` 的 `rules` 下发）、八档门槛对照表。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`）；非会员不写「已是最高等级」，而是说「按成长值门槛定档、到账即时生效」 |
 | `Growth.vue` | 12 行的**转发薄壳**：渲染 `MemberGrowth.vue`。留着它的唯一理由是 `test/growthPage.test.js` 直接渲染这个文件路径，而路由已迁到 `/member/growth` |
 | `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
-| `Points.vue` | 积分中心：**两个页签** —— 「概览」（余额 / 折抵金额 / 积分倍率与「会员加成生效中」/ 即将过期提醒）与「流水」（原 `PointsHistory` 的类型筛选 + 分页整体并进来，只有一页时不渲染分页控件）。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」。流水每条**横向排版**（类型 · 时间 · 说明 · 单号 一行，右侧 `+35` / 余额 一行，两处都可换行），`≤575` 退回上下两行 —— 纵向排版会把每条记录拉到三行高，条数一多就翻不到底 |
+| `Points.vue` | 积分中心：**四个页签** —— 「概览」（余额 / 折抵金额 / 积分倍率与「会员加成生效中」/ 即将过期提醒）、「流水」（原 `PointsHistory` 的类型筛选 + 分页整体并进来，只有一页时不渲染分页控件）、**「商城」（1.5.0 M3：券与实物，库存只认服务端，不可兑时先给理由再禁用按钮）**、**「任务」（1.5.0 M5：进度条 + 四态按钮，签到任务显示「自动发放」）**。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」。页签值写进 `?tab=`（`normalizeTab()` 认不出回 `overview`），直接落在商城/任务的分享链接也能取到数据。列表每条**横向排版**（图标 · 名称 · 说明 · 积分/库存 一行，右侧按钮一行，两处都可换行），`≤575` 退回上下两行 —— 纵向排版会把每条记录拉到三行高，条数一多就翻不到底。**行上同时挂了全局 `.ui-card`（它是 `flex-direction: column`），所以每条列表都必须显式写 `flex-direction: row`**，`test/pointsPage.test.js` 直接读源码钉住这一点 |
 | `UserCheckin.vue` | 每日签到（**挂在个人中心下**，`/user/checkin`）：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）、奖励规则。签到与会员**结构解绑、倍率保留**：服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的 `points_multiplier` 放大积分（成长值固定 +5），所以文案是「会员等级倍率对签到积分同样生效」，不能写成消费专属 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |
 | `Mail.vue` | 消息中心：三个页签（通知 / 通知偏好 / 邮件记录）+ 顶栏下拉入口的未读角标。通知页每条可单条或全部标为已读，**未读圆点只看服务端的 `is_read`**；偏好页六个开关直接对应 `notification_preferences` 的六列，改动只提交差异项（`master` 总开关的后果写在界面上，不藏在注释里）；邮件记录页是自查用的投递台账（状态、重试次数、时间），**不含正文**。游客能看到的是登录引导而不是空列表 |
 | `Support.vue` | 客服中心：两个页签（提交反馈 / 我的会话），**游客与注册用户共用同一个页面**。提交成功后第一件事是把**回执号**摆到最显眼处（游客丢了登录态就只剩邮件里的回执号），因此有复制、深链 `/support?thread=FB…`、「再提一条」三个出口；「我的会话」内部再分列表与详情（状态、分类、联系邮箱、消息记录 + 追问）；会话对外**只有回执号**，404 一律说「没找到」而不区分「不存在」与「不是你的」（防枚举）。长度上限 `maxlength`、邮箱预填与「必填」提示都按身份分叉，频次上限（24 小时 5 次）写在表单下方。两处文本域（详细描述、追问）都用 `.support-textarea`：**高度固定 144px、圆角固定为卡片档** —— `--radius-input` 是给单行输入框用的令牌（液态玻璃主题下是 9999px 全胶囊），文本域一长高，四角就变成夸张的尖胶囊，高度越大越明显 |
 | `Favorites.vue` | 胶囊页签（商品 / 工具）+ 卡片网格，被删除的收藏保留一行并给出清理入口 |
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
-| `OrderDetail.vue` | 订单号标题带 + 明细面板 + 联系备注 + 状态时间线 + 动作行 |
+| `OrderDetail.vue` | 订单号标题带 + 明细面板（**有优惠时展示金额明细**：商品原价 / 会员价优惠 / 优惠券抵扣 / 积分抵扣（N 积分）/ 实付，复用结算页的 `settlementRows()`；没有优惠时只留一行「订单金额」）+ 联系备注 + 状态时间线 + 动作行 |
 | `Legal.vue` | 左目录吸顶 + 右正文；三份文档共用一个组件，由 `meta.legalKey` 选内容 |
 | `AppleId.vue` | 仅包一层 `AppleIdSection`（页头已注释） |
 | `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制 |
@@ -612,7 +633,9 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `growthTotalValue` / `growthHasPrev` / `growthHasNext` | 成长值派生 getter（分页控件与「还能翻页吗」的判断） |
 | `hasLevels` | `Array.isArray(levels) && levels.length > 0`。**`levels` 的初值是 `null` 而不是 `[]`**，页面里写 `memberStore.levels.length` 会在首屏抛 `TypeError` 并打断 `onMounted` 的后续请求 —— lint / build / SSR 渲染都看不见（SSR 不跑 `onMounted`），所以统一走这个 getter，由 `test/stores.member.test.js` 钉住 |
 | `hasExpiringTodo` | 是否存在「会员即将到期」待办（按 `type` 在 `todos` 里找） |
-| `fetchOverview({silent})` / `fetchPlans({silent})` / `fetchGrowthHistory({page, silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空；`reset()` 也清成长值（`App.vue` 登出时统一调） |
+| `benefitsPage` / `loadingBenefits` | **权益公开页（§4.4 `getBenefits`）的整份数据**：`{benefits, levels, faq}`。文案与服务端下发的 `level_names` 都来自这里；取不到时页面逐字段回落到前端常量（同一份说明书，不该因为一次网络抖动变成空白页） |
+| `hasBenefitsPage` / `matrixLevels` | 「有没有服务端说明书」与「矩阵用哪份档位表」—— `matrixLevels` **优先 `benefitsPage.levels`，空则退回 `plans` 的 `levels`**，两者都没有给 `[]` |
+| `fetchOverview({silent})` / `fetchPlans({silent})` / `fetchGrowthHistory({page, silent})` / `fetchBenefits({silent})` / `reset()` | `silent` 用于「已有数据时静默刷新」，失败不弹错、不清空；`reset()` 也清成长值（`App.vue` 登出时统一调），**但保留 `benefitsPage`** —— 权益公开说明书与登录身份无关 |
 
 两条纪律写在文件头：**不做本地乐观更新**（会员状态只能由服务端确认），
 以及「**不适用以键不存在表达**」—— 非会员的响应里没有 `points` / `coupons` /
@@ -629,10 +652,40 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `points` / `pointsValue` / `multiplier` / `isMember` / `expireSoon` | 派生 getter（`pointsValue` 是折抵金额，不是积分） |
 | `todayChecked` / `streak` | 签到派生状态，`streak` 供「连续签到 N 天」 |
 | `hasPrev` / `hasNext` | 分页按钮可用性（只有一页时不渲染控件） |
+| `mallItems` / `mallLoaded` / `loadingMall` / `redeemingId` | **积分商城清单（1.5.0 M3）**：`stock` 只认服务端（`null` = 不限量、`0` = 已兑完），端上不做本地扣减 |
+| `hasMallItems` / `fetchMall({silent})` / `redeemItem(itemId)` | 商城派生与动作；`redeemItem` 成功后**用服务端返回的 `data.item` 覆盖那一行**（券是共享库存，本地 `-1` 会说谎），失败把错误抛给页面弹提示 |
+| `applyBalance(source)` | **共用**：把响应里的 `points` / `points_value` 写回账户快照（签到与兑换都走它，避免两处各写一遍） |
 | `fetchAccount` / `fetchHistory({page})` / `setHistoryType` / `fetchCalendar({month})` / `doCheckin` / `reset` | 动作 |
 
 **改筛选要把页码拉回第 1 页**（`setHistoryType` 已处理）：否则在第 3 页换类型
 会落到一个不存在的页码上。
+
+### `checkout.js` — `useCheckoutStore`
+
+购物车结算面板（`Cart.vue`）的「券 + 积分」状态。**券与积分都不在端上算钱**：
+服务端的 `sstc.preview_order_amount()` 同时服务 `POST /couponApi/previewUse` 与
+`POST /orderApi/createOrder`，所以试算多少、下单就扣多少。
+
+| 成员 | 说明 |
+| --- | --- |
+| `coupons` / `loadingCoupons` / `couponError` | `/couponApi/getAvailable` 的可用券列表（含 `selectable` 与不可用 `reason`） |
+| `couponCode` / `usePoints` | 用户当前的选择（**只是意图**，金额由服务端决定） |
+| `quote` / `quoting` / `quoteError` / `couponNotice` | 试算结果与状态；`couponNotice` 是「已取消使用该券：…」这类需要解释的提示 |
+| `hasQuote` / `hasCoupons` / `selectableCoupons` / `effectivePoints` / `warnings` | 派生 getter。**`effectivePoints` 是 `quote.points_used ?? usePoints`，提交时必须用它**（服务端会把积分下调到上限） |
+| `fetchCoupons({amount, productIds})` / `setCoupon(code)` / `setPoints(n)` / `refreshQuote({items})` / `reset()` | 动作 |
+
+两条纪律：**商品为空不发试算请求**（注定 400）；**券被服务端拒绝时自动清空选择**并留一句说明
+（`COUPON_NOT_AVAILABLE` / `COUPON_THRESHOLD`），否则用户会一直撞同一个 409。
+
+### `task.js` — `useTaskStore`
+
+任务中心（`/points?tab=tasks`，1.5.0 M5 的两条端点）。
+
+| 成员 | 说明 |
+| --- | --- |
+| `tasks` / `claimablePoints` / `loaded` / `loading` / `claimingId` / `error` | 清单与加载态。进度由服务端现算，端上不缓存、不自增 |
+| `hasTasks` / `claimableCount` | 派生 getter；可领合计**只用服务端的 `claimable_points`**，不在端上求和 |
+| `fetchTasks({silent})` / `claimTask(taskId)` / `reset()` | 动作。`claimTask` 成功后**重新拉一次清单**（进度、可领数、按钮四态都要跟着变），失败不吞、抛给页面提示 |
 
 ### `coupon.js` — `useCouponStore`
 
@@ -860,21 +913,20 @@ const requests = axios.create({
 | `toolApi.js` | `getTools`、`getToolClasses`、`getTool`、`getAppleIds` | `/toolApi/*` |
 | `kami.js` | `getUserCards(user_id, params)`、**`getMyEntitlements()`**、`activateCard(data)`（`tool_id` 可选）、`verifyCard(data)`、`verifyCards(data)` | `/kamiApi/*` |
 | `cart.js` | `getCart`、`addItem`、`updateItem`、`removeItem`、`clearCart` | `/cartApi/*` |
-| `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*` |
+| `order.js` | `createOrder`、`getOrders`、`getOrder(orderNo)`、`cancelOrder`、`completeOrder` | `/orderApi/*`；`createOrder` 的 payload 自 1.5.0 M2 起可带 `coupon_code` / `use_points`（**只表达意图**，抵扣金额由库内 `sstc.preview_order_amount()` 现算） |
 | `favorite.js` | `getFavorites({target_type})`、`addFavorite`、`removeFavorite` | `/favoriteApi/*` |
-| `member.js` | `getOverview`、`getPlans`、`getGrowthHistory` | `/memberApi/getOverview`、`/memberApi/getPlans`（**游客可读**）、`/memberApi/getGrowthHistory`（成长值明细 + 汇总 + 来源规则） |
-| `points.js` | `getAccount`、`getHistory(params)`、`checkin`、`getCheckinCalendar(params)` | `/pointsApi/*` |
-| `coupon.js` | `getMine(params)`、`claim(template_id)` | `/couponApi/*` |
+| `member.js` | `getOverview`、`getPlans`、`getGrowthHistory`、**`getBenefits`** | `/memberApi/getOverview`、`/memberApi/getPlans`（**游客可读**）、`/memberApi/getGrowthHistory`（成长值明细 + 汇总 + 来源规则）、`/memberApi/getBenefits`（权益公开页：文案 + 档位矩阵 + FAQ，**无令牌仍 401**，游客身份可读） |
+| `points.js` | `getAccount`、`getHistory(params)`、`checkin`、`getCheckinCalendar(params)`、**`getMallItems`**、**`redeem(itemId)`** | `/pointsApi/*`；商城的 `stock` 只认服务端（`null` = 不限量、`0` = 已兑完），兑换失败码 `ITEM_NOT_FOUND` / `MEMBER_ONLY` / `OUT_OF_STOCK` / `POINTS_NOT_ENOUGH`（后者带 `details.shortage`） |
+| `coupon.js` | `getMine(params)`、`claim(template_id)`、**`getAvailable({amount, productIds})`**、**`previewUse(payload)`** | `/couponApi/*`；后两条是 1.5.0 M1 的结算端点，与 `createOrder` **同一个库内函数**，所以「试算多少、下单就扣多少」 |
+| `task.js` | `getTasks()`、`claim(taskId)` | `/taskApi/*`（2 个端点，1.5.0 M5）；进度由服务端现算，领奖成功后要重拉清单 |
 | `mail.js` | `getMessages(params)`、`getUnreadCount()`、`markRead(ids)`、`getPreferences()`、`updatePreferences(patch)`、`getMailLog(params)` | `/mailApi/*`（6 个端点，见 `server/docs/API.md` §4.23） |
 | `support.js` | `createThread(payload)`、`getThreads(params)`、`getThread(threadNo)`、`reply(threadNo, body)` | `/supportApi/*`（4 个端点，**游客可用**，见 §4.24）；会话对外只有回执号 `FB…`，401 是「没带 token」，404 一律 `THREAD_NOT_FOUND` |
 
-> `member.js` 封了三个**已实现**的端点。`getBenefits` 与
-> `task` / `invite` / `notify` / `hero` 四个模块**故意先不写** ——
-> 服务端这些端点只有契约（见 `server/docs/API.md` §4），
-> 前端先建 API 层只会得到一批永远 404 的函数。
-> 权益详解页 `/member/benefits` 因此**不依赖 `getBenefits`**：规则文案来自
-> `constants/member.js`（八项权益的唯一实例），数值来自 `getPlans.levels[]`
-> 与 `getOverview.benefits[]` —— 加一档权益时改常量与服务端，不改页面。
+> **2026-10-16（1.5.0 M7）**：1.5.0 的四批端点（M1 结算试算、M3 商城、M4 补签、M5 任务、
+> M6 权益公开页）在服务端全部落地后，前端这层也补齐了 —— 上面加粗的六条就是这轮接的。
+> 之前的注释写着「`getBenefits` 与 `task` 故意先不写，否则只会得到一批永远 404 的函数」，
+> 那是对**契约先于实现**阶段的正确做法，现在服务端已经实现，这段历史注释随之作废。
+> 唯一仍未接的是 `inviteApi` / `heroApi` 三条 P2（顺延 1.6.0）。
 
 > `getMyEntitlements()` 与 `getUserCards()` 回答的是**两个不同问题**：
 > 后者是「我兑换过哪些卡」，前者是「我现在能不能用这件工具」。
@@ -1322,7 +1374,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 
 `vite.config.js` 为每个后端前缀逐条配置了开发代理：`/user/login`、`/user/register`、
 `/user/visitorLogin`、`/user/refreshToken`、`/userApi`、`/shop`、`/class`、`/toolApi`、`/kamiApi`、
-`/cartApi`、`/orderApi`、`/favoriteApi`、`/memberApi`、`/pointsApi`、`/couponApi`、`/mailApi`、
+`/cartApi`、`/orderApi`、`/favoriteApi`、`/memberApi`、`/pointsApi`、`/couponApi`、`/taskApi`、`/mailApi`、
 `/supportApi`、`/uploads`、`/userBackend`、`/health`，
 默认指向 `http://localhost:8080`（可用 `VITE_API_TARGET` 覆盖）。
 由于 `/user` 下既有后端接口也有前端路由（`/user/kami`、`/user/orders` 是页面），代理只列了四个具体接口
@@ -1336,6 +1388,8 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 > `/mailApi`、`/supportApi` 与 `/uploads`，确认返回的是 JSON 而不是 index.html。
 > 本项目踩过两次同一个坑（v1.1.0 的 member/points/coupon，v1.3.0 的 mail/support），
 > 第二次是被 `verify:dev` 抓住的 —— 但它要起服务，所以同一套判定规则也进了默认门禁。
+> **1.5.0 M7 新增 `/taskApi`**：proxy 表里补了这一键，`devProxy.test.js`
+> 与 `verify:dev` 都因此是绿的（`/taskApi` 已在 `src/api/ask/task.js` 里被调用）。
 
 > `/uploads` 这条尤其容易漏：它不是 `request()` 调用而是 `<img src>`，
 > 漏了的表现是「**头像上传成功但图片不显示**」，几乎不会有人联想到代理配置。
@@ -1354,7 +1408,7 @@ axios 发相对路径 → 同源 → 由下面的代理转发到 8080。因此**
 npm run build        # 产出 dist/
 npm run preview      # 预览构建产物
 npm run lint         # ESLint 检查（src + test + scripts）
-npm test             # 单元测试（node:test，共 898 个用例）
+npm test             # 单元测试（node:test，共 951 个用例）
 npm run check        # lint + test
 npm run verify:dev   # 真实启动 dev server + 后端，验证代理转发与 HMR 推送（17 项）
 npm run verify       # lint + test + build + verify:dev
@@ -1483,12 +1537,17 @@ test/
 ├── stores.member.test.js             # 会员 store：levels 初值 null 与 hasLevels 判据、benefits 未解锁项无 value 键、fetchPlans 六列原样保留、失败回退
 ├── memberBenefitValue.test.js        # 权益数值翻译：rate/multiplier/money/percent/quota/tier 六种 type 与「0 与不限」的区别、未知类型不产出 undefined
 ├── profilePage.test.js               # 个人中心布局：摘要/签到两张卡都要有下外边距、签到卡必须横向（.ui-card 是纵向）、两栏面板窄屏回落
-├── pointsPage.test.js                # 积分中心流水列表：每条横向排版且可换行、左右两端对齐、极窄屏退回两行
+├── pointsPage.test.js                # 积分中心流水列表：每条横向排版且可换行、左右两端对齐、极窄屏退回两行、**列表行（挂了 .ui-card）必须显式 flex-direction: row**
+├── stores.points.test.js             # 积分 store 的商城部分：fetchMall 落库/失败保留旧清单、兑换用服务端返回的 item 覆盖（不做本地 -1）、失败抛出且不留 redeemingId、applyBalance、reset
+├── stores.task.test.js               # 任务 store：清单落库与可领数、失败保留旧清单、领奖后重拉（断言 POST 再 GET 的顺序）、失败抛出、reset
+├── taskDisplay.test.js               # 任务/商城展示纯函数：周期文案、进度百分比（target 为 0 不炸）、按钮四态（**回归：未完成不能显示成「自动发放」**）、库存与不可兑理由
+├── checkoutUtils.test.js             # 结算口径纯函数：积分校验（空/小数/非 100 倍/超上限收口）、上限取金额与余额的较小者、明细行筛选与「实付」文案、券选项文案
+├── stores.checkout.test.js           # 结算 store：券与试算一起发、不用券时不发字段、空购物车不发请求、被下调时提交用 points_used、券被拒自动清选择、商品错误不迁怒于券、reset
 ├── api-contract.test.js              # 前后端接口契约（跨仓库静态校验）
 └── devProxy.test.js                  # dev 代理覆盖：每条 API 调用路径都能被 vite proxy 接住（静态，不需起服务）
 ```
 
-共 898 个用例。
+共 951 个用例。
 
 ### 主题契约测试
 

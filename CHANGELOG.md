@@ -9,6 +9,49 @@
 
 ---
 
+## [1.5.0] — 2026-10-16 · 契约端点补齐（前端侧 M7，开发中）
+
+服务端 `1.5.0` 把 API.md 里只剩契约的端点全部落地（结算试算、积分商城、补签、任务中心、权益公开页）。
+前端这一轮（计划里的 **M7**）把它们接到界面上：**不再有「有接口没人调」的状态**，
+三条 P2（`inviteApi` ×2、`heroApi` ×1）顺延 `1.6.0`。
+
+### 新增
+
+| 类别 | 内容 |
+| --- | --- |
+| 接口 | `src/api/ask/task.js`（`getTasks` / `claim`）、`member.getBenefits()`、`points.getMallItems()` / `points.redeem(itemId)`、`coupon.getAvailable({amount, productIds})` / `coupon.previewUse(payload)` |
+| store | `stores/task.js`（`useTaskStore`）、`stores/checkout.js`（`useCheckoutStore`） |
+| 纯函数 | `utils/checkout.js`（积分校验、上限换算、明细行、券选项文案）、`utils/taskDisplay.js`（周期文案、进度百分比、按钮四态、库存与不可兑理由） |
+| 页面 | `/points` 新增「商城」「任务」两个页签（共四个，值写进 `?tab=`）；购物车结算面板新增选券与积分抵扣区；订单详情新增金额明细 |
+| 测试 | `checkoutUtils` / `stores.checkout` / `stores.points` / `stores.task` / `taskDisplay` 五份新测试（共 22 例新增），`pointsPage.test.js` 增补列表行方向断言 |
+
+### 变更
+
+- **权益详解页改读服务端**（`/member/benefits`）：文案、`level_names`、FAQ 优先用 `getBenefits` 的响应，
+  **逐字段回落**到内置常量（同一份说明书，不该因为一次网络抖动变成空白页）；
+  8×8 矩阵改用 `memberStore.matrixLevels`（服务端 `benefitsPage.levels` → `plans.levels` → `[]`）。
+- **结算面不自己算钱**：选中项变化（250ms 防抖）调 `previewUse`，六个数原样展示；
+  提交时发的是**试算后的 `points_used`** 而不是输入框里的数字（服务端会把积分下调到上限），
+  只带 `coupon_code` / `use_points` 两个「意图」字段；券被服务端拒绝（`COUPON_NOT_AVAILABLE` /
+  `COUPON_THRESHOLD`）时**自动取消选择**并说明原因。
+- **列表行必须显式横向**：`/points` 的商城、任务、流水三种列表行都同时挂了全局 `.ui-card`
+  （它是 `flex-direction: column`），只写 `display: flex` 会被覆盖成「图标在上、按钮在下」的竖排。
+  三处都补 `flex-direction: row`，并由 `test/pointsPage.test.js` 读源码钉住。
+- `+ .ui-card` 类列表的既有先例（个人中心的签到卡）同理，本次一并核对。
+- `vite.config.js` 的 proxy 表补 `/taskApi`（新前缀漏配的后果是 dev 下 404 且返回 index.html）。
+- `App.vue` 的账号切换 watch 补 `taskStore.reset()` 与 `checkoutStore.reset()`（不清会把上一个账号的
+  任务进度、可用券与额度留给下一个人）。
+- 任务按钮文案修正：`claimable` 的口径是「**现在就能领**」，未完成的任务它是 `false` ——
+  原来的判据会把它显示成「自动发放」，等于告诉用户未完成的任务不需要操作。
+  现在统一走 `utils/taskDisplay.js` 的 `taskButtonLabel()`：已领取 / 自动发放（`reward_points = 0`）/ 未完成 / 领取。
+- `package.json` 版本号仍为 `1.4.0`（`1.5.0` 未发布，发布时与后端一起改）。
+
+### 门禁
+
+`npm run lint` 0、`npm test` 951/951、`npm run build` 通过、`npm run verify:dev` 17/17。
+
+---
+
 ## [1.4.0] — 2026-10-15 · 会员中心重构与签到独立（已发布）
 
 会员中心从「一个页面塞下所有东西」重构为 **1 个枢纽 + 3 个子页**，权益由 6 项扩为 **8 项**，

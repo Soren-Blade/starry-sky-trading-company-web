@@ -181,6 +181,75 @@
               </div>
             </dl>
 
+            <!-- 结算试算（1.5.0 M7）：券与积分的抵扣金额一律用服务端返回值。
+                 试算与下单调用同一个库内函数，所以这里显示多少，下单就扣多少。 -->
+            <div class="quote-block">
+              <SelectField
+                id="cart-coupon"
+                v-model="couponValue"
+                :options="couponOptions"
+                :disabled="couponOptions.length === 0"
+                aria-label="选择优惠券"
+                placeholder="不使用优惠券"
+              />
+
+              <div class="u-field">
+                <label class="u-field-label" for="cart-points">积分抵扣</label>
+                <div class="quote-points">
+                  <input
+                    id="cart-points"
+                    v-model="pointsInput"
+                    class="u-input"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    :step="POINTS_STEP"
+                    placeholder="0"
+                  />
+                  <button
+                    type="button"
+                    class="u-btn-secondary quote-points-all"
+                    :disabled="pointsMax <= 0"
+                    @click="useAllPoints"
+                  >
+                    全部可用
+                  </button>
+                </div>
+                <p class="page-note quote-hint">
+                  100 积分抵 ¥1 · 本单最多可抵 {{ pointsMax }} 积分
+                </p>
+                <p v-if="pointsError" class="page-note quote-error" role="alert">{{ pointsError }}</p>
+              </div>
+
+              <dl v-if="quoteRows.length > 0" class="summary-rows quote-rows" aria-label="结算明细">
+                <div
+                  v-for="row in quoteRows"
+                  :key="row.key"
+                  class="summary-row"
+                  :class="{ 'summary-row--total': row.kind === 'total' }"
+                >
+                  <dt>{{ row.label }}</dt>
+                  <dd>
+                    {{ row.kind === 'discount' ? `− ${formatPrice(row.amount)}` : formatPrice(row.amount) }}
+                  </dd>
+                </div>
+              </dl>
+              <p v-else-if="checkoutStore.quoting" class="page-note quote-hint">正在试算…</p>
+
+              <p v-if="checkoutStore.couponNotice" class="page-note quote-error" role="alert">
+                {{ checkoutStore.couponNotice }}
+              </p>
+              <p v-else-if="checkoutStore.couponError" class="page-note quote-hint">
+                {{ checkoutStore.couponError }}
+              </p>
+              <p v-if="checkoutStore.quoteError" class="page-note quote-error" role="alert">
+                {{ checkoutStore.quoteError }}
+              </p>
+              <ul v-if="checkoutStore.warnings.length > 0" class="quote-warnings">
+                <li v-for="(warning, index) in checkoutStore.warnings" :key="index">{{ warning }}</li>
+              </ul>
+            </div>
+
             <div class="u-field">
               <label class="u-field-label" for="cart-contact">{{ TRADE.checkoutContact }}</label>
               <input
@@ -228,7 +297,7 @@
 /**
  * 购物车与下单
  *
- * 三个决定：
+ * 四个决定：
  *
  * 1. **需要一个「选择」维度**。服务端提交接口收的是商品行数组，因此选择完全
  *    在客户端完成：默认全选所有可下单行，取消勾选的行既不显示在金额里、
@@ -240,22 +309,39 @@
  *
  * 3. **金额只做展示**。选中合计是本地按服务端下发的单价求和；
  *    真正的订单金额由服务端在下单时按当前价格现算（见 server 的 create_order）。
+ *
+ * 4. **券与积分交给结算内核算**（1.5.0 M7）。本地只收集「用哪张券、用多少积分」，
+ *    抵扣金额一律取 `POST /couponApi/previewUse` 的返回值 —— 它与 `createOrder`
+ *    调用同一个库内函数，前端自己再算一遍就是制造第二套真相。
+ *    提交时发的是**试算结果里的 `points_used`**（服务端可能下调到上限）。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import SelectField from '@/components/SelectField.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { useCartStore } from '@/stores/cart'
+import { useCheckoutStore } from '@/stores/checkout'
+import { usePointsStore } from '@/stores/points'
 import { useUserStore } from '@/stores/user'
 import { useThemeStore } from '@/stores/theme'
 import { notify } from '@/hooks/useToast/index.js'
 import { formatUtils } from '@/utils/index.js'
+import {
+  POINTS_STEP,
+  couponOptionLabel,
+  maxUsablePoints,
+  normalizePointsInput,
+  settlementRows,
+} from '@/utils/checkout.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const checkoutStore = useCheckoutStore()
+const pointsStore = usePointsStore()
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 const { loading } = storeToRefs(cartStore)
@@ -264,6 +350,12 @@ const { loading } = storeToRefs(cartStore)
 const selected = ref(new Set())
 /** 正在请求中的行 id：禁用该行的按钮，避免连点叠加数量 */
 const pending = ref(new Set())
+
+/** 积分输入框的原样值：校验通过才写进 store（非法值不进试算请求） */
+const pointsInput = ref('')
+const pointsError = ref('')
+
+const NO_COUPON = 'none'
 
 const contact = ref('')
 const remark = ref('')
@@ -287,12 +379,37 @@ const selectedCount = computed(() =>
 )
 
 /** 选中金额：按单价 × 数量求和，两位小数收口避免浮点尾数 */
-const selectedTotal = computed(() =>
-  formatUtils.splitPrice(
-    Number(selectedItems.value.reduce((sum, item) => sum + item.unit_price * item.quantity, 0).toFixed(2)),
-    currency.value
-  )
+const selectedAmount = computed(() =>
+  Number(selectedItems.value.reduce((sum, item) => sum + item.unit_price * item.quantity, 0).toFixed(2))
 )
+const selectedTotal = computed(() => formatUtils.splitPrice(selectedAmount.value, currency.value))
+
+/** 提交给服务端的商品行：与试算用的是同一份 */
+const previewItems = computed(() =>
+  selectedItems.value.map((item) => ({ product_id: item.product_id, quantity: item.quantity }))
+)
+
+/** 券下拉：`value` 用券码，不可用的券也列出来但禁止点选 */
+const couponOptions = computed(() =>
+  checkoutStore.coupons.map((coupon) => ({
+    value: coupon.coupon_code,
+    label: couponOptionLabel(coupon),
+    disabled: coupon.selectable !== true,
+  }))
+)
+
+/**
+ * SelectField 用空串表示「未选择」，因此「不使用优惠券」需要一个哨兵值 ——
+ * 直接把 `''` 当选项 value 会让触发器和 placeholder 分不清。
+ */
+const couponValue = computed({
+  get: () => checkoutStore.couponCode || NO_COUPON,
+  set: (value) => checkoutStore.setCoupon(value === NO_COUPON ? '' : value),
+})
+
+/** 本单最多可抵扣的积分：上限来自服务端 `limits.max_points_discount` */
+const pointsMax = computed(() => maxUsablePoints(checkoutStore.quote, pointsStore.points))
+const quoteRows = computed(() => settlementRows(checkoutStore.quote))
 
 const allSelected = computed(
   () => availableItems.value.length > 0 && availableItems.value.every((item) => selected.value.has(item.id))
@@ -404,18 +521,26 @@ const handleClear = async () => {
 
 const handleCheckout = async () => {
   if (submitting.value || selectedItems.value.length === 0) return
+  if (pointsError.value) {
+    notify.error(pointsError.value)
+    return
+  }
 
   submitting.value = true
   try {
-    const result = await api.createOrder({
-      items: selectedItems.value.map((item) => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      })),
+    const payload = {
+      items: previewItems.value,
       contact: contact.value.trim() || undefined,
       remark: remark.value.trim() || undefined,
       from_cart: true,
-    })
+    }
+    // 只用「试算确认过的用量」下单：服务端可能把积分下调到上限，
+    // 发输入框里的原值会让用户以为「说好的抵扣没生效」
+    if (checkoutStore.couponCode) payload.coupon_code = checkoutStore.couponCode
+    const points = checkoutStore.effectivePoints
+    if (points > 0) payload.use_points = points
+
+    const result = await api.createOrder(payload)
 
     if (!result?.success) {
       notify.error(result?.message || '下单失败')
@@ -424,15 +549,53 @@ const handleCheckout = async () => {
       return
     }
 
+    if (points > 0) {
+      // 余额与明细都变了：拉一次账户快照（下单响应里没有积分快照）
+      void pointsStore.fetchAccount({ silent: true })
+    }
+    checkoutStore.reset()
+
     const orderNo = result.data?.order?.order_no
     notify.success(TRADE.checkoutSuccess)
     if (orderNo) router.push({ name: 'OrderDetail', params: { orderNo } })
     else router.push({ name: 'Orders' })
   } catch (error) {
-    notify.error(error?.message || '下单失败，请稍后重试')
+    notify.error(error?.response?.data?.message || error?.message || '下单失败，请稍后重试')
   } finally {
     submitting.value = false
   }
+}
+
+/**
+ * 重新试算：先拉本单可用券（门槛与范围都要按当前选中的商品判），再算钱。
+ *
+ * 两个请求都带 250ms 防抖（见 `scheduleQuote`）—— 连续点加号时只算最后一次。
+ */
+const refreshCheckout = async () => {
+  if (needLogin.value || previewItems.value.length === 0) {
+    checkoutStore.quote = null
+    checkoutStore.quoteError = ''
+    return
+  }
+  const productIds = previewItems.value.map((item) => item.product_id).join(',')
+  await checkoutStore.fetchCoupons({ amount: selectedAmount.value, productIds })
+  await checkoutStore.refreshQuote({ items: previewItems.value })
+}
+
+let quoteTimer = null
+
+const scheduleQuote = () => {
+  if (quoteTimer) clearTimeout(quoteTimer)
+  quoteTimer = setTimeout(() => {
+    quoteTimer = null
+    void refreshCheckout()
+  }, 250)
+}
+
+const useAllPoints = () => {
+  const max = pointsMax.value
+  if (max <= 0) return
+  pointsInput.value = String(max)
 }
 
 const openLogin = () => {
@@ -442,7 +605,16 @@ const openLogin = () => {
 onMounted(async () => {
   const result = await cartStore.fetch()
   needLogin.value = Boolean(result?.needLogin)
-  if (!needLogin.value) syncSelection()
+  if (!needLogin.value) {
+    syncSelection()
+    // 余额是「本单最多能抵多少积分」的一半判据，先取一次
+    void pointsStore.fetchAccount({ silent: true })
+  }
+})
+
+onBeforeUnmount(() => {
+  if (quoteTimer) clearTimeout(quoteTimer)
+  quoteTimer = null
 })
 
 // 购物车内容变化（改数量/删除/下单清空）后重新对齐选择集合
@@ -452,6 +624,29 @@ watch(
     if (!needLogin.value) syncSelection()
   }
 )
+
+// 选中的商品、券、积分任一变化都要重新试算（金额只能由服务端给）
+watch(
+  () => [
+    previewItems.value.map((item) => `${item.product_id}:${item.quantity}`).join(','),
+    checkoutStore.couponCode,
+    checkoutStore.usePoints,
+  ].join('|'),
+  () => scheduleQuote()
+)
+
+// 输入框：先本地校验（一眼能看出的非法值不必打扰服务端），再写进 store 触发试算
+watch(pointsInput, (value) => {
+  const result = normalizePointsInput(value, { max: pointsMax.value > 0 ? pointsMax.value : Infinity })
+  pointsError.value = result.ok ? '' : result.error
+  if (!result.ok) return
+  if (result.clamped && result.points !== Number(value)) {
+    // 超出上限就把它收口到上限，输入框里显示的数与真会提交的数保持一致
+    pointsInput.value = String(result.points)
+    return
+  }
+  checkoutStore.setPoints(result.points)
+})
 </script>
 
 <style scoped>
@@ -687,6 +882,58 @@ watch(
 .summary-submit {
   width: 100%;
   margin: calc(var(--space-unit) * 2.5) 0 calc(var(--space-unit) * 1.5);
+}
+
+/* ── 结算试算（券 / 积分 / 明细） ─────────────────────────── */
+.quote-block {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  padding-top: calc(var(--space-unit) * 2);
+  margin-top: calc(var(--space-unit) * 2);
+  border-top: var(--stroke-width) solid var(--border);
+}
+
+.quote-points {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.quote-points-all {
+  flex-shrink: 0;
+}
+
+.quote-hint {
+  margin: calc(var(--space-unit) * 0.75) 0 0;
+}
+
+.quote-error {
+  margin: calc(var(--space-unit) * 0.75) 0 0;
+  color: var(--danger);
+}
+
+.quote-rows {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  margin: 0;
+}
+
+/* 试算里的「应付」用主色点一下，其余行保持次要色（一屏里最该看清的是实付） */
+.quote-rows .summary-row--total dd {
+  color: var(--accent-strong);
+}
+
+.quote-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  margin: 0;
+  padding-left: calc(var(--space-unit) * 2);
+  font-size: var(--fs-label);
+  color: var(--warning);
 }
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */

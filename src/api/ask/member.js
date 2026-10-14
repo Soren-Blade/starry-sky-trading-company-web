@@ -33,4 +33,18 @@ function getGrowthHistory(params = {}) {
   return request.get(`${baseURL}/getGrowthHistory`, { params })
 }
 
-export { getOverview, getPlans, getGrowthHistory }
+/**
+ * 权益公开页数据（契约 §4.4，1.5.0 M6）
+ *
+ * 返回 `{ benefits: [{ key, name, desc, icon, required_level, level_names, detail }], levels, faq }`：
+ *   - `detail` 是**字符串数组**（逐行渲染），与 `constants/member.js` 里那段单串不同；
+ *   - `levels` 与 `getPlans` 的 `levels[]` 同源（复用后端 `get_member_plans()`），
+ *     所以这一页不需要为了矩阵再调一次 `getPlans`；
+ *   - 这一页**游客也能访问**（挂在 `/memberApi`，没有 `requireRegisteredAccount`），
+ *     但没有令牌仍然 401 —— 「游客」指的是前端 init 自动创建的游客身份。
+ */
+function getBenefits() {
+  return request.get(`${baseURL}/getBenefits`)
+}
+
+export { getOverview, getPlans, getGrowthHistory, getBenefits }

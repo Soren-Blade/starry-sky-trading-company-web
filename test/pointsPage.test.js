@@ -21,6 +21,18 @@ test('源码：流水每条横向排版（类型/时间/说明 一行，右侧 +
   }
 })
 
+test('源码：同时挂 .ui-card 的列表行必须显式声明 flex-direction: row', () => {
+  // 这些 <li> 上挂了全局 .ui-card（它声明 flex-direction: column）与页面自己的类；
+  // 页面规则只写 display: flex 时，方向仍由 .ui-card 决定 → 整行竖排（图标/内容/按钮各占一行）。
+  const source = POINTS_SOURCE.replace(/\r\n/g, '\n')
+  for (const selector of ['.history-item {', '.mall-item,\n.task-item {']) {
+    const at = source.indexOf(selector)
+    assert.ok(at > -1, `应有 ${selector} 规则`)
+    const body = source.slice(at, source.indexOf('}', at))
+    assert.match(body, /flex-direction: row/, `${selector} 应显式横向排版`)
+  }
+})
+
 test('源码：单条记录左右两端对齐（内容在左、金额余额在右）', () => {
   const at = POINTS_SOURCE.indexOf('.history-item {')
   assert.ok(at > -1)

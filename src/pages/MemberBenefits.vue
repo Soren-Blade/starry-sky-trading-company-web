@@ -3,7 +3,7 @@
     <header class="page-shell-head">
       <h1 class="page-shell-title">会员权益详解</h1>
       <p class="page-shell-desc">
-        八项权益的逐档数值、解锁条件与常见问题。数值全部来自服务端，页面上不写死任何折扣或倍率。
+        八项权益的逐档数值、解锁条件与常见问题。文案来自服务端（取不到时用内置的同一份），数值全部来自服务端，页面上不写死任何折扣或倍率。
       </p>
     </header>
 
@@ -20,7 +20,7 @@
       </router-link>
     </nav>
 
-    <!-- ① 八项权益逐条说明：名称/顺序/描述来自 constants，数值来自 overview.benefits -->
+    <!-- ① 八项权益逐条说明：名称/描述/图标/详情来自 getBenefits（未取到时回落 constants），数值来自 overview.benefits -->
     <section id="benefits" class="benefits-section" aria-labelledby="benefits-title">
       <h2 id="benefits-title" class="benefits-section-title">八项权益</h2>
       <ul class="benefits-list">
@@ -33,7 +33,9 @@
             </div>
             <span class="u-tag u-tag--accent benefits-item-value">{{ item.valueText || item.requiredText }}</span>
           </div>
-          <p v-if="item.detail" class="benefits-item-detail">{{ item.detail }}</p>
+          <ul v-if="item.detailLines.length" class="benefits-item-detail">
+            <li v-for="line in item.detailLines" :key="line" class="benefits-item-detail-line">{{ line }}</li>
+          </ul>
         </li>
       </ul>
     </section>
@@ -45,7 +47,7 @@
         每一档都能看到具体数值；横向可滚动查看全部八项权益。
       </p>
 
-      <div v-if="memberStore.loadingPlans && !matrixLevels.length" class="ui-card benefits-skeleton">
+      <div v-if="levelsLoading && !matrixLevels.length" class="ui-card benefits-skeleton">
         <span v-for="n in 4" :key="n" class="u-skeleton benefits-skeleton-line"></span>
       </div>
 
@@ -126,7 +128,7 @@
       </ul>
 
       <dl class="faq-list">
-        <div v-for="item in FAQ" :key="item.q" class="ui-card faq-item">
+        <div v-for="item in faqList" :key="item.q" class="ui-card faq-item">
           <dt class="faq-question">{{ item.q }}</dt>
           <dd class="faq-answer">{{ item.a }}</dd>
         </div>
@@ -145,14 +147,15 @@
 
 <script setup>
 /**
- * 会员权益详解（`/member/benefits`）—— 方案 §3.4 / 实施计划 M2
+ * 会员权益详解（`/member/benefits`）
  *
  * 三条纪律：
- *   1. **文案只来自 `constants/member.js`**（名称/顺序/描述/单位），
- *      数值只来自服务端（`getOverview` 的 `benefits[].value`、`getPlans` 的 `levels[]`）；
- *      页面里不出现任何写死的「×2.5」「95 折」。
- *   2. **一张表服务两个数据源**：`getPlans` 的 `levels[]` 与 `getGrowthHistory` 的
- *      `thresholds[]` 字段完全一致，矩阵只认字段名，不关心来源。
+ *   1. **文案优先服务端、数值只认服务端**：名称/描述/图标/详情/FAQ 来自
+ *      `GET /memberApi/getBenefits`（1.5.0 M6 端点，游客也能取；未取到时回落
+ *      `constants/member.js` 的同一份说法）；数值来自 `getOverview` 的
+ *      `benefits[].value` 与 `levels[]`。页面里不出现任何写死的「×2.5」「95 折」。
+ *   2. **一张表服务两个数据源**：`getBenefits` 的 `levels[]` 与 `getPlans` 的
+ *      同源（都是后端 `get_member_plans()`），矩阵只认字段名，不关心来源。
  *   3. **未解锁 ≠ 0**：`value` 键缺席时显示「V{n} 解锁」，由 `formatBenefitValue` 兜底。
  */
 import { computed, onMounted } from 'vue'
@@ -213,6 +216,12 @@ const RULES = [
   },
 ]
 
+/**
+ * 常见问题兜底文案。
+ *
+ * 正常路径用服务端 `getBenefits` 的 `faq`（改说法不用发版）；这里保留同一份，
+ * 只在该请求失败时使用 —— 两份必须一致，否则同一个问题会随「谁渲染」给出两种答案。
+ */
 const FAQ = [
   {
     q: '会员到期后会掉级吗？',
@@ -240,6 +249,16 @@ const FAQ = [
   },
 ]
 
+/** 服务端下发的权益文案（`getBenefits` 的 `benefits[]`），未取到时为 null */
+const servedBenefitMap = computed(() => {
+  const list = memberStore.benefitsPage?.benefits
+  if (!Array.isArray(list) || !list.length) return null
+  return list.reduce((acc, item) => {
+    if (item && item.key) acc[item.key] = item
+    return acc
+  }, {})
+})
+
 /** 服务端下发的解锁状态与数值；未登录/取不到时按「全部未解锁」渲染，不留白页 */
 const remoteBenefits = computed(() => {
   const list = memberStore.benefits
@@ -251,26 +270,47 @@ const remoteBenefits = computed(() => {
   }))
 })
 
+/**
+ * 八项权益卡片。
+ *
+ * 文案优先用服务端（`getBenefits`），未取到时回落 `constants/member.js` ——
+ * 两份说法必须一致，否则同一个权益会在「在线/离线」之间换一种解释。
+ *
+ * `detail` 的两种形状都归一成**行数组**：服务端是字符串数组，常量是单段字符串。
+ * （历史坑：把单段字符串当数组 `v-for`，会按字符竖排成「折 / 扣 / 与」。）
+ */
 const benefitDetails = computed(() =>
   remoteBenefits.value.map((remote) => {
     const meta = MEMBER_BENEFIT_MAP[remote.key] || {}
+    const served = servedBenefitMap.value?.[remote.key] || {}
+    const rawDetail = served.detail ?? meta.detail
+    const detailLines = Array.isArray(rawDetail)
+      ? rawDetail.filter((line) => Boolean(line))
+      : (rawDetail ? [rawDetail] : [])
     return {
       key: remote.key,
-      name: meta.name || remote.key,
-      desc: meta.desc || '',
-      // detail 是**一段字符串**（不是字符串数组）；空串时模板整块不渲染
-      detail: meta.detail || '',
-      icon: meta.icon || 'info',
+      name: served.name || meta.name || remote.key,
+      desc: served.desc || meta.desc || '',
+      detailLines,
+      icon: served.icon || meta.icon || 'info',
       valueText: formatBenefitValue(remote.value, meta.tierLabels),
-      requiredText: requiredLabel(remote.required_level),
+      requiredText: requiredLabel(remote.required_level || served.required_level),
     }
   })
 )
 
-const matrixLevels = computed(() => {
-  const list = memberStore.levels || []
-  return [...list].sort((a, b) => (a.growth_threshold ?? 0) - (b.growth_threshold ?? 0))
+/** 常见问题：优先服务端 `faq`，未取到时用页面兜底文案 */
+const faqList = computed(() => {
+  const list = memberStore.benefitsPage?.faq
+  return Array.isArray(list) && list.length ? list : FAQ
 })
+
+const matrixLevels = computed(() =>
+  [...memberStore.matrixLevels].sort((a, b) => (a.growth_threshold ?? 0) - (b.growth_threshold ?? 0))
+)
+
+/** 对照表在等数据：两个来源（权益页 / 套餐页）任一在途都算 */
+const levelsLoading = computed(() => memberStore.loadingBenefits || memberStore.loadingPlans)
 
 const matrixColumns = computed(() => MATRIX_COLUMNS)
 
@@ -290,6 +330,7 @@ function requiredLabel(level) {
 }
 
 onMounted(() => {
+  memberStore.fetchBenefits({ silent: true })
   memberStore.fetchOverview({ silent: true })
   if (!memberStore.hasLevels) memberStore.fetchPlans({ silent: true })
 })
@@ -376,12 +417,20 @@ onMounted(() => {
 .benefits-item-value {
   flex-shrink: 0;
 }
-/* `detail` 是**一段字符串**（见 constants/member.js），不是字符串数组。
-   早期版本把它当数组用 `v-for` 逐项渲染，于是字符串被按字符展开成
-   「折 / 扣 / 与 / 优 / 惠 / 券」一列竖排 —— 一个字符一行。 */
+/* `detail` 的行数组（服务端 `getBenefits` 下发字符串数组，未取到时回落
+   `constants/member.js` 的单段字符串 —— 两种形状在脚本里已归一成数组）。
+   历史坑：把单段字符串直接 `v-for`，会按字符竖排成「折 / 扣 / 与」。 */
 .benefits-item-detail {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
   margin: 0;
+  padding: 0;
   color: var(--text-secondary);
+  list-style: none;
+}
+.benefits-item-detail-line {
+  margin: 0;
 }
 
 /* 矩阵 */

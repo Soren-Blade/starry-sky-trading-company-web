@@ -227,3 +227,112 @@ test('fetchOverview 成功：overview 落库，八项权益与逐档数值都读
     stub.restore()
   }
 })
+
+/** 权益公开页的一份最小响应：文案在服务端、数值在 levels[] */
+function benefitsPage(overrides = {}) {
+  return {
+    benefits: [
+      {
+        key: 'discount',
+        name: '专属折扣',
+        desc: '会员价购买全站商品，等级越高折扣越低。',
+        icon: 'tag',
+        required_level: 'v1',
+        level_names: ['见习商人'],
+        detail: ['折扣与优惠券、积分抵扣可以叠加，合计优惠不超过商品原价的 50%。'],
+      },
+    ],
+    levels: [level()],
+    faq: [{ q: '会员到期后会掉级吗？', a: '会。' }],
+    ...overrides,
+  }
+}
+
+test('benefitsPage 初值是 null：hasBenefitsPage 为 false，matrixLevels 退回空数组（不抛）', () => {
+  const store = freshStore()
+
+  assert.equal(store.benefitsPage, null)
+  assert.equal(store.hasBenefitsPage, false)
+  // 页面在 onMounted 里直接读 `benefitsPage.benefits` 会抛 TypeError，
+  // 这正是把它收进 getter 的原因
+  assert.doesNotThrow(() => store.matrixLevels)
+  assert.deepEqual(store.matrixLevels, [])
+
+  for (const dirty of [undefined, null, {}, { benefits: [] }, { benefits: 'x' }]) {
+    store.benefitsPage = dirty
+    assert.equal(store.hasBenefitsPage, false, `benefitsPage=${JSON.stringify(dirty)} 应为 false`)
+  }
+})
+
+test('matrixLevels：优先用权益页的 levels，取不到时退回套餐页那份', () => {
+  const store = freshStore()
+
+  store.levels = [level({ free_tool_quota: 1 })]
+  assert.equal(store.matrixLevels.length, 1)
+  assert.equal(store.matrixLevels[0].free_tool_quota, 1)
+
+  store.benefitsPage = benefitsPage({ levels: [level({ free_tool_quota: 3 })] })
+  assert.equal(store.matrixLevels.length, 1)
+  assert.equal(store.matrixLevels[0].free_tool_quota, 3)
+
+  // 权益页给了空 levels（后端异常）时不能把矩阵清空
+  store.benefitsPage = benefitsPage({ levels: [] })
+  assert.equal(store.matrixLevels[0].free_tool_quota, 1)
+})
+
+test('fetchBenefits 成功：文案/矩阵/FAQ 一次落库，loadingBenefits 复位', async () => {
+  const store = freshStore()
+  const payload = benefitsPage()
+  const stub = stubGet({ 'GET /memberApi/getBenefits': payload })
+  try {
+    const data = await store.fetchBenefits()
+
+    assert.equal(stub.calls.length, 1)
+    assert.equal(stub.calls[0].url, '/memberApi/getBenefits')
+    assert.equal(data, payload)
+    assert.equal(store.hasBenefitsPage, true)
+    assert.equal(store.benefitsPage.benefits[0].detail.length, 1)
+    assert.equal(store.benefitsPage.faq.length, 1)
+    assert.equal(store.matrixLevels.length, 1)
+    assert.equal(store.loadingBenefits, false)
+    assert.equal(store.error, '')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('fetchBenefits 失败：保留上一次的文案（说明书不该翻成空白），错误落进 error', async () => {
+  const store = freshStore()
+  store.benefitsPage = benefitsPage()
+  const stub = stubGet({
+    'GET /memberApi/getBenefits': () => {
+      throw new Error('获取权益说明失败')
+    },
+  })
+  try {
+    const data = await store.fetchBenefits()
+
+    assert.equal(data, null)
+    assert.equal(store.hasBenefitsPage, true)
+    assert.match(store.error, /获取权益说明失败/)
+    assert.equal(store.loadingBenefits, false)
+  } finally {
+    stub.restore()
+  }
+})
+
+test('reset：清掉带用户态的数据，但公开说明书（benefitsPage）留着', () => {
+  const store = freshStore()
+  store.overview = { is_member: true, level: 'v2' }
+  store.levels = [level()]
+  store.benefitsPage = benefitsPage()
+  store.loadingBenefits = true
+
+  store.reset()
+
+  assert.equal(store.overview, null)
+  assert.equal(store.levels, null)
+  assert.equal(store.loadingBenefits, false)
+  // 与登录身份无关，切号后不必重新拉一次
+  assert.equal(store.hasBenefitsPage, true)
+})

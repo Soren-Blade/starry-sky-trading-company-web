@@ -33,4 +33,25 @@ function getCheckinCalendar(params) {
   return request.get(`${baseURL}/getCheckinCalendar`, { params })
 }
 
-export { getAccount, getHistory, checkin, getCheckinCalendar }
+/**
+ * 积分商城清单（1.5.0 M3，契约 §4.10）
+ *
+ * 清单是服务端常量，**库存每次实时读库**（`stock: null` = 不限量，`0` = 已兑完）。
+ * `icon` 是 AppIcon 的图标名，不是 emoji。
+ */
+function getMallItems() {
+  return request.get(`${baseURL}/getMallItems`)
+}
+
+/**
+ * 兑换商城条目（1.5.0 M3，契约 §4.11）
+ *
+ * 券类即时发券（`coupon` 有值、`order_no` 为 null）；实物类生成 0 元兑换单
+ * （`order_no` 有值、`coupon` 为 null）。失败码：`ITEM_NOT_FOUND` 404、
+ * `MEMBER_ONLY` 403、`OUT_OF_STOCK` 409、`POINTS_NOT_ENOUGH` 409（带 `details.shortage`）。
+ */
+function redeem(itemId) {
+  return request.post(`${baseURL}/redeem`, { item_id: itemId })
+}
+
+export { getAccount, getHistory, checkin, getCheckinCalendar, getMallItems, redeem }

@@ -92,6 +92,9 @@ import { useFavoriteStore } from '@/stores/favorite'
 import { useMemberStore } from '@/stores/member'
 import { useMailStore } from '@/stores/mail'
 import { useSupportStore } from '@/stores/support'
+import { usePointsStore } from '@/stores/points'
+import { useTaskStore } from '@/stores/task'
+import { useCheckoutStore } from '@/stores/checkout'
 // 首屏加载与路由进度
 import { useBootScreen } from '@/hooks/useBootScreen'
 import { useRouteLoading } from '@/hooks/useRouteLoading'
@@ -106,6 +109,9 @@ const mailStore = useMailStore()
 // 客服中心的会话按身份归属（游客也是身份），换号后必须清空，
 // 否则上一个身份的回执号与消息会留在页面上
 const supportStore = useSupportStore()
+const pointsStore = usePointsStore()
+const taskStore = useTaskStore()
+const checkoutStore = useCheckoutStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -169,6 +175,10 @@ watch(
     memberStore.reset()
     mailStore.reset()
     supportStore.reset()
+    pointsStore.reset()
+    taskStore.reset()
+    // 结算试算里的券与积分都属于上一个账号：不清掉会把 A 的额度显示给 B
+    checkoutStore.reset()
 
     if (userStore.isLoggedIn) {
       await Promise.all([

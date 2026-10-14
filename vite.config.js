@@ -53,6 +53,9 @@ export default defineConfig(({ mode }) => {
         // `/mailCron` 只有运维定时器会用，浏览器不发，故不代理。
         '/mailApi': { target: apiTarget, changeOrigin: true },
         '/supportApi': { target: apiTarget, changeOrigin: true },
+        // v1.5.0 新增的前缀（任务中心）。同样会被 `verify:dev` 静态比对，
+        // 漏配的后果见上方注释。
+        '/taskApi': { target: apiTarget, changeOrigin: true },
         // 用户上传的文件（头像）。**必须代理**：`avatar_url` 存的是
         // `/uploads/avatars/xxx.webp` 这样的相对路径，不代理的话 dev 下
         // 会打到 dev server 自己（404），表现为「上传成功但头像不显示」。

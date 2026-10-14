@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-import { getOverview, getPlans, getGrowthHistory } from '@/api/ask/member.js'
+import { getOverview, getPlans, getGrowthHistory, getBenefits } from '@/api/ask/member.js'
 
 /**
  * 会员状态（阶段 P0）
@@ -26,6 +26,13 @@ export const useMemberStore = defineStore('member', {
     paymentNotice: '',
     refundNotice: '',
 
+    /**
+     * 权益公开页（`/member/benefits`）：`{ benefits, levels, faq }`。
+     *
+     * `null` = 一次都没取到（此时页面回落到 `constants/member.js` 的同一份文案）。
+     */
+    benefitsPage: null,
+
     /** 成长值明细（`/growth` 页） */
     growth: [],
     growthSummary: null,
@@ -38,6 +45,7 @@ export const useMemberStore = defineStore('member', {
     loadingOverview: false,
     loadingPlans: false,
     loadingGrowth: false,
+    loadingBenefits: false,
     /** 错误信息；与「空数据」分开：出错不该显示成「暂无」 */
     error: '',
   }),
@@ -64,6 +72,22 @@ export const useMemberStore = defineStore('member', {
      * 所以把「有没有」收进 getter，页面不再自己判 `null`。
      */
     hasLevels: (state) => Array.isArray(state.levels) && state.levels.length > 0,
+    /**
+     * 权益公开页的文案是否已经拿到（`getBenefits` 的 `benefits[]`）。
+     *
+     * 与 `hasLevels` 同一用意：`benefitsPage` 的初值是 `null`，
+     * 页面在 `onMounted` 里直接读 `.benefits` 会在全新会话首屏抛 `TypeError`。
+     */
+    hasBenefitsPage: (state) =>
+      Array.isArray(state.benefitsPage?.benefits) && state.benefitsPage.benefits.length > 0,
+    /**
+     * 档位对照矩阵的数据源：优先用权益页下发的 `levels`（与 `getPlans` 同源，
+     * 都来自 `sstc.get_member_plans()`），未取到时退回套餐页那一份。
+     */
+    matrixLevels: (state) =>
+      Array.isArray(state.benefitsPage?.levels) && state.benefitsPage.levels.length
+        ? state.benefitsPage.levels
+        : state.levels || [],
     /** 成长值累计（成长值页汇总卡用；缺数据时给 0） */
     growthTotalValue: (state) => Number(state.growthSummary?.growth ?? 0),
     growthHasPrev: (state) => state.growthPage > 1,
@@ -111,6 +135,28 @@ export const useMemberStore = defineStore('member', {
     },
 
     /**
+     * 权益公开页（`GET /memberApi/getBenefits`，游客可访问）。
+     *
+     * 失败时**不清空**已有数据：这一页是说明书，网络抖动时留着上一次的文案
+     * 比翻成空白好；一次都没成功过时页面回落到 `constants/member.js` 的同一份文案
+     * （两份文案由后端 `test/benefitsShape.test.js` 与前端常量共同把关：说法必须一致）。
+     */
+    async fetchBenefits({ silent = false } = {}) {
+      this.loadingBenefits = true
+      if (!silent) this.error = ''
+      try {
+        const { data } = await getBenefits()
+        this.benefitsPage = data || null
+        return data
+      } catch (error) {
+        this.error = error?.response?.status === 401 ? '' : (error?.message || '获取权益说明失败')
+        return null
+      } finally {
+        this.loadingBenefits = false
+      }
+    },
+
+    /**
      * 成长值明细。分页与汇总来自同一份响应 —— 服务端把「当前成长值档 / 下一档 /
      * 八档门槛 / 来源说明」都放在 `summary` 与 `rules` 里，页面不再自己算。
      *
@@ -144,7 +190,12 @@ export const useMemberStore = defineStore('member', {
       }
     },
 
-    /** 切换账号时必须清空：否则会短暂显示上一个用户的等级与权益 */
+    /**
+     * 切换账号时必须清空：否则会短暂显示上一个用户的等级与权益。
+     *
+     * `benefitsPage` **不清**：它是公开说明书（文案 + 档位矩阵 + FAQ），
+     * 与登录身份无关，切号后重新拉一次只会白闪一下。
+     */
     reset() {
       this.overview = null
       this.plans = null
@@ -161,6 +212,7 @@ export const useMemberStore = defineStore('member', {
       this.loadingOverview = false
       this.loadingPlans = false
       this.loadingGrowth = false
+      this.loadingBenefits = false
     },
   },
 })

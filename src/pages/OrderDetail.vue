@@ -88,7 +88,28 @@
             <dt>商品件数</dt>
             <dd>{{ order.item_count }}</dd>
           </div>
-          <div class="detail-total-row detail-total-row--amount">
+
+          <!-- 有优惠时展开：原价 / 优惠券 / 积分 / 实付，与服务端落库的六列同源 -->
+          <template v-if="hasSettlement">
+            <div
+              v-for="row in settlement"
+              :key="row.key"
+              class="detail-total-row"
+              :class="{ 'detail-total-row--amount': row.kind === 'total' }"
+            >
+              <dt>{{ row.label }}</dt>
+              <dd>
+                <span v-if="row.kind === 'total'" class="u-price detail-amount">
+                  <span>{{ settlementTotal.prefix }}{{ settlementTotal.integer }}</span>
+                  <span v-if="settlementTotal.decimals" class="u-price-decimals">.{{ settlementTotal.decimals }}</span>
+                </span>
+                <span v-else-if="row.kind === 'discount'">− {{ formatPrice(row.amount) }}</span>
+                <span v-else>{{ formatPrice(row.amount) }}</span>
+              </dd>
+            </div>
+          </template>
+
+          <div v-else class="detail-total-row detail-total-row--amount">
             <dt>{{ TRADE.orderAmount }}</dt>
             <dd>
               <span class="u-price detail-amount">
@@ -186,6 +207,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
 import { copyText } from '@/utils/clipboard.js'
+import { settlementRows } from '@/utils/checkout.js'
 import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
 
@@ -204,6 +226,18 @@ const currency = computed(() => ({
 }))
 const formatPrice = (value) => formatUtils.formatPrice(value, currency.value)
 const amount = computed(() => formatUtils.splitPrice(order.value?.total_amount, currency.value))
+
+/**
+ * 金额明细（1.5.0 / M2 落库的六列）。
+ *
+ * 有优惠才展开：没有优惠时「商品原价 89 / 实付 89」只是把同一个数字写两遍，
+ * 保持原来那一行「订单金额」更干净。
+ */
+const settlement = computed(() => settlementRows(order.value, { totalLabel: '实付' }))
+const hasSettlement = computed(() => settlement.value.length > 2)
+const settlementTotal = computed(() =>
+  formatUtils.splitPrice(order.value?.payable_amount ?? order.value?.total_amount, currency.value)
+)
 
 const statusTagClass = (value) => {
   if (value === 'completed') return 'u-tag--success'
