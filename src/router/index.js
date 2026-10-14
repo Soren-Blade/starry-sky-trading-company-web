@@ -140,6 +140,18 @@ const routes = [
     component: () => import('@/pages/Coupons.vue'),
     meta: { title: '我的优惠券 - 星辰商行', requiresAuth: true }
   },
+  {
+    // 消息中心：站内通知 + 通知偏好 + 邮件台账。
+    //
+    // requiresAuth（而不是像 /support 那样对游客开放）是刻意区分的：
+    // 后端 `enqueue_notification` 对非注册用户直接返回 false，游客**不存在**
+    // 任何站内通知，放进来只会看到一个永远空着的页面。游客的诉求是「问客服」，
+    // 那条通道在 /support，不在这里。
+    path: '/mail',
+    name: 'Mail',
+    component: () => import('@/pages/Mail.vue'),
+    meta: { title: '消息中心 - 星辰商行', requiresAuth: true }
+  },
   // ── 工具页 ────────────────────────────────────────────────────
   {
     path: '/other/2fa',

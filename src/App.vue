@@ -90,6 +90,7 @@ import { useUserStore } from '@/stores/user'
 import { useCartStore } from '@/stores/cart'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useMemberStore } from '@/stores/member'
+import { useMailStore } from '@/stores/mail'
 // 首屏加载与路由进度
 import { useBootScreen } from '@/hooks/useBootScreen'
 import { useRouteLoading } from '@/hooks/useRouteLoading'
@@ -100,6 +101,7 @@ const userStore = useUserStore()
 const cartStore = useCartStore()
 const favoriteStore = useFavoriteStore()
 const memberStore = useMemberStore()
+const mailStore = useMailStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -135,6 +137,9 @@ const handleLoginSuccess = async () => {
     memberStore.fetchOverview({ silent: true }),
   ])
 
+  // 未读数是注册用户专属：放在这批之后单独拉（游客态下 /mailApi 会回 403）
+  mailStore.fetchUnreadCount({ silent: true })
+
   const redirect = route.query.redirect
   if (typeof redirect === 'string' && redirect.startsWith('/')) {
     router.replace(redirect)
@@ -148,6 +153,7 @@ const handleLoginSuccess = async () => {
  * 而从「游客 A」切到「注册用户 B」时两份购物车是完全不同的数据，
  * 必须都跟着 id 变，否则 B 会看到 A 的车。会员概览同理：换号后等级与积分
  * 都换了主人，不重置就会把 A 的等级显示给 B。
+ * 消息未读数也一样 —— 它是**上一个账号**的，留着会把 A 的红点标给 B。
  */
 watch(
   () => userStore.userId,
@@ -157,6 +163,7 @@ watch(
     cartStore.reset()
     favoriteStore.reset()
     memberStore.reset()
+    mailStore.reset()
 
     if (userStore.isLoggedIn) {
       await Promise.all([
@@ -164,6 +171,7 @@ watch(
         favoriteStore.load(true),
         memberStore.fetchOverview({ silent: true }),
       ])
+      mailStore.fetchUnreadCount({ silent: true })
     }
   }
 )
@@ -204,6 +212,8 @@ onMounted(async () => {
     favoriteStore.load()
     // 会员摘要条在个人中心与导航栏各出现一次，统一在这里取，两处共用一份数据
     memberStore.fetchOverview({ silent: true })
+    // 顶栏信封角标同理：导航栏不自己发请求，未读数由这里统一维护
+    mailStore.fetchUnreadCount({ silent: true })
   }
 })
 

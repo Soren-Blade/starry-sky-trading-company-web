@@ -111,6 +111,25 @@
         </router-link>
 
         <!--
+          消息中心入口：与上面两个不同，它**只给注册用户**。
+
+          游客也有 userId，但后端 `enqueue_notification` 对非注册用户直接返回
+          false —— 游客的站内通知永远是空的。给游客一个信封图标，等于给了一个
+          点进去什么都没有的入口；他的诉求（问客服）在 /support，那里对游客开放。
+        -->
+        <router-link
+          v-if="userStore.isLoggedIn"
+          to="/mail"
+          class="u-icon-btn navbar-mail"
+          :aria-label="mailLabel"
+        >
+          <AppIcon name="mail" />
+          <span v-if="mailStore.hasUnread" class="navbar-mail-badge" aria-hidden="true">
+            {{ mailStore.unreadLabel }}
+          </span>
+        </router-link>
+
+        <!--
           身份占位骨架：身份**还没解析出来**的那一瞬间。
           此时既不能显示登录按钮（几百毫秒后会变成头像，是一次刺眼的跳动），
           也不能留空（顶栏会先塌再撑开）。用一个与头像等尺寸的骨架占住位置。
@@ -220,9 +239,25 @@
             </router-link>
 
             <!--
-              会员与积分单独成组：上面四项是「账号资产」，这组是「会员权益」。
-              用分隔线 + 小组标题分开，否则下拉会变成一条九项的平铺长条。
-              消息铃铛（notifyApi）尚未实现，接口落地后再补 —— 不放点不开的入口。
+              消息中心：同样只给注册用户（理由见顶栏信封入口的注释）。
+              未读条数直接标在这一项上 —— 下拉展开时用户最想知道的就是
+              「有没有新东西」，让他再点进页面才知道就多了一步。
+            -->
+            <router-link
+              v-if="userStore.isLoggedIn"
+              class="u-dropdown-item"
+              to="/mail"
+              @click="handleMenuClick"
+            >
+              消息中心
+              <span v-if="mailStore.hasUnread" class="u-tag u-tag--danger user-badge">
+                {{ mailStore.unreadLabel }}
+              </span>
+            </router-link>
+
+            <!--
+              会员与积分单独成组：上面几项是「账号资产」，这组是「会员权益」。
+              用分隔线 + 小组标题分开，否则下拉会变成一条平铺长条。
             -->
             <div class="u-dropdown-divider"></div>
             <p class="dropdown-group-label">会员权益</p>
@@ -301,6 +336,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMemberStore } from '@/stores/member'
 import { useCartStore } from '@/stores/cart'
+import { useMailStore } from '@/stores/mail'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitcher from './ThemeSwitcher.vue'
@@ -311,6 +347,7 @@ import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 const userStore = useUserStore()
 const cartStore = useCartStore()
 const memberStore = useMemberStore()
+const mailStore = useMailStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -372,6 +409,17 @@ const memberLabel = computed(() =>
 )
 
 /**
+ * 消息入口的无障碍名：把未读数读出来。
+ *
+ * 角标本身是 `aria-hidden` 的纯装饰（读屏用户看不到那个红点），
+ * 因此「有几条未读」这件事必须由这个标签承担，否则它对读屏用户完全不可见。
+ * 未读数由 App.vue 在身份就绪后统一拉取，这里不自己发请求。
+ */
+const mailLabel = computed(() =>
+  mailStore.hasUnread ? `消息中心，${mailStore.unreadCount} 条未读` : '消息中心'
+)
+
+/**
  * 搜索关键词：**组件自己的状态**，不写进 shop store。
  *
  * 这里原先双向绑定到 `shopStore.searchKeyword`，而首页/热卖榜的商品栅格
@@ -401,16 +449,18 @@ const handleMenuClick = () => {
 }
 
 /**
- * 展开用户下拉时顺手刷新一次会员概览。
+ * 展开用户下拉时顺手刷新一次会员概览与未读数。
  *
  * 不在顶层 onMounted 里拉：会员等级会因为「客服确认结算」而在会话中途变化，
  * 进站时的快照可能已经过期。下拉是用户主动查看「我是谁、我有什么」的动作，
  * 在这个时刻拉一次，看到的才是当下真实的等级与积分。
- * 游客不拉 —— 他没有会员数据，接口只会回 401。
+ * 游客不拉 —— 他没有会员数据也没有站内通知，接口只会回 401 / 403。
  */
 const toggleUserMenu = () => {
   userMenuOpen.value = !userMenuOpen.value
-  if (userMenuOpen.value && !isGuest.value) memberStore.fetchOverview({ silent: true })
+  if (!userMenuOpen.value || isGuest.value) return
+  memberStore.fetchOverview({ silent: true })
+  mailStore.fetchUnreadCount({ silent: true })
 }
 
 /**
@@ -990,19 +1040,21 @@ onUnmounted(() => {
   color: var(--danger);
 }
 
-/* ── 图标入口与角标（购物车件数 / 会员等级） ─────────────── */
+/* ── 图标入口与角标（购物车件数 / 会员等级 / 未读消息数） ── */
 .navbar-cart,
-.navbar-member {
+.navbar-member,
+.navbar-mail {
   position: relative;
   flex: none;
 }
 
 /* 角标压在图标按钮右上角：微型徽标圆角 + 强调底 + 反白字，
    与 ToolCard 的收藏数徽标同构（描边取顶栏表面色，与背景连成一体）。
-   两处共用一套规格：购物车是件数、会员是等级名（V1–V8，两位字符），
-   尺寸与字重完全一致才像同一套东西。 */
+   三处共用一套规格：购物车是件数、会员是等级名（V1–V8，两位字符）、
+   消息是未读条数，尺寸与字重完全一致才像同一套东西。 */
 .navbar-cart-badge,
-.navbar-member-badge {
+.navbar-member-badge,
+.navbar-mail-badge {
   position: absolute;
   top: calc(var(--space-unit) * -0.5);
   right: calc(var(--space-unit) * -0.5);

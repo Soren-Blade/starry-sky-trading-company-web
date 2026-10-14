@@ -294,6 +294,9 @@ const NARROW_PAGE_FAMILY = [
   'pages/PointsHistory.vue',
   'pages/Checkin.vue',
   'pages/Coupons.vue',
+  // 消息中心与上面几页同一族：一条主叙事（通知流）+ 若干信息块（偏好 / 邮件台账），
+  // 宽度同样只能来自 .page-shell--narrow
+  'pages/Mail.vue',
 ]
 
 test('窄页族宽度契约：用 page-shell--narrow，且不得自设 max-width', () => {
