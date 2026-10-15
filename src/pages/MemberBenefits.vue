@@ -51,17 +51,19 @@
         <span v-for="n in 4" :key="n" class="u-skeleton benefits-skeleton-line"></span>
       </div>
 
-      <div v-else-if="!matrixLevels.length" class="ui-card benefits-empty">
-        <AppIcon name="info" class="benefits-empty-icon" aria-hidden="true" />
-        <p class="benefits-empty-title">对照表暂时取不到</p>
-        <p class="benefits-empty-desc">请稍后重试，或先返回会员中心查看成长值等级。</p>
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+      <div v-else-if="!matrixLevels.length" class="ui-card u-mm-state u-mm-state--error" role="alert">
+        <AppIcon name="alert-triangle" class="u-mm-state-icon" aria-hidden="true" />
+        <p class="u-mm-state-title">对照表暂时取不到</p>
+        <p class="u-mm-state-desc">请稍后重试，或先返回会员中心查看成长值等级。</p>
+        <div class="u-mm-state-actions">
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+        </div>
       </div>
 
       <template v-else>
-        <!-- 桌面/平板：宽表横向滚动 -->
-        <div class="u-table-wrap benefits-matrix">
-          <table class="u-table">
+        <!-- 桌面/平板：宽表横向滚动（§26 在 767 断点隐藏 .u-mm-matrix、显示下面的卡片降级） -->
+        <div class="u-table-wrap u-mm-matrix">
+          <table class="u-table u-mm-ladder u-mm-matrix-table">
             <caption class="visually-hidden">八档会员等级与八项权益对照表</caption>
             <thead>
               <tr>
@@ -80,8 +82,8 @@
                   <span>{{ level.name || level.level }}</span>
                   <span v-if="level.level === currentLevel" class="u-tag u-tag--accent benefits-matrix-current">当前</span>
                 </th>
-                <td>{{ level.growth_threshold }}</td>
-                <td v-for="column in matrixColumns" :key="column.key">
+                <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
+                <td v-for="column in matrixColumns" :key="column.key" class="u-mm-matrix-cell">
                   {{ cellText(level, column) || '—' }}
                 </td>
               </tr>
@@ -89,12 +91,12 @@
           </table>
         </div>
 
-        <!-- 手机：同样的数据降级成卡片 -->
-        <ul class="benefits-cards">
+        <!-- 手机：同样的数据降级成卡片（§11 的 .u-mm-matrix-cards + .u-mm-matrix-card） -->
+        <ul class="u-mm-matrix-cards">
           <li
             v-for="level in matrixLevels"
             :key="level.level"
-            class="ui-card benefits-card"
+            class="u-mm-matrix-card"
             :class="{ 'is-current': level.level === currentLevel }"
           >
             <p class="benefits-card-head">
@@ -424,35 +426,16 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 矩阵 */
-.benefits-matrix {
-  overflow-x: auto;
-}
+/* 矩阵：表格本体、数值单元格、横向滚动、当前档高亮与移动端卡片降级
+ * 全部走共享分片（`.u-mm-matrix` / `.u-mm-matrix-table` / `.u-mm-matrix-cell` /
+ * `.u-mm-ladder tr.is-current` / `.u-mm-matrix-cards` + `.u-mm-matrix-card`，
+ * 见 ui-kit-member.css §10 / §11 / §26）。这里只留分片没有的两件事：
+ * 「当前」标签与行内标题的间距，以及降级卡片内部的四行布局。 */
 .benefits-matrix-current {
   margin-left: var(--space-unit);
 }
-.benefits-matrix tbody tr.is-current {
-  background: var(--accent-soft);
-}
 
-/* 矩阵的移动端卡片降级：默认隐藏，窄屏互斥显示 */
-.benefits-cards {
-  display: none;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.benefits-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 2);
-}
-.benefits-card.is-current {
-  border-color: var(--accent);
-}
+/* 矩阵的移动端卡片：分片给的是卡片壳，内部「档位 + 门槛 + 八项数值」的排布属于本页 */
 .benefits-card-head {
   display: flex;
   align-items: center;
@@ -480,7 +463,7 @@ onMounted(() => {
   margin: 0;
 }
 
-/* 骨架 / 空态 */
+/* 骨架（页内局部：分片没有「卡片里的骨架」这一态） */
 .benefits-skeleton {
   display: flex;
   flex-direction: column;
@@ -490,27 +473,6 @@ onMounted(() => {
 .benefits-skeleton-line {
   height: calc(var(--space-unit) * 3);
   border-radius: var(--radius-media);
-}
-.benefits-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.benefits-empty-icon {
-  font-size: var(--fs-h2);
-  color: var(--text-muted);
-}
-.benefits-empty-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.benefits-empty-desc {
-  margin: 0;
-  color: var(--text-muted);
 }
 
 /* 规则与 FAQ */
@@ -564,13 +526,8 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+/* 分片的 §26 已在 767 断点做「表格 ↔ 卡片」互斥切换；这里只留权益卡在窄屏的换行 */
 @media (max-width: 767px) {
-  .benefits-matrix {
-    display: none;
-  }
-  .benefits-cards {
-    display: flex;
-  }
   .benefits-item-head {
     flex-wrap: wrap;
   }
