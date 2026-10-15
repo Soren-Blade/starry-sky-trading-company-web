@@ -194,3 +194,75 @@ test('reset：清掉商城清单与加载标记（换账号不该看到上一个
   assert.deepEqual(store.mallItems, [])
   assert.equal(store.mallLoaded, false)
 })
+
+// ── 补签（1.5.0 M4 端点 + M8 前端入口）──────────────────────────────
+
+test('doReplenish：余额用服务端快照，且补签后重新拉日历（连签会被整段重算）', async () => {
+  const store = freshStore()
+  store.account = { points: 1010, points_value: 10.1, multiplier: 1 }
+  store.calendar = { month: '2026-10', streak: 1, today_checked: true, replenish_left: 3, days: [] }
+
+  const stub = stubRequest({
+    post: {
+      'POST /pointsApi/replenishCheckin': {
+        awarded: 0,
+        growth_awarded: 0,
+        cost: 20,
+        replenish_left: 2,
+        streak: 2,
+        points: 990,
+        points_value: 9.9,
+      },
+    },
+    get: {
+      // 重算后的日历：昨天补上后今天变成连签 2 天
+      'GET /pointsApi/getCheckinCalendar': {
+        month: '2026-10',
+        streak: 2,
+        today_checked: true,
+        replenish_left: 2,
+        days: [],
+      },
+    },
+  })
+  try {
+    const data = await store.doReplenish('2026-10-14')
+    assert.deepEqual(
+      stub.calls.map((call) => `${call.method} ${call.url}`),
+      ['POST /pointsApi/replenishCheckin', 'GET /pointsApi/getCheckinCalendar'],
+    )
+    assert.deepEqual(stub.calls[0].body, { date: '2026-10-14' })
+    assert.equal(data.cost, 20)
+    assert.equal(store.account.points, 990)
+    assert.equal(store.account.points_value, 9.9)
+    // 连续天数来自服务端重算结果，不是本地 +1
+    assert.equal(store.calendar.streak, 2)
+    assert.equal(store.calendar.replenish_left, 2)
+    assert.equal(store.replenishingDate, '')
+  } finally {
+    stub.restore()
+  }
+})
+
+test('doReplenish 失败：错误抛给页面，不残留「补签中」状态，且空日期不发请求', async () => {
+  const store = freshStore()
+  const failure = { message: '本月次数已用完', response: { status: 409, data: { code: 'REPLENISH_LIMIT' } } }
+  const stub = stubRequest({
+    post: {
+      'POST /pointsApi/replenishCheckin': () => {
+        throw failure
+      },
+    },
+  })
+  try {
+    await assert.rejects(() => store.doReplenish('2026-10-13'), (error) => error === failure)
+    assert.equal(store.replenishingDate, '')
+
+    // 空日期在发请求之前就被挡掉（服务端也会拒，但没必要跑一次往返）
+    const result = await store.doReplenish('  ')
+    assert.equal(result, null)
+    assert.equal(stub.calls.length, 1)
+  } finally {
+    stub.restore()
+  }
+})

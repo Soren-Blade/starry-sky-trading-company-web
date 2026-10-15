@@ -12,10 +12,14 @@ import { readFileSync } from 'node:fs'
 
 const PROFILE_SOURCE = readFileSync(new URL('../src/pages/Profile.vue', import.meta.url), 'utf8')
 
-test('源码：会员摘要与签到两张卡都有下外边距，不会与下方内容紧贴', () => {
+test('源码：三张卡（摘要 / 签到 / 邀请）都有下外边距，不会与下方内容紧贴', () => {
   // .ui-card（global.css）自己不设 margin，.profile-page 也不是 flex/grid 容器，
-  // 因此这两张卡与「账号信息 / 修改资料」两栏面板之间的竖向间距只能显式给。
-  for (const selector of ['.ui-card.profile-member {', '.ui-card.profile-checkin {']) {
+  // 因此这些卡与「账号信息 / 修改资料」两栏面板之间的竖向间距只能显式给。
+  for (const selector of [
+    '.ui-card.profile-member {',
+    '.ui-card.profile-checkin {',
+    '.ui-card.profile-invite {',
+  ]) {
     const at = PROFILE_SOURCE.indexOf(selector)
     assert.ok(at > -1, `应有 ${selector} 规则`)
     const body = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('}', at))
@@ -23,18 +27,21 @@ test('源码：会员摘要与签到两张卡都有下外边距，不会与下�
   }
 })
 
-test('源码：签到卡是横向条（文案左、按钮右），不能继承 .ui-card 的纵向方向', () => {
-  const at = PROFILE_SOURCE.indexOf('.ui-card.profile-checkin {')
-  assert.ok(at > -1)
-  const body = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('}', at))
+test('源码：签到卡与邀请卡都是横向条（文案左、按钮右），不能继承 .ui-card 的纵向方向', () => {
+  for (const selector of ['.ui-card.profile-checkin {', '.ui-card.profile-invite {']) {
+    const at = PROFILE_SOURCE.indexOf(selector)
+    assert.ok(at > -1, `应有 ${selector} 规则`)
+    const body = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('}', at))
 
-  assert.match(body, /flex-direction: row/, 'global.css 的 .ui-card 是 column，必须合写类名覆盖')
-  assert.match(body, /justify-content: space-between/)
+    assert.match(body, /flex-direction: row/, `global.css 的 .ui-card 是 column，${selector} 必须合写类名覆盖`)
+    assert.match(body, /justify-content: space-between/)
+  }
 })
 
-test('源码：极窄屏的签到卡覆盖也带上 .ui-card（否则又变回纵向）', () => {
+test('源码：极窄屏的签到卡与邀请卡覆盖也带上 .ui-card（否则又变回纵向）', () => {
   const media = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
   assert.match(media, /\.ui-card\.profile-checkin \{/, '窄屏覆盖必须是同一个选择器')
+  assert.match(media, /\.ui-card\.profile-invite \{/, '窄屏覆盖必须是同一个选择器')
 })
 
 test('源码：两栏面板用 grid + --section-gap，窄屏回落单列', () => {

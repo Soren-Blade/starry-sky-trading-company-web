@@ -95,6 +95,8 @@ import { useSupportStore } from '@/stores/support'
 import { usePointsStore } from '@/stores/points'
 import { useTaskStore } from '@/stores/task'
 import { useCheckoutStore } from '@/stores/checkout'
+import { useInviteStore } from '@/stores/invite'
+import { useHeroStore } from '@/stores/hero'
 // 首屏加载与路由进度
 import { useBootScreen } from '@/hooks/useBootScreen'
 import { useRouteLoading } from '@/hooks/useRouteLoading'
@@ -112,6 +114,8 @@ const supportStore = useSupportStore()
 const pointsStore = usePointsStore()
 const taskStore = useTaskStore()
 const checkoutStore = useCheckoutStore()
+const inviteStore = useInviteStore()
+const heroStore = useHeroStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -179,6 +183,9 @@ watch(
     taskStore.reset()
     // 结算试算里的券与积分都属于上一个账号：不清掉会把 A 的额度显示给 B
     checkoutStore.reset()
+    // 邀请码与邀请记录、以及首页的会员速览同样是账号级数据（1.6.0）
+    inviteStore.reset()
+    heroStore.reset()
 
     if (userStore.isLoggedIn) {
       await Promise.all([

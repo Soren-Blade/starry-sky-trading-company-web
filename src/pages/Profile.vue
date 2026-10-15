@@ -102,6 +102,18 @@
       </router-link>
     </section>
 
+    <!--
+      邀请有礼（1.6.0）：奖励同样是积分来源，且**发奖在好友完成首单时**，
+      不是注册时 —— 文案必须与派奖时机一致，否则用户会以为奖励丢了。
+    -->
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" aria-label="邀请有礼">
+      <div class="profile-invite-text">
+        <p class="profile-invite-title">邀请有礼</p>
+        <p class="profile-invite-desc">好友通过你的链接注册并完成首单，双方各得积分奖励</p>
+      </div>
+      <router-link class="u-btn-secondary" to="/invite">去邀请</router-link>
+    </section>
+
     <div class="profile-layout">
       <!-- 左：账号信息（只读） -->
       <section class="page-panel" aria-label="账号信息">
@@ -875,6 +887,32 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* ── 邀请有礼入口（1.6.0，`/invite`） ─────────────────────────
+   与签到卡同一版式：合写类名压过 .ui-card 的纵向方向。 */
+.ui-card.profile-invite {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+.profile-invite-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+.profile-invite-title {
+  margin: 0;
+  font-weight: var(--fw-heading);
+}
+.profile-invite-desc {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
   .profile-layout {
@@ -913,6 +951,12 @@ onMounted(() => {
   /* 签到入口窄屏改竖排：按钮占满一行，避免说明被压成单字一列。
      选择器必须与上面那条同优先级（.ui-card 也在里面），否则压不过它。 */
   .ui-card.profile-checkin {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 邀请入口同理（两条选择器必须同优先级） */
+  .ui-card.profile-invite {
     flex-direction: column;
     align-items: stretch;
   }

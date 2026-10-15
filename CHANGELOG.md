@@ -9,6 +9,52 @@
 
 ---
 
+## [1.6.0] — 2026-10-16 · 三条 P2 端点接线（前端侧 M8，开发中）
+
+服务端 `1.6.0` 补齐了最后三条 P2 端点（`inviteApi/getSummary`、`inviteApi/getRecords`、
+`heroApi/getHeroPersona`），**契约 68 / 已实现 68**。前端这一轮（计划里的 **M8**）把它们接上，
+并把 `1.5.0` 只落了服务端的**补签**接出入口。
+
+### 新增
+
+| 类别 | 内容 |
+| --- | --- |
+| 接口 | `src/api/ask/invite.js`（`getSummary` / `getRecords`）、`src/api/ask/hero.js`（`getHeroPersona`）、`points.js` 增 `replenishCheckin(date)` |
+| store | `stores/invite.js`（`useInviteStore`）、`stores/hero.js`（`useHeroStore`） |
+| 纯函数 | `utils/checkinDisplay.js`（可补签判定、单元格 title、失败码文案、规则文案） |
+| 页面 | 新增 `/invite` 邀请中心（邀请码 / 链接 / 三态计数 / 奖励口径 / 进度 / 榜单 / 记录分页） |
+| 入口 | 个人中心新增「邀请有礼」卡；积分中心快捷入口新增「邀请有礼」；顶栏账号菜单的签到入口不变 |
+| 测试 | `checkinReplenish` / `stores.invite` / `stores.hero` 三份新测试 + `stores.points` 增补 2 例（共 23 例新增） |
+
+### 变更
+
+- **补签入口**（`/user/checkin`）：日历里「本月的、已过去的、未签到的」日子渲染成按钮（虚线描边 + 手型光标），
+  点击即补签；不可补签的日子仍要给出理由（今天直接签到 / 还没到 / 已签到 / 次数用完 / 积分不足），
+  理由由 `canReplenishDay()` 统一给出，服务端仍是最终裁决。
+  补签成功后**重新拉一次日历** —— 服务端会重算整条连续段，本地改一个格子会与真实 `streak` 分叉。
+- **注册支持邀请码**：登录/注册弹窗的注册表单新增「邀请码（选填）」，从邀请链接
+  （`/?invite=CODE`）进入时自动预填并统一大写；邀请码**不合法不会让注册失败**（服务端只不建立关系），
+  因此前端不做格式校验，只做去空格与大写归一。
+- **首页人格位**（`HeroSection.vue`）：视觉面板在服务端下发 `benefits` 时多出一块「会员速览」
+  （等级 + 剩余天数 / 积分与折算 / 可用券与即将过期 / 今天签到可得 N 积分）。
+  游客与非会员拿到的是 `{}`（L2：**整块缺席代表「没有这个能力」**），因此不渲染速览而不是渲染一堆 0；
+  面板里的 `coupons` / `coupon_expiring` / `checkin_available` 同样「有才下发」。
+  面板因此去掉了 `aria-hidden="true"` —— 里面现在有可交互的签到链接，整块对读屏隐藏会让用户点不到。
+  面板的固定宽高比（4/3）改成 `min-height`，否则速览行数一多会被挤出去。
+- `vite.config.js` 的 proxy 表补 `/inviteApi` 与 `/heroApi`（新前缀漏配的后果是 dev 下 404 且返回 index.html）。
+- `App.vue` 的账号切换 watch 补 `inviteStore.reset()` 与 `heroStore.reset()`
+  （不清会把 A 的邀请码与会员等级显示给 B）。
+- `constants/member.js`：积分流水筛选补 `earn_card` / `earn_invite` / `spend_replenish` 三类
+  （服务端白名单里早有这三个值，前端筛选少三个选项），并新增 `REPLENISH_COST` / `REPLENISH_MONTHLY_LIMIT`
+  两个与服务端常量函数同源的数值。
+- `package.json` 版本号仍为 `1.4.0`（`1.5.0` / `1.6.0` 未发布，发布时与后端一起改）。
+
+### 门禁
+
+`npm run lint` 0、`npm test` 974/974、`npm run build` 通过、`npm run verify:dev` 17/17。
+
+---
+
 ## [1.5.0] — 2026-10-16 · 契约端点补齐（前端侧 M7，开发中）
 
 服务端 `1.5.0` 把 API.md 里只剩契约的端点全部落地（结算试算、积分商城、补签、任务中心、权益公开页）。

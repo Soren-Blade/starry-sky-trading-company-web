@@ -162,6 +162,21 @@
             />
           </div>
 
+          <div class="form-group">
+            <label for="register-invite">邀请码（选填）</label>
+            <input
+              id="register-invite"
+              v-model="registerForm.inviteCode"
+              class="u-input"
+              type="text"
+              maxlength="16"
+              placeholder="好友的邀请码，没有可留空"
+            />
+            <span class="u-field-hint">
+              通过邀请链接打开时会自动填入；好友在你完成第一笔商品订单后获得奖励
+            </span>
+          </div>
+
           <div class="form-options">
             <label class="u-checkbox">
               <input v-model="registerForm.agreeTerms" type="checkbox" /><span class="u-checkbox-box" aria-hidden="true"></span>
@@ -212,6 +227,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import HelpModal from '@/components/HelpModal.vue';
@@ -223,6 +239,21 @@ import { AUTH } from '@/constants/index.js';
 
 const emit = defineEmits(['close', 'login-success']);
 const userStore = useUserStore();
+const route = useRoute();
+
+/**
+ * 邀请码的预填（1.6.0）。
+ *
+ * 邀请链接的形态是 `/?invite=CODE`（相对路径，绝对域名由服务端按
+ * `MAIL_LINK_BASE_URL` 拼），所以从 query 里取。这里不做「格式校验」——
+ * 邀请码的合法性只有服务端说了算（错的码**不会**让注册失败，只是不建立关系），
+ * 前端拦一道反而会出现「明明是好码却注册不了」。
+ */
+function inviteFromQuery() {
+  const raw = route.query.invite;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === 'string' ? value.trim().toUpperCase() : '';
+}
 
 const activeTab = ref('login');
 const errorMessage = ref('');
@@ -251,6 +282,8 @@ const registerForm = ref({
   email: '',
   password: '',
   confirmPassword: '',
+  // 邀请码选填：从 `?invite=CODE` 预填，用户可改可清
+  inviteCode: inviteFromQuery(),
   agreeTerms: false,
 });
 
@@ -326,6 +359,11 @@ const handleRegister = async () => {
       username: registerForm.value.username.trim(),
       email: registerForm.value.email.trim(),
       password: registerForm.value.password,
+      // 空串不发：服务端把「没有邀请码」与「邀请码是空字符串」当同一件事，
+      // 但少一个字段对日志与回放更干净
+      ...(registerForm.value.inviteCode.trim()
+        ? { invite_code: registerForm.value.inviteCode.trim().toUpperCase() }
+        : {}),
     });
 
     if (result.success) {
@@ -361,6 +399,9 @@ const resetForms = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    // 邀请码要重新从 query 取：清成空串会让「从邀请链接进来、注册失败一次再重试」
+    // 的人丢掉邀请码，而这正是最不该丢的场景
+    inviteCode: inviteFromQuery(),
     agreeTerms: false,
   };
 };

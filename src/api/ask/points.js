@@ -54,4 +54,24 @@ function redeem(itemId) {
   return request.post(`${baseURL}/redeem`, { item_id: itemId })
 }
 
-export { getAccount, getHistory, checkin, getCheckinCalendar, getMallItems, redeem }
+/**
+ * 补签（1.5.0 M4，契约 §4.8）
+ *
+ * **必须传日期**（与签到相反）：补的就是某一天。服务端只接受
+ * 「本月的、已经过去的、还没签到的」日子，跨月与未来都算参数错误。
+ * 失败码：`CHECKIN_DATE_INVALID` 400、`ALREADY_CHECKED` 409、
+ * `REPLENISH_LIMIT` 409、`POINTS_NOT_ENOUGH` 409（带 `details.shortage`）。
+ */
+function replenishCheckin(date) {
+  return request.post(`${baseURL}/replenishCheckin`, { date })
+}
+
+export {
+  getAccount,
+  getHistory,
+  checkin,
+  getCheckinCalendar,
+  getMallItems,
+  redeem,
+  replenishCheckin,
+}

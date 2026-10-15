@@ -158,6 +158,14 @@ const routes = [
     meta: { title: '我的优惠券 - 星辰商行', requiresAuth: true }
   },
   {
+    // 邀请中心（1.6.0）：邀请码 / 链接 / 进度 / 记录。
+    // requiresAuth：邀请关系挂在账号上，游客没有可邀请的「自己」。
+    path: '/invite',
+    name: 'Invite',
+    component: () => import('@/pages/Invite.vue'),
+    meta: { title: '邀请中心 - 星辰商行', requiresAuth: true }
+  },
+  {
     // 消息中心：站内通知 + 通知偏好 + 邮件台账。
     //
     // requiresAuth（而不是像 /support 那样对游客开放）是刻意区分的：

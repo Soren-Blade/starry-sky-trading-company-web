@@ -175,11 +175,25 @@ export const POINTS_LEDGER_TYPES = [
   { value: 'earn_order', label: '下单获得' },
   { value: 'earn_checkin', label: '每日签到' },
   { value: 'earn_task', label: '任务奖励' },
+  { value: 'earn_card', label: '卡密兑奖' },
+  { value: 'earn_invite', label: '邀请奖励' },
   { value: 'earn_member', label: '开通会员赠送' },
   { value: 'spend_order', label: '下单抵扣' },
   { value: 'spend_redeem', label: '积分兑换' },
+  { value: 'spend_replenish', label: '补签消耗' },
   { value: 'expire', label: '积分过期' },
 ]
+
+/**
+ * 补签的口径（1.5.0 M4）。
+ *
+ * **数值来自服务端常量函数**（`sstc.replenish_cost()` = 20、
+ * `sstc.replenish_monthly_limit()` = 3），日历里的 `replenish_left` 与后端的校验
+ * 同源。前端这里只是为了文案与「置灰理由」有个数可用 ——
+ * 改这两处必须同时改服务端，否则会出现「按钮说还能补、服务端说不行」。
+ */
+export const REPLENISH_COST = 20
+export const REPLENISH_MONTHLY_LIMIT = 3
 
 /** 兑换比例：100 积分 = ¥1（来源：hero 文案 1280 → 12.8） */
 export const POINTS_PER_YUAN = 100

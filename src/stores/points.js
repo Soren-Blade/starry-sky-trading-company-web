@@ -7,6 +7,7 @@ import {
   getCheckinCalendar,
   getMallItems,
   redeem,
+  replenishCheckin,
 } from '@/api/ask/points.js'
 
 /**
@@ -45,6 +46,8 @@ export const usePointsStore = defineStore('points', {
     loadingHistory: false,
     checkingIn: false,
     loadingMall: false,
+    /** 正在补签的日期（空串 = 没有进行中的补签），用于禁用单元格 */
+    replenishingDate: '',
     error: '',
   }),
 
@@ -162,6 +165,30 @@ export const usePointsStore = defineStore('points', {
       }
     },
 
+    /**
+     * 补签某一天（1.5.0 M4）。
+     *
+     * 与签到相反的地方：**必须传日期**。成功后有副作用要跟着刷新 ——
+     * 补签会重算整条连续天数（可能连带改动后面已签到那些天的 `streak`），
+     * 因此日历**必须重新拉一次**，不能在本地改一个格子。
+     *
+     * 失败时把错误抛给调用方：四种失败码各有各的说法（超出月度上限 / 这天已签 /
+     * 跨月或未来 / 积分不够），store 不该把它们糊成一句。
+     */
+    async doReplenish(date) {
+      const target = String(date || '').trim()
+      if (!target || this.replenishingDate) return null
+      this.replenishingDate = target
+      try {
+        const { data } = await replenishCheckin(target)
+        this.applyBalance(data)
+        await this.fetchCalendar()
+        return data
+      } finally {
+        this.replenishingDate = ''
+      }
+    },
+
     /** 商城清单（未登录/游客在路由层就被挡住，这里只处理接口错误） */
     async fetchMall({ silent = false } = {}) {
       this.loadingMall = true
@@ -214,6 +241,7 @@ export const usePointsStore = defineStore('points', {
       this.mallItems = []
       this.mallLoaded = false
       this.redeemingId = ''
+      this.replenishingDate = ''
       this.error = ''
       this.loadingAccount = false
       this.loadingHistory = false

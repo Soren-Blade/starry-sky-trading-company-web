@@ -48,7 +48,9 @@
         <div class="checkin-calendar-head">
           <h2 class="checkin-section-title">{{ calendarTitle }}</h2>
           <span class="checkin-calendar-hint">
-            <template v-if="calendar">剩余补签 {{ calendar.replenish_left }} 次</template>
+            <template v-if="calendar">
+              补签 {{ REPLENISH_COST }} 积分/次 · 剩余补签 {{ calendar.replenish_left }} 次
+            </template>
           </span>
         </div>
 
@@ -65,11 +67,29 @@
               'is-checked': day.checked,
               'is-today': day.is_today,
               'is-future': day.future,
+              'is-replenishable': canReplenish(day),
             }"
             :title="cellTitle(day)"
           >
-            <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-            <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
+            <!--
+              可补签的日子渲染成按钮（1.5.0 M4）：不可补签的照旧是纯展示。
+              不把每个格子都做成按钮 —— 那会让「已签到」「还没到」这些日子
+              也能被聚焦，读屏时一路 Tab 过去全是无效目标。
+            -->
+            <button
+              v-if="canReplenish(day)"
+              type="button"
+              class="checkin-cell-hit"
+              :disabled="pointsStore.replenishingDate === day.date"
+              :aria-label="cellTitle(day)"
+              @click="handleReplenish(day)"
+            >
+              <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+            </button>
+            <template v-else>
+              <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+              <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
+            </template>
           </li>
         </ul>
 
@@ -111,7 +131,13 @@ import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { usePointsStore } from '@/stores/points.js'
 import { useUserStore } from '@/stores/user.js'
-import { formatPointsValue } from '@/constants/member.js'
+import { formatPointsValue, REPLENISH_COST, REPLENISH_MONTHLY_LIMIT } from '@/constants/member.js'
+import {
+  canReplenishDay,
+  checkinCellTitle,
+  replenishErrorMessage,
+  replenishRuleText,
+} from '@/utils/checkinDisplay.js'
 
 const pointsStore = usePointsStore()
 const userStore = useUserStore()
@@ -136,10 +162,41 @@ function dayNumber(date) {
   return Number(String(date).slice(-2))
 }
 
+/**
+ * 补签的三条前置判断（纯函数在 `utils/checkinDisplay.js`）。
+ *
+ * 前端只判断「点了会不会白点」，真正的裁决仍在服务端 ——
+ * 两边都判一次是有意的：置灰是为了别让用户点，服务端校验是为了防并发与绕过。
+ */
+function replenishOptions() {
+  return {
+    replenishLeft: calendar.value?.replenish_left ?? 0,
+    points: pointsStore.points,
+    cost: REPLENISH_COST,
+  }
+}
+
+function canReplenish(day) {
+  return canReplenishDay(day, replenishOptions()).ok
+}
+
 function cellTitle(day) {
-  if (day.checked) return `${day.date} 已签到`
-  if (day.future) return `${day.date} 还没到`
-  return `${day.date} 未签到`
+  return checkinCellTitle(day, replenishOptions())
+}
+
+async function handleReplenish(day) {
+  try {
+    const result = await pointsStore.doReplenish(day.date)
+    if (!result) return
+    notify.success(
+      `已补签 ${day.date}（消耗 ${result.cost} 积分，本月还可补签 ${result.replenish_left} 次）`,
+    )
+  } catch (error) {
+    // 四种失败码各有各的说法（超出月度上限 / 这天已签 / 跨月或未来 / 积分不够）
+    notify.error(replenishErrorMessage(error))
+    // 失败也可能是「日历已经过期」（比如另一个标签页刚补过），重新拉一次对齐
+    await pointsStore.fetchCalendar()
+  }
 }
 
 /** 与后端 `sstc.checkin_base_points` 的档位一致，改一处必须改另一处 */
@@ -149,6 +206,8 @@ const rules = [
   { icon: 'check-circle', text: `连续签到 7 天以上：每天 20 积分` },
   { icon: 'landmark', text: `会员等级倍率对每天的基础积分同样生效；成长值固定 +5（100 积分 = ¥1）` },
   { icon: 'clock', text: `断签后连续天数从头计算；积分有效期 12 个月` },
+  // 补签的数值与后端 `replenish_cost()` / `replenish_monthly_limit()` 必须一致
+  { icon: 'clipboard', text: replenishRuleText(REPLENISH_COST, REPLENISH_MONTHLY_LIMIT) },
 ]
 
 async function handleCheckin() {
@@ -293,6 +352,45 @@ onMounted(() => {
 }
 .checkin-cell.is-future {
   opacity: 0.45;
+}
+/*
+ * 可补签：虚线描边 + 手型光标，明确「这个格子能点」。
+ * 用虚线而不是换色，是为了与「今天」（实线强调描边）区分开 ——
+ * 两者可能同时成立于同一天（今天当然不可补签，但历史上曾经如此）。
+ */
+.checkin-cell.is-replenishable {
+  border-style: dashed;
+  border-color: var(--border);
+  cursor: pointer;
+}
+.checkin-cell.is-replenishable:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/*
+ * 格子里的按钮：视觉上必须与父级 li 完全重合（否则点击热区只有数字那么大，
+ * 手机上一半的点按会落空）。因此清掉按钮自身的边框/内边距/背景，只留交互语义。
+ */
+.checkin-cell-hit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.checkin-cell-hit:disabled {
+  cursor: progress;
+}
+.checkin-cell-hit:focus-visible {
+  outline: var(--stroke-width) solid var(--accent);
+  outline-offset: calc(var(--stroke-width) * 2);
+  border-radius: var(--radius-media);
 }
 .checkin-cell-icon {
   font-size: var(--fs-label);

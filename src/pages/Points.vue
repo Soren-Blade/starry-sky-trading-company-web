@@ -438,6 +438,8 @@ function goPage(page) {
 const SHORTCUTS = [
   { name: 'UserCheckin', label: '每日签到', icon: 'check-circle' },
   { name: 'Coupons', label: '我的优惠券', icon: 'ticket' },
+  // 邀请中心（1.6.0）：奖励也是积分来源，放在积分中心最短路径上
+  { name: 'Invite', label: '邀请有礼', icon: 'users' },
   { name: 'Member', label: '会员中心', icon: 'star' },
   { name: 'MemberBenefits', label: '权益详解', icon: 'crown' },
 ]

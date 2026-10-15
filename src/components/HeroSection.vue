@@ -28,11 +28,55 @@
       </div>
 
       <!-- 视觉面板：纯排版 + 一个品牌标记，不含装饰性渐变与光斑 -->
-      <div class="hero-visual u-enter" :style="{ '--i': 2 }" aria-hidden="true">
+      <div class="hero-visual u-enter" :style="{ '--i': 2 }">
         <div class="hero-panel">
           <AppIcon class="hero-panel-mark" :name="SITE.logo" />
           <p class="hero-panel-text">{{ SITE.name }}</p>
           <p class="hero-panel-tagline">{{ SITE.tagline }}</p>
+
+          <!--
+            会员速览（1.6.0，契约 §4.22 `GET /heroApi/getHeroPersona`）。
+            整块只在服务端下发了 `benefits` 时渲染：游客与**非会员**都是 `{}`
+            （L2 纪律 —— 缺席代表「没有这个能力」，不是错误也不是 0）。
+            因此这里用 `hasBenefits` 判断，而不是拿字段逐个 `|| 0`。
+            数值里 `coupons` / `coupon_expiring` / `checkin_available` 同样是
+            「有才下发」，所以模板用 `!== undefined` 判断而不是真值/0 比较。
+          -->
+          <ul v-if="heroStore.hasBenefits" class="hero-panel-stats">
+            <li class="hero-panel-stat">
+              <AppIcon name="crown" class="hero-panel-stat-icon" />
+              <span class="hero-panel-stat-label">
+                {{ heroStore.memberLevelName || '会员' }}
+                <template v-if="benefits.member_days_left !== undefined">
+                  · 剩余 {{ benefits.member_days_left }} 天
+                </template>
+              </span>
+            </li>
+            <li v-if="benefits.points !== undefined" class="hero-panel-stat">
+              <AppIcon name="zap" class="hero-panel-stat-icon" />
+              <span class="hero-panel-stat-label">
+                {{ benefits.points }} 积分
+                <template v-if="benefits.points_value !== undefined">
+                  （约 ¥{{ money(benefits.points_value) }}）
+                </template>
+              </span>
+            </li>
+            <li v-if="benefits.coupons !== undefined" class="hero-panel-stat">
+              <AppIcon name="ticket" class="hero-panel-stat-icon" />
+              <span class="hero-panel-stat-label">
+                {{ benefits.coupons }} 张可用券
+                <template v-if="benefits.coupon_expiring !== undefined">
+                  · {{ benefits.coupon_expiring }} 张即将过期
+                </template>
+              </span>
+            </li>
+            <li v-if="benefits.checkin_available" class="hero-panel-stat">
+              <AppIcon name="check-circle" class="hero-panel-stat-icon" />
+              <router-link class="hero-panel-stat-link" to="/user/checkin">
+                今天签到可得 {{ benefits.checkin_points }} 积分
+              </router-link>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -50,11 +94,35 @@
  * 这些都属于规范明确排除的「装饰性渐变 / 多余光效 / 夸张动画」，
  * 且每套风格都要重新适配一次。现在视觉重量由排版、间距与一个表面面板承担。
  */
+import { computed, onMounted } from 'vue'
+
 import AppIcon from '@/components/AppIcon.vue'
 import { domUtils } from '@/utils/index.js'
 import { HERO, SITE } from '@/constants/index.js'
+import { useHeroStore } from '@/stores/hero.js'
 
 const emit = defineEmits(['shop-click', 'learn-more-click'])
+
+/**
+ * 会员速览（1.6.0）
+ *
+ * 面板原来的 `aria-hidden="true"` 去掉了：现在里面除了品牌标记还可能有
+ * 「今天签到可得 N 积分」这种**可交互且有信息量**的内容，整块 aria-hidden
+ * 会让读屏用户完全听不到它、也点不到那个链接。品牌标记与图标本身仍各自 aria-hidden。
+ */
+const heroStore = useHeroStore()
+const benefits = computed(() => heroStore.benefits || {})
+
+/** 服务端给的是 number（如 0.65），这里只做两位小数的展示格式化 */
+function money(value) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00'
+}
+
+onMounted(() => {
+  // 失败也不打扰用户：面板拿不到数据时只是不长出「速览」这一块
+  heroStore.fetchPersona({ silent: true })
+})
 
 const handleShopNow = () => {
   emit('shop-click')
@@ -174,7 +242,9 @@ const handleLearnMore = () => {
   gap: calc(var(--space-unit) * 1.5);
   width: 100%;
   max-width: calc(var(--container-narrow) * 0.38);
-  aspect-ratio: 4 / 3;
+  /* 用 min-height 而不是 aspect-ratio：1.6.0 起面板里会长出「会员速览」
+   * 列表（行数取决于服务端下发几个键），固定宽高比会把多出来的行挤出去。 */
+  min-height: calc(var(--space-unit) * 26);
   padding: var(--card-padding-lg);
   text-align: center;
   background: var(--bg-surface);
@@ -206,6 +276,39 @@ const handleLearnMore = () => {
   margin: 0;
 }
 
+/* ── 会员速览（1.6.0）：面板内的一个列表，数值全部来自服务端 ────── */
+.hero-panel-stats {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  width: 100%;
+  margin: calc(var(--space-unit)) 0 0;
+  padding: calc(var(--space-unit) * 1.5) 0 0;
+  border-top: var(--stroke-width) solid var(--divider);
+  list-style: none;
+  text-align: left;
+}
+.hero-panel-stat {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.hero-panel-stat-icon {
+  font-size: var(--fs-body);
+  color: var(--accent);
+}
+.hero-panel-stat-label {
+  min-width: 0;
+}
+.hero-panel-stat-link {
+  color: var(--accent);
+}
+.hero-panel-stat-link:hover {
+  text-decoration: underline;
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
   .hero-inner {
@@ -216,7 +319,8 @@ const handleLearnMore = () => {
 
   .hero-panel {
     max-width: none;
-    aspect-ratio: 16 / 9;
+    /* 同样不再钉死宽高比（见上方说明）：这里只保留一个较矮的下限 */
+    min-height: calc(var(--space-unit) * 20);
   }
 }
 
