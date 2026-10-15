@@ -194,3 +194,24 @@ test('分项开关的前缀都能在迁移文件里找到对应的邮件闸门',
     assert.ok(gate.has(prefix), `开关 ${key} 在服务端没有对应的闸门（${prefix}%），它就是装饰品`)
   }
 })
+
+/**
+ * 页面草稿的键必须来自常量（1.6.0）
+ *
+ * `Mail.vue` 原先把六个键在 `reactive({...})` 里又抄了一遍。常量加了第七个开关时，
+ * 草稿里没有它 → 那个开关既读不到已保存值、也存不下去，而**没有任何报错**。
+ * 现在草稿由 `PREFERENCE_KEYS` 生成，这里静态复核源码里不再出现第二份键清单。
+ */
+test('Mail.vue 的偏好草稿由 PREFERENCE_KEYS 生成，源码里不再硬编码六个键', () => {
+  const source = readFileSync(join(WEB_ROOT, 'src/pages/Mail.vue'), 'utf8')
+
+  assert.match(
+    source,
+    /Object\.fromEntries\(PREFERENCE_KEYS\.map/,
+    'Mail.vue 应使用 Object.fromEntries(PREFERENCE_KEYS.map(...)) 初始化草稿'
+  )
+
+  // 草稿初始化块里不允许再出现 `xxx_enabled: false` 这种字面量键
+  const literal = source.match(/^\s{2}\w+_enabled:\s*false,?$/gm) || []
+  assert.deepEqual(literal, [], `Mail.vue 里仍有硬编码的开关键：\n${literal.join('\n')}`)
+})

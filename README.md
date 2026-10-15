@@ -1393,8 +1393,9 @@ NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体�
 > 现状（2026-10-16）：分片已纳入构建与共享样式守卫，迁移按页面逐个走（先共享层的四态/区块壳，
 > 再域件），每页独立提交。**已完成**：七页的四态收敛到 §2（`Member` / `MemberPlans` /
 > `MemberGrowth` / `Coupons` / `Points` / `UserCheckin` / `Invite`）；**矩阵列定义已收敛**到
-> `constants/member.js` 的 `MEMBER_MATRIX_COLUMNS` + `memberMatrixColumns()`
-> （两个页面只覆盖各自的列标题）。**未完成**：邮件偏好键去重、域件（§5–§25）的逐页迁移。
+> `constants/member.js` 的 `MEMBER_MATRIX_COLUMNS` + `memberMatrixColumns()`（两页只覆盖各自标题）；
+> **邮件偏好键已收敛**到 `constants/mail.js` 的 `PREFERENCE_KEYS`（`Mail.vue` 的草稿由它生成）。
+> 文件头列的三个既有问题至此都已消除，**只剩域件（§5–§25）的逐页迁移**。
 
 ### 9.13 硬编码与断点纪律
 

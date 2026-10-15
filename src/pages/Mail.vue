@@ -310,6 +310,7 @@ import {
   MAIL_TABS,
   NOTIFICATION_LEVELS,
   PREFERENCE_ITEMS,
+  PREFERENCE_KEYS,
   mailLogStatusLabel,
   mailLogStatusTag,
   notificationTypeLabel,
@@ -328,15 +329,13 @@ const loadedTabs = reactive({ preferences: false, log: false })
  *
  * 拨开关**不立即发请求**：一次改三项就会打三次接口，而且中途失败会留下
  * 「界面上开着、服务端关着」的不一致。改成点了保存才提交差异项。
+ *
+ * 键名从 `PREFERENCE_KEYS` 生成 —— 这里再抄一遍六个键，就会出现
+ * 「常量加了第七个开关、页面草稿没有它」（该开关永远存不下去，且不报错）。
  */
-const draft = reactive({
-  email_enabled: false,
-  order_enabled: false,
-  member_enabled: false,
-  points_enabled: false,
-  coupon_enabled: false,
-  support_enabled: false,
-})
+const draft = reactive(
+  Object.fromEntries(PREFERENCE_KEYS.map((key) => [key, false]))
+)
 
 /** 草稿与已保存值是否有差异 */
 const preferencesDirty = computed(() =>
