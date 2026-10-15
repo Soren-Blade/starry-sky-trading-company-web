@@ -7,13 +7,15 @@
       </p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card member-state">
-      <AppIcon name="star" class="member-state-icon" aria-hidden="true" />
-      <p class="member-state-title">请先登录账号</p>
-      <p class="member-state-desc">登录后可查看会员等级、成长值与权益数值</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看会员中心')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="star" class="u-mm-state-icon" aria-hidden="true" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后可查看会员等级、成长值与权益数值</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看会员中心')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -21,10 +23,12 @@
         <span v-for="n in 3" :key="n" class="u-skeleton member-skeleton-line"></span>
       </div>
 
-      <div v-else-if="memberStore.error" class="ui-card member-error" role="alert">
-        <AppIcon name="alert-triangle" aria-hidden="true" />
-        <span>{{ memberStore.error }}</span>
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
+      <div v-else-if="memberStore.error" class="ui-card u-mm-state u-mm-state--error" role="alert">
+        <AppIcon name="alert-triangle" class="u-mm-state-icon" aria-hidden="true" />
+        <p class="u-mm-state-title">{{ memberStore.error }}</p>
+        <div class="u-mm-state-actions">
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
+        </div>
       </div>
 
       <template v-else>
@@ -386,28 +390,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 骨架 / 错误 */
-.member-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.member-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.member-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.member-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录 / 骨架 / 错误 —— 状态容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 .member-skeleton {
   display: flex;
   flex-direction: column;
@@ -418,14 +401,6 @@ onMounted(() => {
   height: calc(var(--space-unit) * 3);
   border-radius: var(--radius-media);
 }
-.member-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--danger);
-}
-
 .member-section-title {
   margin: 0;
   font-size: var(--fs-h3);

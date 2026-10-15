@@ -10,17 +10,19 @@
       </p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card growth-state">
-      <AppIcon name="sparkles" class="growth-state-icon" />
-      <p class="growth-state-title">请先登录账号</p>
-      <p class="growth-state-desc">登录后可查看成长值明细与升级进度</p>
-      <button
-        type="button"
-        class="u-btn-primary"
-        @click="userStore.openLoginModal('登录后可查看成长值明细与升级进度')"
-      >
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="sparkles" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后可查看成长值明细与升级进度</p>
+      <div class="u-mm-state-actions">
+        <button
+          type="button"
+          class="u-btn-primary"
+          @click="userStore.openLoginModal('登录后可查看成长值明细与升级进度')"
+        >
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -126,16 +128,18 @@
         </div>
 
         <!-- 出错与「空数据」分开：出错不该显示成「暂无记录」 -->
-        <div v-else-if="memberStore.error" class="ui-card growth-error" role="alert">
-          <AppIcon name="alert-triangle" />
-          <span>{{ memberStore.error }}</span>
-          <button type="button" class="u-btn-secondary" @click="memberStore.fetchGrowthHistory()">重试</button>
+        <div v-else-if="memberStore.error" class="ui-card u-mm-state u-mm-state--error" role="alert">
+          <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+          <p class="u-mm-state-title">{{ memberStore.error }}</p>
+          <div class="u-mm-state-actions">
+            <button type="button" class="u-btn-secondary" @click="memberStore.fetchGrowthHistory()">重试</button>
+          </div>
         </div>
 
-        <div v-else-if="!memberStore.growth.length" class="ui-card growth-state">
-          <AppIcon name="file" class="growth-state-icon" />
-          <p class="growth-state-title">还没有成长值记录</p>
-          <p class="growth-state-desc">下单、签到、开通会员都会在这里留下记录</p>
+        <div v-else-if="!memberStore.growth.length" class="ui-card u-mm-state">
+          <AppIcon name="file" class="u-mm-state-icon" />
+          <p class="u-mm-state-title">还没有成长值记录</p>
+          <p class="u-mm-state-desc">下单、签到、开通会员都会在这里留下记录</p>
         </div>
 
         <template v-else>
@@ -308,29 +312,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 空态 */
-.growth-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.growth-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--text-muted);
-}
-.growth-state-title {
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-heading);
-}
-.growth-state-desc {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
+/* 未登录 / 空态 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 汇总：三张等宽卡，窄屏自动堆叠 */
 .growth-summary {
@@ -431,13 +413,6 @@ onMounted(() => {
 }
 .growth-skeleton-line {
   height: calc(var(--space-unit) * 2);
-}
-.growth-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2.5);
-  color: var(--text-secondary);
 }
 .growth-list {
   display: flex;

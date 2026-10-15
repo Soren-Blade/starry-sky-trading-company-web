@@ -6,13 +6,15 @@
     </header>
 
     <!-- 未登录：守卫会打开登录弹窗并回跳，但直达本页时仍要有落点 -->
-    <div v-if="!userStore.isLoggedIn" class="ui-card plans-state">
-      <AppIcon name="star" class="plans-state-icon" />
-      <p class="plans-state-title">请先登录账号</p>
-      <p class="plans-state-desc">登录后即可查看套餐并开通会员</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可开通会员')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="star" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后即可查看套餐并开通会员</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可开通会员')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -22,15 +24,18 @@
       </div>
 
       <!-- 出错与「没有套餐」分开：加载失败不该显示成「暂无可开通套餐」 -->
-      <div v-else-if="memberStore.error && !planList.length" class="ui-card plans-error" role="alert">
-        <AppIcon name="alert-triangle" />
-        <span>{{ memberStore.error }}</span>
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+      <div v-else-if="memberStore.error && !planList.length" class="ui-card u-mm-state u-mm-state--error" role="alert">
+        <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+        <p class="u-mm-state-title">{{ memberStore.error }}</p>
+        <div class="u-mm-state-actions">
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+        </div>
       </div>
 
-      <div v-else-if="!planList.length" class="ui-card plans-empty">
-        <AppIcon name="info" />
-        <span>暂时没有可开通的套餐，请稍后再来</span>
+      <div v-else-if="!planList.length" class="ui-card u-mm-state">
+        <AppIcon name="info" class="u-mm-state-icon" />
+        <p class="u-mm-state-title">暂时没有可开通的套餐</p>
+        <p class="u-mm-state-desc">请稍后再来，新套餐上架后会出现在这里</p>
       </div>
 
       <template v-else>
@@ -225,28 +230,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录引导 */
-.plans-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.plans-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.plans-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.plans-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录引导 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 骨架 / 错误 / 空态 */
 .plans-skeleton {
@@ -262,20 +246,8 @@ onMounted(() => {
 .plans-skeleton-line--lg {
   height: calc(var(--space-unit) * 6);
 }
-.plans-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--danger);
-}
-.plans-empty {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 3);
-  color: var(--text-muted);
-}
+
+/* 出错 / 无套餐 —— 走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 当前等级提示 */
 .plans-current {

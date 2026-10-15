@@ -10,13 +10,15 @@
       </p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card checkin-state">
-      <AppIcon name="check-circle" class="checkin-state-icon" />
-      <p class="checkin-state-title">请先登录账号</p>
-      <p class="checkin-state-desc">登录后即可每日签到赚积分</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后即可签到')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="check-circle" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后即可每日签到赚积分</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后即可签到')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -241,28 +243,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 */
-.checkin-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.checkin-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.checkin-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.checkin-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 主签到区 */
 .checkin-hero {

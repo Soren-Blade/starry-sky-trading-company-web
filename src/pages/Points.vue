@@ -5,13 +5,15 @@
       <p class="page-shell-desc">签到、消费与任务都能获得积分，100 积分可抵 ¥1</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card points-state">
-      <AppIcon name="landmark" class="points-state-icon" />
-      <p class="points-state-title">请先登录账号</p>
-      <p class="points-state-desc">登录后可查看积分余额与明细</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看积分')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="landmark" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后可查看积分余额与明细</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看积分')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -21,10 +23,16 @@
       </div>
 
       <!-- 账户都没拉到时整页报错；流水自己的错误在流水面板里报（两件事分开重试） -->
-      <div v-else-if="pointsStore.error && !pointsStore.account" class="ui-card points-error" role="alert">
-        <AppIcon name="alert-triangle" />
-        <span>{{ pointsStore.error }}</span>
-        <button type="button" class="u-btn-secondary" @click="pointsStore.fetchAccount()">重试</button>
+      <div
+        v-else-if="pointsStore.error && !pointsStore.account"
+        class="ui-card u-mm-state u-mm-state--error"
+        role="alert"
+      >
+        <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+        <p class="u-mm-state-title">{{ pointsStore.error }}</p>
+        <div class="u-mm-state-actions">
+          <button type="button" class="u-btn-secondary" @click="pointsStore.fetchAccount()">重试</button>
+        </div>
       </div>
 
       <template v-else>
@@ -130,16 +138,18 @@
             <span v-for="n in 3" :key="n" class="u-skeleton history-skeleton-line"></span>
           </div>
 
-          <div v-else-if="pointsStore.error" class="ui-card history-error" role="alert">
-            <AppIcon name="alert-triangle" />
-            <span>{{ pointsStore.error }}</span>
-            <button type="button" class="u-btn-secondary" @click="pointsStore.fetchHistory()">重试</button>
+          <div v-else-if="pointsStore.error" class="ui-card u-mm-state u-mm-state--error" role="alert">
+            <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">{{ pointsStore.error }}</p>
+            <div class="u-mm-state-actions">
+              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchHistory()">重试</button>
+            </div>
           </div>
 
-          <div v-else-if="!pointsStore.history.length" class="ui-card history-state">
-            <AppIcon name="file" class="history-state-icon" />
-            <p class="history-state-title">{{ emptyTitle }}</p>
-            <p class="history-state-desc">签到、下单与任务都会在这里留下记录</p>
+          <div v-else-if="!pointsStore.history.length" class="ui-card u-mm-state">
+            <AppIcon name="file" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">{{ emptyTitle }}</p>
+            <p class="u-mm-state-desc">签到、下单与任务都会在这里留下记录</p>
           </div>
 
           <template v-else>
@@ -199,18 +209,20 @@
 
           <div
             v-else-if="pointsStore.error && !pointsStore.hasMallItems"
-            class="ui-card history-error"
+            class="ui-card u-mm-state u-mm-state--error"
             role="alert"
           >
-            <AppIcon name="alert-triangle" />
-            <span>{{ pointsStore.error }}</span>
-            <button type="button" class="u-btn-secondary" @click="pointsStore.fetchMall()">重试</button>
+            <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">{{ pointsStore.error }}</p>
+            <div class="u-mm-state-actions">
+              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchMall()">重试</button>
+            </div>
           </div>
 
-          <div v-else-if="!pointsStore.hasMallItems" class="ui-card history-state">
-            <AppIcon name="ticket" class="history-state-icon" />
-            <p class="history-state-title">商城暂时没有可兑换的条目</p>
-            <p class="history-state-desc">上新后会出现在这里</p>
+          <div v-else-if="!pointsStore.hasMallItems" class="ui-card u-mm-state">
+            <AppIcon name="ticket" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">商城暂时没有可兑换的条目</p>
+            <p class="u-mm-state-desc">上新后会出现在这里</p>
           </div>
 
           <ul v-else class="mall-list">
@@ -256,16 +268,22 @@
             <span v-for="n in 3" :key="n" class="u-skeleton history-skeleton-line"></span>
           </div>
 
-          <div v-else-if="taskStore.error && !taskStore.hasTasks" class="ui-card history-error" role="alert">
-            <AppIcon name="alert-triangle" />
-            <span>{{ taskStore.error }}</span>
-            <button type="button" class="u-btn-secondary" @click="taskStore.fetchTasks()">重试</button>
+          <div
+            v-else-if="taskStore.error && !taskStore.hasTasks"
+            class="ui-card u-mm-state u-mm-state--error"
+            role="alert"
+          >
+            <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">{{ taskStore.error }}</p>
+            <div class="u-mm-state-actions">
+              <button type="button" class="u-btn-secondary" @click="taskStore.fetchTasks()">重试</button>
+            </div>
           </div>
 
-          <div v-else-if="!taskStore.hasTasks" class="ui-card history-state">
-            <AppIcon name="clipboard" class="history-state-icon" />
-            <p class="history-state-title">暂时没有任务</p>
-            <p class="history-state-desc">活动上线后会出现在这里</p>
+          <div v-else-if="!taskStore.hasTasks" class="ui-card u-mm-state">
+            <AppIcon name="clipboard" class="u-mm-state-icon" />
+            <p class="u-mm-state-title">暂时没有任务</p>
+            <p class="u-mm-state-desc">活动上线后会出现在这里</p>
           </div>
 
           <ul v-else class="tasks-list">
@@ -522,30 +540,9 @@ onMounted(async () => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 空态 */
-.points-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.points-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.points-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.points-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录 / 空态 / 出错 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
-/* 骨架与错误 */
+/* 骨架 */
 .points-skeleton {
   display: flex;
   flex-direction: column;
@@ -558,13 +555,6 @@ onMounted(async () => {
 }
 .points-skeleton-line--lg {
   height: calc(var(--space-unit) * 6);
-}
-.points-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--danger);
 }
 
 /* 余额 */
@@ -690,27 +680,7 @@ onMounted(async () => {
 }
 
 /* 流水：空态 / 骨架 / 错误 */
-.history-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.history-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--text-muted);
-}
-.history-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.history-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 空态 / 出错见 ui-kit-member.css §2 的 .u-mm-state */
 .history-skeleton {
   display: flex;
   flex-direction: column;
@@ -720,13 +690,6 @@ onMounted(async () => {
 .history-skeleton-line {
   height: calc(var(--space-unit) * 4);
   border-radius: var(--radius-media);
-}
-.history-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--danger);
 }
 
 /* 流水：列表 */

@@ -5,13 +5,15 @@
       <p class="page-shell-desc">下单时可选用，注意门槛与有效期</p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card coupons-state">
-      <AppIcon name="ticket" class="coupons-state-icon" />
-      <p class="coupons-state-title">请先登录账号</p>
-      <p class="coupons-state-desc">登录后可查看你的优惠券</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看优惠券')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="ticket" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后可查看你的优惠券</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看优惠券')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -37,16 +39,18 @@
         <span class="u-skeleton coupons-skeleton-line"></span>
       </div>
 
-      <div v-else-if="couponStore.error" class="ui-card coupons-error" role="alert">
-        <AppIcon name="alert-triangle" />
-        <span>{{ couponStore.error }}</span>
-        <button type="button" class="u-btn-secondary" @click="couponStore.fetchMine()">重试</button>
+      <div v-else-if="couponStore.error" class="ui-card u-mm-state u-mm-state--error" role="alert">
+        <AppIcon name="alert-triangle" class="u-mm-state-icon" />
+        <p class="u-mm-state-title">{{ couponStore.error }}</p>
+        <div class="u-mm-state-actions">
+          <button type="button" class="u-btn-secondary" @click="couponStore.fetchMine()">重试</button>
+        </div>
       </div>
 
-      <div v-else-if="!couponStore.list.length" class="ui-card coupons-state">
-        <AppIcon name="ticket" class="coupons-state-icon" />
-        <p class="coupons-state-title">{{ emptyTitle }}</p>
-        <p class="coupons-state-desc">{{ emptyDesc }}</p>
+      <div v-else-if="!couponStore.list.length" class="ui-card u-mm-state">
+        <AppIcon name="ticket" class="u-mm-state-icon" />
+        <p class="u-mm-state-title">{{ emptyTitle }}</p>
+        <p class="u-mm-state-desc">{{ emptyDesc }}</p>
       </div>
 
       <template v-else>
@@ -201,28 +205,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 空态 */
-.coupons-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.coupons-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.coupons-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.coupons-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录 / 空态 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 页签 */
 .coupons-tabs {
@@ -269,14 +252,6 @@ onMounted(() => {
   height: calc(var(--space-unit) * 8);
   border-radius: var(--radius-media);
 }
-.coupons-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--danger);
-}
-
 /* 券卡片 */
 .coupons-list {
   display: flex;

@@ -8,13 +8,15 @@
       </p>
     </header>
 
-    <div v-if="!userStore.isLoggedIn" class="ui-card invite-state">
-      <AppIcon name="users" class="invite-state-icon" />
-      <p class="invite-state-title">请先登录账号</p>
-      <p class="invite-state-desc">登录后可查看你的邀请码与邀请记录</p>
-      <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可参与邀请')">
-        立即登录
-      </button>
+    <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
+      <AppIcon name="users" class="u-mm-state-icon" />
+      <p class="u-mm-state-title">请先登录账号</p>
+      <p class="u-mm-state-desc">登录后可查看你的邀请码与邀请记录</p>
+      <div class="u-mm-state-actions">
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可参与邀请')">
+          立即登录
+        </button>
+      </div>
     </div>
 
     <template v-else>
@@ -108,10 +110,10 @@
           <span class="u-skeleton invite-skeleton-line"></span>
         </div>
 
-        <div v-else-if="!inviteStore.hasRecords" class="ui-card invite-state">
-          <AppIcon name="users" class="invite-state-icon" />
-          <p class="invite-state-title">还没有邀请记录</p>
-          <p class="invite-state-desc">把上面的链接发给好友，对方注册后这里就会出现</p>
+        <div v-else-if="!inviteStore.hasRecords" class="ui-card u-mm-state">
+          <AppIcon name="users" class="u-mm-state-icon" />
+          <p class="u-mm-state-title">还没有邀请记录</p>
+          <p class="u-mm-state-desc">把上面的链接发给好友，对方注册后这里就会出现</p>
         </div>
 
         <template v-else>
@@ -241,28 +243,7 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 / 空态 */
-.invite-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 5);
-  text-align: center;
-}
-.invite-state-icon {
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.invite-state-title {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.invite-state-desc {
-  margin: 0;
-  color: var(--text-muted);
-}
+/* 未登录 / 空态 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
 /* 骨架 */
 .invite-skeleton {
