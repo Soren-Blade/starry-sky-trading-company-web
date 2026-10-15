@@ -58,59 +58,59 @@
           <li
             v-for="item in couponStore.list"
             :key="item.id"
-            class="ui-card coupon"
-            :class="{ 'is-used': item.status === 'used', 'is-expired': item.status === 'expired' }"
+            class="u-mm-coupon"
+            :class="{
+              'is-used': item.status === 'used',
+              'is-expired': item.status === 'expired',
+              'is-expiring': item.expiring_soon,
+            }"
           >
-            <div class="coupon-amount">
-              <span class="coupon-amount-num">¥{{ item.amount }}</span>
-              <span class="coupon-amount-threshold">{{ thresholdText(item) }}</span>
+            <div class="u-mm-coupon-amount">
+              <span>¥{{ item.amount }}</span>
+              <span class="u-mm-coupon-threshold">{{ thresholdText(item) }}</span>
             </div>
 
-            <div class="coupon-body">
+            <div class="u-mm-coupon-body">
               <div class="coupon-title-row">
-                <span class="coupon-name">{{ item.name || '优惠券' }}</span>
+                <span class="u-mm-coupon-name">{{ item.name || '优惠券' }}</span>
                 <!-- 状态一律用服务端给的（派生状态），前端不拿时间自己判 -->
-                <span class="u-tag coupon-status" :class="statusTagClass(item.status)">
+                <span class="u-tag" :class="statusTagClass(item.status)">
                   {{ item.status_text }}
                 </span>
               </div>
-              <p class="coupon-scope">{{ item.scope === 'all' ? '全场通用' : '指定范围可用' }}</p>
-              <p class="coupon-meta">
-                <AppIcon name="clock" />
-                <span :class="{ 'is-warning': item.expiring_soon }">{{ expiryText(item) }}</span>
-                <span class="coupon-source">{{ item.source_text }}</span>
-              </p>
+              <p class="u-mm-coupon-scope">{{ item.scope_text }}</p>
+              <!-- 分片把「即将过期」的语义色挂在 meta 行上（is-expiring → --warning），
+                   所以有效期与来源合成一行文字，而不是再排一个图标 + 右对齐的来源 -->
+              <p class="u-mm-coupon-meta">{{ expiryText(item) }} · {{ item.source_text }}</p>
               <p v-if="item.status === 'used' && item.used_order_no" class="coupon-used">
                 已用于订单 {{ item.used_order_no }}
               </p>
-            </div>
-
-            <div v-if="item.expiring_soon" class="coupon-flag">
-              <AppIcon name="alert-triangle" />
-              即将过期
+              <span v-if="item.expiring_soon" class="u-mm-coupon-flag">即将过期</span>
             </div>
           </li>
         </ul>
 
         <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
-        <div v-if="couponStore.totalPages > 1" class="coupons-pager">
-          <button
-            type="button"
-            class="u-btn-secondary"
-            :disabled="!couponStore.hasPrev"
-            @click="goPage(couponStore.page - 1)"
-          >
-            上一页
-          </button>
-          <span class="coupons-pager-info">{{ couponStore.page }} / {{ couponStore.totalPages }}</span>
-          <button
-            type="button"
-            class="u-btn-secondary"
-            :disabled="!couponStore.hasNext"
-            @click="goPage(couponStore.page + 1)"
-          >
-            下一页
-          </button>
+        <div v-if="couponStore.totalPages > 1" class="u-mm-pager">
+          <span class="u-mm-pager-info">{{ couponStore.page }} / {{ couponStore.totalPages }}</span>
+          <div class="u-mm-pager-btns">
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!couponStore.hasPrev"
+              @click="goPage(couponStore.page - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!couponStore.hasNext"
+              @click="goPage(couponStore.page + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </template>
     </template>
@@ -252,7 +252,9 @@ onMounted(() => {
   height: calc(var(--space-unit) * 8);
   border-radius: var(--radius-media);
 }
-/* 券卡片 */
+/* 券卡片：容器 / 票根缺口 / 四态（可用·已用·已过期·即将过期）走共享分片
+ * `.u-mm-coupon`（见 ui-kit-member.css §13），分页壳走 §4 `.u-mm-pager`。
+ * 这里只留分片没覆盖的两处：卡片之间的大间距、标题行（名称 + 状态标签）的横排。 */
 .coupons-list {
   display: flex;
   flex-direction: column;
@@ -261,125 +263,15 @@ onMounted(() => {
   padding: 0;
   list-style: none;
 }
-.coupon {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: calc(var(--space-unit) * 2.5);
-  align-items: center;
-  padding: calc(var(--space-unit) * 2.5);
-}
-.coupon-amount {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.25);
-  min-width: calc(var(--space-unit) * 10);
-  padding-right: calc(var(--space-unit) * 2.5);
-  border-right: var(--stroke-width) dashed var(--border);
-}
-.coupon-amount-num {
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  line-height: 1;
-  color: var(--accent);
-}
-.coupon-amount-threshold {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.coupon-body {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  min-width: 0;
-}
 .coupon-title-row {
   display: flex;
   align-items: center;
   gap: var(--space-unit);
-}
-.coupon-name {
-  font-weight: var(--fw-heading);
-}
-.coupon-scope {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.coupon-meta {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.coupon-meta .is-warning {
-  color: var(--warning);
-}
-.coupon-source {
-  margin-left: auto;
 }
 .coupon-used {
   margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
   font-family: var(--font-mono);
-}
-/* 已用/已过期：降饱和但保留 —— 用户需要「券去哪了」的答案 */
-.coupon.is-used,
-.coupon.is-expired {
-  opacity: 0.66;
-}
-.coupon.is-used .coupon-amount-num,
-.coupon.is-expired .coupon-amount-num {
-  color: var(--text-muted);
-}
-.coupon-flag {
-  position: absolute;
-  top: 0;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.25);
-  padding: calc(var(--space-unit) * 0.25) var(--space-unit);
-  font-size: var(--fs-label);
-  color: var(--warning);
-  border-left: var(--stroke-width) solid var(--border);
-  border-bottom: var(--stroke-width) solid var(--border);
-  border-bottom-left-radius: var(--radius-media);
-}
-
-/* 分页 */
-.coupons-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 2);
-}
-.coupons-pager-info {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
-
-/* 窄屏：面额与内容改竖排，避免面额把名称挤成一列字 */
-@media (max-width: 575px) {
-  .coupon {
-    grid-template-columns: 1fr;
-    gap: calc(var(--space-unit) * 1.5);
-  }
-  .coupon-amount {
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: flex-start;
-    gap: var(--space-unit);
-    min-width: 0;
-    padding-right: 0;
-    padding-bottom: calc(var(--space-unit) * 1.5);
-    border-right: none;
-    border-bottom: var(--stroke-width) dashed var(--border);
-  }
 }
 </style>
