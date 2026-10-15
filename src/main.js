@@ -12,6 +12,14 @@ import './assets/styles/ui-kit-form.css'
 import './assets/styles/ui-kit-nav.css'
 import './assets/styles/ui-kit-data.css'
 import './assets/styles/ui-kit-feedback.css'
+/*
+ * 会员与邮件组件套件（业务复合件，第五个分片）。
+ * 前缀 `.u-mm-`（member / mail），与前面四片的 `.u-*` 原子层、`global.css` 的 `.ui-*` 复合层并列：
+ *   §1 区块壳 §2 四态容器 §3 元信息行 §4 分页壳 §5–§19 会员域（徽章/身份卡/资产/成长/权益/阶梯/矩阵/
+ *   套餐/券/签到/余额/流水/任务/商城/待办）§20–§24 邮件域（通知条目/偏好开关/联系邮箱/台账统计/台账行）
+ * 只定义 `.u-mm-*` 类，不覆盖任何全局元素与既有原子 —— 页面没用这些类时引入它没有任何视觉影响。
+ */
+import './assets/styles/ui-kit-member.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

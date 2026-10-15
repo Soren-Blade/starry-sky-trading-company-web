@@ -165,11 +165,12 @@ starry-sky-trading-company-web/
 ```js
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
-// 组件套件四分片（表单 / 导航 / 数据 / 反馈），必须排在 global.css 之后
+// 组件套件五分片（表单 / 导航 / 数据 / 反馈 / 会员与邮件），必须排在 global.css 之后
 import './assets/styles/ui-kit-form.css'
 import './assets/styles/ui-kit-nav.css'
 import './assets/styles/ui-kit-data.css'
 import './assets/styles/ui-kit-feedback.css'
+import './assets/styles/ui-kit-member.css'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -1365,7 +1366,34 @@ NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体�
 用 headless Chrome 截图。这条路径发现过一个真问题 —— `--drawer-radius` 的取值方向是反的
 （`0 16px 16px 0` 圆的是屏幕外那两角），已修。
 
-### 9.12 硬编码与断点纪律
+### 9.12 组件套件（第五批：会员与邮件域，前缀 `.u-mm-`）
+
+会员与邮件是**业务复合件**，既不是 `.u-*` 原子层（按钮/输入/标签），也不是 `global.css` 的
+`.ui-*` 通用复合层（卡片/抽屉），因此单独成第五个分片 `src/assets/styles/ui-kit-member.css`
+（24 节、208 个选择器块、全部由既有原子拼装，不定义任何新令牌）：
+
+| 段 | 覆盖 |
+| --- | --- |
+| §1–§4 共享层 | 区块壳 `u-mm-section`、**四态容器 `u-mm-state`**（未登录/骨架/错误/空态）、元信息行 `u-mm-meta`、分页壳 `u-mm-pager` |
+| §5–§19 会员域 | 等级徽章、身份卡、资产摘要卡、成长进度、权益格、等级阶梯、权益矩阵、套餐卡、优惠券卡、签到格、积分余额、流水行、任务条目、商城条目、待办条 |
+| §20–§24 邮件域 | 通知条目、偏好开关行、联系邮箱、台账统计卡、台账行 |
+| §25 布局 | `u-mm-hub` / `u-mm-detail` / `u-mm-split` 三个页面骨架 |
+
+三条纪律（与其余分片一致，`test/designTokens.test.js` 与 `test/componentClasses.test.js` 守着）：
+
+1. **只定义 `.u-mm-*` 类** —— grep 复核过，文件里除三条 `@media` 外没有任何裸元素/全局选择器，
+   所以「引入但页面还没用」时**零视觉影响**（这正是本次能安全先落分片、再逐页迁移的前提）。
+2. **只用令牌**，不写字面颜色/尺寸；**几何值五主题完全一致**（不定义令牌即天然满足）。
+3. **断点只用 1199 / 991 / 767 / 575 字面量，且每个断点在本文件里只出现一次**。
+
+它解决的三个已存在的事实问题（写在文件头）：**四态被六个页面各抄一遍**（`*_state` 类名六套）、
+**权益矩阵的列定义有两份**（`MemberBenefits.vue` 与 `MemberGrowth.vue` 各写一份 `MATRIX_COLUMNS`）、
+**邮件偏好键二次硬编码**（`constants/mail.js` 的 `PREFERENCE_KEYS` 与 `Mail.vue` 的 `draft` 各写一遍）。
+
+> 现状（2026-10-16）：分片已纳入构建与共享样式守卫，**八个消费页面尚未迁移**——
+> 迁移按页面逐个走（先共享层的四态/区块壳，再域件），每页独立提交。
+
+### 9.13 硬编码与断点纪律
 
 - 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
   再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。

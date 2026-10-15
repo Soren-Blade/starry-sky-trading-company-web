@@ -1,0 +1,1679 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * 会员与邮件模块 · 组件套件（第 12 分类「会员与邮件」）
+ *
+ * 这份分片解决三个已经存在的事实问题，而不是「再画一套好看的卡片」：
+ *
+ *   1. **四态重复六份**。`/member`、`/member/growth`、`/member/plans`、`/points`、
+ *      `/coupons`、`/user/checkin` 各自在 `<style scoped>` 里写了一遍
+ *      「未登录 / 骨架 / 错误 / 空态」，类名不同（member-state / growth-state /
+ *      plans-state / points-state / coupons-state / checkin-state），行为也不同。
+ *      → 收敛为 `.u-mm-state` 一个容器 + 四个修饰符。
+ *
+ *   2. **同一张表两份真相**。`MemberBenefits.vue:170` 与 `MemberGrowth.vue:240`
+ *      各写一份 `MATRIX_COLUMNS`。矩阵与阶梯的视觉契约在这里定一次。
+ *
+ *   3. **邮件偏好键二次硬编码**。`constants/mail.js` 已有 `PREFERENCE_KEYS`，
+ *      `Mail.vue` 的 `draft` 又列了一遍六个键。开关行的结构在这里定死，
+ *      页面只负责喂数据。
+ *
+ * ── 命名 ──────────────────────────────────────────────────────────────────
+ * 前缀统一为 `.u-mm-`（member / mail）。它不是新的设计语言 —— 全部由既有原子
+ * （`.u-tag` / `.u-btn-*` / `.u-switch` / `.u-table` / `.u-progress` / `.u-badge`）
+ * 拼装而成，与 `.u-*` 的原子前缀、`.ui-*` 的通用复合前缀并列：
+ *
+ *   `.u-`   原子控件（按钮 / 输入 / 标签 …）
+ *   `.ui-`  通用复合件（卡片 / 抽屉 …）
+ *   `.u-mm-` 业务复合件（会员 / 邮件的领域件）★ 本文件
+ *
+ * ── 纪律（与 ui-kit-* 其余分片一致）──────────────────────────────────────
+ *   · **只用令牌**，不写任何字面颜色 / 尺寸（`designTokens.test.js` 会拦未定义令牌）。
+ *   · **几何值五主题完全一致** —— 本文件不定义任何令牌，因此天然满足 R3。
+ *   · **断点只用 1199 / 991 / 767 / 575 字面量**，且**每个断点在本文件里只出现一次**
+ *     （`designTokens.test.js` 禁止同文件重复声明相同媒体查询）。
+ *   · **不在 @media 里重定义令牌** —— 那不会生效，必须在每个使用点乘系数。
+ *   · **圆角与描边不参与移动端缩放** —— 它们是风格身份（R11）。
+ *   · 交互件一律**内嵌原生表单元素**（R13），状态由 `:checked` / `:disabled` 驱动。
+ *
+ * 消费方：`/member`、`/member/plans`、`/member/benefits`、`/member/growth`、
+ * `/points`、`/coupons`、`/user/checkin`、`/mail` 八个页面，以及
+ * `ui-showcase/components/member-mail.html`（展示层）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §1 共享层 · 区块壳 u-mm-section
+ *
+ * 会员与邮件两域的信息架构都是「一条主叙事 + 若干信息块」。区块壳把这个
+ * 「标题 / 说明 / 更多入口 / 内容」四段结构定死，两域共用 —— 这是「风格统一」
+ * 最直接的抓手：换页面时不换骨架。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
+}
+
+.u-mm-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  flex-wrap: wrap;
+}
+
+.u-mm-section-head-main {
+  min-width: 0;
+}
+
+.u-mm-section-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-display);
+  text-transform: var(--heading-transform);
+  color: var(--text-primary);
+}
+
+.u-mm-section-desc {
+  margin-top: calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+/* 「更多 / 详情」入口。用 accent 而非 text-primary：它是次级动作，
+ * 不该和区块标题抢视觉重量。 */
+.u-mm-section-more {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  flex-shrink: 0;
+  align-self: flex-end;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--accent);
+  transition: color var(--transition-interactive);
+}
+
+.u-mm-section-more:hover {
+  color: var(--accent-strong);
+}
+
+.u-mm-section-more:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-pill);
+}
+
+.u-mm-section-body {
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §2 共享层 · 四态容器 u-mm-state ★ 本分片存在的首要理由
+ *
+ * 八个会员/邮件页面此前各自实现「未登录 / 加载中 / 出错 / 空数据」，共六份。
+ * 这里收敛为一个容器 + 三个修饰符（骨架态直接用 `.u-skeleton`，不另立门户）。
+ *
+ * 语义色纪律（与 ui-kit-feedback 的提示框同一条）：**语义色只作用在图标上**，
+ * 容器本体保持中性表面。一屏出现四块状态时，若每块本体都染色就变成彩色噪声。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(var(--space-unit) * 4) calc(var(--space-unit) * 2);
+  text-align: center;
+}
+
+.u-mm-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 6);
+  height: calc(var(--space-unit) * 6);
+  margin-bottom: calc(var(--space-unit) * 1.5);
+  color: var(--empty-icon-color);
+}
+
+/* 出错：图标染 danger，容器不染 */
+.u-mm-state--error .u-mm-state-icon {
+  color: var(--danger);
+}
+
+/* 未登录 / 未开通：图标染 accent，暗示「有动作可做」 */
+.u-mm-state--locked .u-mm-state-icon {
+  color: var(--accent);
+}
+
+.u-mm-state-title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+}
+
+.u-mm-state-desc {
+  margin-top: calc(var(--space-unit) * 0.75);
+  max-width: 34ch;
+  font-size: var(--fs-body);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-state-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 2);
+}
+
+/* 骨架态：复用 .u-skeleton 的动画与色，只补一层纵向排布。
+ * 不用 .u-mm-state 的居中 —— 骨架要贴左，居中会让「占位」看起来像「内容」。 */
+.u-mm-state-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--skeleton-line-gap);
+  width: 100%;
+  padding: calc(var(--space-unit) * 1.5) 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §3 共享层 · 元信息行 u-mm-meta
+ *
+ * 「标签 + 值」的横排。值走等宽 + tabular-nums：金额、日期、编号对齐后
+ * 竖着扫一列不会左右跳（与 `.u-badge` 用等宽的理由相同）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 3);
+  min-width: 0;
+}
+
+.u-mm-meta-item {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.75);
+  min-width: 0;
+}
+
+.u-mm-meta-icon {
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.u-mm-meta-label {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+.u-mm-meta-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u-mm-meta-value--muted {
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4 共享层 · 分页壳 u-mm-pager
+ *
+ * 五个页面此前各写一份分页（growth-pager / history-pager / coupons-pager /
+ * mail-pager / points 无）。这里只做「左信息 + 右按钮」的排布，
+ * 按钮直接复用 `.u-btn-secondary`，不重造按钮。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+  padding-top: calc(var(--space-unit) * 1.5);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.u-mm-pager-info {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+}
+
+.u-mm-pager-btns {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §5 会员 · 等级徽章 u-mm-tier
+ *
+ * 八档等级 × 四种身份标识（`identity_tier`：none / badge / title / limited）。
+ * 「无标识」不是「第四种颜色」，而是**回到中性** —— 身份标识是稀缺资源，
+ * 只有 V3 以上才配得上着色。三种着色由弱到强：soft 底 → 实底 → 深实底。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  height: var(--tag-height);
+  padding: 0 var(--tag-padding-x);
+  font-family: var(--font-mono);
+  font-size: var(--tag-font-size);
+  font-weight: var(--tag-font-weight);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background-color: var(--bg-soft);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--tag-radius);
+}
+
+.u-mm-tier--badge {
+  color: var(--accent);
+  background-color: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.u-mm-tier--title {
+  color: var(--text-on-accent);
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.u-mm-tier--limited {
+  color: var(--text-on-accent);
+  background-color: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.u-mm-tier-sub {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.72;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §6 会员 · 身份卡 u-mm-identity
+ *
+ * 会员中心首屏的第一块。三件事必须同时可见：**我是谁**（等级徽章 + 昵称）、
+ * **还剩多久**（到期倒计时）、**下一步做什么**（主 CTA）。
+ * 到期 ≤ 60 天（`MEMBER_EXPIRING_DAYS`）时，倒计时文案转 warning —— 只染文字，
+ * 卡片本体不染色，理由同 §2。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 2);
+  padding: var(--card-padding-lg);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: var(--effect-backdrop);
+  -webkit-backdrop-filter: var(--effect-backdrop);
+}
+
+.u-mm-identity-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 0.75);
+  min-width: 0;
+}
+
+.u-mm-identity-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+}
+
+.u-mm-identity-expiry {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.u-mm-identity-expiry--warning {
+  color: var(--warning);
+  font-weight: var(--fw-label);
+}
+
+.u-mm-identity-actions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §7 会员 · 资产摘要卡 u-mm-asset
+ *
+ * 会员中心从「快捷入口五宫格」改为「就地显示数值」的载体。
+ * 三张并排：积分 / 优惠券 / 签到。整卡是链接（点哪都能进详情），
+ * 因此用 `<a>` 而非 `<div>` —— 键盘可达是免费的。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+.u-mm-asset {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+  transition:
+    transform var(--transition-surface),
+    border-color var(--transition-surface),
+    box-shadow var(--transition-surface);
+}
+
+.u-mm-asset:hover {
+  transform: var(--card-hover-transform);
+  border-color: var(--card-hover-border);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.u-mm-asset:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.u-mm-asset-label {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+.u-mm-asset-value {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.5);
+  font-family: var(--font-price);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-price);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.u-mm-asset-unit {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-body);
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.u-mm-asset-hint {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+/* 即将过期：只染提示文字，卡面保持中性 */
+.u-mm-asset--warning .u-mm-asset-hint {
+  color: var(--warning);
+  font-weight: var(--fw-label);
+}
+
+/* 零值：数值降一档对比度。不是错误，只是「这里暂时没有东西」 */
+.u-mm-asset--empty .u-mm-asset-value {
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §8 会员 · 成长值进度 u-mm-growth
+ *
+ * 复用 `.u-progress` 的几何（高度与圆角来自令牌），只补「头行 + 尾注」。
+ * 满级（V8）时**整块不渲染**（`MemberGrowth.vue` 既有行为），
+ * 因此本组件不提供「已完成」态 —— 不渲染就是它的终态。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-growth {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.u-mm-growth-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.u-mm-growth-num {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.u-mm-growth-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.u-mm-growth-track {
+  position: relative;
+  height: var(--progress-height);
+  background: var(--progress-track);
+  border-radius: var(--progress-radius);
+  overflow: hidden;
+}
+
+.u-mm-growth-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--progress-radius);
+  transition: width var(--transition-progress);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §9 会员 · 权益格 u-mm-benefit
+ *
+ * ★ 这是「八档三台阶」那个结构性问题的展示侧解法。
+ *
+ * 旧版权益卡只有两种状态：「已解锁」与「升级到 V4 解锁」。对已解锁的四项
+ * 永远显示「已解锁」，用户感受不到自己在爬坡。新版每一格都必须给出
+ * **当前档位的具体数值** + **下一档会变成什么**：
+ *
+ *   已解锁 → 「95 折」+「下一档 94 折」
+ *   未解锁 → 「V4 解锁」+「届时 ¥50/月」
+ *
+ * 四态齐全：已解锁 / 未解锁 / 下一档预告 / 不适用（后端不下发 value 键）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 22), 1fr));
+  gap: var(--grid-gap);
+}
+
+.u-mm-benefit {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-benefit-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.u-mm-benefit-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-benefit-value {
+  font-family: var(--font-price);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-price);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+/* 下一档预告：一行小字。它是这一格存在的意义 —— 没有它，已解锁的格子
+ * 就只是一块静止的说明。 */
+.u-mm-benefit-next {
+  margin-top: auto;
+  padding-top: calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-benefit-next-em {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* 未解锁：图标与数值同时降一档。降对比度而不是加锁图标 ——
+ * 一屏八格里如果四格都挂锁，锁本身就变成了噪声。 */
+.u-mm-benefit--locked {
+  background: var(--bg-soft);
+}
+
+.u-mm-benefit--locked .u-mm-benefit-icon,
+.u-mm-benefit--locked .u-mm-benefit-value {
+  color: var(--text-muted);
+}
+
+/* 不适用：后端按契约「不下发这个键」，前端整格不渲染。
+ * 这条修饰符留给「确实要占位」的场景（例如矩阵对齐）。 */
+.u-mm-benefit--na {
+  background: transparent;
+  border-style: dashed;
+}
+
+.u-mm-benefit--na .u-mm-benefit-value {
+  color: var(--disabled-text);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §10 会员 · 等级阶梯 u-mm-ladder
+ *
+ * 结构规定：`.u-table` 必须包在 `.u-table-wrap` 里（R10），否则窄屏
+ * min-content 会顶宽页面。当前档整行高亮 —— 高亮用左边框而不是底色，
+ * 因为 neo-brutalism 与 technical-monochrome 的表格底色对比度本来就低。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-ladder {
+  min-width: 0;
+}
+
+.u-mm-ladder-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.u-mm-ladder tr.is-current {
+  box-shadow: inset calc(var(--space-unit) * 0.5) 0 0 0 var(--accent);
+}
+
+.u-mm-ladder tr.is-current td {
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §11 会员 · 权益矩阵 u-mm-matrix
+ *
+ * 8 档 × 8 项权益的完整对照。它是唯一一张「必然超宽」的表 ——
+ * 因此**必须**靠 `.u-table-wrap` 自身横滚（R20：内容可超宽就不得 overflow:visible）。
+ * 当前档整列高亮：用列底色 + 表头加粗，不用边框（八列都描边会变网格）。
+ *
+ * 移动端**不做压缩**：8 列压到 390px 宽等于每列 48px，数字全折行。
+ * 改为「一档一卡」的下钻列表（见 §26 的 767 断点）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-matrix-table {
+  min-width: calc(var(--space-unit) * 68);
+}
+
+.u-mm-matrix-cell {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.u-mm-matrix-table col.is-current {
+  background: var(--accent-soft);
+}
+
+.u-mm-matrix-table th.is-current {
+  color: var(--accent);
+}
+
+/* 移动端降级卡片：桌面隐藏 */
+.u-mm-matrix-cards {
+  display: none;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+.u-mm-matrix-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  padding: var(--card-padding);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-matrix-card.is-current {
+  border-color: var(--accent);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §12 会员 · 套餐卡 u-mm-plan
+ *
+ * 三态：当前档 / 可选 / 不可达。
+ * ★ 刻意**不禁用**当前档的按钮 —— 续费是合法动作（`expires_at` 叠加），
+ * 只有 `is_current` 的描边提示，没有 `disabled`。这是既有契约，
+ * 组件层不得「顺手优化」成禁用。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 26), 1fr));
+  gap: var(--grid-gap);
+}
+
+.u-mm-plan {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.25);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.u-mm-plan.is-current {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.u-mm-plan-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1);
+  flex-wrap: wrap;
+}
+
+.u-mm-plan-duration {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.25);
+  font-family: var(--font-price);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-price);
+  line-height: 1.1;
+  color: var(--price-color);
+}
+
+.u-mm-plan-perday {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.u-mm-plan-facts {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  padding-top: calc(var(--space-unit) * 0.5);
+  border-top: var(--stroke-width) solid var(--divider);
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.u-mm-plan-cta {
+  margin-top: auto;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §13 会员 · 优惠券卡 u-mm-coupon
+ *
+ * 四态：可用 / 已用 / 已过期 / 即将过期。
+ * 票根缺口用 `border-right: dashed` 画，不用背景图 —— 与电商分类页的
+ * 券卡同一条手法（纯 DOM、纯令牌、随主题变色）。
+ * 已用与已过期**整体降饱和**，但金额保持可读：用户是回来找「那张券去哪了」的。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-coupon {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--grid-gap);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-coupon-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.25);
+  padding-right: var(--grid-gap);
+  border-right: var(--stroke-width) dashed var(--divider);
+  font-family: var(--font-price);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-price);
+  line-height: 1.1;
+  color: var(--price-color);
+}
+
+.u-mm-coupon-threshold {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-body);
+  color: var(--text-muted);
+}
+
+.u-mm-coupon-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
+}
+
+.u-mm-coupon-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-coupon-scope,
+.u-mm-coupon-meta {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-coupon-flag {
+  align-self: flex-start;
+  margin-top: calc(var(--space-unit) * 0.25);
+}
+
+/* 已用 / 已过期：整体降对比度。用 opacity 而不是换色 ——
+ * 换色在五套主题下要各调一次，opacity 是主题无关的。 */
+.u-mm-coupon.is-used,
+.u-mm-coupon.is-expired {
+  opacity: var(--state-disabled-opacity);
+}
+
+/* 即将过期：只给状态标签上 warning，卡面保持中性（同 §2 的语义色纪律） */
+.u-mm-coupon.is-expiring .u-mm-coupon-meta {
+  color: var(--warning);
+  font-weight: var(--fw-label);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §14 会员 · 签到格 u-mm-checkin
+ *
+ * 四态：已签 / 今天未签 / 未来 / 补签位。
+ * 状态**不靠颜色区分**（R17 的延伸纪律）：已签有对勾字形，今天有描边环，
+ * 未来降对比度 —— 灰度打印与色盲视角下依然可读。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-checkin-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.u-mm-checkin-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.25);
+  aspect-ratio: 1;
+  padding: calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border: var(--stroke-width) solid transparent;
+  border-radius: var(--radius-input);
+}
+
+.u-mm-checkin-cell--checked {
+  color: var(--text-on-accent);
+  background: var(--accent);
+}
+
+.u-mm-checkin-cell--today {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: var(--fw-label);
+}
+
+.u-mm-checkin-cell--future {
+  opacity: var(--state-disabled-opacity);
+}
+
+.u-mm-checkin-cell--makeup {
+  border-style: dashed;
+  border-color: var(--divider);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §15 会员 · 积分余额 u-mm-balance
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-balance {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+.u-mm-balance-num {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.5);
+  font-family: var(--font-price);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-price);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  color: var(--text-primary);
+}
+
+.u-mm-balance-unit {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-body);
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.u-mm-balance-desc {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-balance-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 1.5);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §16 会员 · 流水行 u-mm-ledger
+ *
+ * 两态：获得 / 消耗。增减**同时**用符号与颜色表达 —— 只靠颜色会让
+ * 色盲用户分不清「+50」和「-50」。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-ledger {
+  display: flex;
+  flex-direction: column;
+}
+
+.u-mm-ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--grid-gap);
+  padding: calc(var(--space-unit) * 1.5) 0;
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.u-mm-ledger-row:last-child {
+  border-bottom: 0;
+}
+
+.u-mm-ledger-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+
+.u-mm-ledger-type {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-ledger-sub {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.u-mm-ledger-ref {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.u-mm-ledger-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--space-unit) * 0.25);
+  flex-shrink: 0;
+}
+
+.u-mm-ledger-delta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.u-mm-ledger-delta--earn {
+  color: var(--success);
+}
+
+.u-mm-ledger-delta--spend {
+  color: var(--danger);
+}
+
+.u-mm-ledger-balance {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §17 会员 · 任务条目 u-mm-task
+ *
+ * 四态：可领 / 进行中 / 已完成 / 领取中。
+ * 「领取中」必须与「可领」在**视觉上不同**，否则连点会重复提交 ——
+ * 这是全站提交类按钮的通用纪律（见 `.u-btn-primary:disabled`）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+.u-mm-task {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--grid-gap);
+  padding: var(--card-padding);
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-task-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.u-mm-task-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
+}
+
+.u-mm-task-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-task-period,
+.u-mm-task-desc {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-task-bar {
+  position: relative;
+  height: var(--progress-height);
+  background: var(--progress-track);
+  border-radius: var(--progress-radius);
+  overflow: hidden;
+}
+
+.u-mm-task-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--progress-radius);
+  transition: width var(--transition-progress);
+}
+
+.u-mm-task-reward {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.u-mm-task-action {
+  flex-shrink: 0;
+}
+
+/* 已完成：整条降对比度，动作位换成状态标签 */
+.u-mm-task--done {
+  opacity: var(--state-disabled-opacity);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §18 会员 · 商城条目 u-mm-mall
+ *
+ * 四态：可兑换 / 积分不足 / 库存不足 / 会员专属。
+ * 「不可兑换」必须给出**原因**（还差多少分 / 库存 0 / 需要会员），
+ * 不能只把按钮变灰 —— 灰按钮不解释任何事。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-mall-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 30), 1fr));
+  gap: var(--grid-gap);
+}
+
+.u-mm-mall {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-mall-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.u-mm-mall-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.u-mm-mall-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-mall-desc {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.u-mm-mall-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-gap);
+  margin-top: auto;
+  padding-top: calc(var(--space-unit) * 0.5);
+}
+
+.u-mm-mall-cost {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.25);
+  font-family: var(--font-price);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-price);
+  font-variant-numeric: tabular-nums;
+  color: var(--price-color);
+}
+
+.u-mm-mall-cost-unit {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-body);
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.u-mm-mall-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.u-mm-mall-hint--warn {
+  color: var(--warning);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §19 会员 · 待办条 u-mm-todo
+ *
+ * 会员到期 / 券过期 / 积分过期三类提醒。一行一条，图标区分类型，
+ * 整条是链接。**没有待办时整块不渲染** —— 不画「暂无待办」的占位，
+ * 那只会占掉首屏最贵的位置。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.u-mm-todo {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  padding: calc(var(--space-unit) * 1.25) var(--card-padding);
+  background: var(--bg-soft);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+  transition: border-color var(--transition-surface);
+}
+
+.u-mm-todo:hover {
+  border-color: var(--accent);
+}
+
+.u-mm-todo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+.u-mm-todo-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+}
+
+.u-mm-todo-link {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  color: var(--accent);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §20 邮件 · 通知条目 u-mm-mail
+ *
+ * 两态：未读 / 已读。未读**同时**用左侧 accent 竖条 + 标题字重 + 圆点标记，
+ * 三重编码 —— 只靠底色的话，在 bento-editorial 这种底色本身就偏暖的主题下
+ * 几乎看不出来。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-mail-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+.u-mm-mail-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: inset calc(var(--space-unit) * 0.5) 0 0 0 transparent;
+  transition: box-shadow var(--transition-surface);
+}
+
+.u-mm-mail-item--unread {
+  box-shadow: inset calc(var(--space-unit) * 0.5) 0 0 0 var(--accent);
+}
+
+.u-mm-mail-head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  flex-wrap: wrap;
+}
+
+.u-mm-mail-type {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+.u-mm-mail-time {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.u-mm-mail-dot {
+  width: var(--badge-dot-size);
+  height: var(--badge-dot-size);
+  flex-shrink: 0;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+
+.u-mm-mail-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+}
+
+.u-mm-mail-item--unread .u-mm-mail-title {
+  font-weight: var(--fw-heading);
+}
+
+.u-mm-mail-body {
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.u-mm-mail-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-gap);
+  flex-wrap: wrap;
+}
+
+.u-mm-mail-link {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  color: var(--accent);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §21 邮件 · 偏好开关行 u-mm-pref
+ *
+ * ★ 结构规定（R13）：`.u-switch` 内部**必须**是原生 `<input type="checkbox">`，
+ * 状态由 `:checked` 驱动，不需要一行 JS。这一条是「能看」与「能用」的分界。
+ *
+ * 三态 + 一特例：
+ *   开 / 关 / **安全类锁定**（`security` 强制发送，`disabled` + 说明文案）。
+ * 锁定态用 `:disabled` 原生伪类而不是自定义类 —— 与 COMPONENTS.md §2.3 一致。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-pref-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.u-mm-pref {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--grid-gap);
+  padding: calc(var(--space-unit) * 1.5) 0;
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.u-mm-pref:last-child {
+  border-bottom: 0;
+}
+
+.u-mm-pref-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+
+.u-mm-pref-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.u-mm-pref-desc {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+/* 锁定行：只把开关降对比度，说明文字保持可读 ——
+ * 用户需要知道「为什么关不掉」，而不只是「关不掉」。 */
+.u-mm-pref--locked .u-mm-pref-name {
+  color: var(--text-secondary);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §22 邮件 · 联系邮箱 u-mm-account
+ *
+ * 两态：已配置（脱敏展示 a***@example.com）/ 未配置（给「去填写」）。
+ * 脱敏是服务端下发的（`email_masked`），前端不做掩码计算 ——
+ * 前端算一次就等于多了一份可能与后端不一致的事实。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--grid-gap);
+  flex-wrap: wrap;
+  padding: var(--card-padding);
+  background: var(--bg-soft);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-account-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+
+.u-mm-account-label {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+.u-mm-account-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.u-mm-account-value--missing {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §23 邮件 · 台账统计卡 u-mm-stat
+ *
+ * 三张：排队 / 成功 / 失败。语义色**只作用在数字上**，卡面中性 ——
+ * 与 §2 同一条纪律。三张并排时若卡面各染一色，一屏就变成红绿灯。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+.u-mm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  padding: var(--card-padding);
+  min-width: 0;
+  background: var(--bg-soft);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.u-mm-stat-num {
+  font-family: var(--font-price);
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-price);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.u-mm-stat--success .u-mm-stat-num {
+  color: var(--success);
+}
+
+.u-mm-stat--danger .u-mm-stat-num {
+  color: var(--danger);
+}
+
+.u-mm-stat-label {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: var(--label-transform);
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §24 邮件 · 台账行 u-mm-log
+ *
+ * 状态标签复用 `.u-tag` 的五个语义变体，不另造一套配色。
+ * 模板名走等宽 —— 它是标识符（`orderStatusChanged`），不是正文。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-log-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+
+.u-mm-log-attempts {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.u-mm-log-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §25 页面级区块骨架
+ *
+ * 会员中心的 7 个区块、详情页的「返回 + 区块堆叠」。
+ * 骨架只管**堆叠节奏**，不管内容 —— 内容由 §1–§24 的组件填。
+ * 宽度不在这里定：窄页族的宽度唯一出口是 `.page-shell--narrow`
+ * （由 `test/componentClasses.test.js` 强制），本文件不设 max-width。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+.u-mm-hub,
+.u-mm-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
+  min-width: 0;
+}
+
+.u-mm-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  align-self: flex-start;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-muted);
+  transition: color var(--transition-interactive);
+}
+
+.u-mm-detail-back:hover {
+  color: var(--accent);
+}
+
+/* 两列信息布局：详情页的「左主叙事 / 右信息块」。
+ * 用 minmax(0, 1fr) 而不是 1fr —— 长内容会把裸 1fr 轨道顶宽（批次 4 的坑）。 */
+.u-mm-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: var(--grid-gap);
+  align-items: start;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §26 响应式
+ *
+ * 纪律：**每个断点在本文件里只出现一次**（`designTokens.test.js` 会拦重复声明）。
+ * 因此所有断点覆写集中在这里，不散落在各组件后面。
+ * 缩放只乘 `--mobile-*` 系数；**圆角与描边一律不动**（R11）。
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 991：平板。栅格先降一档，布局方向不变 ─────────────────────────────── */
+@media (max-width: 991px) {
+  .u-mm-asset-grid,
+  .u-mm-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .u-mm-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .u-mm-benefit-grid {
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 18), 1fr));
+  }
+}
+
+/* ── 767：手机。结构性替换，不是压缩 ────────────────────────────────────── */
+@media (max-width: 767px) {
+  /* 权益矩阵：8 列表格在 390px 下每列只剩 48px，数字必然折行。
+   * 改为「一档一卡」的下钻列表 —— 是替换，不是缩小。 */
+  .u-mm-matrix {
+    display: none;
+  }
+
+  .u-mm-matrix-cards {
+    display: flex;
+  }
+
+  .u-mm-identity {
+    padding: var(--card-padding);
+  }
+
+  .u-mm-identity-actions {
+    width: 100%;
+  }
+
+  .u-mm-identity-actions > * {
+    flex: 1;
+  }
+
+  /* 任务条：图标 / 正文 / 动作三列在窄屏挤不下，动作换行到第二行 */
+  .u-mm-task {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .u-mm-task-action {
+    grid-column: 1 / -1;
+  }
+
+  .u-mm-task-action > * {
+    width: 100%;
+  }
+
+  .u-mm-plan-grid,
+  .u-mm-mall-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 签到日历：七列在 390px 下每格约 44px，刚好是触屏最小热区，保留七列不降 */
+  .u-mm-checkin-grid {
+    gap: calc(var(--space-unit) * 0.5);
+  }
+
+  .u-mm-pager {
+    justify-content: center;
+  }
+
+  .u-mm-pager-btns {
+    width: 100%;
+  }
+
+  .u-mm-pager-btns > * {
+    flex: 1;
+  }
+}
+
+/* ── 575：小屏。间距收一档，字号收一档 ──────────────────────────────────── */
+@media (max-width: 575px) {
+  .u-mm-asset-grid,
+  .u-mm-stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .u-mm-benefit-grid {
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 15), 1fr));
+  }
+
+  .u-mm-section-head {
+    gap: calc(var(--space-unit) * 1);
+  }
+
+  .u-mm-section-title {
+    font-size: var(--fs-body);
+  }
+
+  .u-mm-coupon {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 券卡的票根缺口：竖排后从「右虚线」改为「下虚线」 */
+  .u-mm-coupon-amount {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: calc(var(--space-unit) * 0.5);
+    padding-right: 0;
+    padding-bottom: calc(var(--space-unit) * 1);
+    border-right: 0;
+    border-bottom: var(--stroke-width) dashed var(--divider);
+  }
+
+  .u-mm-state {
+    padding: calc(var(--space-unit) * 3) calc(var(--space-unit) * 1);
+  }
+
+  .u-mm-state-title {
+    font-size: var(--fs-body);
+  }
+}
