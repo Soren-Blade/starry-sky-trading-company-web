@@ -88,29 +88,29 @@
           <p class="u-empty-desc">下单、开通会员、签到之后，这里会出现对应的记录。</p>
         </div>
 
-        <ul v-else class="mail-list">
+        <ul v-else class="u-mm-mail-list">
           <li
             v-for="item in mailStore.list"
             :key="item.id"
-            class="mail-item"
-            :class="{ 'mail-item--unread': !item.is_read }"
+            class="u-mm-mail-item"
+            :class="{ 'u-mm-mail-item--unread': !item.is_read }"
           >
-            <div class="mail-item-head">
+            <div class="u-mm-mail-head">
               <span class="u-tag" :class="levelTag(item.level)">{{ levelLabel(item.level) }}</span>
-              <span class="mail-item-type">{{ typeLabel(item.type) }}</span>
-              <time class="mail-item-time" :datetime="item.created_at || ''">
+              <span class="u-mm-mail-type">{{ typeLabel(item.type) }}</span>
+              <time class="u-mm-mail-time" :datetime="item.created_at || ''">
                 {{ formatTime(item.created_at) }}
               </time>
             </div>
 
-            <p class="mail-item-title">
-              <span v-if="!item.is_read" class="mail-dot" aria-hidden="true"></span>
+            <p class="u-mm-mail-title">
+              <span v-if="!item.is_read" class="u-mm-mail-dot" aria-hidden="true"></span>
               {{ item.title }}
             </p>
-            <p v-if="item.body" class="mail-item-body">{{ item.body }}</p>
+            <p v-if="item.body" class="u-mm-mail-body">{{ item.body }}</p>
 
-            <div class="mail-item-foot">
-              <router-link v-if="item.link" class="mail-item-link" :to="item.link">
+            <div class="u-mm-mail-foot">
+              <router-link v-if="item.link" class="u-mm-mail-link" :to="item.link">
                 查看详情
               </router-link>
               <button
@@ -126,26 +126,28 @@
           </li>
         </ul>
 
-        <nav v-if="mailStore.totalPages > 1" class="mail-pager" aria-label="通知分页">
-          <button
-            type="button"
-            class="u-btn-secondary mail-pager-btn"
-            :disabled="!mailStore.hasPrev || mailStore.loadingMessages"
-            @click="goMessagesPage(mailStore.page - 1)"
-          >
-            上一页
-          </button>
-          <span class="mail-pager-info">
+        <nav v-if="mailStore.totalPages > 1" class="u-mm-pager" aria-label="通知分页">
+          <span class="u-mm-pager-info">
             第 {{ mailStore.page }} / {{ mailStore.totalPages }} 页
           </span>
-          <button
-            type="button"
-            class="u-btn-secondary mail-pager-btn"
-            :disabled="!mailStore.hasNext || mailStore.loadingMessages"
-            @click="goMessagesPage(mailStore.page + 1)"
-          >
-            下一页
-          </button>
+          <div class="u-mm-pager-btns">
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!mailStore.hasPrev || mailStore.loadingMessages"
+              @click="goMessagesPage(mailStore.page - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!mailStore.hasNext || mailStore.loadingMessages"
+              @click="goMessagesPage(mailStore.page + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </nav>
       </section>
 
@@ -157,15 +159,18 @@
           平台目前也不通过邮件提供找回账号的能力。
         </p>
 
-        <p class="mail-account">
-          通知邮箱：
-          <span v-if="mailStore.emailConfigured" class="mail-account-value">
-            {{ mailStore.emailMasked }}
-          </span>
-          <span v-else class="mail-account-missing">
-            账号还没有填邮箱，邮件通知无法送达（站内通知不受影响）
-          </span>
-        </p>
+        <div class="u-mm-account">
+          <div class="u-mm-account-main">
+            <span class="u-mm-account-label">通知邮箱</span>
+            <span v-if="mailStore.emailConfigured" class="u-mm-account-value">
+              {{ mailStore.emailMasked }}
+            </span>
+            <span v-else class="u-mm-account-value u-mm-account-value--missing">
+              还没有填邮箱，邮件通知无法送达（站内通知不受影响）
+            </span>
+          </div>
+          <router-link :to="{ name: 'Profile' }" class="u-btn-secondary">去填写</router-link>
+        </div>
 
         <p class="mail-panel-hint">站内通知始终保留，不受下面的开关影响。</p>
 
@@ -178,14 +183,18 @@
           <span class="u-skeleton u-skeleton--card"></span>
         </div>
 
-        <ul v-else class="mail-pref-list">
+        <ul v-else class="u-mm-pref-list">
           <li
             v-for="item in PREFERENCE_ITEMS"
             :key="item.key"
-            class="mail-pref"
+            class="u-mm-pref"
             :class="{ 'mail-pref--master': item.master }"
           >
-            <label class="u-switch" :aria-checked="draft[item.key] ? 'true' : 'false'">
+            <div class="u-mm-pref-main">
+              <span class="u-mm-pref-name">{{ item.label }}</span>
+              <span class="u-mm-pref-desc">{{ item.desc }}</span>
+            </div>
+            <label class="u-switch" :aria-label="item.label" :aria-checked="draft[item.key] ? 'true' : 'false'">
               <input
                 type="checkbox"
                 :checked="Boolean(draft[item.key])"
@@ -193,9 +202,7 @@
                 @change="draft[item.key] = $event.target.checked"
               />
               <span class="u-switch-track"><span class="u-switch-thumb"></span></span>
-              <span class="u-switch-label">{{ item.label }}</span>
             </label>
-            <p class="mail-pref-desc">{{ item.desc }}</p>
           </li>
         </ul>
 
@@ -220,18 +227,18 @@
           这里记录系统发给你的每一封邮件。只有状态与时间，没有正文，也没有收件地址。
         </p>
 
-        <div class="mail-stats">
-          <div class="mail-stat">
-            <span class="mail-stat-num">{{ mailStore.logStats.queued }}</span>
-            <span class="mail-stat-label">排队中</span>
+        <div class="u-mm-stat-grid">
+          <div class="u-mm-stat">
+            <span class="u-mm-stat-num">{{ mailStore.logStats.queued }}</span>
+            <span class="u-mm-stat-label">排队中</span>
           </div>
-          <div class="mail-stat">
-            <span class="mail-stat-num mail-stat-num--success">{{ mailStore.logStats.sent }}</span>
-            <span class="mail-stat-label">已发送</span>
+          <div class="u-mm-stat u-mm-stat--success">
+            <span class="u-mm-stat-num">{{ mailStore.logStats.sent }}</span>
+            <span class="u-mm-stat-label">已发送</span>
           </div>
-          <div class="mail-stat">
-            <span class="mail-stat-num mail-stat-num--danger">{{ mailStore.logStats.failed }}</span>
-            <span class="mail-stat-label">发送失败</span>
+          <div class="u-mm-stat u-mm-stat--danger">
+            <span class="u-mm-stat-num">{{ mailStore.logStats.failed }}</span>
+            <span class="u-mm-stat-label">发送失败</span>
           </div>
         </div>
 
@@ -260,40 +267,42 @@
           </thead>
           <tbody>
             <tr v-for="row in mailStore.log" :key="row.id">
-              <td class="mail-log-name">{{ row.template_name || row.template_code }}</td>
+              <td class="u-mm-log-name">{{ row.template_name || row.template_code }}</td>
               <td>
                 <span class="u-tag" :class="statusTag(row.status)">
                   {{ statusLabel(row.status) }}
                 </span>
               </td>
-              <td class="mail-log-attempts">{{ row.attempts }}</td>
-              <td class="mail-log-time">
+              <td class="u-mm-log-attempts">{{ row.attempts }}</td>
+              <td class="u-mm-log-time">
                 {{ formatTime(row.sent_at || row.created_at) }}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <nav v-if="mailStore.logTotalPages > 1" class="mail-pager" aria-label="邮件记录分页">
-          <button
-            type="button"
-            class="u-btn-secondary mail-pager-btn"
-            :disabled="!mailStore.hasLogPrev || mailStore.loadingLog"
-            @click="goLogPage(mailStore.logPage - 1)"
-          >
-            上一页
-          </button>
-          <span class="mail-pager-info">
+        <nav v-if="mailStore.logTotalPages > 1" class="u-mm-pager" aria-label="邮件记录分页">
+          <span class="u-mm-pager-info">
             第 {{ mailStore.logPage }} / {{ mailStore.logTotalPages }} 页
           </span>
-          <button
-            type="button"
-            class="u-btn-secondary mail-pager-btn"
-            :disabled="!mailStore.hasLogNext || mailStore.loadingLog"
-            @click="goLogPage(mailStore.logPage + 1)"
-          >
-            下一页
-          </button>
+          <div class="u-mm-pager-btns">
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!mailStore.hasLogPrev || mailStore.loadingLog"
+              @click="goLogPage(mailStore.logPage - 1)"
+            >
+              上一页
+            </button>
+            <button
+              type="button"
+              class="u-btn-secondary"
+              :disabled="!mailStore.hasLogNext || mailStore.loadingLog"
+              @click="goLogPage(mailStore.logPage + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </nav>
       </section>
     </template>
@@ -545,103 +554,19 @@ onMounted(() => {
 }
 
 /* ── 通知列表 ────────────────────────────────────────────── */
-.mail-list {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.mail-item {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.75);
-  padding: calc(var(--space-unit) * 2);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-  transition: border-color var(--transition-interactive);
-}
-
-.mail-item:hover {
-  border-color: var(--card-hover-border);
-}
-
-/* 未读：左侧一道强调色 + 淡底，比「加粗全部文字」更容易扫 */
-.mail-item--unread {
-  background: var(--bg-soft);
-  border-left: calc(var(--stroke-width) * 3) solid var(--accent);
-}
-
-.mail-item-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1);
-  align-items: center;
-}
-
-.mail-item-type {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.mail-item-time {
-  margin-left: auto;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.mail-item-title {
-  display: flex;
-  gap: calc(var(--space-unit) * 0.75);
-  align-items: center;
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-.mail-dot {
-  flex-shrink: 0;
-  width: calc(var(--space-unit) * 0.75);
-  height: calc(var(--space-unit) * 0.75);
-  background: var(--accent);
-  border-radius: var(--radius-pill);
-}
-
-.mail-item-body {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-.mail-item-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.5);
-  align-items: center;
-}
-
-.mail-item-link,
+/* 列表与条目见 ui-kit-member.css §20 的 .u-mm-mail-*；
+   这里只剩「标为已读」这个页面自己的动作（分片只定义了链接样式） */
 .mail-item-mark {
   padding: 0;
   font-size: var(--fs-sm);
-  color: var(--accent);
+  color: var(--text-muted);
   cursor: pointer;
   background: none;
   border: none;
 }
 
-.mail-item-link:hover,
 .mail-item-mark:hover:not(:disabled) {
   text-decoration: underline;
-}
-
-.mail-item-mark {
-  color: var(--text-muted);
 }
 
 .mail-item-mark:disabled {
@@ -649,104 +574,19 @@ onMounted(() => {
   opacity: var(--state-disabled-opacity);
 }
 
-/* ── 分页 ────────────────────────────────────────────────── */
-.mail-pager {
-  display: flex;
-  gap: calc(var(--space-unit) * 1.5);
-  align-items: center;
-  justify-content: center;
-}
-
-.mail-pager-btn {
-  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 2);
-  font-size: var(--fs-sm);
-}
-
-.mail-pager-info {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
+/* ── 分页：见 ui-kit-member.css §4 的 .u-mm-pager ─────────── */
 
 /* ── 通知偏好 ────────────────────────────────────────────── */
-.mail-account {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.mail-account-value {
-  color: var(--text-primary);
-}
-
-.mail-account-missing {
-  color: var(--warning);
-}
-
-.mail-pref-list {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-
-.mail-pref {
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-}
-
-/* 总开关与分项在视觉上分开：它是「全部邮件」的闸门，不是并列的第六项 */
+/* 偏好行与邮箱卡见 §21 / §22；这里只留「总开关」这一条页内语义：
+   它是「全部邮件」的闸门、不是并列的第六项 —— 分片的行只有底部分隔线，
+   所以这里把总开关下面那条线加粗成强调色，并在它与分项之间多留一点间距 */
 .mail-pref--master {
-  border-color: var(--accent);
-}
-
-.mail-pref-desc {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-muted);
+  margin-bottom: calc(var(--space-unit) * 1);
+  border-bottom: calc(var(--stroke-width) * 2) solid var(--accent);
 }
 
 /* ── 邮件记录 ────────────────────────────────────────────── */
-.mail-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 2);
-}
-
-.mail-stat {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.25);
-  min-width: calc(var(--space-unit) * 10);
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-}
-
-.mail-stat-num {
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  line-height: 1.1;
-  color: var(--text-primary);
-}
-
-.mail-stat-num--success {
-  color: var(--success);
-}
-
-.mail-stat-num--danger {
-  color: var(--danger);
-}
-
-.mail-stat-label {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
+/* 三张统计卡见 §23 的 .u-mm-stat-*（卡面中性、语义色只作用于数字） */
 
 .mail-log {
   width: 100%;
@@ -783,15 +623,7 @@ onMounted(() => {
   border-bottom: none;
 }
 
-.mail-log-name {
-  color: var(--text-primary);
-}
-
-.mail-log-attempts,
-.mail-log-time {
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
+/* 台账单元格（模板名 / 尝试次数 / 时间）见 §24 的 .u-mm-log-* */
 
 .mail-guest {
   margin-top: calc(var(--space-unit) * 3);

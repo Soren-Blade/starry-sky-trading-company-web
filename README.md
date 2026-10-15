@@ -1396,6 +1396,12 @@ NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体�
 > `constants/member.js` 的 `MEMBER_MATRIX_COLUMNS` + `memberMatrixColumns()`（两页只覆盖各自标题）；
 > **邮件偏好键已收敛**到 `constants/mail.js` 的 `PREFERENCE_KEYS`（`Mail.vue` 的草稿由它生成）。
 > 文件头列的三个既有问题至此都已消除，**只剩域件（§5–§25）的逐页迁移**。
+>
+> 域件迁移进度：**已迁移** `/coupons`（§13 券卡 + §4 分页壳）、`/user/checkin`（§14 签到格）、
+> `/points`（§15 余额 + §16 流水 + §17 任务 + §4 分页壳）、`/mail`（§20 通知条目 + §21 偏好行 +
+> §22 邮箱卡 + §23 统计卡 + §24 台账 + §4 分页壳）；
+> **待迁移** `/member`（§6–§8、§10）、`/member/plans`（§12）、`/member/benefits`（§9、§11）、
+> `/points` 的商城页签（§18，等 §18 的并行改动落地后再动）、页面级骨架 §25。
 
 ### 9.13 硬编码与断点纪律
 

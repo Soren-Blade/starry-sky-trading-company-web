@@ -140,7 +140,7 @@ test('通知列表：标题 / 正文 / 级别文案 / 类型分组名 / 时间�
   assert.match(html, /订单/)
   assert.match(html, /积分/)
   // 正文为 null 时不渲染空段落
-  assert.equal((html.match(/mail-item-body/g) || []).length, 1)
+  assert.equal((html.match(/u-mm-mail-body/g) || []).length, 1)
 })
 
 test('通知列表：认不出的 level 与 type 都不裸露英文键', async () => {
@@ -151,14 +151,14 @@ test('通知列表：认不出的 level 与 type 都不裸露英文键', async (
   assert.doesNotMatch(html, /mystery_type_here/)
   // 未知级别落回「提示」（info 变体），未知类型落回「系统」
   assert.match(html, /u-tag--info[^>]*>\s*提示\s*</)
-  assert.match(html, /mail-item-type[^>]*>\s*系统\s*</)
+  assert.match(html, /u-mm-mail-type[^>]*>\s*系统\s*</)
 })
 
 test('未读项：只有未读的那条带未读圆点与「标为已读」按钮', async () => {
   const html = await renderMail({ list: MESSAGES, total: 3, unreadCount: 1 })
 
-  assert.equal((html.match(/mail-dot/g) || []).length, 1)
-  assert.equal((html.match(/mail-item--unread/g) || []).length, 1)
+  assert.equal((html.match(/u-mm-mail-dot/g) || []).length, 1)
+  assert.equal((html.match(/u-mm-mail-item--unread/g) || []).length, 1)
   // 用类名而不是文案计数：`全部标为已读` 里也含「标为已读」四个字
   assert.equal((html.match(/mail-item-mark/g) || []).length, 1)
   assert.match(html, /全部标为已读/)
@@ -188,8 +188,8 @@ test('统计文案：总数与未读数取自 store，不做前端计算', async
 test('空态：没有通知时给说明而不是空白列表', async () => {
   const html = await renderMail({ list: [], total: 0, unreadCount: 0 })
   assert.match(html, /还没有通知/)
-  assert.doesNotMatch(html, /mail-item-title/)
-  assert.doesNotMatch(html, /mail-pager/)
+  assert.doesNotMatch(html, /u-mm-mail-title/)
+  assert.doesNotMatch(html, /u-mm-pager/)
 })
 
 test('加载态：骨架屏带 role=status，且不渲染空态', async () => {
@@ -206,7 +206,7 @@ test('错误态：错误文案进 role=alert', async () => {
 
 test('分页：多于 1 页时才有翻页条，且「上一页」在第一页禁用', async () => {
   const one = await renderMail({ list: MESSAGES, total: 3, totalPages: 1 })
-  assert.doesNotMatch(one, /mail-pager/)
+  assert.doesNotMatch(one, /u-mm-pager/)
 
   const two = await renderMail({ list: MESSAGES, total: 21, totalPages: 2, page: 1 })
   assert.match(two, /通知分页/)
