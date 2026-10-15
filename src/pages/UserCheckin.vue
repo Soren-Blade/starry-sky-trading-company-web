@@ -277,6 +277,17 @@ onMounted(() => {
 }
 
 /* 日历 */
+/* 轨道宽度（不是容器宽度）：分片 §14 的格子是 aspect-ratio: 1 的正方形、七列等分容器宽 ——
+ * 格宽完全由轨道决定。showcase 里这组放在 300–450px 的 .demo 面板中（格宽 45–60px）；
+ * 本页容器最宽 1180px（--container-page-narrow），照抄 1fr 会让桌面上每格被撑成 164px 的巨块，
+ * 与「月份标题 + 补签提示」的文字层级脱节。窄页族的宽度唯一出口是 .page-shell--narrow，
+ * 页面不得自设 max-width（componentClasses.test.js 把关），所以这里收的是轨道而不是容器：
+ * 每格 7 × 8px = 56px，格子仍是正方形，卡片横向留白用居中吸收。
+ */
+.u-mm-checkin-grid {
+  grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 7)));
+  justify-content: center;
+}
 .checkin-calendar-head {
   display: flex;
   align-items: baseline;
