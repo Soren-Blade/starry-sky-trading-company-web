@@ -1,46 +1,98 @@
 /**
  * 积分中心页（`/points`）测试
  *
- * 只做源码断言：流水列表的排版全在 CSS 里，SSR 出来的 HTML 完全一样，
+ * 只做源码断言：列表排版全在 CSS 里，SSR 出来的 HTML 完全一样，
  * 横向还是纵向只能在浏览器里看出来，所以用规则断言把它钉住。
+ *
+ * 2026-10-16 起这些排版不再写在页面里：流水行 / 任务条目 / 余额块 / 分页壳
+ * 统一由 `src/assets/styles/ui-kit-member.css` §15 / §16 / §17 / §4 提供，
+ * 页面只剩「分片没覆盖的两处同行排版」和自己的商城列表。
+ * 因此断言分两半：**分片必须保留这些规则**，**页面不得再长出同名私有规则**
+ * （否则「改一处忘另一处」的老问题会原地复活）。
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const POINTS_SOURCE = readFileSync(new URL('../src/pages/Points.vue', import.meta.url), 'utf8')
+const KIT_SOURCE = readFileSync(
+  new URL('../src/assets/styles/ui-kit-member.css', import.meta.url),
+  'utf8',
+)
 
-test('源码：流水每条横向排版（类型/时间/说明 一行，右侧 +35 余额 35 一行）', () => {
+/** 取某条规则的规则体（第一条 `}` 为界，够用且不依赖嵌套） */
+function ruleBody(source, selector) {
+  const normalized = source.replace(/\r\n/g, '\n')
+  const at = normalized.indexOf(selector)
+  assert.ok(at > -1, `应有 ${selector} 规则`)
+  return normalized.slice(at, normalized.indexOf('}', at))
+}
+
+test('分片：流水行两端对齐（内容在左、金额与余额在右）', () => {
   // 纵向排版会把每条记录拉到三行高，条数一多就翻不到底。
-  for (const selector of ['.history-item-main {', '.history-item-right {']) {
-    const at = POINTS_SOURCE.indexOf(selector)
-    assert.ok(at > -1, `应有 ${selector} 规则`)
-    const body = POINTS_SOURCE.slice(at, POINTS_SOURCE.indexOf('}', at))
-    assert.match(body, /flex-direction: row/, `${selector} 应横向排版`)
-    assert.match(body, /flex-wrap: wrap/, `${selector} 需要换行，窄屏才不互相挤压`)
+  const row = ruleBody(KIT_SOURCE, '.u-mm-ledger-row {')
+  assert.match(row, /display: grid/, '流水行应是网格')
+  assert.match(row, /grid-template-columns: minmax\(0, 1fr\) auto/, '左内容右金额两列')
+
+  const right = ruleBody(KIT_SOURCE, '.u-mm-ledger-right {')
+  assert.match(right, /align-items: flex-end/, '金额与余额靠右对齐')
+})
+
+test('分片：任务条目与余额块仍提供条目级排版', () => {
+  assert.match(ruleBody(KIT_SOURCE, '.u-mm-task {'), /display: grid/, '任务条目应是网格')
+  assert.match(ruleBody(KIT_SOURCE, '.u-mm-task-list {'), /flex-direction: column/)
+  assert.match(ruleBody(KIT_SOURCE, '.u-mm-balance {'), /flex-direction: column/)
+})
+
+test('页面：流水 / 任务 / 余额不再保留各自的私有排版', () => {
+  // 这四套类名是迁移前的历史写法，回来一个就意味着「第二个真相源」复活。
+  for (const selector of ['.history-item', '.history-list', '.history-pager', '.points-balance', '.task-item', '.tasks-list']) {
+    assert.ok(
+      !POINTS_SOURCE.includes(selector),
+      `${selector} 已并入 ui-kit-member.css，页面不应再定义`,
+    )
   }
 })
 
-test('源码：同时挂 .ui-card 的列表行必须显式声明 flex-direction: row', () => {
+test('页面：流水行 / 分页 / 任务 / 余额确实用了分片的类', () => {
+  for (const className of [
+    'u-mm-ledger',
+    'u-mm-ledger-row',
+    'u-mm-ledger-delta--earn',
+    'u-mm-pager',
+    'u-mm-task-list',
+    'u-mm-task',
+    'u-mm-balance',
+  ]) {
+    assert.ok(POINTS_SOURCE.includes(className), `模板应使用 ${className}`)
+  }
+})
+
+test('页面：同时挂 .ui-card 的列表行必须显式声明 flex-direction: row', () => {
   // 这些 <li> 上挂了全局 .ui-card（它声明 flex-direction: column）与页面自己的类；
   // 页面规则只写 display: flex 时，方向仍由 .ui-card 决定 → 整行竖排（图标/内容/按钮各占一行）。
-  const source = POINTS_SOURCE.replace(/\r\n/g, '\n')
-  for (const selector of ['.history-item {', '.mall-item,\n.task-item {']) {
-    const at = source.indexOf(selector)
-    assert.ok(at > -1, `应有 ${selector} 规则`)
-    const body = source.slice(at, source.indexOf('}', at))
-    assert.match(body, /flex-direction: row/, `${selector} 应显式横向排版`)
+  const body = ruleBody(POINTS_SOURCE, '.mall-item {')
+  assert.match(body, /flex-direction: row/, '.mall-item 应显式横向排版')
+})
+
+test('页面：分片没覆盖的两处「同行排版」仍由页面提供', () => {
+  // 分片的 .u-mm-task-main 是纯纵向堆叠；「名称 + 周期」与「进度条 + 进度 + 奖励」
+  // 这两行需要页面自己横过来，否则会各自占一行、条目高度翻倍。
+  for (const selector of ['.task-name-row {', '.task-progress-row {']) {
+    const body = ruleBody(POINTS_SOURCE, selector)
+    assert.match(body, /display: flex/)
+    assert.match(body, /flex-wrap: wrap/, '窄屏才不互相挤压')
   }
 })
 
-test('源码：单条记录左右两端对齐（内容在左、金额余额在右）', () => {
-  const at = POINTS_SOURCE.indexOf('.history-item {')
-  assert.ok(at > -1)
-  const body = POINTS_SOURCE.slice(at, POINTS_SOURCE.indexOf('}', at))
-  assert.match(body, /justify-content: space-between/)
+test('页面：进度条宽度由页面给（分片只管外观）', () => {
+  // 分片的 .u-mm-task-bar 只有高度与轨道，不给宽度时在 flex 行里会被压成 0。
+  const body = ruleBody(POINTS_SOURCE, '.task-progress-row .u-mm-task-bar {')
+  assert.match(body, /width: calc\(var\(--space-unit\) \* \d+\)/)
 })
 
-test('源码：极窄屏退回上下两行，避免横向那行被压扁', () => {
+test('页面：极窄屏下商城条目按钮独占一行', () => {
   const media = POINTS_SOURCE.slice(POINTS_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(media, /\.history-item \{[\s\S]*?flex-direction: column/)
+  assert.match(media, /\.mall-item \{[\s\S]*?flex-wrap: wrap/)
+  assert.match(media, /\.mall-item-btn \{[\s\S]*?width: 100%/)
 })

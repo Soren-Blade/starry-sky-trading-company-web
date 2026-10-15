@@ -55,25 +55,25 @@
 
         <section v-if="tab === 'overview'" class="u-tabs-content points-panel" aria-label="积分概览">
           <!-- ① 余额大字。0 分时不显示「0 积分」，而是给获取路径 ——
-               「暂无数据 ≠ 加载中」，也不该是「你有 0 元」这种没有信息量的陈述 -->
-          <section class="ui-card points-balance">
-            <template v-if="pointsStore.points > 0">
-              <p class="points-balance-num">
-                {{ pointsStore.points }}
-                <span class="points-balance-unit">积分</span>
-              </p>
-              <p class="points-balance-value">可抵扣 ¥{{ formatPointsValue(pointsStore.points) }}</p>
-            </template>
-            <template v-else>
-              <p class="points-balance-empty">还没有积分</p>
-              <p class="points-balance-desc">去签到或下单即可获得积分</p>
-              <div class="points-balance-actions">
-                <button v-if="checkinAvailable" type="button" class="u-btn-primary" @click="goCheckin">
-                  去签到
-                </button>
-                <router-link v-else :to="{ name: 'Home' }" class="u-btn-secondary">去逛逛商品</router-link>
-              </div>
-            </template>
+               「暂无数据 ≠ 加载中」，也不该是「你有 0 元」这种没有信息量的陈述。
+               有余额走分片的余额块（§15），没余额走四态容器（§2）——
+               两者是不同语义，不再共用一套本地样式。 -->
+          <section v-if="pointsStore.points > 0" class="ui-card u-mm-balance">
+            <p class="u-mm-balance-num">
+              {{ pointsStore.points }}
+              <span class="u-mm-balance-unit">积分</span>
+            </p>
+            <p class="u-mm-balance-desc">可抵扣 ¥{{ formatPointsValue(pointsStore.points) }}</p>
+          </section>
+          <section v-else class="ui-card u-mm-state">
+            <p class="u-mm-state-title">还没有积分</p>
+            <p class="u-mm-state-desc">去签到或下单即可获得积分</p>
+            <div class="u-mm-state-actions">
+              <button v-if="checkinAvailable" type="button" class="u-btn-primary" @click="goCheckin">
+                去签到
+              </button>
+              <router-link v-else :to="{ name: 'Home' }" class="u-btn-secondary">去逛逛商品</router-link>
+            </div>
           </section>
 
           <!-- ② 即将过期：没有将过期的批次时**整块不渲染**（键可能不存在） -->
@@ -153,45 +153,53 @@
           </div>
 
           <template v-else>
-            <ul class="history-list">
-              <li v-for="row in pointsStore.history" :key="row.id" class="ui-card history-item">
-                <div class="history-item-main">
-                  <span class="history-item-type">{{ row.type_text }}</span>
-                  <span class="history-item-time">{{ formatTime(row.created_at) }}</span>
-                  <span v-if="row.remark" class="history-item-remark">{{ row.remark }}</span>
-                  <!-- 关联单号：客服核对时要能定位到具体订单 -->
-                  <span v-if="row.ref_order_no" class="history-item-ref">单号 {{ row.ref_order_no }}</span>
+            <!-- 流水台账：行样式走分片 §16（分隔线成行，不再是「一条一张卡」） -->
+            <ul class="ui-card u-mm-ledger">
+              <li v-for="row in pointsStore.history" :key="row.id" class="u-mm-ledger-row">
+                <div class="u-mm-ledger-main">
+                  <span class="u-mm-ledger-type">{{ row.type_text }}</span>
+                  <span class="u-mm-ledger-sub">
+                    <span>{{ formatTime(row.created_at) }}</span>
+                    <span v-if="row.remark">{{ row.remark }}</span>
+                    <!-- 关联单号：客服核对时要能定位到具体订单 -->
+                    <span v-if="row.ref_order_no" class="u-mm-ledger-ref">单号 {{ row.ref_order_no }}</span>
+                  </span>
                 </div>
-                <div class="history-item-right">
-                  <span class="history-item-delta" :class="row.delta > 0 ? 'is-earn' : 'is-spend'">
+                <div class="u-mm-ledger-right">
+                  <span
+                    class="u-mm-ledger-delta"
+                    :class="row.delta > 0 ? 'u-mm-ledger-delta--earn' : 'u-mm-ledger-delta--spend'"
+                  >
                     {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
                   </span>
-                  <span class="history-item-balance">余额 {{ row.balance_after }}</span>
+                  <span class="u-mm-ledger-balance">余额 {{ row.balance_after }}</span>
                 </div>
               </li>
             </ul>
 
             <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
-            <div v-if="pointsStore.totalPages > 1" class="history-pager">
-              <button
-                type="button"
-                class="u-btn-secondary"
-                :disabled="!pointsStore.hasPrev"
-                @click="goPage(pointsStore.page - 1)"
-              >
-                上一页
-              </button>
-              <span class="history-pager-info">
+            <div v-if="pointsStore.totalPages > 1" class="u-mm-pager">
+              <span class="u-mm-pager-info">
                 {{ pointsStore.page }} / {{ pointsStore.totalPages }}（共 {{ pointsStore.total }} 条）
               </span>
-              <button
-                type="button"
-                class="u-btn-secondary"
-                :disabled="!pointsStore.hasNext"
-                @click="goPage(pointsStore.page + 1)"
-              >
-                下一页
-              </button>
+              <div class="u-mm-pager-btns">
+                <button
+                  type="button"
+                  class="u-btn-secondary"
+                  :disabled="!pointsStore.hasPrev"
+                  @click="goPage(pointsStore.page - 1)"
+                >
+                  上一页
+                </button>
+                <button
+                  type="button"
+                  class="u-btn-secondary"
+                  :disabled="!pointsStore.hasNext"
+                  @click="goPage(pointsStore.page + 1)"
+                >
+                  下一页
+                </button>
+              </div>
             </div>
           </template>
         </section>
@@ -286,29 +294,34 @@
             <p class="u-mm-state-desc">活动上线后会出现在这里</p>
           </div>
 
-          <ul v-else class="tasks-list">
-            <li v-for="task in taskStore.tasks" :key="task.task_id" class="ui-card task-item">
-              <AppIcon :name="task.icon" class="task-item-icon" />
-              <div class="task-item-main">
-                <p class="task-item-name">
-                  {{ task.name }}
-                  <span class="task-item-period">{{ periodText(task.period) }}</span>
+          <ul v-else class="u-mm-task-list">
+            <li
+              v-for="task in taskStore.tasks"
+              :key="task.task_id"
+              class="u-mm-task"
+              :class="{ 'u-mm-task--done': task.claimed === true }"
+            >
+              <AppIcon :name="task.icon" class="u-mm-task-icon" />
+              <div class="u-mm-task-main">
+                <p class="task-name-row">
+                  <span class="u-mm-task-name">{{ task.name }}</span>
+                  <span class="u-mm-task-period">{{ periodText(task.period) }}</span>
                 </p>
-                <p class="task-item-desc">{{ task.desc }}</p>
-                <p class="task-item-progress">
-                  <span class="task-item-bar">
+                <p class="u-mm-task-desc">{{ task.desc }}</p>
+                <p class="task-progress-row">
+                  <span class="u-mm-task-bar">
                     <span
-                      class="task-item-bar-fill"
+                      class="u-mm-task-bar-fill"
                       :style="{ width: progressPercent(task) + '%' }"
                     ></span>
                   </span>
-                  <span class="task-item-progress-text">{{ task.progress }} / {{ task.target }}</span>
-                  <span class="task-item-reward">+{{ task.reward_points }} 积分</span>
+                  <span class="task-progress-text">{{ task.progress }} / {{ task.target }}</span>
+                  <span class="u-mm-task-reward">+{{ task.reward_points }} 积分</span>
                 </p>
               </div>
               <button
                 type="button"
-                class="u-btn-primary task-item-btn"
+                class="u-btn-primary u-mm-task-action"
                 :disabled="!canClaimTask(task) || Boolean(taskStore.claimingId)"
                 :title="taskButtonHint(task)"
                 @click="doClaim(task)"
@@ -557,41 +570,8 @@ onMounted(async () => {
   height: calc(var(--space-unit) * 6);
 }
 
-/* 余额 */
-.points-balance {
-  padding: calc(var(--space-unit) * 4);
-  text-align: center;
-}
-.points-balance-num {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-display);
-  line-height: 1;
-  color: var(--accent);
-}
-.points-balance-unit {
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  color: var(--text-muted);
-}
-.points-balance-value {
-  margin: calc(var(--space-unit) * 1.5) 0 0;
-  color: var(--text-muted);
-}
-.points-balance-empty {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.points-balance-desc {
-  margin: var(--space-unit) 0 calc(var(--space-unit) * 2);
-  color: var(--text-muted);
-}
-.points-balance-actions {
-  display: flex;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 1.5);
-}
+/* 余额：有余额的块见 ui-kit-member.css §15 的 .u-mm-balance，
+   0 分时的空态见 §2 的 .u-mm-state —— 两者不再共用一套本地样式 */
 
 /* 即将过期 */
 .points-expiring {
@@ -692,94 +672,14 @@ onMounted(async () => {
   border-radius: var(--radius-media);
 }
 
-/* 流水：列表 */
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.history-item {
-  display: flex;
-  /* 必须显式写 row：行上同时挂了全局 .ui-card，它声明的是 flex-direction: column。
-     只写 display: flex 会被 .ui-card 的列方向覆盖，整行竖排成「图标/内容/金额」三行。 */
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-}
-/* 每行内容横向排版：类型 · 时间 · 说明 · 单号 一行，右侧 +35 余额 35 一行。
-   全列排版会把每条记录拉到三行高，条数一多就翻不到底；横向后一屏能看更多条。
-   两处都允许换行（wrap），窄屏也不会互相挤压。 */
-.history-item-main {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: calc(var(--space-unit) * 1.5);
-  min-width: 0;
-}
-.history-item-type {
-  font-weight: var(--fw-heading);
-}
-.history-item-time,
-.history-item-remark,
-.history-item-ref {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.history-item-remark {
-  overflow-wrap: anywhere;
-}
-.history-item-ref {
-  font-family: var(--font-mono);
-}
-.history-item-right {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: calc(var(--space-unit) * 1.5);
-  flex-shrink: 0;
-}
-.history-item-delta {
-  font-family: var(--font-mono);
-  font-size: var(--fs-price);
-}
-.history-item-delta.is-earn {
-  color: var(--success);
-}
-.history-item-delta.is-spend {
-  color: var(--warning);
-}
-.history-item-balance {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-/* 流水：分页 */
-.history-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 2);
-}
-.history-pager-info {
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
+/* 流水：行见 ui-kit-member.css §16 的 .u-mm-ledger，分页见 §4 的 .u-mm-pager */
 
 /* 商城 / 任务：共用的面板说明与列表骨架 */
 .points-panel-desc {
   margin: 0;
   color: var(--text-muted);
 }
-.mall-list,
-.tasks-list {
+.mall-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-unit);
@@ -787,31 +687,27 @@ onMounted(async () => {
   padding: 0;
   list-style: none;
 }
-.mall-item,
-.task-item {
+.mall-item {
   display: flex;
-  /* 同 .history-item：卡片挂了两层类，全局 .ui-card 的 column 会盖掉这里的排版意图。 */
+  /* 卡片挂了两层类，全局 .ui-card 的 column 会盖掉这里的排版意图。 */
   flex-direction: row;
   align-items: center;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
 }
-.mall-item-icon,
-.task-item-icon {
+.mall-item-icon {
   flex-shrink: 0;
   font-size: var(--fs-h2);
   color: var(--accent);
 }
-.mall-item-main,
-.task-item-main {
+.mall-item-main {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 0.5);
   flex: 1;
   min-width: 0;
 }
-.mall-item-name,
-.task-item-name {
+.mall-item-name {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -819,8 +715,7 @@ onMounted(async () => {
   margin: 0;
   font-weight: var(--fw-heading);
 }
-.mall-item-tag,
-.task-item-period {
+.mall-item-tag {
   padding: 0 calc(var(--space-unit) * 0.5);
   font-size: var(--fs-label);
   font-weight: var(--fw-body);
@@ -828,18 +723,12 @@ onMounted(async () => {
   border: var(--stroke-width) solid var(--accent);
   border-radius: var(--radius-media);
 }
-.task-item-period {
-  color: var(--text-muted);
-  border-color: var(--border);
-}
-.mall-item-desc,
-.task-item-desc {
+.mall-item-desc {
   margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
-.mall-item-meta,
-.task-item-progress {
+.mall-item-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -847,13 +736,11 @@ onMounted(async () => {
   margin: 0;
   font-size: var(--fs-label);
 }
-.mall-item-cost,
-.task-item-reward {
+.mall-item-cost {
   font-family: var(--font-mono);
   color: var(--accent);
 }
-.mall-item-stock,
-.task-item-progress-text {
+.mall-item-stock {
   color: var(--text-muted);
 }
 .mall-item-hint {
@@ -861,26 +748,35 @@ onMounted(async () => {
   font-size: var(--fs-label);
   color: var(--warning);
 }
-.mall-item-btn,
-.task-item-btn {
+.mall-item-btn {
   flex-shrink: 0;
   min-width: calc(var(--space-unit) * 10);
 }
 
-/* 任务进度条：宽度按进度内联给，这里只管外观 */
-.task-item-bar {
-  display: inline-block;
-  width: calc(var(--space-unit) * 12);
-  height: calc(var(--space-unit) * 0.75);
-  overflow: hidden;
-  background: var(--border);
-  border-radius: var(--radius-pill);
+/* 任务：条目本体（图标 / 名称 / 周期 / 说明 / 进度条 / 奖励 / 按钮）见
+   ui-kit-member.css §17 的 .u-mm-task，这里只留分片没覆盖的两处「同行排版」 */
+.task-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-unit);
+  margin: 0;
 }
-.task-item-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width var(--transition-interactive);
+.task-progress-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  font-size: var(--fs-label);
+}
+/* 分片的进度条只管外观（高度 / 轨道 / 填充），宽度由使用方给 ——
+   不给宽度时它在 flex 行里会被压成 0，进度就彻底看不见了。 */
+.task-progress-row .u-mm-task-bar {
+  width: calc(var(--space-unit) * 12);
+}
+.task-progress-text {
+  color: var(--text-muted);
 }
 .tasks-head {
   display: flex;
@@ -896,25 +792,12 @@ onMounted(async () => {
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 575px) {
-  /* 极窄屏：横向那行「+35 余额 35」放不下，退回上下两行 */
-  .history-item {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-unit);
-  }
-
-  .history-item-right {
-    justify-content: space-between;
-  }
-
   /* 极窄屏：图标 + 正文 + 按钮挤一行放不下，按钮独占一行 */
-  .mall-item,
-  .task-item {
+  .mall-item {
     flex-wrap: wrap;
   }
 
-  .mall-item-btn,
-  .task-item-btn {
+  .mall-item-btn {
     width: 100%;
   }
 }
