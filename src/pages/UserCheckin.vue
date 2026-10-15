@@ -60,16 +60,16 @@
           <span class="u-skeleton checkin-skeleton-line"></span>
         </div>
 
-        <ul v-else class="ui-card checkin-grid">
+        <ul v-else class="ui-card u-mm-checkin-grid">
           <li
             v-for="day in calendar.days"
             :key="day.date"
-            class="checkin-cell"
+            class="u-mm-checkin-cell"
             :class="{
-              'is-checked': day.checked,
-              'is-today': day.is_today,
-              'is-future': day.future,
-              'is-replenishable': canReplenish(day),
+              'u-mm-checkin-cell--checked': day.checked,
+              'u-mm-checkin-cell--today': day.is_today,
+              'u-mm-checkin-cell--future': day.future,
+              'u-mm-checkin-cell--makeup': canReplenish(day),
             }"
             :title="cellTitle(day)"
           >
@@ -301,50 +301,13 @@ onMounted(() => {
   height: calc(var(--space-unit) * 12);
   border-radius: var(--radius-media);
 }
-.checkin-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: calc(var(--space-unit) * 0.5);
-  margin: 0;
-  padding: calc(var(--space-unit) * 2);
-  list-style: none;
-}
-.checkin-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.25);
-  padding: calc(var(--space-unit) * 0.75) 0;
-  font-size: var(--fs-label);
-  border: var(--stroke-width) solid transparent;
-  border-radius: var(--radius-media);
-  color: var(--text-muted);
-}
-/* 已签到：用强调色底纹表达，不新增色值 */
-.checkin-cell.is-checked {
-  color: var(--accent);
-  background: var(--bg-surface-2);
-}
-/* 今天：描边强调（与「已签到」是两件事，可能同时成立） */
-.checkin-cell.is-today {
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: var(--fw-heading);
-}
-.checkin-cell.is-future {
-  opacity: 0.45;
-}
-/*
- * 可补签：虚线描边 + 手型光标，明确「这个格子能点」。
- * 用虚线而不是换色，是为了与「今天」（实线强调描边）区分开 ——
- * 两者可能同时成立于同一天（今天当然不可补签，但历史上曾经如此）。
- */
-.checkin-cell.is-replenishable {
-  border-style: dashed;
-  border-color: var(--border);
+/* 日历格：七列栅格与四态（已签 / 今天 / 未来 / 补签位）走共享分片
+ * `.u-mm-checkin-grid` / `.u-mm-checkin-cell`（见 ui-kit-member.css §14）。
+ * 这一页只留分片没有的两件事：补签格的手型与悬停反馈、盖满整格的按钮热区。 */
+.u-mm-checkin-cell--makeup {
   cursor: pointer;
 }
-.checkin-cell.is-replenishable:hover {
+.u-mm-checkin-cell--makeup:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -371,7 +334,7 @@ onMounted(() => {
 .checkin-cell-hit:focus-visible {
   outline: var(--stroke-width) solid var(--accent);
   outline-offset: calc(var(--stroke-width) * 2);
-  border-radius: var(--radius-media);
+  border-radius: var(--radius-input);
 }
 .checkin-cell-icon {
   font-size: var(--fs-label);
