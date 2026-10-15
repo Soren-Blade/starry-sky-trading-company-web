@@ -127,6 +127,10 @@ test('已登录：汇总三个数字原样来自服务端 summary', async () => 
   assert.match(html, /门槛 0/)
   // 生效等级为空（非会员）时显示「未开通」，不留空白
   assert.match(html, /未开通/)
+  // 汇总卡走共享分片 §23 的 .u-mm-stat-*（卡面不再由页面自己画）
+  assert.match(html, /u-mm-stat-grid/)
+  assert.match(html, /u-mm-stat-label[\s\S]{0,40}累计成长值/)
+  assert.match(html, /u-mm-stat-num[\s\S]{0,10}63/)
 })
 
 test('升级进度：再攒 437 到 V2（门槛 500），进度条按 63/500 给 13%', async () => {
@@ -140,6 +144,9 @@ test('升级进度：再攒 437 到 V2（门槛 500），进度条按 63/500 给
   assert.match(html, /aria-valuenow="13"/)
   assert.match(html, /已攒 63，还差 437/)
   assert.match(html, /width:13%/)
+  // 进度条几何走共享分片 §8 的 .u-mm-growth-track / -fill
+  assert.match(html, /class="u-mm-growth-track"/)
+  assert.match(html, /class="u-mm-growth-fill"/)
 })
 
 test('满级：后端不给 next_level 四键时，进度块整块不渲染且不出现 undefined', async () => {
@@ -164,7 +171,8 @@ test('来源说明与明细：文案、单号、增减颜色类名都渲染出�
   assert.match(html, /\+58/)
   assert.match(html, /累计 63/)
   assert.match(html, /SSTC20261012001/)
-  assert.match(html, /is-earn/)
+  // 增减颜色走共享分片 §16 的语义修饰符，不再是页面私有的 is-earn / is-spend
+  assert.match(html, /u-mm-ledger-delta--earn/)
   // 两行都渲染（不是只渲染第一行）
   assert.match(html, /\+5/)
   assert.match(html, /累计 5/)
@@ -189,6 +197,10 @@ test('分页：多于 1 页时才渲染控件', async () => {
   assert.match(paged, /下一页/)
   assert.match(paged, /1 \/ 3/)
   assert.match(paged, /共 45 条/)
+  // 分页壳走共享分片 §4：信息在左、按钮在右
+  assert.match(paged, /class="u-mm-pager"/)
+  assert.match(paged, /class="u-mm-pager-info"/)
+  assert.match(paged, /class="u-mm-pager-btns"/)
 
   const single = await renderGrowth()
   assert.doesNotMatch(single, /上一页/)
@@ -207,4 +219,17 @@ test('等级门槛表：与套餐页共用组件，且只展示门槛（无折�
 test('渲染期间不产生 Vue 警告（模板绑定错误的唯一信号）', async () => {
   const { warnings } = await captureWarnings(() => renderGrowth())
   assert.deepEqual(warnings.filter((w) => w.includes('[Vue warn]')), [])
+})
+
+// 迁移守护：这一页的四块（汇总 / 进度 / 对照表 / 明细）都改走共享分片了，
+// 页面私有的那几套类名不许再回来 —— 它们正是「六个页面各抄一份」的来源。
+test('不再保留页面私有的汇总 / 进度 / 明细 / 分页类名', async () => {
+  const html = await renderGrowth({ growthTotalPages: 3, growthTotal: 45 })
+  assert.doesNotMatch(html, /growth-summary/)
+  assert.doesNotMatch(html, /growth-stat-label|growth-stat-value/)
+  assert.doesNotMatch(html, /growth-progress/)
+  assert.doesNotMatch(html, /growth-list|growth-item/)
+  assert.doesNotMatch(html, /growth-pager/)
+  assert.doesNotMatch(html, /growth-matrix-wrap/)
+  assert.doesNotMatch(html, /is-earn|is-spend/)
 })

@@ -32,23 +32,23 @@
       </div>
 
       <template v-else>
-        <!-- ① 身份区：等级、到期倒计时、续费/开通入口 -->
-        <section class="ui-card member-identity">
-          <div class="member-identity-main">
-            <span class="u-tag member-identity-tag" :class="{ 'u-tag--accent': memberStore.isMember }">
+        <!-- ① 身份区：等级、到期倒计时、续费/开通入口（外观见 ui-kit-member.css §6） -->
+        <section class="u-mm-identity">
+          <div class="u-mm-identity-main">
+            <span class="u-tag" :class="{ 'u-tag--accent': memberStore.isMember }">
               {{ identityTag }}
             </span>
-            <p class="member-identity-title">
+            <p class="u-mm-identity-name">
               {{ memberStore.isMember ? '会员生效中' : '尚未开通会员' }}
             </p>
-            <p class="member-identity-expiry" :class="{ 'is-warning': expiringSoon }">
+            <p class="u-mm-identity-expiry" :class="{ 'u-mm-identity-expiry--warning': expiringSoon }">
               <template v-if="memberStore.isMember">
                 到期 {{ formatDate(overview.expires_at) }}（剩余 {{ overview.days_left }} 天）
               </template>
               <template v-else> 开通会员即可解锁八项权益，成长值到账即时生效 </template>
             </p>
           </div>
-          <div class="member-identity-actions">
+          <div class="u-mm-identity-actions">
             <router-link
               v-if="memberPlansAvailable"
               :to="{ name: 'MemberPlans' }"
@@ -60,28 +60,38 @@
           </div>
         </section>
 
-        <!-- ② 资产概览：三卡就地显示数值，不写「去查看」 -->
-        <section class="member-assets" aria-label="资产概览">
-          <router-link :to="{ name: 'Points' }" class="ui-card member-asset">
-            <span class="member-asset-label">积分</span>
-            <span class="member-asset-value">{{ overview.points ?? 0 }}</span>
-            <span class="member-asset-hint">可抵 ¥{{ formatPointsValue(overview.points ?? 0) }}</span>
+        <!-- ② 资产概览：三卡就地显示数值，不写「去查看」（卡面见 ui-kit-member.css §7） -->
+        <section class="u-mm-asset-grid" aria-label="资产概览">
+          <router-link
+            :to="{ name: 'Points' }"
+            class="u-mm-asset"
+            :class="{ 'u-mm-asset--empty': !(overview.points ?? 0) }"
+          >
+            <span class="u-mm-asset-label">积分</span>
+            <span class="u-mm-asset-value">{{ overview.points ?? 0 }}</span>
+            <span class="u-mm-asset-hint">可抵 ¥{{ formatPointsValue(overview.points ?? 0) }}</span>
             <span v-if="pointsTodo" class="member-asset-tip">{{ pointsTodo }}</span>
             <span class="member-asset-link">查看明细</span>
           </router-link>
 
-          <router-link :to="{ name: 'Coupons' }" class="ui-card member-asset">
-            <span class="member-asset-label">优惠券</span>
-            <span class="member-asset-value">{{ overview.coupons ?? 0 }}<span class="member-asset-unit">张</span></span>
-            <span class="member-asset-hint">可用于下单抵扣</span>
+          <router-link
+            :to="{ name: 'Coupons' }"
+            class="u-mm-asset"
+            :class="{ 'u-mm-asset--empty': !(overview.coupons ?? 0) }"
+          >
+            <span class="u-mm-asset-label">优惠券</span>
+            <span class="u-mm-asset-value">
+              {{ overview.coupons ?? 0 }}<span class="u-mm-asset-unit">张</span>
+            </span>
+            <span class="u-mm-asset-hint">可用于下单抵扣</span>
             <span v-if="couponTodo" class="member-asset-tip">{{ couponTodo }}</span>
             <span class="member-asset-link">查看券包</span>
           </router-link>
 
-          <div class="ui-card member-asset">
-            <span class="member-asset-label">会员到期日</span>
-            <span class="member-asset-value member-asset-value--date">{{ expiryValue }}</span>
-            <span class="member-asset-hint">{{ expiryHint }}</span>
+          <div class="u-mm-asset">
+            <span class="u-mm-asset-label">会员到期日</span>
+            <span class="u-mm-asset-value member-asset-date">{{ expiryValue }}</span>
+            <span class="u-mm-asset-hint">{{ expiryHint }}</span>
             <span v-if="memberTodo" class="member-asset-tip">{{ memberTodo }}</span>
             <router-link
               v-if="memberPlansAvailable"
@@ -93,37 +103,38 @@
           </div>
         </section>
 
-        <!-- ③ 成长值进度：门槛与还差多少都来自服务端，前端只算百分比 -->
-        <section class="ui-card member-growth">
-          <div class="member-growth-head">
+        <!-- ③ 成长值进度：门槛与还差多少都来自服务端，前端只算百分比（外观见 §8） -->
+        <section class="ui-card u-mm-growth">
+          <div class="u-mm-growth-head">
             <h2 class="member-section-title">成长值进度</h2>
             <router-link :to="{ name: 'MemberGrowth' }" class="member-growth-link">成长值明细</router-link>
           </div>
-          <p class="member-growth-num">
-            当前成长值 <strong>{{ overview.growth ?? 0 }}</strong>
+          <p class="member-growth-value">
+            <span class="u-mm-growth-hint">当前成长值</span>
+            <strong class="u-mm-growth-num">{{ overview.growth ?? 0 }}</strong>
           </p>
           <template v-if="hasNext">
             <div
-              class="member-growth-track"
+              class="u-mm-growth-track"
               role="progressbar"
               :aria-valuemin="0"
               :aria-valuemax="100"
               :aria-valuenow="growthPercent"
               :aria-valuetext="`已攒 ${overview.growth}，还差 ${overview.growth_to_next}`"
             >
-              <span class="member-growth-fill" :style="{ width: growthPercent + '%' }"></span>
+              <div class="u-mm-growth-fill" :style="{ width: growthPercent + '%' }"></div>
             </div>
-            <p class="member-growth-hint">
+            <p class="u-mm-growth-hint">
               距离 {{ overview.next_level_name }}（门槛 {{ growthNextThreshold }}）还差
               {{ overview.growth_to_next }} 成长值
             </p>
           </template>
-          <p v-else-if="memberStore.isMember" class="member-growth-hint">
+          <p v-else-if="memberStore.isMember" class="u-mm-growth-hint">
             成长值只升不降、长期有效；已是最高等级，继续累计不影响权益。
           </p>
           <!-- 非会员同样没有 next_level，但这里不能复用满级那句 —— 0 成长值的人
                被告知「已是最高等级」是直接说反。分开写，两者的下一步动作也不同。 -->
-          <p v-else class="member-growth-hint">
+          <p v-else class="u-mm-growth-hint">
             成长值只升不降、长期有效；开通会员后按成长值门槛定档，到账即时生效。
           </p>
         </section>
@@ -407,82 +418,10 @@ onMounted(() => {
   font-weight: var(--fw-heading);
 }
 
-/* ① 身份区 */
-.member-identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 3);
-}
-.member-identity-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  min-width: 0;
-}
-.member-identity-tag {
-  align-self: flex-start;
-}
-.member-identity-title {
-  margin: 0;
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-heading);
-}
-.member-identity-expiry {
-  margin: 0;
-  color: var(--text-muted);
-}
-.member-identity-expiry.is-warning {
-  color: var(--warning);
-}
-.member-identity-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-unit);
-}
+/* ① 身份区：见 ui-kit-member.css §6 的 .u-mm-identity（含卡面、间距与 warning 文字） */
 
-/* ② 资产概览 */
-.member-assets {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: calc(var(--space-unit) * 2);
-}
-.member-asset {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 2);
-  color: inherit;
-  text-decoration: none;
-  transition: border-color var(--transition-interactive);
-}
-a.member-asset:hover {
-  border-color: var(--accent);
-}
-.member-asset-label {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.member-asset-value {
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.member-asset-unit {
-  margin-left: var(--space-unit);
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  color: var(--text-muted);
-}
-.member-asset-value--date {
-  font-size: var(--fs-h3);
-}
-.member-asset-hint {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
+/* ② 资产概览：卡面见 §7 的 .u-mm-asset-*；这里只留分片没建模的两行 —
+   「待办提醒」与「查看明细」链接，它们是页面自己的动作，不属于资产卡契约 */
 .member-asset-tip {
   font-size: var(--fs-label);
   color: var(--warning);
@@ -492,45 +431,24 @@ a.member-asset:hover {
   font-size: var(--fs-label);
   color: var(--accent);
 }
+/* 到期日是一串日期/状态文字，不是金额：分片的 -value 用 fs-h1 价签字形，
+   这里降一档并回到正文字体，避免「尚未开通」被渲染成大字价格 */
+.member-asset-date {
+  font-family: var(--font-body);
+  font-size: var(--fs-h3);
+}
 
-/* ③ 成长值进度 */
-.member-growth {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 3);
-}
-.member-growth-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-unit);
-}
+/* ③ 成长值进度：几何见 §8 的 .u-mm-growth-*；
+   卡片留白由 .ui-card 统一给，轨道与填充全部走分片 */
 .member-growth-link {
   font-size: var(--fs-label);
   color: var(--accent);
 }
-.member-growth-num {
+.member-growth-value {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.75);
   margin: 0;
-}
-.member-growth-track {
-  position: relative;
-  height: calc(var(--space-unit) * 1);
-  overflow: hidden;
-  background: var(--divider);
-  border-radius: var(--radius-pill);
-}
-.member-growth-fill {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transition: width var(--transition-interactive);
-}
-.member-growth-hint {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
 }
 
 /* ④ 权益卡区 */

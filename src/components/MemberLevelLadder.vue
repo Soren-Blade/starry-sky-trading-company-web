@@ -1,36 +1,42 @@
 <template>
   <!-- 没有等级数据就整块不渲染：宁可不显示，也不显示一张空表 -->
-  <section v-if="levels.length" class="ui-card level-ladder">
-    <h2 class="level-ladder-title">{{ title }}</h2>
-    <p v-if="description" class="level-ladder-desc">{{ description }}</p>
+  <section v-if="levels.length" class="ui-card u-mm-section">
+    <div class="u-mm-section-head">
+      <div class="u-mm-section-head-main">
+        <h2 class="u-mm-section-title">{{ title }}</h2>
+        <p v-if="description" class="u-mm-section-desc">{{ description }}</p>
+      </div>
+    </div>
 
-    <div class="u-table-wrap">
-      <table class="u-table">
-        <thead>
-          <tr>
-            <th scope="col">等级</th>
-            <th scope="col">成长值门槛</th>
-            <th v-if="showRewards" scope="col">消费折扣</th>
-            <th v-if="showRewards" scope="col">积分倍率</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="level in levels"
-            :key="level.level"
-            :class="{ 'is-current': level.level === currentLevel }"
-            :aria-current="level.level === currentLevel ? 'true' : undefined"
-          >
-            <td>
-              {{ level.name }}
-              <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">当前</span>
-            </td>
-            <td class="level-ladder-num">{{ level.growth_threshold }}</td>
-            <td v-if="showRewards" class="level-ladder-num">{{ discountLabel(level.discount_rate) }}</td>
-            <td v-if="showRewards" class="level-ladder-num">×{{ level.points_multiplier }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="u-mm-section-body">
+      <div class="u-table-wrap">
+        <table class="u-table u-mm-ladder">
+          <thead>
+            <tr>
+              <th scope="col">等级</th>
+              <th scope="col">成长值门槛</th>
+              <th v-if="showRewards" scope="col">消费折扣</th>
+              <th v-if="showRewards" scope="col">积分倍率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="level in levels"
+              :key="level.level"
+              :class="{ 'is-current': level.level === currentLevel }"
+              :aria-current="level.level === currentLevel ? 'true' : undefined"
+            >
+              <td>
+                {{ level.name }}
+                <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">当前</span>
+              </td>
+              <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
+              <td v-if="showRewards" class="u-mm-ladder-num">{{ discountLabel(level.discount_rate) }}</td>
+              <td v-if="showRewards" class="u-mm-ladder-num">×{{ level.points_multiplier }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 </template>
@@ -68,6 +74,13 @@
  * 成长值页只从 `getGrowthHistory` 拿到 `thresholds`（`{level, name, growth_threshold}`），
  * 没有折扣与倍率 —— 那种情况下把两列藏掉（`showRewards=false`），
  * 而不是渲染出两列 `undefined`。折扣/倍率仍由套餐页展示，信息来源只有服务端一份。
+ *
+ * ## 样式
+ *
+ * 区块壳（标题 / 说明 / 内容）走 `ui-kit-member.css` §1 的 `.u-mm-section-*`，
+ * 表格与门槛数值走 §10 的 `.u-mm-ladder` / `.u-mm-ladder-num`（当前档的强调条也由
+ * 分片的 `tr.is-current` 给）。本组件不再自带任何 scoped 样式 —— 「当前等级整行染强调色」
+ * 这种做法两页各写一遍，正是这次收敛要消掉的东西。
  */
 import { discountLabel } from '@/constants/member.js'
 
@@ -84,32 +97,3 @@ defineProps({
   showRewards: { type: Boolean, default: true },
 })
 </script>
-
-<style scoped>
-/*
- * 标题沿用页面内其它卡片小节的口径（`--fs-h3` / `--fw-heading`）。
- * 不用 `SectionHeader`：它是给落地页整段区块用的（居中 + `--section-gap`），
- * 放进卡片里会得到一张标题比内容还高的表。
- */
-.level-ladder {
-  padding: calc(var(--space-unit) * 2.5);
-}
-.level-ladder-title {
-  margin: 0 0 calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
-.level-ladder-desc {
-  margin: 0 0 calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-/* 当前等级整行换成强调色 + 名字后面跟一枚「当前」标签 */
-.level-ladder tr.is-current {
-  color: var(--accent);
-}
-.level-ladder-num {
-  font-family: var(--font-mono);
-}
-</style>

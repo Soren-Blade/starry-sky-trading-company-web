@@ -26,41 +26,43 @@
     </div>
 
     <template v-else>
-      <!-- 汇总：三个数字直接来自服务端 `summary`，前端不做换算 -->
-      <section class="growth-summary">
-        <div class="ui-card growth-stat">
-          <span class="growth-stat-label">累计成长值</span>
-          <span class="growth-stat-value">{{ summary.growth }}</span>
+      <!-- 汇总：三个数字直接来自服务端 `summary`，前端不做换算（卡面见 ui-kit-member.css §23） -->
+      <section class="u-mm-stat-grid" aria-label="成长值汇总">
+        <div class="u-mm-stat">
+          <span class="u-mm-stat-label">累计成长值</span>
+          <span class="u-mm-stat-num">{{ summary.growth }}</span>
           <span class="growth-stat-hint">只升不降，不过期</span>
         </div>
-        <div class="ui-card growth-stat">
-          <span class="growth-stat-label">成长值等级</span>
-          <span class="growth-stat-value">{{ summary.level_name || '——' }}</span>
+        <div class="u-mm-stat">
+          <span class="u-mm-stat-label">成长值等级</span>
+          <span class="u-mm-stat-num">{{ summary.level_name || '——' }}</span>
           <span class="growth-stat-hint">门槛 {{ summary.growth_threshold }}</span>
         </div>
-        <div class="ui-card growth-stat">
-          <span class="growth-stat-label">当前生效等级</span>
-          <span class="growth-stat-value">{{ summary.effective_level_name || '未开通' }}</span>
+        <div class="u-mm-stat">
+          <span class="u-mm-stat-label">当前生效等级</span>
+          <span class="u-mm-stat-num">{{ summary.effective_level_name || '未开通' }}</span>
           <span class="growth-stat-hint">{{ effectiveHint }}</span>
         </div>
       </section>
 
-      <!-- 升级进度：满级（V8）时后端不下发下一档那四个键，整块不渲染 -->
-      <section v-if="hasNext" class="ui-card growth-progress">
-        <p class="growth-progress-head">
-          再攒 <strong>{{ summary.growth_to_next }}</strong> 成长值升到
-          {{ summary.next_level_name }}
-          <span class="growth-progress-sub">（{{ summary.next_level_name }} 门槛 {{ summary.next_level_threshold }}）</span>
+      <!-- 升级进度：满级（V8）时后端不下发下一档那四个键，整块不渲染（几何见 §8） -->
+      <section v-if="hasNext" class="ui-card u-mm-growth">
+        <p class="u-mm-growth-head">
+          <span>
+            再攒 <strong class="u-mm-growth-num">{{ summary.growth_to_next }}</strong> 成长值升到
+            {{ summary.next_level_name }}
+          </span>
+          <span class="u-mm-growth-hint">（{{ summary.next_level_name }} 门槛 {{ summary.next_level_threshold }}）</span>
         </p>
         <div
-          class="growth-progress-track"
+          class="u-mm-growth-track"
           role="progressbar"
           :aria-valuemin="0"
           :aria-valuemax="100"
           :aria-valuenow="progressPercent"
           :aria-valuetext="`已攒 ${summary.growth}，还差 ${summary.growth_to_next}`"
         >
-          <span class="growth-progress-fill" :style="{ width: progressPercent + '%' }"></span>
+          <div class="u-mm-growth-fill" :style="{ width: progressPercent + '%' }"></div>
         </div>
       </section>
 
@@ -91,8 +93,8 @@
            门槛表只放门槛，权益数值放这里 —— 两处职责分开，避免一张表塞十列。 -->
       <section class="growth-matrix" aria-labelledby="growth-matrix-title">
         <h2 id="growth-matrix-title" class="growth-section-title">升到各档多拿什么</h2>
-        <div class="u-table-wrap growth-matrix-wrap">
-          <table class="u-table">
+        <div class="u-table-wrap">
+          <table class="u-table u-mm-ladder u-mm-matrix-table">
             <caption class="visually-hidden">各等级档位的权益数值对照</caption>
             <thead>
               <tr>
@@ -110,8 +112,8 @@
                 :class="{ 'is-current': level.level === summary.level }"
               >
                 <th scope="row">{{ level.name || level.level }}</th>
-                <td>{{ level.growth_threshold }}</td>
-                <td v-for="column in matrixColumns" :key="column.key">
+                <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
+                <td v-for="column in matrixColumns" :key="column.key" class="u-mm-matrix-cell">
                   {{ thresholdCell(level, column) || '—' }}
                 </td>
               </tr>
@@ -143,46 +145,53 @@
         </div>
 
         <template v-else>
-          <ul class="growth-list">
-            <li v-for="row in memberStore.growth" :key="row.id" class="ui-card growth-item">
-              <div class="growth-item-main">
-                <span class="growth-item-type">{{ row.type_text }}</span>
-                <span class="growth-item-time">{{ formatTime(row.created_at) }}</span>
-                <span v-if="row.remark" class="growth-item-remark">{{ row.remark }}</span>
-                <!-- 关联单号：客服核对时要能定位到具体订单，与积分明细同一做法 -->
-                <span v-if="row.ref_order_no" class="growth-item-ref">单号 {{ row.ref_order_no }}</span>
+          <ul class="ui-card u-mm-ledger">
+            <li v-for="row in memberStore.growth" :key="row.id" class="u-mm-ledger-row">
+              <div class="u-mm-ledger-main">
+                <span class="u-mm-ledger-type">{{ row.type_text }}</span>
+                <span class="u-mm-ledger-sub">
+                  <span>{{ formatTime(row.created_at) }}</span>
+                  <span v-if="row.remark">{{ row.remark }}</span>
+                  <!-- 关联单号：客服核对时要能定位到具体订单，与积分明细同一做法 -->
+                  <span v-if="row.ref_order_no" class="u-mm-ledger-ref">单号 {{ row.ref_order_no }}</span>
+                </span>
               </div>
-              <div class="growth-item-right">
-                <span class="growth-item-delta" :class="row.delta > 0 ? 'is-earn' : 'is-spend'">
+              <div class="u-mm-ledger-right">
+                <span
+                  class="u-mm-ledger-delta"
+                  :class="row.delta > 0 ? 'u-mm-ledger-delta--earn' : 'u-mm-ledger-delta--spend'"
+                >
                   {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
                 </span>
-                <span class="growth-item-balance">累计 {{ row.growth_after }}</span>
+                <span class="u-mm-ledger-balance">累计 {{ row.growth_after }}</span>
               </div>
             </li>
           </ul>
 
           <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
-          <div v-if="memberStore.growthTotalPages > 1" class="growth-pager">
-            <button
-              type="button"
-              class="u-btn-secondary"
-              :disabled="!memberStore.growthHasPrev"
-              @click="goPage(memberStore.growthPage - 1)"
-            >
-              上一页
-            </button>
-            <span class="growth-pager-info">
+          <nav v-if="memberStore.growthTotalPages > 1" class="u-mm-pager" aria-label="成长值明细分页">
+            <span class="u-mm-pager-info">
               {{ memberStore.growthPage }} / {{ memberStore.growthTotalPages }}（共 {{ memberStore.growthTotal }} 条）
             </span>
-            <button
-              type="button"
-              class="u-btn-secondary"
-              :disabled="!memberStore.growthHasNext"
-              @click="goPage(memberStore.growthPage + 1)"
-            >
-              下一页
-            </button>
-          </div>
+            <div class="u-mm-pager-btns">
+              <button
+                type="button"
+                class="u-btn-secondary"
+                :disabled="!memberStore.growthHasPrev"
+                @click="goPage(memberStore.growthPage - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="u-btn-secondary"
+                :disabled="!memberStore.growthHasNext"
+                @click="goPage(memberStore.growthPage + 1)"
+              >
+                下一页
+              </button>
+            </div>
+          </nav>
         </template>
       </section>
     </template>
@@ -312,56 +321,14 @@ onMounted(() => {
 
 /* 未登录 / 空态 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
-/* 汇总：三张等宽卡，窄屏自动堆叠 */
-.growth-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: calc(var(--space-unit) * 2);
-}
-.growth-stat {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 2.5);
-}
-.growth-stat-label {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.growth-stat-value {
-  font-family: var(--font-mono);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-}
+/* 汇总卡见 §23 的 .u-mm-stat-*；分片的统计卡没有「脚注」位，
+   每张卡下面那行解释留在页面 */
 .growth-stat-hint {
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
 
-/* 升级进度 */
-.growth-progress {
-  padding: calc(var(--space-unit) * 2.5);
-}
-.growth-progress-head {
-  margin: 0 0 calc(var(--space-unit) * 1.5);
-  font-size: var(--fs-body);
-}
-.growth-progress-sub {
-  color: var(--text-muted);
-  font-size: var(--fs-label);
-}
-.growth-progress-track {
-  height: calc(var(--space-unit) * 1);
-  overflow: hidden;
-  background: var(--bg-surface);
-  border-radius: calc(var(--space-unit) * 0.5);
-}
-.growth-progress-fill {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: inherit;
-}
+/* 升级进度：几何见 §8 的 .u-mm-growth-*（卡片留白由 .ui-card 给） */
 
 .growth-section-title {
   margin: 0 0 calc(var(--space-unit) * 1.5);
@@ -402,7 +369,7 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-/* 明细 */
+/* 明细：行与增减符号见 §16 的 .u-mm-ledger-*，分页见 §4 的 .u-mm-pager */
 .growth-skeleton {
   display: flex;
   flex-direction: column;
@@ -411,71 +378,6 @@ onMounted(() => {
 }
 .growth-skeleton-line {
   height: calc(var(--space-unit) * 2);
-}
-.growth-list {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.growth-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-}
-.growth-item-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1);
-  min-width: 0;
-}
-.growth-item-type {
-  font-weight: var(--fw-heading);
-}
-.growth-item-time,
-.growth-item-remark,
-.growth-item-ref {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.growth-item-right {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: calc(var(--space-unit) * 0.5);
-}
-.growth-item-delta {
-  font-family: var(--font-mono);
-  font-weight: var(--fw-heading);
-}
-/* 与积分明细同一口径：增长用 success、减少用 warning（不是 danger，扣减不是错误） */
-.growth-item-delta.is-earn {
-  color: var(--success);
-}
-.growth-item-delta.is-spend {
-  color: var(--warning);
-}
-.growth-item-balance {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.growth-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 2);
-  margin-top: calc(var(--space-unit) * 2);
-}
-.growth-pager-info {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
 }
 
 /* ── 返回会员中心（详情子页回枢纽） ─────────────────── */
@@ -492,13 +394,9 @@ onMounted(() => {
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
 }
-.growth-matrix-wrap {
-  overflow-x: auto;
-}
+/* 表格本体与数值单元格见 §10 的 .u-mm-ladder-* 与 §11 的 .u-mm-matrix-*；
+   这里只补一条分片没规定的排版：首列等级名不折行 */
 .growth-matrix tbody th[scope='row'] {
   white-space: nowrap;
-}
-.growth-matrix tbody tr.is-current {
-  background: var(--accent-soft);
 }
 </style>

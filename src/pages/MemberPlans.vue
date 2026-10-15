@@ -49,35 +49,34 @@
 
         <section v-for="group in groups" :key="group.level" class="plans-group">
           <h2 class="plans-group-title">{{ group.name }}</h2>
-          <div class="plans-grid">
+          <!-- 套餐卡外观见 ui-kit-member.css §12：当前档只描边、不禁用（续费是合法动作） -->
+          <div class="u-mm-plan-grid">
             <article
               v-for="plan in group.plans"
               :key="plan.plan_id"
-              class="ui-card plan-card"
+              class="u-mm-plan"
               :class="{ 'is-current': plan.is_current }"
             >
-              <header class="plan-head">
-                <span class="plan-duration">{{ durationLabel(plan.duration_days) }}</span>
+              <header class="u-mm-plan-head">
+                <span class="u-mm-plan-duration">{{ durationLabel(plan.duration_days) }}</span>
                 <span v-if="plan.is_current" class="u-tag u-tag--accent">当前等级</span>
                 <span v-else-if="plan.save_percent" class="u-tag u-tag--success">
                   比月付省 {{ plan.save_percent }}%
                 </span>
               </header>
 
-              <p class="plan-price">
-                <span class="plan-price-symbol">¥</span>{{ plan.price }}
-              </p>
-              <p class="plan-per-day">日均 ¥{{ plan.price_per_day }}</p>
+              <p class="u-mm-plan-price">¥{{ plan.price }}</p>
+              <p class="u-mm-plan-perday">日均 ¥{{ plan.price_per_day }}</p>
 
-              <ul class="plan-facts">
-                <li><AppIcon name="tag" /><span>消费 {{ discountLabel(plan.discount_rate) }}</span></li>
-                <li><AppIcon name="sparkles" /><span>积分 ×{{ plan.points_multiplier }}</span></li>
-                <li><AppIcon name="gift" /><span>赠送成长值 {{ plan.bonus_growth }}</span></li>
+              <ul class="u-mm-plan-facts">
+                <li class="plan-fact"><AppIcon name="tag" /><span>消费 {{ discountLabel(plan.discount_rate) }}</span></li>
+                <li class="plan-fact"><AppIcon name="sparkles" /><span>积分 ×{{ plan.points_multiplier }}</span></li>
+                <li class="plan-fact"><AppIcon name="gift" /><span>赠送成长值 {{ plan.bonus_growth }}</span></li>
               </ul>
 
               <button
                 type="button"
-                class="u-btn-primary plan-cta"
+                class="u-btn-primary u-mm-plan-cta"
                 :disabled="submitting === plan.plan_id"
                 @click="openPlan(plan)"
               >
@@ -258,74 +257,19 @@ onMounted(() => {
   color: var(--accent);
 }
 
-/* 套餐分组 */
+/* 套餐分组：组的标题属于页面；卡片网格与卡内四段见分片 §12 */
 .plans-group-title {
   margin: 0 0 calc(var(--space-unit) * 1.5);
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
 }
-.plans-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: calc(var(--space-unit) * 2);
-}
 
-.plan-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 2.5);
-  transition: border-color var(--transition-interactive);
-}
-.plan-card.is-current {
-  border-color: var(--accent);
-}
-
-.plan-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-unit);
-}
-.plan-duration {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.plan-price {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  line-height: 1.1;
-}
-.plan-price-symbol {
-  font-size: var(--fs-body);
-  color: var(--text-muted);
-}
-.plan-per-day {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.plan-facts {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.75);
-  margin: calc(var(--space-unit) * 0.5) 0 var(--space-unit);
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-label);
-}
-.plan-facts li {
+/* 分片只定义事实列表的容器（列、分隔线、字号），
+   每行「图标 + 文字」的横排是页面自己的排版 */
+.plan-fact {
   display: flex;
   align-items: center;
   gap: var(--space-unit);
-}
-
-.plan-cta {
-  margin-top: auto;
-  width: 100%;
 }
 
 /* 结算 / 退款说明的卡片小节标题 */
