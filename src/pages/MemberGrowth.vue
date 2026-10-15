@@ -217,7 +217,7 @@ import { computed, onMounted } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
-import { MEMBER_BENEFIT_MAP, formatBenefitValue } from '@/constants/member.js'
+import { MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
 import { formatISOTime } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
@@ -240,17 +240,15 @@ const summary = computed(() => memberStore.growthSummary || {
 const thresholds = computed(() => summary.value.thresholds || [])
 const rules = computed(() => memberStore.growthRules || [])
 
-/** 逐档对照表的列：字段名与后端 `thresholds[]` 一致，标签避开门槛表已有的两列 */
-const MATRIX_COLUMNS = [
-  { key: 'discount', label: '折扣率', field: 'discount_rate' },
-  { key: 'points_boost', label: '积分加速', field: 'points_multiplier' },
-  { key: 'coupon_pack', label: '每月券包', field: 'coupon_pack_value' },
-  { key: 'points_deduct', label: '抵扣上限', field: 'points_deduct_cap' },
-  { key: 'free_tool', label: '免卡密额度', field: 'free_tool_quota' },
-  { key: 'identity', label: '专属身份', field: 'identity_tier' },
-  { key: 'birthday', label: '生日礼遇', field: 'birthday_value' },
-  { key: 'support', label: '专属客服', field: 'support_tier' },
-]
+/**
+ * 逐档对照表的列：列顺序与字段名来自 `constants/member.js` 的唯一实例，
+ * 这里只覆盖三个标题（避开门槛表已有的「门槛 / 成长值」两列语义）
+ */
+const MATRIX_COLUMNS = memberMatrixColumns({
+  discount: '折扣率',
+  points_boost: '积分加速',
+  points_deduct: '抵扣上限',
+})
 
 const matrixColumns = computed(() => MATRIX_COLUMNS)
 

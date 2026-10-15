@@ -2,7 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { ICONS } from '../src/utils/iconSet.js'
-import { MEMBER_BENEFITS, MEMBER_LEVELS, discountLabel } from '../src/constants/member.js'
+import {
+  MEMBER_BENEFITS,
+  MEMBER_LEVELS,
+  MEMBER_MATRIX_LABELS,
+  discountLabel,
+  memberMatrixColumns,
+} from '../src/constants/member.js'
 
 /**
  * 会员文案常量的一致性守卫
@@ -119,4 +125,58 @@ test('discountLabel：折扣率只翻译不计算，非法值不渲染成「0 �
   for (const bad of [1, 0, -0.1, null, undefined, NaN, 'abc']) {
     assert.equal(discountLabel(bad), '无折扣', `discountLabel(${String(bad)}) 应为「无折扣」`)
   }
+})
+
+/**
+ * 矩阵列的唯一来源（1.6.0）
+ *
+ * `/member/benefits` 与 `/member/growth` 原先各写一份 `MATRIX_COLUMNS`：
+ * 同一组 `{ key, field }` 抄两遍，加一项权益时漏改一处就会出现
+ * 「一个页面有 8 列、另一个 7 列」，两边都不报错。现在列定义只在
+ * `constants/member.js` 里，这里把它钉住。
+ */
+test('矩阵列来自唯一实例：键序与八项权益一致，字段名与后端 levels/thresholds 对齐', () => {
+  const columns = memberMatrixColumns()
+
+  assert.deepEqual(
+    columns.map((c) => c.key),
+    MEMBER_BENEFITS.map((b) => b.key),
+    '矩阵列的顺序必须与八项权益一致（后端 benefits[] 也按这个顺序下发）'
+  )
+
+  // 字段名是后端 levels[] / thresholds[] 的列名，写错就是整列空白
+  const expectedFields = [
+    'discount_rate',
+    'points_multiplier',
+    'coupon_pack_value',
+    'points_deduct_cap',
+    'free_tool_quota',
+    'identity_tier',
+    'birthday_value',
+    'support_tier',
+  ]
+  assert.deepEqual(columns.map((c) => c.field), expectedFields)
+
+  // 每一列都要有标题（缺了就是表头空白）
+  for (const column of columns) {
+    assert.ok(column.label, `列 ${column.key} 缺标题`)
+  }
+})
+
+test('矩阵列支持按页覆盖标题，未覆盖的列回落默认标题', () => {
+  const overridden = memberMatrixColumns({ discount: '折扣率', points_boost: '积分加速' })
+
+  assert.equal(overridden[0].label, '折扣率', '覆盖应生效')
+  assert.equal(overridden[1].label, '积分加速')
+  assert.equal(overridden[2].label, MEMBER_MATRIX_LABELS.coupon_pack, '未覆盖的列回落默认标题')
+
+  // 覆盖不能改变键序与字段名（只换标题）
+  assert.deepEqual(
+    overridden.map((c) => c.key),
+    memberMatrixColumns().map((c) => c.key)
+  )
+  assert.equal(overridden[0].field, 'discount_rate', '覆盖标题不应丢掉后端字段名')
+
+  // 不传参时与默认完全一致（调用方不应依赖默认对象被就地修改）
+  assert.equal(memberMatrixColumns()[0].label, MEMBER_MATRIX_LABELS.discount)
 })

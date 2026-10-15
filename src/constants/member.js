@@ -154,6 +154,56 @@ export const MEMBER_BENEFIT_MAP = MEMBER_BENEFITS.reduce((acc, item) => {
   return acc
 }, {})
 
+/**
+ * 等级对照表的列 —— **列顺序与后端字段名的唯一实例**（1.6.0 起）
+ *
+ * 背景：「逐档权益矩阵」有两个消费页 —— `/member/benefits` 的八项权益 × 等级矩阵、
+ * `/member/growth` 的成长值逐档对照表。两页原先各写一份 `MATRIX_COLUMNS`，
+ * 内容是同一组 `{ key, field }`（顺序也一样），只是**列标题按语境不同**
+ * （权益详解页说「消费折扣 / 积分倍率」，成长值页对着门槛表说「折扣率 / 积分加速」，
+ * 避免与它已有的两列重名）。
+ *
+ * 于是这里的口径是：`key`（对应 `MEMBER_BENEFIT_MAP` 的权益键）与 `field`
+ * （对应后端 `levels[]` / `thresholds[]` 的字段名）只写一份，
+ * 标题走 `MEMBER_MATRIX_LABELS` 作为默认值、由调用页用 `memberMatrixColumns()`
+ * 覆盖个别列。**加一项权益时改这里一处**，两页同时跟上。
+ */
+export const MEMBER_MATRIX_COLUMNS = [
+  { key: 'discount', field: 'discount_rate' },
+  { key: 'points_boost', field: 'points_multiplier' },
+  { key: 'coupon_pack', field: 'coupon_pack_value' },
+  { key: 'points_deduct', field: 'points_deduct_cap' },
+  { key: 'free_tool', field: 'free_tool_quota' },
+  { key: 'identity', field: 'identity_tier' },
+  { key: 'birthday', field: 'birthday_value' },
+  { key: 'support', field: 'support_tier' },
+]
+
+/** 矩阵列的默认标题（权益详解页口径）；成长值页覆盖其中个别列 */
+export const MEMBER_MATRIX_LABELS = {
+  discount: '消费折扣',
+  points_boost: '积分倍率',
+  coupon_pack: '每月券包',
+  points_deduct: '积分抵扣上限',
+  free_tool: '免卡密额度',
+  identity: '专属身份',
+  birthday: '生日礼遇',
+  support: '专属客服',
+}
+
+/**
+ * 生成矩阵列（`{ key, field, label }`）
+ *
+ * `labels` 只覆盖需要改标题的列，未给的列回落默认标题：
+ * `memberMatrixColumns({ discount: '折扣率' })`。
+ */
+export function memberMatrixColumns(labels = {}) {
+  return MEMBER_MATRIX_COLUMNS.map((column) => ({
+    ...column,
+    label: labels[column.key] ?? MEMBER_MATRIX_LABELS[column.key] ?? column.key,
+  }))
+}
+
 /** 券状态（与后端派生的三态一致） */
 export const COUPON_STATUSES = [
   { value: 'available', label: '可用' },

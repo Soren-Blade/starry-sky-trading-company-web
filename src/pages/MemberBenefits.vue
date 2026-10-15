@@ -161,22 +161,13 @@
 import { computed, onMounted } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
-import { MEMBER_BENEFITS, MEMBER_BENEFIT_MAP, formatBenefitValue } from '@/constants/member.js'
+import { MEMBER_BENEFITS, MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
 
 const memberStore = useMemberStore()
 
-/** 八项权益 → 矩阵列（字段名与后端 levels[] / thresholds[] 一致） */
-const MATRIX_COLUMNS = [
-  { key: 'discount', label: '消费折扣', field: 'discount_rate' },
-  { key: 'points_boost', label: '积分倍率', field: 'points_multiplier' },
-  { key: 'coupon_pack', label: '每月券包', field: 'coupon_pack_value' },
-  { key: 'points_deduct', label: '积分抵扣上限', field: 'points_deduct_cap' },
-  { key: 'free_tool', label: '免卡密额度', field: 'free_tool_quota' },
-  { key: 'identity', label: '专属身份', field: 'identity_tier' },
-  { key: 'birthday', label: '生日礼遇', field: 'birthday_value' },
-  { key: 'support', label: '专属客服', field: 'support_tier' },
-]
+/** 八项权益 → 矩阵列（列顺序与字段名的唯一实例在 `constants/member.js`） */
+const MATRIX_COLUMNS = memberMatrixColumns()
 
 const RULES = [
   {

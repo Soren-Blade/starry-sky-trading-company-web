@@ -1390,8 +1390,11 @@ NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体�
 **权益矩阵的列定义有两份**（`MemberBenefits.vue` 与 `MemberGrowth.vue` 各写一份 `MATRIX_COLUMNS`）、
 **邮件偏好键二次硬编码**（`constants/mail.js` 的 `PREFERENCE_KEYS` 与 `Mail.vue` 的 `draft` 各写一遍）。
 
-> 现状（2026-10-16）：分片已纳入构建与共享样式守卫，**八个消费页面尚未迁移**——
-> 迁移按页面逐个走（先共享层的四态/区块壳，再域件），每页独立提交。
+> 现状（2026-10-16）：分片已纳入构建与共享样式守卫，迁移按页面逐个走（先共享层的四态/区块壳，
+> 再域件），每页独立提交。**已完成**：七页的四态收敛到 §2（`Member` / `MemberPlans` /
+> `MemberGrowth` / `Coupons` / `Points` / `UserCheckin` / `Invite`）；**矩阵列定义已收敛**到
+> `constants/member.js` 的 `MEMBER_MATRIX_COLUMNS` + `memberMatrixColumns()`
+> （两个页面只覆盖各自的列标题）。**未完成**：邮件偏好键去重、域件（§5–§25）的逐页迁移。
 
 ### 9.13 硬编码与断点纪律
 
