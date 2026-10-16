@@ -40,8 +40,9 @@
  *   · 交互件一律**内嵌原生表单元素**（R13），状态由 `:checked` / `:disabled` 驱动。
  *
  * 消费方：`/member`、`/member/plans`、`/member/benefits`、`/member/growth`、
- * `/points`、`/coupons`、`/user/checkin`、`/mail` 八个页面，以及
- * `ui-showcase/components/member.html` 与 `ui-showcase/components/mail.html`（展示层）。
+ * `/points`、`/coupons`、`/user/checkin`、`/mail` 八个页面。另有一套**本地展示层**
+ * （工作区根目录的 `ui-showcase/`，不入库）用同一份分片渲染组件样例，
+ * 它不在构建路径上 —— 删掉它不影响任何页面。
  * ════════════════════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════════════════════
