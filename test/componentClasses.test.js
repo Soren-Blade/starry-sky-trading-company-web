@@ -39,6 +39,7 @@ const SHARED_STYLES = [
   'assets/styles/ui-kit-form.css',
   'assets/styles/ui-kit-nav.css',
   'assets/styles/ui-kit-member.css',
+  'assets/styles/ui-kit-tool.css',
 ]
 
 /** 递归列出 src 下的 .vue / .css / .js（.js 用于核对动态拼出的类名字面量） */

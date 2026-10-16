@@ -403,6 +403,9 @@ export const TOOL_PAGE = {
   needCardHint: '此工具需激活卡密后才能使用',
   activatedHint: '可直接使用',
   activateNow: '立即激活',
+  // ── 工具页骨架的辅助信息标题（五个工具页共用同一对标题）──
+  usageTitle: '使用说明',
+  noticeTitle: '注意事项',
 }
 
 /**
@@ -423,6 +426,197 @@ export const VIDEO_TOOL = {
     '授权时长会照常计算，服务上线后即可使用。',
   backToTools: '返回工具页',
   myCards: '查看我的卡密',
+}
+
+/**
+ * 工具页骨架的共享文案
+ *
+ * 五个工具页的结果区都由 `ToolResultPane` 渲染，四个状态（空/加载/成功/失败）
+ * 的兜底文案放在这里 —— 页面只覆盖需要改的那一条，不必各写一份。
+ */
+export const TOOL_RESULT = {
+  loading: '正在处理…',
+  emptyTitle: '还没有结果',
+  emptyDesc: '在上面填好内容后开始。',
+  errorTitle: '处理失败',
+  retry: '重试',
+  copy: '复制结果',
+  copied: '已复制',
+  copyFailed: '复制失败，请手动选择文本',
+  // 结果区的「指标名」在几个工具页之间是同一套（链接 / 清晰度 / 体积…），
+  // 放在这里是为了让「原始体积」这四个字在图片页与视频页不会写成两种说法。
+  meta: {
+    link: '链接',
+    quality: '清晰度',
+    format: '输出格式',
+    originalSize: '原始体积',
+    outputSize: '输出体积',
+    saved: '预计减少',
+    chars: '字符数',
+    lines: '行数',
+  },
+}
+
+/**
+ * 工具页清单（键 = 数据库 `tools.tool_path`）
+ *
+ * 工具页的标准结构是「页头 → 输入区 → 操作区 → 结果区四态 → 辅助信息」，
+ * 这一份常量提供页头与骨架阶段的文案，页面自己只负责接线。
+ *
+ * **占位说明**：除 `/dev/json-formatter`（`JSON.parse` + `JSON.stringify` 真实可用）外，
+ * 其余四个工具的业务逻辑尚未接入 —— 页面上的按钮会走完整的加载/成功/失败流转，
+ * 但结果是占位数据。真实服务接通后只需替换页面里的 `run()` 实现，
+ * **数据库里的 `tool_path` 不需要改**。
+ */
+export const TOOL_PAGES = {
+  '/video/downloader': {
+    eyebrow: '视频工具',
+    title: VIDEO_TOOL.title,
+    description: VIDEO_TOOL.description,
+    icon: 'video',
+    // 该工具在数据库里 requires_card = true
+    requiresCard: true,
+    inputTitle: '粘贴分享链接',
+    resultTitle: '解析结果',
+    linkLabel: '视频分享链接',
+    linkPlaceholder: '粘贴抖音 / 快手 / B站 的分享链接…',
+    linkHint: '需要是以 http:// 或 https:// 开头的完整链接。',
+    qualityLabel: '清晰度',
+    qualityOptions: [
+      { label: '1080P', value: '1080p' },
+      { label: '720P', value: '720p' },
+      { label: '480P', value: '480p' },
+    ],
+    formatLabel: '输出格式',
+    formatOptions: [
+      { label: 'MP4 视频', value: 'mp4' },
+      { label: 'MP3 音频', value: 'mp3' },
+    ],
+    submit: '解析链接',
+    reset: '清空',
+    download: '下载视频',
+    sample: '填入示例',
+    sampleLink: 'https://www.example.com/video/123456',
+    emptyTitle: '粘贴链接后开始解析',
+    emptyDesc: '把视频分享链接填在上面，选好清晰度与格式即可。',
+    invalidLink: '请填入以 http:// 或 https:// 开头的完整链接。',
+    resultNote: '骨架阶段的结果为占位数据，解析服务接通后会替换为真实解析结果。',
+    asideNotice: VIDEO_TOOL.body,
+    asideItems: [
+      '链接必须是可以直接打开的分享链接，短链也可以。',
+      '解析完成后会出现下载入口；本工具需要卡密激活。',
+      '如果已有卡密但还没激活，先在「卡密管理」里绑定账号。',
+    ],
+  },
+  '/image/compressor': {
+    eyebrow: '图片处理',
+    title: '图片压缩工具',
+    description: '在浏览器本地压缩图片，减小体积后再下载。',
+    icon: 'image',
+    requiresCard: false,
+    inputTitle: '选择图片',
+    resultTitle: '压缩结果',
+    needFile: '请先选择要压缩的图片。',
+    dropTitle: '点击选择图片，或把图片拖到这里',
+    dropHint: '支持 JPG / PNG / WebP，单张不超过 5MB。',
+    qualityLabel: '压缩档位',
+    qualityOptions: [
+      { label: '高质量（约 80%）', value: 'high' },
+      { label: '均衡（约 60%）', value: 'medium' },
+      { label: '高压缩（约 40%）', value: 'low' },
+    ],
+    formatLabel: '输出格式',
+    formatOptions: [
+      { label: '保持原格式', value: 'keep' },
+      { label: 'JPG', value: 'jpeg' },
+      { label: 'PNG', value: 'png' },
+    ],
+    submit: '开始压缩',
+    reset: '移除图片',
+    download: '下载压缩结果',
+    sample: '换一张',
+    emptyTitle: '选择一张图片开始',
+    emptyDesc: '图片只在你的浏览器里处理，不会上传到服务器。',
+    invalidType: '只支持 JPG / PNG / WebP 格式的图片。',
+    invalidSize: '图片不能超过 5MB，请先裁剪或换一张。',
+    resultNote: '压缩体积按档位系数估算；真实编码接入后替换为实际字节数。',
+    asideNotice: '本页面不会上传图片：读取、压缩预览都在浏览器本地完成。',
+    asideItems: [
+      '压缩档位越高，体积下降越少、画质损失越小。',
+      '转成 PNG 会重新编码，体积可能不降反升。',
+      '当前为骨架阶段：压缩结果按档位系数估算，下载按钮尚未开放。',
+    ],
+  },
+  '/dev/json-formatter': {
+    eyebrow: '开发工具',
+    title: 'JSON 格式化工具',
+    description: '在线格式化与校验 JSON 数据，全部在浏览器本地完成。',
+    icon: 'monitor',
+    requiresCard: false,
+    inputTitle: '粘贴 JSON',
+    resultTitle: '格式化结果',
+    sourceLabel: 'JSON 内容',
+    sourcePlaceholder: '在这里粘贴 JSON…',
+    sourceHint: '支持对象与数组；解析失败会给出具体报错位置。',
+    indentLabel: '缩进',
+    indentOptions: [
+      { label: '2 空格', value: '2' },
+      { label: '4 空格', value: '4' },
+      { label: 'Tab', value: 'tab' },
+    ],
+    minifyLabel: '压缩为单行',
+    minifyHint: '开启后忽略缩进设置，输出去掉所有换行。',
+    submit: '格式化',
+    reset: '清空',
+    sample: '填入示例',
+    sampleJson: '{"name":"星辰商行","tools":[{"id":1,"name":"JSON 格式化"}],"active":true}',
+    emptyTitle: '粘贴 JSON 后格式化',
+    emptyDesc: '格式化与校验都在本地执行，内容不会上传。',
+    invalidEmpty: '请先填入要格式化的 JSON 内容。',
+    resultNote: '格式化在浏览器本地完成：JSON.parse + JSON.stringify，不上传内容。',
+    asideNotice: '本页是本期唯一真实可用的工具，其余工具页为骨架。',
+    asideItems: [
+      '解析失败时会给出 SyntaxError 的原始描述，便于定位。',
+      '勾选「压缩为单行」会去掉所有缩进与换行。',
+      '格式化结果可以一键复制。',
+    ],
+  },
+  '/other/2fa': {
+    eyebrow: '其他工具',
+    title: '2FA 密钥验证',
+    description: '校验 TOTP 动态口令，或按密钥生成当前验证码。',
+    icon: 'shield-alert',
+    requiresCard: false,
+    submit: '开始验证',
+    reset: '重新开始',
+    emptyTitle: '填入密钥或验证码',
+    emptyDesc: '可以校验一个 6 位动态口令，也可以按密钥算出当前口令。',
+    resultNote: '动态口令按 30 秒一个窗口滚动，剩余时间在结果区显示。',
+    asideNotice: '验证过程在浏览器本地完成，密钥不会上传。',
+    asideItems: [
+      '需要 WebCrypto 支持（https 或 localhost）。',
+      '口令每 30 秒更新一次，注意剩余时间。',
+      '本页沿用既有 TOTP 实现，只统一了页头与结果区版式。',
+    ],
+  },
+  '/other/appleId': {
+    eyebrow: '其他工具',
+    title: '共享 Apple ID',
+    description: '领取共享 Apple ID 账号，登录 App Store 使用。',
+    icon: 'users',
+    requiresCard: false,
+    submit: '刷新列表',
+    reset: '清空筛选',
+    emptyTitle: '暂时没有可领取的账号',
+    emptyDesc: '账号会不定时补充，稍后再来看看。',
+    resultNote: '账号由服务端下发，使用后请及时退出登录。',
+    asideNotice: '共享账号仅用于下载已购应用，请勿修改密码或绑定支付方式。',
+    asideItems: [
+      '列表按来源分组，可切换来源查看。',
+      '账号状态可能随时变化，以列表上的标注为准。',
+      '登录 App Store 时如遇双重验证，请换一个账号。',
+    ],
+  },
 }
 
 /**

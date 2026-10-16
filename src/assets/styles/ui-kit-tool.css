@@ -1,0 +1,385 @@
+/*
+ * 工具页骨架（第六个分片）。
+ *
+ * 工具是「一页一个工具」的结构：页头 → 输入区 → 操作区 → 结果区 → 辅助信息。
+ * 这一片只放这套骨架共用的类（`.tool-*`），风格与第一批 atomic 分片一致，
+ * 只是命名按「工具页」这一族来 —— 与 `ui-kit-member.css` 的 `.u-mm-*` 同样的思路。
+ *
+ * 为什么要有这一片：工具页此前各有各的写法（`.placeholder-card`、`.fp-*`、`.page-intro`），
+ * 同一个「结果区」在三个页面里是三套完全不同的版式。骨架提到共享层后，
+ * 页面只负责接线与文案，视觉由这一片统一给出。
+ *
+ * 只定义 `.tool-*`，不覆盖任何全局元素与原子类；页面没用这些类时引入它没有任何视觉影响。
+ * 只消费 `variables.css` 里已登记的令牌（`test/designTokens.test.js` 双向钉住令牌引用）。
+ *
+ *   §1 页面骨架  §2 面板  §3 表单与操作区  §4 结果区四态  §5 预览区
+ *   §6 辅助信息  §7 响应式
+ */
+
+/* ── §1 页面骨架 ─────────────────────────────────────────────── */
+.tool-layout {
+  display: grid;
+  /* 主区可伸缩、侧栏固定宽度：侧栏是「说明」，不该抢主区的宽度 */
+  grid-template-columns: minmax(0, 1fr) minmax(calc(var(--space-unit) * 32), calc(var(--space-unit) * 42));
+  gap: var(--grid-gap);
+  align-items: start;
+}
+
+/* 没有辅助信息时用单列（页面自己决定要不要 aside） */
+.tool-layout--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* 主区：面板之间保持与栅格一致的竖向节奏。
+   min-width: 0 是因为 grid 子项默认 min-width: auto —— 不等宽内容
+   （长链接、长 JSON）会把列撑出容器，表现为整页横向滚动。 */
+.tool-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+  min-width: 0;
+}
+
+/* 返回工具页：RouterLink 不是 button，.u-btn-* 不给排版属性，这里补齐 */
+.tool-shell-back {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+/* 页头标题里的小图标：`.page-shell-title` 是块级，这里用 inline-flex 跟文字同基线。
+   字号取 0.85em 而不是固定值 —— 标题字号在移动端会按 --mobile-title-scale 缩小，
+   固定值会让图标在窄屏上比文字还大。 */
+.tool-shell-title-icon {
+  display: inline-flex;
+  vertical-align: -0.08em;
+  margin-right: calc(var(--space-unit) * 1.5);
+  font-size: 0.85em;
+  color: var(--accent);
+}
+
+/* 「需卡密激活」标注：.u-tag 给外观，这里只补图标与文字的对齐 */
+.tool-shell-card-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+}
+
+/* ── §2 面板 ─────────────────────────────────────────────────── */
+.tool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+  padding: var(--card-padding);
+}
+
+.tool-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+/* ── §3 表单与操作区 ─────────────────────────────────────────── */
+.tool-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit));
+}
+
+.tool-textarea {
+  min-height: calc(var(--space-unit) * 22);
+  padding: var(--input-padding-y) var(--input-padding-x);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  resize: vertical;
+}
+
+/* 拖拽/选择文件的落点：真实控件是里面那个视觉隐藏的 input，点整块都能触发 */
+.tool-file-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-unit));
+  padding: calc(var(--space-unit) * 4) calc(var(--space-unit) * 2);
+  border: var(--stroke-width) dashed var(--stroke-color);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface-2);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition-interactive), background var(--transition-interactive);
+}
+
+.tool-file-drop:hover,
+.tool-file-drop--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tool-file-icon {
+  display: inline-flex;
+  font-size: var(--fs-h3);
+  color: var(--accent);
+}
+
+.tool-file-title {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+/* 视觉隐藏但仍可聚焦/可被辅助技术读到（`display:none` 会让文件选择框彻底不可用） */
+.tool-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tool-file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+/* ── §4 结果区四态 ───────────────────────────────────────────── */
+.tool-result {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.tool-result-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 4) 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.tool-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.tool-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit));
+}
+
+/* 失败态左对齐、与成功态同宽：红色描边 + 图标 + 文本 + 重试按钮 */
+.tool-result-error {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space-unit));
+  padding: calc(var(--space-unit) * 2);
+  border: var(--stroke-width) solid var(--danger);
+  border-radius: var(--radius-card);
+  background: var(--danger-bg);
+}
+
+.tool-result-error-icon {
+  display: inline-flex;
+  font-size: var(--fs-h3);
+  color: var(--danger);
+}
+
+.tool-result-error-text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+}
+
+/* 报错文本与重试按钮的竖向节奏（错误图标只在左侧出现一次） */
+.tool-result-error-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
+}
+
+.tool-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 2);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.tool-result-meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+/* 数字/结构类结果用等宽字体，避免「12.3MB → 1.2MB」在各主题下宽度跳动 */
+.tool-result-value {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.tool-result-note {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* ── §5 预览区 ───────────────────────────────────────────────── */
+.tool-preview {
+  margin: 0;
+  padding: calc(var(--space-unit) * 2);
+  max-height: calc(var(--space-unit) * 40);
+  overflow: auto;
+  border: var(--stroke-width) solid var(--stroke-color);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 图片预览：容器居中，图片自适应且不撑破面板 */
+.tool-preview-media {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-unit) * 2);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface-2);
+}
+
+.tool-preview-media img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(var(--space-unit) * 34);
+  border-radius: var(--radius-media);
+}
+
+/* ── §6 辅助信息 ─────────────────────────────────────────────── */
+.tool-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+.tool-aside-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: var(--card-padding);
+}
+
+.tool-aside-title {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.tool-aside-title-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.tool-aside-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit));
+  margin: 0;
+  padding-left: calc(var(--space-unit) * 2.5);
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.tool-aside-note {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.tool-aside-note-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--warning);
+}
+
+.tool-aside-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit));
+}
+
+.tool-aside-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* ── §7 响应式 ───────────────────────────────────────────────── */
+@media (max-width: 991px) {
+  /* 窄屏把侧栏折到主区下面：两栏在 700px 宽时会把输入区挤到不可用 */
+  .tool-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .tool-panel,
+  .tool-aside-card {
+    padding: calc(var(--card-padding) * var(--mobile-padding-scale));
+  }
+
+  /* 操作按钮竖排并撑满：横排时两个按钮加起来会超出 320px 视口 */
+  .tool-actions,
+  .tool-result-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tool-actions > *,
+  .tool-result-actions > * {
+    width: 100%;
+  }
+}

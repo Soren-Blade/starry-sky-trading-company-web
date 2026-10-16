@@ -165,12 +165,13 @@ starry-sky-trading-company-web/
 ```js
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
-// 组件套件五分片（表单 / 导航 / 数据 / 反馈 / 会员与邮件），必须排在 global.css 之后
+// 组件套件六分片（表单 / 导航 / 数据 / 反馈 / 会员与邮件 / 工具页），必须排在 global.css 之后
 import './assets/styles/ui-kit-form.css'
 import './assets/styles/ui-kit-nav.css'
 import './assets/styles/ui-kit-data.css'
 import './assets/styles/ui-kit-feedback.css'
 import './assets/styles/ui-kit-member.css'
+import './assets/styles/ui-kit-tool.css'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -235,10 +236,12 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/cart` | `Cart` | `pages/Cart.vue` | 购物车 - 星辰商行 | |
 | `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 |
 | `/search` | `SearchResults` | `pages/SearchResults.vue` | 搜索 - 星辰商行 | 关键词走 `?q=`，同时搜商品与工具 | |
-| `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 占位页，见下 |
+| `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 骨架页，解析服务未接入，见下 |
+| `/image/compressor` | `imageCompressor` | `pages/ImageCompressor.vue` | 图片压缩工具 - 星辰商行 | 骨架页（不要求登录） |
+| `/dev/json-formatter` | `jsonFormatter` | `pages/JsonFormatter.vue` | JSON 格式化工具 - 星辰商行 | **唯一真实可用**（不要求登录） |
 | `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
-| `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | |
-| `/other/appleId` | `appleId` | `pages/AppleId.vue` | appleId - 星辰商行 | |
+| `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | 真实可用（不要求登录） |
+| `/other/appleId` | `appleId` | `pages/AppleId.vue` | 共享 Apple ID - 星辰商行 | 需要身份 |
 | `/user/kami` | `kami` | `pages/Kami.vue` | 卡密管理 - 星辰商行 | ✅ |
 | `/user/profile` | `Profile` | `pages/Profile.vue` | 个人中心 - 星辰商行 | ✅ |
 | `/user/favorites` | `Favorites` | `pages/Favorites.vue` | 我的收藏 - 星辰商行 | ✅ |
@@ -371,7 +374,9 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（**1.5.0 M7 起含选券、积分抵扣与试算明细**，再是联系方式、备注、提交订单）。结算面板**不自己算钱**：选中项一变就（250ms 防抖）调 `POST /couponApi/previewUse`，明细行原样展示服务端返回的六个数；提交时发的是 **试算后的 `points_used`** 而不是输入框里的数字，且只带 `coupon_code` / `use_points` 这两个意图字段 |
 | `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
-| `VideoTool.vue` | 视频下载工具的**占位页**。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。给一个说明页，比让付过费的用户撞上 404 好：404 传达的是「这站坏了」，这一页传达的是「功能还没上线」。接上服务后只换这里的组件，`tool_path` 不用改 |
+| `VideoTool.vue` | 视频下载工具的**骨架页**（`ToolPageShell` + 四态结果区）。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。链接输入 + 清晰度/输出格式 + 「解析链接」会走完加载与成功流转，**但结果是占位回显**，页头「需卡密激活」与侧栏「功能开发中」都如实标注。接上服务后只换 `parse()` 的实现，`tool_path` 不用改 |
+| `ImageCompressor.vue` | 图片压缩工具的**骨架页**：拖放/点选本地图片（校验类型与 5MB 上限）→ 压缩档位（约 80/60/40%）→ 「开始压缩」。**压缩是估算法**：只按档位系数折算体积，不做真实编码，预览用 `URL.createObjectURL`（离开或换图时 revoke）；下载按钮保持禁用并在侧栏写明「骨架阶段」。图片不上传，全部本地处理 |
+| `JsonFormatter.vue` | JSON 格式化工具的**唯一真实实现页**：`JSON.parse` + `JSON.stringify(obj, null, indent)`，缩进 2/4/Tab、可切「压缩为单行」，失败时原样展示 `SyntaxError.message`（含位置），成功展示字符数与行数并可一键复制。解析期间插一帧让出主线程，保证加载态可见 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字）。两栏之上还有三张**独立卡片**：会员权益摘要、每日签到入口、**邀请有礼入口（1.6.0 M8 新增，指向 `/invite`）**。`.ui-card` 自己不设外边距、`.profile-page` 也不是 flex 容器，所以这三张卡的下外边距必须显式给（否则几块会紧贴在一起）；签到卡与邀请卡还必须合写类名（`.ui-card.profile-checkin` / `.ui-card.profile-invite`）才压得过 `.ui-card` 的纵向方向（文案左、按钮右），窄屏再用同优先级选择器改回 `column` |
 | `Member.vue` | 会员中心（**枢纽，七区块**）：身份区（等级徽标 / 有效期 / 开通或续费 + 权益详解入口）、资产三卡（积分 / 优惠券 / 会员到期日，**就地显示已有数值**，不新增后端调用）、成长值进度（`growth_to_next` 存在才渲染）、八项权益卡（已解锁显示服务端下发的当前值，未解锁显示解锁等级）、下一档预告（用 `benefits[].value.next` 与 `next_level`）、快捷入口（含每日签到）。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
@@ -389,8 +394,8 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板（**有优惠时展示金额明细**：商品原价 / 会员价优惠 / 优惠券抵扣 / 积分抵扣（N 积分）/ 实付，复用结算页的 `settlementRows()`；没有优惠时只留一行「订单金额」）+ 联系备注 + 状态时间线 + 动作行 |
 | `Legal.vue` | 左目录吸顶 + 右正文；三份文档共用一个组件，由 `meta.legalKey` 选内容 |
-| `AppleId.vue` | 仅包一层 `AppleIdSection`（页头已注释） |
-| `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制 |
+| `AppleId.vue` | 工具页壳（`ToolPageShell` + 侧栏「使用说明 / 注意事项」）+ `AppleIdSection`（数据源汇总、加载/错误/空态、重试），顶部两颗 `u-tag` 报线路账号数 |
+| `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制。页头与结果区已并入工具页壳（空态 / 加载 / 成功 / 失败四态由 `ToolResultPane` 渲染），**TOTP 逻辑与密钥处理未动** |
 | `About.vue` | 静态内容：愿景、核心价值、联系方式 |
 | `NotFound.vue` | 404 页 + 站内推荐链接 |
 
@@ -532,6 +537,25 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 第 3 条是 `stores/tool.js` 里 `validToolIds` 用 `null`（不知道）而不是 `[]`（确定没有）
 的原因 —— 两者对界面含义不同。换账号时由 `pages/Tool.vue` 的 `watch(userStore.userId)`
 重取（清除或重新拉取），因此不需要在 logout 里反向调用 tool store。
+
+### 工具页骨架：五个页面与占位功能说明
+
+数据库 `tools` 表里每一条工具的 `tool_path` 都必须有一个能打开的页面 ——
+以前只有 3 个，`/image/compressor`（图片压缩）与 `/dev/json-formatter`（JSON 格式化）
+在「工具分享」点「打开工具」会新开一个 404。现在五个路径全部落地，
+并统一走 `ToolPageShell` + `ToolResultPane` 的骨架：**页头 → 输入区 → 操作区 → 结果区（空/加载/成功/失败四态）→ 辅助信息（侧栏说明）**。
+
+| 工具（`tool_path`） | 路由 / 页面 | 状态 | 占位到什么程度 |
+| --- | --- | --- | --- |
+| 视频下载工具 `/video/downloader` | `pages/VideoTool.vue` | 骨架 | 解析服务未接入。链接校验、清晰度/输出格式、「解析链接」的加载与成功流转都可走通，但结果是**参数回显**；侧栏「功能开发中」+ 页头「需卡密激活」如实标注 |
+| 图片压缩工具 `/image/compressor` | `pages/ImageCompressor.vue` | 骨架 | 选图/拖放、类型与 5MB 校验、档位与输出格式都是真的；**压缩是系数估算**，预览用本地 object URL，下载按钮禁用 |
+| JSON 格式化工具 `/dev/json-formatter` | `pages/JsonFormatter.vue` | **真实可用** | 唯一的完整实现：`JSON.parse` + `JSON.stringify`，缩进/单行、报错定位、字符数与行数、一键复制 |
+| 2FA 密钥验证 `/other/2fa` | `pages/2FA.vue` | **真实可用** | TOTP 逻辑本来就是真的（`utils/totp.js` 对齐 RFC 6238），本期只换页头与结果区外观 |
+| 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用** | 数据来自 `toolApi/getAppleIds`，本期只换页头与侧栏 |
+
+新工具页的接入方式：在 `src/constants/content.js` 的 `TOOL_PAGES` 里加一条（键就是数据库里的 `tool_path`），
+写一个用 `ToolPageShell` 包住的页面组件，在 `src/router/index.js` 里加一条懒加载路由即可 ——
+`vercel.json` 是 SPA 的 catch-all rewrite，**不需要改部署配置**。
 
 ### 搜索：关键词只在组件内，结果走 `/search`
 
@@ -873,6 +897,8 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | --- | --- |
 | `ProductCard.vue` | 商品卡：图片、标题、价格、浏览/销量/库存三个指标、购买按钮。整卡可点击（`role="link"` + Enter/Space） |
 | `ToolCard.vue` | 工具卡：封面或 icon、分类、描述、收藏按钮、"打开工具" |
+| `ToolPageShell.vue` | **工具页公共壳**：页头（`eyebrow` / `AppIcon` + 标题 / 简介）+ 返回工具页按钮 + 主区（默认插槽）+ 侧栏（`#aside` 插槽，无插槽时整页单列）+ 可选的「需卡密激活」标注。五个工具页共用，新增工具页只需给它标题与图标 |
+| `ToolResultPane.vue` | **工具页结果区四态**：`empty`（`.u-empty` + 可填 `#empty-actions`）/ `loading`（`role="status"` + `aria-busy`）/ `success`（`#actions` 放主操作）/ `error`（`role="alert"` + `#error` 重试）。状态名与文案由调用页给，组件不认业务 |
 | `AppleIdCard.vue` | Apple ID 账号卡：账号、密码（可显隐、可复制）、状态、地区、更新时间 |
 
 ### 卡密与 Apple ID
@@ -1302,9 +1328,11 @@ Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版�
 宽度只认 `--container-page-narrow`（`clamp(960px, 72vw, 1180px)`，随视口收敛）。
 页面自己**不得**再声明 `max-width`，否则同族页面在宽屏上会各走各的比例 ——
 `test/componentClasses.test.js` 的「窄页族宽度契约」用例把关。
-`--container-narrow`（1000px）保持固定值不动：它是 2FA / Hero / KamiSection /
-NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体值会让那些
-派生宽度一起漂移。个人中心（`/user/profile`）**有意不进这一族**，它是双栏面板版式。
+`--container-narrow`（1000px）保持固定值不动：它是 Hero / KamiSection /
+NotFound 里几处 `calc(var(--container-narrow) * N)` 派生宽度的基准，也是
+About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会让它们一起漂移。
+（2FA 页原先也用它压窄，改造为工具页骨架后已改为整宽 + 页壳，不再依赖这个令牌。）
+个人中心（`/user/profile`）**有意不进这一族**，它是双栏面板版式。
 
 带吸顶侧栏的页面统一用 `top: calc(var(--navbar-height) + var(--space-unit) * 2)`
 让出粘性顶栏的高度（`≤767px` 时顶栏是 `var(--navbar-height) * var(--mobile-nav-scale)`）。
@@ -1416,7 +1444,27 @@ NotFound 里 6 处 `calc(var(--container-narrow) * N)` 的基准，改成流体�
 > 是「说明书」式内容，与 §9 概览格的内容模型不同，按变更记录显式留边界）；
 > **待迁移** 页面级骨架 §25（§5 等级徽章只在页面内联使用，未单独建模条目）。
 
-### 9.13 硬编码与断点纪律
+### 9.13 组件套件（第六批：工具页骨架，前缀 `.tool-`）
+
+五个工具页要长得一样，因此把它们共用的骨架单独成第六个分片
+`src/assets/styles/ui-kit-tool.css`（7 节，全部由既有原子拼装，**不定义任何新令牌**，
+因此 `test/kitAllowlist.js` 保持为空）：
+
+| 段 | 覆盖 |
+| --- | --- |
+| §1 布局 | `tool-layout`（主区 + 侧栏两列）、`tool-layout--single`、`tool-main`、返回按钮、页头里的标题图标与「需卡密」标注 |
+| §2 面板 | `tool-panel`（与 `.ui-card` 合写）、面板标题 |
+| §3 输入区 | `tool-form`、`tool-actions`、`tool-textarea`、拖放区 `tool-file-drop(--active)`、文件名 |
+| §4 结果区 | `tool-result`、加载块、成功体、操作行、错误块（`--danger`）、结果元信息行 |
+| §5 输出 | `tool-preview`（等宽、可滚动、保留换行）、媒体预览 |
+| §6 侧栏 | `tool-aside`、`tool-aside-card`、标题、列表、注意事项、跳转链接 |
+| §7 响应式 | ≤991 折单列；≤767 面板内边距 × `--mobile-padding-scale`、操作按钮竖排撑满 |
+
+三条纪律与其余分片一致：**只定义 `.tool-*` 类**（不含裸元素选择器，未使用时零视觉影响）、
+**只用令牌**、**断点只用 991 / 767**。`test/componentClasses.test.js` 的 `SHARED_STYLES`
+已登记本分片 —— 否则「模板里用了 `.tool-*` 但共享样式没定义」会被判为失败。
+
+### 9.14 硬编码与断点纪律
 
 - 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
   再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。

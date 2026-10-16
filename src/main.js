@@ -20,6 +20,14 @@ import './assets/styles/ui-kit-feedback.css'
  * 只定义 `.u-mm-*` 类，不覆盖任何全局元素与既有原子 —— 页面没用这些类时引入它没有任何视觉影响。
  */
 import './assets/styles/ui-kit-member.css'
+/*
+ * 工具页骨架（第六个分片）。
+ * 前缀 `.tool-`：页头仍由全局 `.page-shell-*` 提供，这一片只放工具页共用的
+ * 面板 / 表单与操作区 / 结果区四态 / 预览区 / 辅助信息版式。
+ *   §1 页面骨架 §2 面板 §3 表单与操作区 §4 结果区四态 §5 预览区 §6 辅助信息 §7 响应式
+ * 只定义 `.tool-*`，页面没用这些类时引入它没有任何视觉影响。
+ */
+import './assets/styles/ui-kit-tool.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'

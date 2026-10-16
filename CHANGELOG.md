@@ -9,11 +9,12 @@
 
 ---
 
-## [1.7.0] — 2026-10-16 · 顶栏账号下拉重排（开发中）
+## [1.7.0] — 2026-10-16 · 顶栏账号下拉重排 + 工具页骨架（开发中）
 
 本阶段不加新端点，改的是前端自身的可用性债：顶栏账号下拉里塞了两个
 **与顶栏图标重复**的入口（会员中心 = 皇冠、消息中心 = 信封），
-且没有 `role` / 键盘导航，短视口下也滚不到「退出登录」。
+且没有 `role` / 键盘导航，短视口下也滚不到「退出登录」；
+同时数据库 `tools` 表里有两条工具的 `tool_path` **没有对应页面**（点「打开工具」必然 404）。
 
 ### 变更
 
@@ -23,7 +24,10 @@
 | 交互 | 触发器 `aria-haspopup="menu"` / `aria-controls` / `aria-expanded`，面板 `role="menu"` + 条目 `role="menuitem"`；`↓` 展开并把焦点落到首项、面板内 `↑/↓` 循环、`Home/End` 到首尾、`Esc` 关闭并**把焦点还给触发器** |
 | 视觉 | 面板 `max-height: var(--dropdown-max-height)` + `overflow-y: auto`（此前是 `overflow: hidden`，短视口下底部条目永远看不到，也顺带消费了这个一直没人用的令牌）；宽度下限 224px（200px 放不下带图标的长条目）；展开动画 180ms（全局 `--enter-duration` 是**页面进入**的节奏）；767 断点下限制在视口内并把条目放宽到 44px 触控高度 |
 | 图标 | `iconSet.js` 新增 `log-in` / `log-out` |
-| 测试 | 新增 `test/navbarUserMenu.test.js`（11 例）；`test/navbarMail.test.js` 里「下拉也有消息中心」改为「下拉**不得**重复消息中心」 |
+| 工具页公共层 | 新增 `ToolPageShell.vue`（页头 + 返回 + 主区/侧栏 + 「需卡密」标注）与 `ToolResultPane.vue`（**空 / 加载 / 成功 / 失败**四态），以及 `useToolJob` 组合式函数与第六个样式分片 `assets/styles/ui-kit-tool.css` |
+| 工具页 | 新增 `/image/compressor`（图片压缩，骨架）与 `/dev/json-formatter`（JSON 格式化，**本期唯一真实实现**）两条路由，**消除两条点开即 404 的死链**；`/video/downloader` 由「开发中说明卡」升级为完整骨架页（解析仍为占位回显）；`/other/2fa` 与 `/other/appleId` 换用统一页壳（**TOTP 逻辑与密钥处理未动**） |
+| 文案常量 | `constants/content.js` 新增 `TOOL_PAGES`（键 = 数据库 `tool_path`）与 `TOOL_RESULT`，五个工具页的标题/简介/空态/示例全部集中在此 |
+| 测试 | 新增 `test/navbarUserMenu.test.js`（11 例）与 `test/toolPages.test.js`（15 例）；`test/navbarMail.test.js` 里「下拉也有消息中心」改为「下拉**不得**重复消息中心」；`componentClasses.test.js` 的共享样式清单登记新分片 |
 
 ### 已知取舍
 
@@ -33,6 +37,10 @@
   因此 `Tab` 走浏览器默认顺序，面板由点击外部或 `Esc` 收起。这是有意为之，不是遗漏。
 - 头像加载失败仍走 `SmartImage` 的 `fallback-icon="user"` 占位（本轮未改），
   长昵称的省略号来自既有的 `.user-name-text`（`min-width: 0` + ellipsis），改为断言守住。
+- **工具页是骨架，不是工具**：图片压缩按档位系数**估算**体积、下载按钮保持禁用；
+  视频解析只回显参数；两页都在侧栏如实写明。唯一真实可用的是 JSON 格式化。
+- 数据库里 `2FA密钥验证` 这条的 `description` 仍是「在线Markdown编辑器，实时预览」，
+  与工具名不符（页面文案取自 `TOOL_PAGES`，不受影响），**建议改库**。
 
 ---
 

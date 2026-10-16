@@ -1,19 +1,25 @@
 <template>
   <!--
     版式三：终端面板。
-    整页只有**一个**带窗口装饰的面板（原先两个居中窄卡片），
-    教程区退到面板下方、用 --divider 分隔，改成键值对照排版。
+    页头改用全站统一的工具页外壳（ToolPageShell），一页一个 h1；
+    面板保留终端装饰条，但题名降级为 aria-hidden 的窗口标签，
+    教程区仍在面板下方、用 --divider 分隔（本页的辅助信息就是它）。
   -->
-  <div class="fp-page-2fa">
+  <ToolPageShell
+    :title="PAGE.title"
+    :eyebrow="PAGE.eyebrow"
+    :description="PAGE.description"
+    :icon="PAGE.icon"
+  >
     <section class="fp-panel">
-      <!-- 窗口装饰条：三个语义色圆点 + 等宽标题，整体对屏幕阅读器隐藏 -->
+      <!-- 窗口装饰条：三个语义色圆点 + 等宽题名，整体对屏幕阅读器隐藏 -->
       <div class="fp-chrome">
         <span class="fp-dots" aria-hidden="true">
           <span class="fp-dot fp-dot--danger"></span>
           <span class="fp-dot fp-dot--warning"></span>
           <span class="fp-dot fp-dot--muted"></span>
         </span>
-        <h1 class="fp-chrome-title">2FA验证码工具（实时更新）</h1>
+        <span class="fp-chrome-title" aria-hidden="true">2FA验证码工具（实时更新）</span>
       </div>
 
       <div class="fp-panel-body">
@@ -43,44 +49,56 @@
           当前页面不是安全上下文，浏览器已禁用 WebCrypto，无法生成验证码。请通过 HTTPS 或 localhost 访问本页。
         </div>
 
-        <!-- 验证码读数：等宽 + 价格档字号 + 强调色，是面板里的主角 -->
-        <div class="fp-code-area" v-if="hasSecret">
-          <div class="fp-meta">
-            <div class="meta-row">
-              <div class="meta-label">当前密钥：</div>
-              <div class="meta-value">{{ secret || '未设置' }}</div>
+        <!--
+          验证码读数：等宽 + 价格档字号 + 强调色，是面板里的主角。
+          外层改用公共结果区承载四态（空 / 加载 / 成功 / 失败），
+          TOTP 逻辑、密钥缓存与倒计时完全不变；失败文案由结果区统一呈现。
+        -->
+        <ToolResultPane
+          :state="resultState"
+          :title="PAGE.emptyTitle"
+          :description="PAGE.emptyDesc"
+          :error="error"
+          icon="shield-alert"
+        >
+          <div class="fp-code-area">
+            <div class="fp-meta">
+              <div class="meta-row">
+                <div class="meta-label">当前密钥：</div>
+                <div class="meta-value">{{ secret || '未设置' }}</div>
+              </div>
+              <div class="meta-row">
+                <div class="meta-label">当前验证码：</div>
+                <!--
+                  这里原先带 aria-live="polite"，但验证码每 30 秒换一次、倒计时每秒都在变，
+                  会把整个区域变成高频播报源，对屏幕阅读器用户是干扰而非帮助。
+                  需要播报验证码时由 copyCode() 的 notify 提示承担。
+                -->
+                <div class="meta-value meta-code">{{ code || '—' }}</div>
+                <div class="meta-remaining">剩余 {{ countdown }}s</div>
+              </div>
             </div>
-            <div class="meta-row">
-              <div class="meta-label">当前验证码：</div>
-              <!--
-                这里原先带 aria-live="polite"，但验证码每 30 秒换一次、倒计时每秒都在变，
-                会把整个区域变成高频播报源，对屏幕阅读器用户是干扰而非帮助。
-                需要播报验证码时由 copyCode() 的 notify 提示承担。
-              -->
-              <div class="meta-value meta-code">{{ code || '—' }}</div>
-              <div class="meta-remaining">剩余 {{ countdown }}s</div>
+
+            <!-- 进度条：高度 / 圆角 / 轨道色 / 过渡全部来自 .u-progress 与 --progress-* -->
+            <div
+              class="u-progress fp-progress"
+              role="progressbar"
+              aria-label="验证码有效期剩余时间"
+              :aria-valuenow="countdown"
+              aria-valuemin="0"
+              aria-valuemax="30"
+            >
+              <div class="u-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
             </div>
-          </div>
 
-          <!-- 进度条：高度 / 圆角 / 轨道色 / 过渡全部来自 .u-progress 与 --progress-* -->
-          <div
-            class="u-progress fp-progress"
-            role="progressbar"
-            aria-label="验证码有效期剩余时间"
-            :aria-valuenow="countdown"
-            aria-valuemin="0"
-            aria-valuemax="30"
-          >
-            <div class="u-progress-bar" :style="{ width: (countdown/30*100) + '%' }"></div>
+            <p class="tool-result-note">{{ PAGE.resultNote }}</p>
           </div>
-
-          <div class="fp-note" v-if="error">{{ error }}</div>
-        </div>
+        </ToolResultPane>
       </div>
     </section>
 
     <div class="fp-tutorial">
-      <!-- 一个页面只应有一个 h1（面板标题栏），这里是次级说明区块，用 h2 -->
+      <!-- 一页只有一个 h1（由页面外壳给出），这里是次级说明区块，用 h2 -->
       <h2>2FA工具说明</h2>
       <div class="fp-tutorial-body">
         <p class="fp-kv-row">
@@ -101,7 +119,7 @@
         </p> -->
       </div>
     </div>
-  </div>
+  </ToolPageShell>
 </template>
 
 <script setup>
@@ -110,6 +128,12 @@ import { notify } from '@/hooks/useToast/index.js'
 import { createKeyCache, isCryptoAvailable } from '@/utils/totp.js'
 import { computeSecondsRemaining } from '@/utils/totpCountdown.js'
 import { copyText } from '@/utils/clipboard.js'
+import ToolPageShell from '@/components/ToolPageShell.vue'
+import ToolResultPane from '@/components/ToolResultPane.vue'
+import { TOOL_PAGES } from '@/constants/index.js'
+
+// 页头与结果区文案统一走常量表（键 = tools 表里的 tool_path）
+const PAGE = TOOL_PAGES['/other/2fa']
 
 const secret = ref("");
 const code = ref("");
@@ -124,6 +148,15 @@ let intervalId = null;
 let computeSeq = 0;
 
 const hasSecret = computed(() => secret.value.trim().length > 0);
+
+// 公共结果区的四态取值：空（还没填密钥）/ 加载（正在算）/ 成功 / 失败
+const computing = ref(false);
+const resultState = computed(() => {
+  if (!hasSecret.value) return 'empty'
+  if (error.value) return 'error'
+  if (computing.value) return 'loading'
+  return 'success'
+});
 
 /**
  * WebCrypto 的 crypto.subtle 只在安全上下文（HTTPS 或 localhost）可用。
@@ -146,6 +179,7 @@ async function updateCode() {
   const seq = ++computeSeq;
   try {
     error.value = "";
+    computing.value = true;
     const { otp } = await keyCache.compute(secret.value);
     if (seq !== computeSeq) return; // 已有更新的计算，丢弃本次结果
     code.value = otp;
@@ -156,6 +190,9 @@ async function updateCode() {
         ? e.message
         : "无法解析密钥：" + (e.message || e);
     code.value = "";
+  } finally {
+    // 只有最新一次计算才有权关掉加载态，否则旧结果会提前解除 loading
+    if (seq === computeSeq) computing.value = false;
   }
 }
 
@@ -251,22 +288,14 @@ onBeforeUnmount(() => {
  * 用 --divider 分隔，排版改成「标签 + 值」的等宽对照表。
  * 顶栏是 sticky 且参与文档流，因此页面不再声明顶部占位。
  */
-.fp-page-2fa {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(var(--section-gap) * 0.4);
-  width: 100%;
-  padding: var(--section-gap) var(--container-padding);
-  background: transparent;
-}
-
-/* 窄内容列取 --container-narrow 的 64%，与改造前的 640px 一致。
-   不写成 calc(var(--space-unit) * 80)：4px 基础单位的主题下会缩到 320px 挤坏表单。 */
+/*
+ * 页面外壳（页头、返回工具页、容器宽度）由 ToolPageShell 提供，
+ * 本文件只负责面板与教程区。栅格子项默认不拉伸，
+ * 因此两块都显式 width: 100%（否则会缩成内容宽度）。
+ */
 .fp-panel,
 .fp-tutorial {
   width: 100%;
-  max-width: calc(var(--container-narrow) * 0.64);
 }
 
 .fp-panel {
@@ -511,11 +540,6 @@ onBeforeUnmount(() => {
  * 标题字号 ×0.7、正文字号 ×0.95。
  */
 @media (max-width: 767px) {
-  .fp-page-2fa {
-    padding: calc(var(--section-gap) * var(--mobile-section-scale))
-      calc(var(--container-padding) * var(--mobile-padding-scale));
-  }
-
   .fp-panel-body {
     padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }

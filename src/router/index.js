@@ -204,14 +204,30 @@ const routes = [
     meta: { title: 'appleId - 星辰商行' }
   },
   {
-    // 视频下载工具：解析服务暂停中，先给一个说明页。
+    // 视频下载工具：解析服务尚未接入，页面给出完整骨架并如实标注。
     // 数据库里 tool_path 已经是 /video/downloader，接通服务后只换这里的组件。
     // 不加 requiresAuth：守卫在服务端（没有授权就用不了工具本身），
-    // 但页面本身只是说明文案，拦一道反而让用户不知道门票在哪买。
+    // 但页面本身是入口与说明，拦一道反而让用户不知道门票在哪买。
     path: '/video/downloader',
     name: 'videoDownloader',
     component: () => import('@/pages/VideoTool.vue'),
     meta: { title: '视频下载工具 - 星辰商行' }
+  },
+  {
+    // 图片压缩工具：数据库里 tool_path = /image/compressor
+    // （此前没有路由，工具页点「打开工具」会开出一个 404）。
+    path: '/image/compressor',
+    name: 'imageCompressor',
+    component: () => import('@/pages/ImageCompressor.vue'),
+    meta: { title: '图片压缩工具 - 星辰商行' }
+  },
+  {
+    // JSON 格式化工具：数据库里 tool_path = /dev/json-formatter
+    // （同样是此前缺失的路由）。
+    path: '/dev/json-formatter',
+    name: 'jsonFormatter',
+    component: () => import('@/pages/JsonFormatter.vue'),
+    meta: { title: 'JSON 格式化工具 - 星辰商行' }
   },
   // ── 法务页（三页共用一个组件，由 meta.legalKey 选内容）───────
   {
