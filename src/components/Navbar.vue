@@ -159,11 +159,16 @@
         <!-- 有身份（游客或注册用户）：头像与下拉菜单 -->
         <div v-else class="navbar-user">
           <button
+            id="user-menu-trigger"
             type="button"
             class="user-avatar-btn"
             :aria-label="identityLabel"
+            aria-haspopup="menu"
+            aria-controls="user-menu"
             :aria-expanded="userMenuOpen"
             @click="toggleUserMenu"
+            @keydown.down.prevent="openUserMenu(true)"
+            @keydown.esc="closeUserMenu(true)"
           >
             <span class="u-avatar">
               <!-- 没有头像地址、或头像地址加载失败（外链图床不可达）时，
@@ -183,7 +188,15 @@
             <span v-if="isGuest" class="guest-mark" aria-hidden="true">游</span>
           </button>
 
-          <div v-if="userMenuOpen" class="u-dropdown user-dropdown">
+          <div
+            v-if="userMenuOpen"
+            id="user-menu"
+            ref="userMenuPanel"
+            class="u-dropdown user-dropdown"
+            role="menu"
+            aria-label="账号菜单"
+            @keydown="onMenuKeydown"
+          >
             <div class="user-info">
               <p class="user-name">
                 <span class="user-name-text">{{ nickname || '未设置昵称' }}</span>
@@ -213,9 +226,11 @@
             <button
               v-if="isGuest"
               type="button"
+              role="menuitem"
               class="u-dropdown-item guest-login"
               @click="openLoginModal"
             >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="log-in" /></span>
               {{ AUTH.loginCta }}
             </button>
 
@@ -224,67 +239,122 @@
               那是嵌套交互元素，键盘与读屏都会出问题。
               游客点这些会被路由守卫拦下并弹出登录弹窗（requiresAuth），
               这正好起到「登录后能解锁什么」的提示作用。
+
+              排序按「账号类动作的使用频率」：个人中心 → 我的订单 → 我的收藏
+              → 卡密管理 → 每日签到。名称与跳转目标与重排前完全一致。
+
+              图标是纯装饰（整块 aria-hidden）：条目的无障碍名由文本本身承担，
+              读屏时不该多读一遍「用户图标」这种噪声。
             -->
-            <router-link class="u-dropdown-item" to="/user/profile" @click="handleMenuClick">
+            <p class="dropdown-group-label">账号资产</p>
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/profile"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="user" /></span>
               个人中心
             </router-link>
-            <router-link class="u-dropdown-item" to="/user/favorites" @click="handleMenuClick">
-              我的收藏
-            </router-link>
-            <router-link class="u-dropdown-item" to="/user/orders" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/orders"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="package" /></span>
               我的订单
             </router-link>
-            <router-link class="u-dropdown-item" to="/user/kami" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/favorites"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="heart" /></span>
+              我的收藏
+            </router-link>
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/kami"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="key" /></span>
               卡密管理
             </router-link>
             <!--
               每日签到归「账号资产」而不是「会员权益」：非会员同样每天签到赚积分，
               它是个人中心功能（`/user/checkin`），不是会员门槛。
             -->
-            <router-link class="u-dropdown-item" to="/user/checkin" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/checkin"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="check-circle" /></span>
               每日签到
             </router-link>
 
             <!--
-              消息中心：同样只给注册用户（理由见顶栏信封入口的注释）。
-              未读条数直接标在这一项上 —— 下拉展开时用户最想知道的就是
-              「有没有新东西」，让他再点进页面才知道就多了一步。
+              消息中心**刻意不在这里**：顶栏信封（`.navbar-mail`）已经是同一个入口
+              并且带未读角标，下拉里再放一项就是同一个目标的两个入口 ——
+              这是本次优化的硬约束（下拉不得重复顶栏已有入口）。
+              回归由 test/navbarMail.test.js 与 test/navbarUserMenu.test.js 双重钉住。
             -->
-            <router-link
-              v-if="userStore.isLoggedIn"
-              class="u-dropdown-item"
-              to="/mail"
-              @click="handleMenuClick"
-            >
-              消息中心
-              <span v-if="mailStore.hasUnread" class="u-tag u-tag--danger user-badge">
-                {{ mailStore.unreadLabel }}
-              </span>
-            </router-link>
 
             <!--
               会员与积分单独成组：上面几项是「账号资产」，这组是「会员权益」。
               用分隔线 + 小组标题分开，否则下拉会变成一条平铺长条。
+              「会员中心」同样**刻意不放**：顶栏皇冠入口已经是它。
             -->
             <div class="u-dropdown-divider"></div>
             <p class="dropdown-group-label">会员权益</p>
-            <router-link class="u-dropdown-item" to="/member" @click="handleMenuClick">
-              会员中心
-            </router-link>
-            <router-link class="u-dropdown-item" to="/member/plans" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/member/plans"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="credit-card" /></span>
               会员套餐
             </router-link>
-            <router-link class="u-dropdown-item" to="/points" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/points"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="star" /></span>
               积分中心
             </router-link>
-            <router-link class="u-dropdown-item" to="/member/growth" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/member/growth"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="arrow-up" /></span>
               成长值
             </router-link>
-            <router-link class="u-dropdown-item" to="/coupons" @click="handleMenuClick">
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/coupons"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="ticket" /></span>
               我的优惠券
             </router-link>
             <div class="u-dropdown-divider"></div>
-            <button type="button" class="u-dropdown-item logout" @click="handleLogout">
+            <button
+              type="button"
+              role="menuitem"
+              class="u-dropdown-item logout"
+              @click="handleLogout"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="log-out" /></span>
               {{ isGuest ? AUTH.guestLogout : AUTH.logout }}
             </button>
           </div>
@@ -394,6 +464,8 @@ const identityLabel = computed(() => {
 const isScrolled = ref(false)
 const menuOpen = ref(false)
 const userMenuOpen = ref(false)
+/** 用户下拉面板本体：键盘导航需要拿它查询可聚焦条目，因此必须是 ref */
+const userMenuPanel = ref(null)
 const navMenu = NAV_MENU
 
 /** 购物车角标：来自 cart store，登录后由 App.vue 拉取 */
@@ -459,12 +531,84 @@ const handleMenuClick = () => {
  * 进站时的快照可能已经过期。下拉是用户主动查看「我是谁、我有什么」的动作，
  * 在这个时刻拉一次，看到的才是当下真实的等级与积分。
  * 游客不拉 —— 他没有会员数据也没有站内通知，接口只会回 401 / 403。
+ *
+ * `focusFirst`：从触发器按 ↓ 展开时，焦点必须落到第一项上 ——
+ * 只把面板显示出来而焦点还留在触发器上，键盘用户按 ↓ 等于什么都没发生。
+ * 鼠标点击展开时不抢焦点（那会让 hover 态与焦点态同时亮起）。
  */
+const openUserMenu = (focusFirst = false) => {
+  if (userMenuOpen.value) return
+  userMenuOpen.value = true
+
+  if (!isGuest.value) {
+    memberStore.fetchOverview({ silent: true })
+    mailStore.fetchUnreadCount({ silent: true })
+  }
+
+  if (!focusFirst) return
+  nextTick(() => {
+    menuItems()[0]?.focus()
+  })
+}
+
+/**
+ * 关闭用户下拉。
+ *
+ * `restoreFocus`：由 Esc 关闭时必须把焦点还给触发器 ——
+ * 焦点留在已经被卸载的节点上时，后面的 Tab 会从 body 重新开始，键盘用户就丢了位置。
+ */
+const closeUserMenu = (restoreFocus = false) => {
+  if (!userMenuOpen.value) return
+  userMenuOpen.value = false
+
+  if (!restoreFocus) return
+  document.getElementById('user-menu-trigger')?.focus()
+}
+
+/** 面板里可聚焦的条目。跳过后禁用项，避免焦点落在不可用的按钮上 */
+const menuItems = () =>
+  Array.from(userMenuPanel.value?.querySelectorAll('.u-dropdown-item:not(:disabled)') ?? [])
+
+/**
+ * 面板内的键盘导航：↑/↓ 循环、Home/End 到首尾、Esc 关闭并把焦点还给触发器。
+ *
+ * 刻意**不**拦 Tab：把面板卸载掉再让浏览器继续找下一个可聚焦元素，
+ * 焦点会落到 body 上。Tab 走默认行为即可（焦点离开面板后，
+ * 点击别处仍会由 closeMenusOnClickOutside 收起菜单）。
+ */
+const onMenuKeydown = (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeUserMenu(true)
+    return
+  }
+
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+
+  const items = menuItems()
+  if (!items.length) return
+  event.preventDefault()
+
+  const last = items.length - 1
+  const current = items.indexOf(document.activeElement)
+  if (event.key === 'Home') {
+    items[0].focus()
+    return
+  }
+  if (event.key === 'End') {
+    items[last].focus()
+    return
+  }
+  if (event.key === 'ArrowDown') {
+    items[current < 0 || current === last ? 0 : current + 1].focus()
+    return
+  }
+  items[current <= 0 ? last : current - 1].focus()
+}
+
 const toggleUserMenu = () => {
-  userMenuOpen.value = !userMenuOpen.value
-  if (!userMenuOpen.value || isGuest.value) return
-  memberStore.fetchOverview({ silent: true })
-  mailStore.fetchUnreadCount({ silent: true })
+  if (userMenuOpen.value) closeUserMenu()
+  else openUserMenu()
 }
 
 /**
@@ -994,10 +1138,41 @@ onUnmounted(() => {
   border-radius: var(--radius-pill);
 }
 
+/*
+ * 头像下拉：定位 + 三处刻意的局部覆盖。
+ *  1. 动画：全局 `.u-dropdown` 用的是 `--enter-duration`(0.5s)，那是**页面进入**的节奏；
+ *     下拉是就地展开的动作，0.5s 会让人以为界面卡住了。这里收紧到 180ms，
+ *     只覆盖本组件、不动共享令牌（改令牌会连带改掉所有页面的进入动画）。
+ *  2. 高度：面板有 10 项，短屏（笔记本、手机横屏）会超出视口，而全局 `.u-dropdown`
+ *     是 `overflow: hidden` —— 不显式给滚动轴，底部的「退出登录」永远看不到。
+ *     `--dropdown-max-height`(280px) 此前无人消费，正好用在这里。
+ *  3. 宽度：`--dropdown-width` 只有 200px，带图标后「我的优惠券」会折行，
+ *     取 224px（28 个间距单位）当下限，长条目不再挤成两行。
+ */
 .user-dropdown {
   position: absolute;
   top: calc(100% + var(--space-unit) * 1.5);
   right: 0;
+  width: max(var(--dropdown-width), calc(var(--space-unit) * 28));
+  max-height: var(--dropdown-max-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: enterUp 180ms var(--enter-ease) both;
+}
+
+/* 图标列：不参与压缩，条目文字因此左对齐；颜色随条目 hover/focus 一起走 */
+.dropdown-item-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.u-dropdown-item:hover .dropdown-item-icon,
+.u-dropdown-item:focus-visible .dropdown-item-icon {
+  color: currentColor;
 }
 
 .user-info {
@@ -1225,6 +1400,17 @@ onUnmounted(() => {
     max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale));
     padding-left: calc(var(--nav-padding-x) * 0.6);
     padding-right: calc(var(--nav-padding-x) * 0.6);
+  }
+
+  /* 窄屏下把下拉限制在视口内：顶栏右侧还挂着图标入口，200px 面板会顶出屏幕 */
+  .user-dropdown {
+    max-width: calc(100vw - var(--space-unit) * 4);
+  }
+
+  /* 触控目标：桌面 36px 的条目在手指下太窄，窄屏放宽到 44px 并允许换行 */
+  .user-dropdown .u-dropdown-item {
+    height: auto;
+    min-height: 44px;
   }
 }
 

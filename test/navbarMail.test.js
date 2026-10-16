@@ -114,14 +114,19 @@ test('入口守卫是 isLoggedIn，游客的 userId 不能让它显形', () => {
   assert.doesNotMatch(block, /v-if="userStore\.userId"/)
 })
 
-test('用户下拉里也有一项「消息中心」，并带未读条数（展开即知有没有新东西）', () => {
-  const at = NAVBAR_SOURCE.indexOf('to="/mail"', NAVBAR_SOURCE.indexOf('u-dropdown-item'))
-  assert.ok(at > -1, '下拉里没有消息中心项')
-  const block = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.lastIndexOf('<', at), NAVBAR_SOURCE.indexOf('</router-link>', at))
-  assert.match(block, /^<router-link/)
-  assert.match(block, /v-if="userStore\.isLoggedIn"/)
-  assert.match(block, /mailStore\.hasUnread/)
-  assert.match(block, /u-tag u-tag--danger user-badge/)
+test('用户下拉里**不再**重复「消息中心」：同一个目标只保留顶栏信封这一个入口', () => {
+  const dropdown = NAVBAR_SOURCE.slice(
+    NAVBAR_SOURCE.indexOf('class="u-dropdown user-dropdown"'),
+    NAVBAR_SOURCE.indexOf('<!-- 移动端菜单切换按钮 -->')
+  )
+  assert.ok(dropdown.length > 0, '源码里找不到用户下拉主体')
+
+  assert.doesNotMatch(dropdown, /to="\/mail"/, '下拉里不该再有 /mail 入口')
+  assert.doesNotMatch(dropdown, /mailStore\.hasUnread/, '未读角标只属于顶栏信封')
+
+  // 去重之后「有没有新消息」只剩信封这一个出口，不能再丢了它
+  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail"/)
+  assert.match(NAVBAR_SOURCE, /navbar-mail-badge/)
 })
 
 test('页脚：底部链接里有指向 /support 的「客服中心」（游客也看得见）', async () => {
