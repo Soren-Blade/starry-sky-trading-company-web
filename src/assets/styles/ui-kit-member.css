@@ -1,5 +1,10 @@
 /* ════════════════════════════════════════════════════════════════════════════
- * 会员与邮件模块 · 组件套件（第 12 分类「会员与邮件」）
+ * 会员与邮件模块 · 组件套件（第 12 分类「会员中心」+ 第 13 分类「邮件中心」）
+ *
+ * 批次 14 起，展示层把这两个业务域**拆成两个独立分类页**（`components/member.html`
+ * 与 `components/mail.html`），不再合并 —— 但样式分片仍是同一份：两域共用同一套
+ * 骨架（区块壳 / 四态容器 / 元信息行 / 分页壳），合并成一份分片正是「风格统一」的
+ * 物理保证。页面拆开是展示需要，不是样式分叉。
  *
  * 这份分片解决三个已经存在的事实问题，而不是「再画一套好看的卡片」：
  *
@@ -36,7 +41,7 @@
  *
  * 消费方：`/member`、`/member/plans`、`/member/benefits`、`/member/growth`、
  * `/points`、`/coupons`、`/user/checkin`、`/mail` 八个页面，以及
- * `ui-showcase/components/member-mail.html`（展示层）。
+ * `ui-showcase/components/member.html` 与 `ui-showcase/components/mail.html`（展示层）。
  * ════════════════════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -534,7 +539,9 @@
 .u-mm-benefit {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 0.75);
+  /* 四段（图标 / 名称 / 数值 / 下一档）的**组间距各不相同**，所以不用统一的 gap，
+   * 改用显式 margin 排出三组节奏：图标 ┃ 标签+数字 ┃ 下一档预告。 */
+  gap: 0;
   padding: var(--card-padding);
   min-width: 0;
   background: var(--bg-surface);
@@ -542,14 +549,25 @@
   border-radius: var(--radius-card);
 }
 
+/* 图标与文字共用同一条左基准线。
+ * 旧版这里是 justify-content:center —— 图标被水平居中，而 name / value / next
+ * 全是左对齐，于是图标比文字右飘（实测：内容宽 221px 时 svg 落在 x=221.5，
+ * 文字从 x=122 起，错位约 100px）。观感是「图标浮在格子中间、和文字没关系」。 */
 .u-mm-benefit-icon {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  /* 12px：图标自成一组，与下面的「标签 + 数值」拉开距离 */
+  margin-bottom: calc(var(--space-unit) * 1.5);
   color: var(--accent);
 }
 
+/* 名称与数值是一个「标签 + 数字」组，组内只留 2px。
+ * 组内紧、组间松 —— 这是层级能被读出来的前提；旧版四段一律 6px，
+ * 名称和数值黏在一起，图标也黏在名称上，三层看起来是一坨。 */
 .u-mm-benefit-name {
+  margin-bottom: calc(var(--space-unit) * 0.25);
   font-size: var(--fs-body);
   font-weight: var(--fw-label);
   color: var(--text-primary);
@@ -568,7 +586,8 @@
  * 就只是一块静止的说明。 */
 .u-mm-benefit-next {
   margin-top: auto;
-  padding-top: calc(var(--space-unit) * 0.5);
+  /* 10px：与「标签 + 数值」组拉开，且比图标的 12px 略小 —— 它是附注，不是主信息 */
+  padding-top: calc(var(--space-unit) * 1.25);
   font-size: var(--fs-label);
   line-height: var(--leading-body);
   color: var(--text-muted);
@@ -1103,21 +1122,48 @@
  * 不能只把按钮变灰 —— 灰按钮不解释任何事。
  * ════════════════════════════════════════════════════════════════════════════ */
 
+/* 最小列宽 320px（40 × 8px）而不是 240px：卡片要容下「文字列 + 按钮」两列，
+ * 240px 时左列只剩约 85px，「2,400 积分」需要 86px —— 正好差 1px 就会折行（B16）。
+ * 代价是每行由 4 张变 3 张。这是「按钮与整块文字相互居中」的必要前提：
+ * 只要按钮还必须和积分同一行，它就只能对齐那一行。 */
 .u-mm-mall-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 30), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--space-unit) * 40), 1fr));
   gap: var(--grid-gap);
 }
 
 .u-mm-mall {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1);
+  /* ★ 两列结构：左列 = 整块文字（图标 / 名称 / 描述 / 积分 / 提示），右列 = 按钮。
+   * 二者平级，所以 align-items 才能让它们**相互垂直居中** —— 按钮对齐的是
+   * 整块文字的垂直中心，而不是「积分」那一行。
+   *
+   * 为什么必须拆两列（批次 15 的结论）：按钮原先在 .u-mm-mall-foot 里与积分同一行，
+   * 那时无论怎么设 align-items，按钮的居中基准都只能是那一行 —— 它和积分是兄弟。
+   * 要改基准，就必须改**层级**：把按钮提上来与文字列平级。布局问题常常不是
+   * 「对齐属性写错了」，而是「被对齐的两个东西根本不在同一层」。 */
+  align-items: center;
+  column-gap: var(--grid-gap);
   padding: var(--card-padding);
   min-width: 0;
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
+}
+
+/* 左列：整块文字。flex:1 吃掉除按钮外的全部宽度；min-width:0 允许它收缩而不撑破卡片。
+ *
+ * align-self:stretch 是「按钮居中」的**第二半**：卡片被栅格拉成等高后，
+ * 文字列若只有内容高，它的中心就比卡片中心偏上，按钮会显得偏低。
+ * 撑满高度后，文字列（图标顶 → 积分底）的垂直中心恰好等于卡片中心，
+ * 按钮居中于卡片 = 居中于整块文字。两个声明缺一不可。 */
+.u-mm-mall-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  min-width: 0;
+  flex: 1 1 auto;
+  align-self: stretch;
 }
 
 .u-mm-mall-head {
@@ -1146,23 +1192,42 @@
   color: var(--text-muted);
 }
 
-.u-mm-mall-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--grid-gap);
-  margin-top: auto;
-  padding-top: calc(var(--space-unit) * 0.5);
+/* 右列：按钮。flex:none 保证它不被压缩；align-self:center 把「垂直居中于整块文字」
+ * 写死在这里 —— 容器哪天改成 stretch，按钮也不会被拉成一条竖条。
+ * 用元素选择器而不是类选择器，是为了不把展示页的 .u-btn-primary / .u-btn-secondary
+ * 绑死在样式里 —— 换按钮变体不该改这条规则。 */
+.u-mm-mall > button {
+  flex: none;
+  align-self: center;
 }
 
 .u-mm-mall-cost {
   display: flex;
   align-items: baseline;
+  /* margin-top:auto 把成本行钉在**文字列底部** —— 批次 14 这个位置由
+   * .u-mm-mall-foot 的 margin-top:auto 承担，批次 15 拆掉 foot 后必须把这句
+   * 搬到成本行自己身上，否则成本行会贴着描述、卡片底部留一片空白，
+   * 且同一行各卡片（其中一张多一行「库存 0，补货中」）的成本行不再对齐。
+   * 它同时是「按钮居中」成立的前提：成本行到底，文字列才真正撑满卡片高度。 */
+  margin-top: auto;
+  /* 数字 + 单位是一个**不可拆的语义单元**。
+   * 批次 14 的现场：面板内容宽 221px 时，「2,400」+ 16px 间距 + 「还差 1,120 分」
+   * 按钮恰好占满，单位被挤成「积 / 分」两行（实测 cost 盒高 30→45）。
+   * 批次 15 拆成两列后左列更窄，所以最小列宽同步放宽到 320px（见 .u-mm-mall-list）。
+   *
+   * 承重的是下面 `.u-mm-mall-cost-unit` 的 `white-space: nowrap`：它把该 flex 项的
+   * min-content 从「积」改成「积分」，配合 flex 项默认的 `min-width: auto`，
+   * 成本盒就不可能被压到破坏语义单元。
+   * 这里的 `flex-shrink: 0` 是**防御性**的 —— 批次 14 的反向测试证明：只删它、
+   * 保留 nowrap，渲染结果毫无变化（min-width:auto 已经挡住了）。留着是把意图写明。 */
+  flex-shrink: 0;
   gap: calc(var(--space-unit) * 0.25);
   font-family: var(--font-price);
   font-size: var(--fs-h3);
   font-weight: var(--fw-price);
   font-variant-numeric: tabular-nums;
+  /* 1.2 而不是继承来的 1.5：盒高 30→24，与 40px 按钮做中心对齐时光学重心更准 */
+  line-height: 1.2;
   color: var(--price-color);
 }
 
@@ -1171,6 +1236,11 @@
   font-size: var(--fs-label);
   font-weight: var(--fw-body);
   font-style: normal;
+  /* 单位不许断行 —— 它是「积分」一个词，不是「积」「分」两个字。
+   * ★ 这条是**承重声明**：CJK 默认允许在任意字之间断行，不加它「积分」会被拆开。
+   * 门禁 B16 同时断言「单位单行」与「这条计算样式为 nowrap」——
+   * 只断言盒高抓不到回归（宽度不足时是按钮在收缩，成本盒根本没被压）。 */
+  white-space: nowrap;
   color: var(--text-muted);
 }
 
