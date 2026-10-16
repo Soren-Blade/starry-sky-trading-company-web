@@ -233,26 +233,26 @@
             <p class="u-mm-state-desc">上新后会出现在这里</p>
           </div>
 
-          <ul v-else class="mall-list">
-            <li v-for="item in pointsStore.mallItems" :key="item.item_id" class="ui-card mall-item">
-              <AppIcon :name="item.icon" class="mall-item-icon" />
-              <div class="mall-item-main">
-                <p class="mall-item-name">
-                  {{ item.name }}
-                  <span v-if="item.member_only" class="mall-item-tag">会员专属</span>
+          <ul v-else class="u-mm-mall-list">
+            <li v-for="item in pointsStore.mallItems" :key="item.item_id" class="u-mm-mall">
+              <div class="u-mm-mall-main">
+                <p class="u-mm-mall-head">
+                  <AppIcon :name="item.icon" class="u-mm-mall-icon" aria-hidden="true" />
+                  <span class="u-mm-mall-name">{{ item.name }}</span>
+                  <span v-if="item.member_only" class="mall-tag">会员专属</span>
                 </p>
-                <p class="mall-item-desc">{{ item.desc }}</p>
-                <p class="mall-item-meta">
-                  <span class="mall-item-cost">{{ item.cost }} 积分</span>
-                  <span class="mall-item-stock">{{ mallStockText(item) }}</span>
+                <p class="u-mm-mall-desc">{{ item.desc }}</p>
+                <p class="u-mm-mall-hint">{{ mallStockText(item) }}</p>
+                <p class="u-mm-mall-cost">
+                  {{ item.cost }}<span class="u-mm-mall-cost-unit">积分</span>
                 </p>
-                <p v-if="redeemState(item).reason" class="mall-item-hint">
+                <p v-if="redeemState(item).reason" class="u-mm-mall-hint u-mm-mall-hint--warn">
                   {{ redeemState(item).reason }}
                 </p>
               </div>
               <button
                 type="button"
-                class="u-btn-primary mall-item-btn"
+                class="u-btn-primary"
                 :disabled="!redeemState(item).ok || Boolean(pointsStore.redeemingId)"
                 @click="doRedeem(item)"
               >
@@ -679,78 +679,16 @@ onMounted(async () => {
   margin: 0;
   color: var(--text-muted);
 }
-.mall-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.mall-item {
-  display: flex;
-  /* 卡片挂了两层类，全局 .ui-card 的 column 会盖掉这里的排版意图。 */
-  flex-direction: row;
-  align-items: center;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-}
-.mall-item-icon {
-  flex-shrink: 0;
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.mall-item-main {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  flex: 1;
-  min-width: 0;
-}
-.mall-item-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-unit);
-  margin: 0;
-  font-weight: var(--fw-heading);
-}
-.mall-item-tag {
+/* 商城条目本体（列表 / 卡片 / 图标 / 名称 / 描述 / 积分 / 库存 / 提示 / 按钮）见
+   ui-kit-member.css §18 的 .u-mm-mall（575px 单列走 §26），这里只留分片未覆盖的一处：
+   「会员专属」是业务标签，分片里没有对应的标签件。 */
+.mall-tag {
   padding: 0 calc(var(--space-unit) * 0.5);
   font-size: var(--fs-label);
   font-weight: var(--fw-body);
   color: var(--accent);
   border: var(--stroke-width) solid var(--accent);
   border-radius: var(--radius-media);
-}
-.mall-item-desc {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-.mall-item-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  margin: 0;
-  font-size: var(--fs-label);
-}
-.mall-item-cost {
-  font-family: var(--font-mono);
-  color: var(--accent);
-}
-.mall-item-stock {
-  color: var(--text-muted);
-}
-.mall-item-hint {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--warning);
-}
-.mall-item-btn {
-  flex-shrink: 0;
-  min-width: calc(var(--space-unit) * 10);
 }
 
 /* 任务：条目本体（图标 / 名称 / 周期 / 说明 / 进度条 / 奖励 / 按钮）见
@@ -788,17 +726,5 @@ onMounted(async () => {
 .tasks-claimable {
   margin: 0;
   color: var(--accent);
-}
-
-/* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
-@media (max-width: 575px) {
-  /* 极窄屏：图标 + 正文 + 按钮挤一行放不下，按钮独占一行 */
-  .mall-item {
-    flex-wrap: wrap;
-  }
-
-  .mall-item-btn {
-    width: 100%;
-  }
 }
 </style>

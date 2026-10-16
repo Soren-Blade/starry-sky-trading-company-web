@@ -4,9 +4,9 @@
  * 只做源码断言：列表排版全在 CSS 里，SSR 出来的 HTML 完全一样，
  * 横向还是纵向只能在浏览器里看出来，所以用规则断言把它钉住。
  *
- * 2026-10-16 起这些排版不再写在页面里：流水行 / 任务条目 / 余额块 / 分页壳
- * 统一由 `src/assets/styles/ui-kit-member.css` §15 / §16 / §17 / §4 提供，
- * 页面只剩「分片没覆盖的两处同行排版」和自己的商城列表。
+ * 2026-10-16 起这些排版不再写在页面里：流水行 / 任务条目 / 余额块 / 分页壳 /
+ * 商城条目统一由 `src/assets/styles/ui-kit-member.css` §15 / §16 / §17 / §4 / §18
+ * 提供（575px 单列走 §26），页面只剩「分片没覆盖的两处同行排版」。
  * 因此断言分两半：**分片必须保留这些规则**，**页面不得再长出同名私有规则**
  * （否则「改一处忘另一处」的老问题会原地复活）。
  */
@@ -68,11 +68,20 @@ test('页面：流水行 / 分页 / 任务 / 余额确实用了分片的类', ()
   }
 })
 
-test('页面：同时挂 .ui-card 的列表行必须显式声明 flex-direction: row', () => {
-  // 这些 <li> 上挂了全局 .ui-card（它声明 flex-direction: column）与页面自己的类；
-  // 页面规则只写 display: flex 时，方向仍由 .ui-card 决定 → 整行竖排（图标/内容/按钮各占一行）。
-  const body = ruleBody(POINTS_SOURCE, '.mall-item {')
-  assert.match(body, /flex-direction: row/, '.mall-item 应显式横向排版')
+test('分片：商城条目是「文字列 + 按钮」两列，按钮与整块文字相互居中', () => {
+  // 按钮必须是 .u-mm-mall 的**直接子元素**才算右列；塞回文字列里，
+  // 居中的基准就退回「积分那一行」（批次 15 的结论）。
+  const mall = ruleBody(KIT_SOURCE, '.u-mm-mall {')
+  assert.match(mall, /align-items: center/, '两列相互垂直居中')
+  assert.match(ruleBody(KIT_SOURCE, '.u-mm-mall-main {'), /flex-direction: column/)
+
+  const cost = ruleBody(KIT_SOURCE, '.u-mm-mall-cost {')
+  assert.match(cost, /margin-top: auto/, '成本行钉在文字列底部')
+  assert.match(
+    ruleBody(KIT_SOURCE, '.u-mm-mall-cost-unit {'),
+    /white-space: nowrap/,
+    '「积分」是一个语义单元，不许被拆行',
+  )
 })
 
 test('页面：分片没覆盖的两处「同行排版」仍由页面提供', () => {
@@ -91,8 +100,15 @@ test('页面：进度条宽度由页面给（分片只管外观）', () => {
   assert.match(body, /width: calc\(var\(--space-unit\) \* \d+\)/)
 })
 
-test('页面：极窄屏下商城条目按钮独占一行', () => {
-  const media = POINTS_SOURCE.slice(POINTS_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(media, /\.mall-item \{[\s\S]*?flex-wrap: wrap/)
-  assert.match(media, /\.mall-item-btn \{[\s\S]*?width: 100%/)
+test('分片：767px 下商城列表收成一列（页面不再自带极窄屏规则）', () => {
+  const media = KIT_SOURCE.slice(KIT_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(
+    media,
+    /\.u-mm-plan-grid,\r?\n\s*\.u-mm-mall-list \{\r?\n\s*grid-template-columns: minmax\(0, 1fr\)/,
+    '窄屏由分片收成单列',
+  )
+  assert.ok(
+    !POINTS_SOURCE.includes('@media (max-width: 575px)'),
+    '商城的极窄屏规则已并入 §26，页面不应再留一份',
+  )
 })

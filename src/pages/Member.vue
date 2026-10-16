@@ -70,7 +70,6 @@
             <span class="u-mm-asset-label">积分</span>
             <span class="u-mm-asset-value">{{ overview.points ?? 0 }}</span>
             <span class="u-mm-asset-hint">可抵 ¥{{ formatPointsValue(overview.points ?? 0) }}</span>
-            <span v-if="pointsTodo" class="member-asset-tip">{{ pointsTodo }}</span>
             <span class="member-asset-link">查看明细</span>
           </router-link>
 
@@ -84,7 +83,6 @@
               {{ overview.coupons ?? 0 }}<span class="u-mm-asset-unit">张</span>
             </span>
             <span class="u-mm-asset-hint">可用于下单抵扣</span>
-            <span v-if="couponTodo" class="member-asset-tip">{{ couponTodo }}</span>
             <span class="member-asset-link">查看券包</span>
           </router-link>
 
@@ -92,7 +90,6 @@
             <span class="u-mm-asset-label">会员到期日</span>
             <span class="u-mm-asset-value member-asset-date">{{ expiryValue }}</span>
             <span class="u-mm-asset-hint">{{ expiryHint }}</span>
-            <span v-if="memberTodo" class="member-asset-tip">{{ memberTodo }}</span>
             <router-link
               v-if="memberPlansAvailable"
               :to="{ name: 'MemberPlans' }"
@@ -102,6 +99,19 @@
             </router-link>
           </div>
         </section>
+
+        <!-- ②′ 待办提醒：会员到期 / 券过期 / 积分过期三类，一行一条、整条是链接
+             （外观见 ui-kit-member.css §19）。没有待办时整块不渲染 ——
+             「暂无待办」的占位只会占掉首屏最贵的位置。 -->
+        <ul v-if="todos.length" class="u-mm-todo-list" aria-label="待办提醒">
+          <li v-for="item in todos" :key="item.type">
+            <router-link :to="item.to" class="u-mm-todo">
+              <AppIcon :name="item.icon" class="u-mm-todo-icon" aria-hidden="true" />
+              <span class="u-mm-todo-text">{{ item.text }}</span>
+              <span class="u-mm-todo-link">{{ item.action }}</span>
+            </router-link>
+          </li>
+        </ul>
 
         <!-- ③ 成长值进度：门槛与还差多少都来自服务端，前端只算百分比（外观见 §8） -->
         <section class="ui-card u-mm-growth">
@@ -142,36 +152,38 @@
         <!-- ④ 权益卡区：八张卡显示当前值；未解锁显示「V{n} 解锁」而不是 0 -->
         <section class="member-benefits" aria-labelledby="member-benefits-title">
           <h2 id="member-benefits-title" class="member-section-title">我的权益</h2>
-          <ul class="member-benefit-grid">
+          <ul class="u-mm-benefit-grid">
             <li
               v-for="item in benefitCards"
               :key="item.key"
-              class="ui-card member-benefit"
-              :class="{ 'is-locked': !item.unlocked }"
+              class="u-mm-benefit"
+              :class="{ 'u-mm-benefit--locked': !item.unlocked }"
             >
-              <div class="member-benefit-head">
-                <AppIcon :name="item.icon" class="member-benefit-icon" aria-hidden="true" />
-                <span class="member-benefit-name">{{ item.name }}</span>
-              </div>
-              <p class="member-benefit-value">{{ item.displayText }}</p>
-              <p class="member-benefit-foot">{{ item.footText }}</p>
+              <AppIcon :name="item.icon" class="u-mm-benefit-icon" aria-hidden="true" />
+              <span class="u-mm-benefit-name">{{ item.name }}</span>
+              <p class="u-mm-benefit-value">{{ item.displayText }}</p>
+              <p class="u-mm-benefit-next">{{ item.footText }}</p>
             </li>
           </ul>
         </section>
 
-        <!-- ⑤ 下一档预告：再赚 N 成长值到 V{n}，并列出下一档会变好的项 -->
-        <section class="ui-card member-next" aria-labelledby="member-next-title">
+        <!-- ⑤ 下一档预告：再赚 N 成长值到 V{n}，并列出下一档会变好的项。
+             条目本身是 §9 的权益格（名称 / 当前值 / 下一档），所以这一节不套卡片。 -->
+        <section class="member-next" aria-labelledby="member-next-title">
           <h2 id="member-next-title" class="member-section-title">下一档预告</h2>
           <template v-if="nextTier">
             <p class="member-next-title">
               再赚 <strong>{{ nextTier.toNext }}</strong> 成长值到 {{ nextTier.name }}
               <span v-if="nextTier.threshold !== null" class="member-next-sub">（门槛 {{ nextTier.threshold }}）</span>
             </p>
-            <ul v-if="nextUpgrades.length" class="member-next-list">
-              <li v-for="item in nextUpgrades" :key="item.key" class="member-next-item">
-                <AppIcon :name="item.icon" class="member-next-icon" aria-hidden="true" />
-                <span class="member-next-name">{{ item.name }}</span>
-                <span class="member-next-value">{{ item.valueText }} → {{ item.nextText }}</span>
+            <ul v-if="nextUpgrades.length" class="u-mm-benefit-grid member-next-list">
+              <li v-for="item in nextUpgrades" :key="item.key" class="u-mm-benefit">
+                <AppIcon :name="item.icon" class="u-mm-benefit-icon" aria-hidden="true" />
+                <span class="u-mm-benefit-name">{{ item.name }}</span>
+                <p class="u-mm-benefit-value">{{ item.valueText }}</p>
+                <p class="u-mm-benefit-next">
+                  下一档 <em class="u-mm-benefit-next-em">{{ item.nextText }}</em>
+                </p>
               </li>
             </ul>
             <router-link :to="{ name: 'MemberBenefits', hash: '#levels' }" class="u-btn-secondary">
@@ -263,14 +275,27 @@ const expiringSoon = computed(
 const memberPlansAvailable = computed(() => router.hasRoute('MemberPlans'))
 
 /** 待办提醒来自概览的 `todos`，按类型取文案，不额外请求任何接口 */
-function todoText(type) {
-  const todo = (memberStore.todos || []).find((item) => item.type === type)
-  if (!todo) return ''
-  return todo.count ? `${todo.text}（${todo.count}）` : todo.text
+const TODO_META = {
+  member_expiring: { icon: 'crown', action: '去续费', to: { name: 'MemberPlans' } },
+  coupon_expiring: { icon: 'ticket', action: '查看券包', to: { name: 'Coupons' } },
+  points_expiring: { icon: 'clock', action: '查看明细', to: { name: 'Points' } },
 }
-const memberTodo = computed(() => todoText('member_expiring'))
-const couponTodo = computed(() => todoText('coupon_expiring'))
-const pointsTodo = computed(() => todoText('points_expiring'))
+
+const todos = computed(() =>
+  (memberStore.todos || [])
+    .map((todo) => {
+      const meta = TODO_META[todo.type]
+      if (!meta) return null
+      return {
+        type: todo.type,
+        icon: meta.icon,
+        to: meta.to,
+        action: meta.action,
+        text: todo.count ? `${todo.text}（${todo.count}）` : todo.text,
+      }
+    })
+    .filter(Boolean)
+)
 
 /** 满级或非会员时后端会整块拿掉 next_level / growth_to_next —— 用 undefined 判断，不比大小 */
 const hasNext = computed(
@@ -420,12 +445,8 @@ onMounted(() => {
 
 /* ① 身份区：见 ui-kit-member.css §6 的 .u-mm-identity（含卡面、间距与 warning 文字） */
 
-/* ② 资产概览：卡面见 §7 的 .u-mm-asset-*；这里只留分片没建模的两行 —
-   「待办提醒」与「查看明细」链接，它们是页面自己的动作，不属于资产卡契约 */
-.member-asset-tip {
-  font-size: var(--fs-label);
-  color: var(--warning);
-}
+/* ② 资产概览：卡面见 §7 的 .u-mm-asset-*；这里只留分片没建模的「查看明细」链接，
+   它是页面自己的动作，不属于资产卡契约。待办提醒原来也在这里，现已独立成 §19 的行。 */
 .member-asset-link {
   margin-top: auto;
   font-size: var(--fs-label);
@@ -451,63 +472,19 @@ onMounted(() => {
   margin: 0;
 }
 
-/* ④ 权益卡区 */
+/* ④ 权益卡区：格子本体（列表 / 卡片 / 图标 / 名称 / 数值 / 下一档）见
+   ui-kit-member.css §9，这里只留「区块标题 + 网格」的纵向节奏。 */
 .member-benefits {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
 }
-.member-benefit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: calc(var(--space-unit) * 2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.member-benefit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 2);
-}
-.member-benefit.is-locked {
-  opacity: 0.72;
-}
-.member-benefit-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-unit);
-}
-.member-benefit-icon {
-  font-size: var(--fs-h3);
-  color: var(--accent);
-}
-.member-benefit-name {
-  font-weight: var(--fw-heading);
-}
-.member-benefit-value {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-h3);
-}
-.member-benefit.is-locked .member-benefit-value {
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  color: var(--text-muted);
-}
-.member-benefit-foot {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
 
-/* ⑤ 下一档预告 */
+/* ⑤ 下一档预告：条目同样是 §9 的权益格，本节只剩标题行 / 引导语 / CTA 的堆叠 */
 .member-next {
   display: flex;
   flex-direction: column;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit) * 3);
+  gap: calc(var(--space-unit) * 2);
 }
 .member-next-title {
   margin: 0;
@@ -515,28 +492,6 @@ onMounted(() => {
 .member-next-sub {
   font-size: var(--fs-label);
   color: var(--text-muted);
-}
-.member-next-list {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.member-next-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-unit);
-}
-.member-next-icon {
-  color: var(--accent);
-}
-.member-next-name {
-  color: var(--text-muted);
-}
-.member-next-value {
-  font-family: var(--font-mono);
 }
 .member-next-empty {
   margin: 0;
