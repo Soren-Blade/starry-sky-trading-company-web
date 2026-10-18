@@ -619,6 +619,10 @@ export const TOOL_PAGES = {
   },
 }
 
+// 合并扩展工具页常量
+import { TOOL_PAGES_EXTRA } from './tool-pages.js'
+Object.assign(TOOL_PAGES, TOOL_PAGES_EXTRA)
+
 /**
  * 搜索结果页
  *

@@ -239,6 +239,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 骨架页，解析服务未接入，见下 |
 | `/image/compressor` | `imageCompressor` | `pages/ImageCompressor.vue` | 图片压缩工具 - 星辰商行 | 骨架页（不要求登录） |
 | `/dev/json-formatter` | `jsonFormatter` | `pages/JsonFormatter.vue` | JSON 格式化工具 - 星辰商行 | **唯一真实可用**（不要求登录） |
+| `/text/kit` 等 31 条 | 见下 | `pages/tools/*.vue` | 各工具页标题 - 星辰商行 | 扩展工具页骨架，见「扩展工具页」 |
 | `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
 | `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | 真实可用（不要求登录） |
 | `/other/appleId` | `appleId` | `pages/AppleId.vue` | 共享 Apple ID - 星辰商行 | 需要身份 |
@@ -296,6 +297,26 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 （页脚的「联系我们」→ `/about#about-contact` 依赖这条，否则锚点等于失效）；否则回到顶部。
 
 ---
+
+### 扩展工具页（31 个，`pages/tools/`）
+
+这一批页面统一走 `ToolPageShell` + `ui-kit-tool.css` 的六段结构（页头 / 骨架 / 输入 / 四态结果 / 辅助信息 / 模式页签），
+页头文案放在 `constants/tool-pages.js`（`TOOL_PAGES_EXTRA`，合并进 `content.js` 的 `TOOL_PAGES`）。
+
+| 分类 | 路径 |
+| --- | --- |
+| 文本 | `/text/kit`、`/text/encoding-kit`、`/text/number-base`、`/text/regex-kit` |
+| 代码 | `/code/kit`、`/code/highlight` |
+| 媒体 | `/media/image`、`/media/av`、`/media/pdf` |
+| 办公 | `/office/convert`、`/office/sheet`、`/office/slides` |
+| 设计 | `/design/color`、`/design/shape`、`/design/layout` |
+| 转换 | `/convert/unit`、`/convert/time`、`/convert/calc` |
+| 开发 | `/dev/crypto`、`/dev/hash`、`/dev/jwt`、`/dev/cron` |
+| 数据 | `/data/format`、`/data/sql`、`/data/mock` |
+| 其他 | `/utility/generate`、`/net/kit`、`/net/qrcode`、`/net/share`、`/life/daily`、`/fun/box` |
+
+> 现状：这批页面是**骨架 + 本地演示逻辑**，尚未接入真实能力（PDF/图片/二维码等仍是占位实现），
+> 也还没有把操作记到用户头上。对应工作见 `docs/changes/2026-10-18-*.md` 与后续提交。
 
 ## 5. 加载状态：三层各管一段
 

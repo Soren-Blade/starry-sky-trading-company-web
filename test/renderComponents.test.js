@@ -275,3 +275,31 @@ test('渲染器会捕获组件抛错（防止把失败当成空输出）', async
     /setup 故意失败/
   )
 })
+
+// ── SSR 不得留下悬空定时器 ──────────────────────────────────────
+
+/**
+ * SSR 不执行 `onUnmounted`，因此**在 setup 顶层**起 `setInterval` 的组件
+ * 渲染完就会留下一个永不清理的定时器 —— 断言全过、进程却永不退出，
+ * 表现为 `npm test` 卡死（2026-10-18 的 DailyKit / TimeKit 就是这么卡住门禁的）。
+ *
+ * 这里用「渲染前后活动 Timeout 句柄数不增长」来兜住这类回归：它只在
+ * setup 里创建了定时器时才失败，不会因为别处的 setTimeout 误报。
+ */
+test('SSR 渲染整棵组件树后不新增悬挂的定时器', async () => {
+  const countTimeouts = () => process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length
+
+  const before = countTimeouts()
+  for (const spec of COMPONENTS.map(toSpec)) {
+    await render(spec, propsFor(spec))
+  }
+  // 让渲染期间可能排下的一次性定时器先跑掉，再数一次
+  await new Promise((resolve) => { setTimeout(resolve, 0) })
+  const after = countTimeouts()
+
+  assert.equal(
+    after,
+    before,
+    '有组件在 setup 里创建了未清理的定时器：SSR 不跑 onUnmounted，测试进程会永不退出'
+  )
+})

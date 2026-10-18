@@ -89,11 +89,20 @@ test('此前的两条死链（图片压缩 / JSON 格式化）已经可以访问
 
 test('工具清单以数据库为准：常量表与路由表数量一致', () => {
   const configured = Object.keys(TOOL_PAGES)
-  assert.deepEqual(
-    configured.sort(),
-    Object.keys(TOOL_ROUTES).sort(),
-    'TOOL_PAGES 的键必须正好是这五个 tool_path',
-  )
+
+  // 五个来自 sstc.tools 的原始工具：常量表里必须有一份页头文案
+  for (const toolPath of Object.keys(TOOL_ROUTES)) {
+    assert.ok(configured.includes(toolPath), `TOOL_PAGES 缺少 ${toolPath}`)
+  }
+
+  // 扩展工具页（2026-10-18 那批）：常量表里出现的每个 tool_path
+  // 都必须真的有路由 —— 否则「工具页骨架」就是一堆点开即 404 的常量。
+  for (const toolPath of configured) {
+    assert.ok(
+      ROUTER_SOURCE.includes(`path: '${toolPath}'`),
+      `${toolPath} 在常量表里但没有路由（点开即 404）`,
+    )
+  }
 })
 
 // ══════════════════════════════════════════════════════════

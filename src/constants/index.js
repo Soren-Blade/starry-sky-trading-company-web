@@ -7,3 +7,4 @@
  * 属于「两份事实来源」，已删除。
  */
 export * from './content.js'
+export * from './tool-pages.js'

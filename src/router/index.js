@@ -229,6 +229,50 @@ const routes = [
     component: () => import('@/pages/JsonFormatter.vue'),
     meta: { title: 'JSON 格式化工具 - 星辰商行' }
   },
+  // ── 28个扩展工具页（2026-10-18）──────────────────────────────
+  // text 文本工具
+  { path: '/text/kit', name: 'TextKit', component: () => import('@/pages/tools/TextKit.vue'), meta: { title: '文本工具箱 - 星辰商行' } },
+  { path: '/text/encoding-kit', name: 'EncodingKit', component: () => import('@/pages/tools/EncodingKit.vue'), meta: { title: '字符编码工具箱 - 星辰商行' } },
+  { path: '/text/number-base', name: 'NumberBase', component: () => import('@/pages/tools/NumberBase.vue'), meta: { title: '进制与数字转换 - 星辰商行' } },
+  { path: '/text/regex-kit', name: 'RegexKit', component: () => import('@/pages/tools/RegexKit.vue'), meta: { title: '正则表达式工具箱 - 星辰商行' } },
+  // code 代码工具
+  { path: '/code/kit', name: 'CodeKit', component: () => import('@/pages/tools/CodeKit.vue'), meta: { title: '代码工具箱 - 星辰商行' } },
+  { path: '/code/highlight', name: 'Highlight', component: () => import('@/pages/tools/Highlight.vue'), meta: { title: '语法高亮工具 - 星辰商行' } },
+  // media 媒体处理
+  { path: '/media/image', name: 'ImageKit', component: () => import('@/pages/tools/ImageKit.vue'), meta: { title: '图片工具箱 - 星辰商行' } },
+  { path: '/media/av', name: 'MediaAV', component: () => import('@/pages/tools/MediaAV.vue'), meta: { title: '音视频工具箱 - 星辰商行' } },
+  { path: '/media/pdf', name: 'PdfKit', component: () => import('@/pages/tools/PdfKit.vue'), meta: { title: 'PDF 工具箱 - 星辰商行' } },
+  // office 办公文档
+  { path: '/office/convert', name: 'OfficeConvert', component: () => import('@/pages/tools/OfficeConvert.vue'), meta: { title: '文档转换工具 - 星辰商行' } },
+  { path: '/office/sheet', name: 'SheetKit', component: () => import('@/pages/tools/SheetKit.vue'), meta: { title: '电子表格工具箱 - 星辰商行' } },
+  { path: '/office/slides', name: 'SlidesKit', component: () => import('@/pages/tools/SlidesKit.vue'), meta: { title: '演示文稿工具 - 星辰商行' } },
+  // design 设计工具
+  { path: '/design/color', name: 'ColorKit', component: () => import('@/pages/tools/ColorKit.vue'), meta: { title: '颜色工具箱 - 星辰商行' } },
+  { path: '/design/shape', name: 'ShapeKit', component: () => import('@/pages/tools/ShapeKit.vue'), meta: { title: '阴影与圆角生成器 - 星辰商行' } },
+  { path: '/design/layout', name: 'LayoutKit', component: () => import('@/pages/tools/LayoutKit.vue'), meta: { title: '布局沙盒 - 星辰商行' } },
+  // convert 转换工具
+  { path: '/convert/unit', name: 'UnitConvert', component: () => import('@/pages/tools/UnitConvert.vue'), meta: { title: '单位换算工具 - 星辰商行' } },
+  { path: '/convert/time', name: 'TimeKit', component: () => import('@/pages/tools/TimeKit.vue'), meta: { title: '时间日期工具箱 - 星辰商行' } },
+  { path: '/convert/calc', name: 'CalcKit', component: () => import('@/pages/tools/CalcKit.vue'), meta: { title: '计算工具箱 - 星辰商行' } },
+  // dev 开发工具
+  { path: '/dev/crypto', name: 'CryptoKit', component: () => import('@/pages/tools/CryptoKit.vue'), meta: { title: '加解密工具箱 - 星辰商行' } },
+  { path: '/dev/hash', name: 'HashKit', component: () => import('@/pages/tools/HashKit.vue'), meta: { title: '哈希校验工具 - 星辰商行' } },
+  { path: '/dev/jwt', name: 'JwtKit', component: () => import('@/pages/tools/JwtKit.vue'), meta: { title: 'JWT 解析工具 - 星辰商行' } },
+  { path: '/dev/cron', name: 'CronKit', component: () => import('@/pages/tools/CronKit.vue'), meta: { title: 'Cron 表达式工具 - 星辰商行' } },
+  // data 数据工具
+  { path: '/data/format', name: 'DataFormat', component: () => import('@/pages/tools/DataFormat.vue'), meta: { title: '数据格式互转 - 星辰商行' } },
+  { path: '/data/sql', name: 'SqlKit', component: () => import('@/pages/tools/SqlKit.vue'), meta: { title: 'SQL 工具箱 - 星辰商行' } },
+  { path: '/data/mock', name: 'MockKit', component: () => import('@/pages/tools/MockKit.vue'), meta: { title: '假数据生成器 - 星辰商行' } },
+  // utility 实用工具
+  { path: '/utility/generate', name: 'GenerateKit', component: () => import('@/pages/tools/GenerateKit.vue'), meta: { title: '生成器工具箱 - 星辰商行' } },
+  // net 网络工具
+  { path: '/net/kit', name: 'NetKit', component: () => import('@/pages/tools/NetKit.vue'), meta: { title: '网络工具箱 - 星辰商行' } },
+  { path: '/net/qrcode', name: 'QrcodeKit', component: () => import('@/pages/tools/QrcodeKit.vue'), meta: { title: '二维码工具箱 - 星辰商行' } },
+  { path: '/net/share', name: 'ShareKit', component: () => import('@/pages/tools/ShareKit.vue'), meta: { title: '短链与分享工具 - 星辰商行' } },
+  // life 生活工具
+  { path: '/life/daily', name: 'DailyKit', component: () => import('@/pages/tools/DailyKit.vue'), meta: { title: '日常生活工具箱 - 星辰商行' } },
+  // fun 趣味工具
+  { path: '/fun/box', name: 'FunBox', component: () => import('@/pages/tools/FunBox.vue'), meta: { title: '趣味工具箱 - 星辰商行' } },
   // ── 法务页（三页共用一个组件，由 meta.legalKey 选内容）───────
   {
     path: '/terms',
