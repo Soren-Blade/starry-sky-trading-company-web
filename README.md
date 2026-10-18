@@ -236,7 +236,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/cart` | `Cart` | `pages/Cart.vue` | 购物车 - 星辰商行 | |
 | `/tool` | `Tool` | `pages/Tool.vue` | 工具分类 - 星辰商行 |
 | `/search` | `SearchResults` | `pages/SearchResults.vue` | 搜索 - 星辰商行 | 关键词走 `?q=`，同时搜商品与工具 | |
-| `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频下载工具 - 星辰商行 | 骨架页，解析服务未接入，见下 |
+| `/video/downloader` | `videoDownloader` | `pages/VideoTool.vue` | 视频工具 - 星辰商行 | 本地视频分析 + 首帧导出，不做在线直链解析，见下 |
 | `/image/compressor` | `imageCompressor` | `pages/ImageCompressor.vue` | 图片压缩工具 - 星辰商行 | 骨架页（不要求登录） |
 | `/dev/json-formatter` | `jsonFormatter` | `pages/JsonFormatter.vue` | JSON 格式化工具 - 星辰商行 | **唯一真实可用**（不要求登录） |
 | `/text/kit` 等 31 条 | 见下 | `pages/tools/*.vue` | 各工具页标题 - 星辰商行 | 扩展工具页骨架，见「扩展工具页」 |
@@ -315,8 +315,16 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | 数据 | `/data/format`、`/data/sql`、`/data/mock` |
 | 其他 | `/utility/generate`、`/net/kit`、`/net/qrcode`、`/net/share`、`/life/daily`、`/fun/box` |
 
-> 现状：这批页面是**骨架 + 本地演示逻辑**，尚未接入真实能力（PDF/图片/二维码等仍是占位实现），
-> 也还没有把操作记到用户头上。对应工作见 `docs/changes/2026-10-18-*.md` 与后续提交。
+> 现状（2026-10-18）：这 31 页 + 3 个早期工具页（`/video/downloader`、`/image/compressor`、`/dev/json-formatter`）
+> 都已经接上**真实能力**，不再是骨架：
+>
+> - **纯前端真做**：哈希/编码/Markdown/JSON/SQL/YAML/JWT/正则/Cron、图片压缩与裁剪、PDF 合并拆分旋转删除、
+>   XLSX 解析、DOCX→文本/Markdown、二维码生成与识别、AES-GCM 加解密、农历换算 —— 数据不出浏览器。
+> - **走服务端**（浏览器拿不到或需要留存）：公网 IP、DNS、目标站响应头、OG 预览、短链（`/toolApi/net/*`、`/toolApi/shortlink`）。
+> - **明确不做并写在页面上**：音视频转码、Office 保真转换、第三方平台视频直链解析（需要编码器 / LibreOffice / 平台授权）。
+> - **每次操作都留痕**：每页 `useToolUsage('<路由路径>')`，成功/失败各上报一次，落 `sstc.tool_usage`，令牌有效时绑定用户。
+>
+> 逐页能力与「明确不做」的完整对照见 `docs/tools-feature-matrix.md`；改动记录见 `docs/changes/2026-10-18-工具页*.md`。
 
 ## 5. 加载状态：三层各管一段
 
@@ -395,7 +403,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（**1.5.0 M7 起含选券、积分抵扣与试算明细**，再是联系方式、备注、提交订单）。结算面板**不自己算钱**：选中项一变就（250ms 防抖）调 `POST /couponApi/previewUse`，明细行原样展示服务端返回的六个数；提交时发的是 **试算后的 `points_used`** 而不是输入框里的数字，且只带 `coupon_code` / `use_points` 这两个意图字段 |
 | `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
-| `VideoTool.vue` | 视频下载工具的**骨架页**（`ToolPageShell` + 四态结果区）。解析服务暂停中（候选服务是会员制接口、且文档给的地址实测 404），但工具条目已经在库里、也已标为「需要卡密激活」—— 已激活的用户点进来必然是死链。链接输入 + 清晰度/输出格式 + 「解析链接」会走完加载与成功流转，**但结果是占位回显**，页头「需卡密激活」与侧栏「功能开发中」都如实标注。接上服务后只换 `parse()` 的实现，`tool_path` 不用改 |
+| `VideoTool.vue` | 本地视频分析页（`ToolPageShell` + 四态结果区）：选本地文件后读真实时长、分辨率、体积、估算码率、容器与 MIME，并用 `canvas.drawImage` 抽首帧导出 PNG。**不做在线直链解析**（需要服务端代理与平台授权），页面把这条写在「能力边界」里，也不再提供清晰度/格式这类做不到的控件。视频不上传，只在本地 `<video>` 解码 |
 | `ImageCompressor.vue` | 图片压缩工具的**骨架页**：拖放/点选本地图片（校验类型与 5MB 上限）→ 压缩档位（约 80/60/40%）→ 「开始压缩」。**压缩是估算法**：只按档位系数折算体积，不做真实编码，预览用 `URL.createObjectURL`（离开或换图时 revoke）；下载按钮保持禁用并在侧栏写明「骨架阶段」。图片不上传，全部本地处理 |
 | `JsonFormatter.vue` | JSON 格式化工具的**唯一真实实现页**：`JSON.parse` + `JSON.stringify(obj, null, indent)`，缩进 2/4/Tab、可切「压缩为单行」，失败时原样展示 `SyntaxError.message`（含位置），成功展示字符数与行数并可一键复制。解析期间插一帧让出主线程，保证加载态可见 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
@@ -559,18 +567,18 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 的原因 —— 两者对界面含义不同。换账号时由 `pages/Tool.vue` 的 `watch(userStore.userId)`
 重取（清除或重新拉取），因此不需要在 logout 里反向调用 tool store。
 
-### 工具页骨架：五个页面与占位功能说明
+### 早期五个工具页：从骨架到真实能力
 
 数据库 `tools` 表里每一条工具的 `tool_path` 都必须有一个能打开的页面 ——
-以前只有 3 个，`/image/compressor`（图片压缩）与 `/dev/json-formatter`（JSON 格式化）
-在「工具分享」点「打开工具」会新开一个 404。现在五个路径全部落地，
-并统一走 `ToolPageShell` + `ToolResultPane` 的骨架：**页头 → 输入区 → 操作区 → 结果区（空/加载/成功/失败四态）→ 辅助信息（侧栏说明）**。
+最早只有两个（`/image/compressor`、`/dev/json-formatter`），在「工具分享」点「打开工具」会 404。
+现在五个路径全部落地，并统一走 `ToolPageShell` + `ToolResultPane` 的骨架：
+**页头 → 输入区 → 操作区 → 结果区（空/加载/成功/失败四态）→ 辅助信息（侧栏说明）**。
 
-| 工具（`tool_path`） | 路由 / 页面 | 状态 | 占位到什么程度 |
+| 工具（`tool_path`） | 路由 / 页面 | 状态 | 现在真在哪 |
 | --- | --- | --- | --- |
-| 视频下载工具 `/video/downloader` | `pages/VideoTool.vue` | 骨架 | 解析服务未接入。链接校验、清晰度/输出格式、「解析链接」的加载与成功流转都可走通，但结果是**参数回显**；侧栏「功能开发中」+ 页头「需卡密激活」如实标注 |
-| 图片压缩工具 `/image/compressor` | `pages/ImageCompressor.vue` | 骨架 | 选图/拖放、类型与 5MB 校验、档位与输出格式都是真的；**压缩是系数估算**，预览用本地 object URL，下载按钮禁用 |
-| JSON 格式化工具 `/dev/json-formatter` | `pages/JsonFormatter.vue` | **真实可用** | 唯一的完整实现：`JSON.parse` + `JSON.stringify`，缩进/单行、报错定位、字符数与行数、一键复制 |
+| 视频工具 `/video/downloader` | `pages/VideoTool.vue` | **真实可用（本地文件）** | 时长/分辨率/体积/估算码率/容器/MIME + 首帧导出 PNG。在线直链解析、转码、提取音轨都不做，页面写明理由 |
+| 图片压缩工具 `/image/compressor` | `pages/ImageCompressor.vue` | **真实可用** | 按目标体积二分搜索质量参数（0.30–0.95，最多 8 次真实编码），显示编码后的实际字节数；未命中 ±10% 容差时如实说明 |
+| JSON 格式化工具 `/dev/json-formatter` | `pages/JsonFormatter.vue` | **真实可用** | `JSON.parse` + `JSON.stringify`，缩进/单行、报错定位、字符数与行数、一键复制 |
 | 2FA 密钥验证 `/other/2fa` | `pages/2FA.vue` | **真实可用** | TOTP 逻辑本来就是真的（`utils/totp.js` 对齐 RFC 6238），本期只换页头与结果区外观 |
 | 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用** | 数据来自 `toolApi/getAppleIds`，本期只换页头与侧栏 |
 
