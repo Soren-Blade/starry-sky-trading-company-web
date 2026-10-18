@@ -55,8 +55,10 @@ import { computed, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/dev/cron']
+const usage = useToolUsage('/dev/cron', { mode: 'C' })
 
 const PRESETS = [
   { label: '每小时', expr: '0 * * * *' },
@@ -206,6 +208,10 @@ function parse() {
   const source = expression.value.trim().replace(/\s+/g, ' ')
   if (!source) return
 
+  // 解析全在本地完成，不上传表达式；只记「谁在什么时候解析了、成没成、几段式」
+  const startedAt = performance.now()
+  const fieldCount = source.split(' ').length
+
   try {
     const parts = source.split(' ')
     if (parts.length !== 5 && parts.length !== 6) {
@@ -235,8 +241,19 @@ function parse() {
       runs: nextRuns(fields, 10),
     }
     if (!parsed.value.runs.length) throw new Error('这个表达式在 5 年内不会触发，检查日/月/星期的组合')
+
+    usage.record({
+      durationMs: performance.now() - startedAt,
+      meta: { fields: fieldCount, presets: PRESETS.some((item) => item.expr === source) },
+    })
   } catch (e) {
     error.value = e.message
+    usage.record({
+      ok: false,
+      errorCode: 'CRON_INVALID_EXPRESSION',
+      durationMs: performance.now() - startedAt,
+      meta: { fields: fieldCount },
+    })
   }
 }
 

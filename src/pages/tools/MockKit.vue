@@ -54,8 +54,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/data/mock']
+const usage = useToolUsage('/data/mock')
 const mockType = ref('name')
 const mockCount = ref(10)
 const results = ref([])
@@ -182,6 +184,7 @@ function genText() {
 }
 
 function process() {
+  const startedAt = performance.now()
   const count = Math.max(1, Math.min(100, mockCount.value || 10))
   const items = []
   for (let i = 0; i < count; i++) {
@@ -201,6 +204,8 @@ function process() {
   }
   results.value = items
   copyAllState.value = 'idle'
+  // 多种生成器共用这一个上报点，用 kind 区分
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { kind: mockType.value, count } })
 }
 
 function clear() { results.value = []; copyAllState.value = 'idle' }

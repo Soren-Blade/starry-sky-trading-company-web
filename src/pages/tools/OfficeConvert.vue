@@ -50,8 +50,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/office/convert']
+const usage = useToolUsage('/office/convert')
 const fileName = ref('')
 const targetFormat = ref('pdf')
 const result = ref('')
@@ -82,8 +84,10 @@ function handleDrop(e) {
 
 function process() {
   if (!fileName.value) return
+  const startedAt = performance.now()
   result.value = `文档转换功能开发中\n\n源文件：${fileName.value}\n目标格式：${targetFormat.value.toUpperCase()}\n\n由于纯前端环境无法直接处理 Office 文档格式转换，此功能需要服务端支持。\n\n支持的转换方向（计划）：\n- Word (DOC/DOCX) 与 PDF 互转\n- Excel (XLS/XLSX) 与 CSV/JSON 互转\n- PowerPoint (PPT/PPTX) 与 PDF 互转\n- PDF 转 Word/Excel（部分支持）\n\n敬请期待后续版本更新。`
   copyState.value = 'idle'
+  usage.record({ ok: false, errorCode: 'OFFICE_CONVERT_UNSUPPORTED', durationMs: performance.now() - startedAt, meta: { target: targetFormat.value.toUpperCase() } })
 }
 
 function clear() { fileName.value = ''; result.value = ''; copyState.value = 'idle'; if (fileInput.value) fileInput.value.value = '' }

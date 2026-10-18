@@ -39,8 +39,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/office/sheet']
+const usage = useToolUsage('/office/sheet')
 const source = ref('')
 const result = ref('')
 const copyState = ref('idle')
@@ -93,6 +95,7 @@ function toCSV(data) {
 
 function process() {
   if (!source.value) return
+  const startedAt = performance.now()
   const s = source.value.trim()
   let output = ''
   try {
@@ -105,7 +108,11 @@ function process() {
       const arr = parseCSV(s)
       output = JSON.stringify(arr, null, 2)
     }
-  } catch (e) { output = `错误: ${e.message}` }
+    usage.record({ durationMs: performance.now() - startedAt, meta: { dir: s.startsWith('[') || s.startsWith('{') ? 'json-to-csv' : 'csv-to-json' } })
+  } catch (e) {
+    output = `错误: ${e.message}`
+    usage.record({ ok: false, errorCode: 'SHEET_PARSE_FAILED', durationMs: performance.now() - startedAt })
+  }
   result.value = output
   copyState.value = 'idle'
 }

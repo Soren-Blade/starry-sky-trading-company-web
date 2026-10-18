@@ -54,8 +54,10 @@ import { computed, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/design/color']
+const usage = useToolUsage('/design/color')
 const colorHex = ref('#3b82f6')
 
 const rgb = computed(() => {
@@ -133,7 +135,13 @@ function hslToHex(h, s, l) {
 }
 
 async function copy(text) {
-  try { await navigator.clipboard.writeText(text) } catch (e) { /* ignore */ }
+  const startedAt = performance.now()
+  try {
+    await navigator.clipboard.writeText(text)
+    usage.record({ durationMs: performance.now() - startedAt })
+  } catch (e) {
+    usage.record({ ok: false, errorCode: 'COLOR_COPY_FAILED', durationMs: performance.now() - startedAt })
+  }
 }
 </script>
 

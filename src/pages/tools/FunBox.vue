@@ -51,8 +51,14 @@ import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/fun/box']
+const usage = useToolUsage('/fun/box')
+// 三个小工具共用这一个上报点，用 kind 区分
+function reportUsage(kind, startedAt) {
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { kind } })
+}
 const mode = ref('dice')
 const diceCount = ref(1)
 const diceResult = ref([])
@@ -66,9 +72,14 @@ const diceSum = computed(() => diceResult.value.reduce((a, b) => a + b, 0))
 const pickOptions = computed(() => pickList.value.split('\n').map(s => s.trim()).filter(Boolean))
 
 function rand(max) { const arr = new Uint32Array(1); crypto.getRandomValues(arr); return (arr[0] % max) + 1 }
-function rollDice() { diceResult.value = Array.from({ length: diceCount.value }, () => rand(6)) }
+function rollDice() {
+  const startedAt = performance.now()
+  diceResult.value = Array.from({ length: diceCount.value }, () => rand(6))
+  reportUsage('dice', startedAt)
+}
 
 function flipCoin() {
+  const startedAt = performance.now()
   coinFlipping.value = true
   coinResult.value = ''
   setTimeout(() => {
@@ -77,12 +88,15 @@ function flipCoin() {
     coinStats.value.total++
     if (isHead) coinStats.value.heads++; else coinStats.value.tails++
     coinFlipping.value = false
+    reportUsage('coin', startedAt)
   }, 600)
 }
 
 function pickRandom() {
   if (!pickOptions.value.length) return
+  const startedAt = performance.now()
   pickResult.value = pickOptions.value[rand(pickOptions.value.length) - 1]
+  reportUsage('pick', startedAt)
 }
 </script>
 

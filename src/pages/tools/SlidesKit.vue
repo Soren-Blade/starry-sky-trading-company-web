@@ -39,13 +39,16 @@ import { ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/office/slides']
+const usage = useToolUsage('/office/slides')
 const source = ref('')
 const outline = ref([])
 
 function convert() {
   if (!source.value) return
+  const startedAt = performance.now()
   const lines = source.value.split('\n')
   const slides = []
   let current = null
@@ -67,6 +70,7 @@ function convert() {
   }
   if (current) slides.push(current)
   outline.value = slides
+  usage.record({ durationMs: performance.now() - startedAt, meta: { slides: slides.length } })
 }
 
 function clear() { source.value = ''; outline.value = [] }

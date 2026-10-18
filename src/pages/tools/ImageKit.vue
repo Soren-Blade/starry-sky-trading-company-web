@@ -60,8 +60,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/media/image']
+const usage = useToolUsage('/media/image')
 const dragging = ref(false)
 const imageUrl = ref('')
 const resultUrl = ref('')
@@ -120,6 +122,7 @@ function formatBytes(b) {
 
 function process() {
   if (!imageUrl.value) return
+  const startedAt = performance.now()
   const img = new Image()
   img.onload = () => {
     const canvas = document.createElement('canvas')
@@ -155,6 +158,7 @@ function process() {
     const head = 'data:' + mime + ';base64,'
     const size = Math.round((dataUrl.length - head.length) * 3 / 4)
     resultSize.value = formatBytes(size)
+    usage.record({ durationMs: performance.now() - startedAt, meta: { op: imageOp.value, format: mime } })
   }
   img.src = imageUrl.value
 }

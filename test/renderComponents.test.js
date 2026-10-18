@@ -283,23 +283,46 @@ test('渲染器会捕获组件抛错（防止把失败当成空输出）', async
  * 渲染完就会留下一个永不清理的定时器 —— 断言全过、进程却永不退出，
  * 表现为 `npm test` 卡死（2026-10-18 的 DailyKit / TimeKit 就是这么卡住门禁的）。
  *
- * 这里用「渲染前后活动 Timeout 句柄数不增长」来兜住这类回归：它只在
- * setup 里创建了定时器时才失败，不会因为别处的 setTimeout 误报。
+ * 这类回归**只在 setup 顶层起 `setInterval`** 时发生：一次性 `setTimeout` 到期自己就没了，
+ * 不会让进程永不退出；而 `setInterval` 一旦在渲染期被创建且没人清理，句柄就永远活着
+ * （2026-10-18 的 DailyKit / TimeKit 正是如此：渲染完进程卡住 8 分钟不出结果）。
+ *
+ * 因此这里直接替换 `globalThis.setInterval` / `clearInterval` 做探针 —— 不要用
+ * `process.getActiveResourcesInfo()` 数 Timeout：那会把其它测试文件留下的 Pinia
+ * toast 计时器（`src/stores/toast.js` 的 3 秒关闭）也算进来，全量跑时随机误报。
  */
-test('SSR 渲染整棵组件树后不新增悬挂的定时器', async () => {
-  const countTimeouts = () => process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length
+test('SSR 渲染整棵组件树期间不得创建 setInterval', async () => {
+  const originalSetInterval = globalThis.setInterval
+  const originalClearInterval = globalThis.clearInterval
+  const created = []
+  const cleared = new Set()
 
-  const before = countTimeouts()
-  for (const spec of COMPONENTS.map(toSpec)) {
-    await render(spec, propsFor(spec))
+  globalThis.setInterval = function patchedSetInterval(fn, delay, ...rest) {
+    const timer = originalSetInterval(fn, delay, ...rest)
+    created.push({ delay, cleared: false, timer })
+    return timer
   }
-  // 让渲染期间可能排下的一次性定时器先跑掉，再数一次
-  await new Promise((resolve) => { setTimeout(resolve, 0) })
-  const after = countTimeouts()
+  globalThis.clearInterval = function patchedClearInterval(timer) {
+    cleared.add(timer)
+    return originalClearInterval(timer)
+  }
 
-  assert.equal(
-    after,
-    before,
-    '有组件在 setup 里创建了未清理的定时器：SSR 不跑 onUnmounted，测试进程会永不退出'
+  try {
+    for (const spec of COMPONENTS.map(toSpec)) {
+      await render(spec, propsFor(spec))
+    }
+  } finally {
+    globalThis.setInterval = originalSetInterval
+    globalThis.clearInterval = originalClearInterval
+    // 收尾：把探针看到的定时器全清掉，避免污染后续用例
+    for (const item of created) originalClearInterval(item.timer)
+  }
+
+  const leaked = created.filter((item) => !cleared.has(item.timer))
+  assert.deepEqual(
+    leaked.map((item) => `setInterval(${item.delay}ms)`),
+    [],
+    `SSR 渲染期间创建了 ${leaked.length} 个不会被清理的 setInterval：` +
+      'SSR 不跑 onUnmounted，测试进程会永不退出。请把定时器移进 onMounted 并在 onUnmounted 里清理。'
   )
 })

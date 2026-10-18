@@ -46,8 +46,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/code/highlight']
+const usage = useToolUsage('/code/highlight')
 const source = ref('')
 const result = ref('')
 const copyState = ref('idle')
@@ -213,8 +215,10 @@ function highlightMarkdown(code) {
 
 function process() {
   if (!source.value) return
+  const startedAt = performance.now()
   result.value = highlightCode(source.value, language.value)
   copyState.value = 'idle'
+  usage.record({ durationMs: performance.now() - startedAt, meta: { language: language.value } })
 }
 function clear() { source.value = ''; result.value = ''; copyState.value = 'idle' }
 async function copy() {

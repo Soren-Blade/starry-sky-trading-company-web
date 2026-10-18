@@ -38,8 +38,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/dev/crypto']
+const usage = useToolUsage('/dev/crypto')
 const operation = ref('base64-e')
 const source = ref('')
 const password = ref('')
@@ -59,6 +61,7 @@ const copyLabel = computed(() => copyState.value === 'ok' ? TOOL_RESULT.copied :
 
 function process() {
   if (!source.value) return
+  const startedAt = performance.now()
   const text = source.value
   try {
     switch (operation.value) {
@@ -69,7 +72,12 @@ function process() {
       case 'hex-e': result.value = Array.from(new TextEncoder().encode(text)).map(b => b.toString(16).padStart(2, '0')).join(' '); break
       case 'hex-d': { const bytes = text.replace(/\s/g, '').match(/.{2}/g) || []; result.value = new TextDecoder().decode(new Uint8Array(bytes.map(b => parseInt(b, 16)))); break }
     }
-  } catch (e) { result.value = `错误: ${e.message}` }
+    // meta 只放算法名与输入长度，绝不放原文/密文
+    usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { op: operation.value, length: text.length } })
+  } catch (e) {
+    result.value = `错误: ${e.message}`
+    usage.record({ ok: false, errorCode: 'CRYPTO_FAILED', durationMs: Math.round(performance.now() - startedAt) })
+  }
   copyState.value = 'idle'
 }
 

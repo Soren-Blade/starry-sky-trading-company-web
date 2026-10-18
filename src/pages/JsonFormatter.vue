@@ -158,9 +158,11 @@ import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
 import { useToolJob } from '@/hooks/useToolJob/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/dev/json-formatter']
 const META = TOOL_RESULT.meta
+const usage = useToolUsage('/dev/json-formatter')
 
 const source = ref('')
 const indent = ref('2')
@@ -170,6 +172,8 @@ const copyState = ref('idle')
 
 const { state: jobState, result, error: jobError, run, reset: resetJob } = useToolJob({
   run: formatJson,
+  // 走 job 的主流程由 useToolJob 自动上报（含耗时与失败码）
+  usage,
 })
 
 const busy = computed(() => jobState.value === 'loading')
@@ -239,6 +243,8 @@ async function copyResult() {
     }
     await navigator.clipboard.writeText(text)
     copyState.value = 'ok'
+    // 复制结果是一次真实的用户操作（不走 job），手动上报；meta 只放长度
+    usage.record({ action: 'copy', meta: { kind: 'copy', length: text.length } })
   } catch (e) {
     // 剪贴板在非安全上下文 / 未授权时不可用：文案直接告诉用户手动选择，
     // 而不是静默失败（这是本地工具，选不中文本才是真正的死路）

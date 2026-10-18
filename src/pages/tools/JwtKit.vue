@@ -43,8 +43,10 @@ import { computed, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/dev/jwt']
+const usage = useToolUsage('/dev/jwt')
 const jwt = ref('')
 const decoded = ref(null)
 
@@ -53,13 +55,20 @@ const expDate = computed(() => decoded.value?.payload?.exp ? new Date(decoded.va
 
 function decode() {
   if (!jwt.value) return
+  const startedAt = performance.now()
   try {
     const parts = jwt.value.trim().split('.')
     if (parts.length !== 3) throw new Error('JWT 必须由三段组成')
     const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')))
     const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
     decoded.value = { header, payload, signature: parts[2] }
-  } catch (e) { decoded.value = null; alert('解析失败: ' + e.message) }
+    // meta 只放长度，绝不放 token / 签名内容
+    usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { length: jwt.value.trim().length } })
+  } catch (e) {
+    decoded.value = null
+    alert('解析失败: ' + e.message)
+    usage.record({ ok: false, errorCode: 'JWT_DECODE_FAILED', durationMs: Math.round(performance.now() - startedAt) })
+  }
 }
 
 function clear() { jwt.value = ''; decoded.value = null }

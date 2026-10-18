@@ -225,8 +225,10 @@ import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
 import { useToolJob } from '@/hooks/useToolJob/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/text/kit']
+const usage = useToolUsage('/text/kit')
 
 const currentMode = ref('markdown-html')
 const source = ref('')
@@ -257,6 +259,7 @@ const copyState = ref('idle')
 
 const { state: jobState, result, error: jobError, run, reset: resetJob } = useToolJob({
   run: processText,
+  usage,
 })
 
 const busy = computed(() => jobState.value === 'loading')
@@ -271,6 +274,7 @@ const copyLabel = computed(() => {
 // 字数统计模式：即时计算，不走useToolJob
 watch([source, currentMode], () => {
   if (currentMode.value === 'word-count' && source.value.trim()) {
+    const startedAt = performance.now()
     const text = source.value
     const chars = text.length
     const charsNoSpace = text.replace(/\s/g, '').length
@@ -290,6 +294,7 @@ watch([source, currentMode], () => {
       meta: { 原文本: `${chars} 字符 · ${lines} 行` },
     }
     jobState.value = 'success'
+    usage.record({ durationMs: performance.now() - startedAt, meta: { mode: 'word-count', chars } })
   } else if (currentMode.value === 'word-count') {
     resetJob()
   }

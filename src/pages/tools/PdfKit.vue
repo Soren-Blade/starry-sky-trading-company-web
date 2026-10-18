@@ -41,8 +41,10 @@ import { ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/media/pdf']
+const usage = useToolUsage('/media/pdf')
 const dragging = ref(false)
 const pdfInfo = ref(null)
 const pdfText = ref('')
@@ -63,6 +65,7 @@ function formatBytes(b) {
 }
 
 async function loadPdf(file) {
+  const startedAt = performance.now()
   pdfInfo.value = { name: file.name, size: formatBytes(file.size), pages: '读取中...' }
   pdfText.value = ''
   try {
@@ -71,9 +74,11 @@ async function loadPdf(file) {
     pdfText.value = text.slice(0, 3000) || '未能提取到文本内容'
     const pages = countPdfPages(arrayBuffer)
     pdfInfo.value.pages = pages
+    usage.record({ durationMs: performance.now() - startedAt, meta: { pages } })
   } catch (e) {
     pdfInfo.value.pages = '无法解析'
     pdfText.value = 'PDF 解析失败: ' + e.message
+    usage.record({ ok: false, errorCode: 'PDF_PARSE_FAILED', durationMs: performance.now() - startedAt })
   }
 }
 

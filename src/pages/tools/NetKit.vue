@@ -44,8 +44,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/net/kit']
+const usage = useToolUsage('/net/kit')
 const netMode = ref('ip')
 const source = ref('')
 const result = ref('')
@@ -154,6 +156,7 @@ function simulateDNS(domain) {
 
 function process() {
   if (!source.value) return
+  const startedAt = performance.now()
   const s = source.value.trim()
   switch (netMode.value) {
     case 'ip': result.value = validateIP(s); break
@@ -163,6 +166,11 @@ function process() {
     default: result.value = '未知查询类型'
   }
   copyState.value = 'idle'
+  // meta 只放检测类型，绝不放输入的域名/IP
+  const failed = result.value.startsWith('错误')
+  usage.record(failed
+    ? { ok: false, errorCode: 'NET_QUERY_FAILED', durationMs: Math.round(performance.now() - startedAt) }
+    : { durationMs: Math.round(performance.now() - startedAt), meta: { kind: netMode.value } })
 }
 
 function clear() { source.value = ''; result.value = ''; copyState.value = 'idle' }

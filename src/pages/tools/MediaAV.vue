@@ -40,8 +40,10 @@ import { ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/media/av']
+const usage = useToolUsage('/media/av')
 const dragging = ref(false)
 const mediaUrl = ref('')
 const mediaType = ref('')
@@ -62,10 +64,12 @@ function formatBytes(b) {
   return (b / (1024 * 1024)).toFixed(2) + ' MB'
 }
 function loadMedia(file) {
+  const startedAt = performance.now()
   mediaType.value = file.type
   mediaInfo.value = { name: file.name, type: file.type || '未知', size: formatBytes(file.size) }
   const url = URL.createObjectURL(file)
   mediaUrl.value = url
+  usage.record({ durationMs: performance.now() - startedAt, meta: { kind: (file.type || '').split('/')[0] || 'unknown' } })
 
   if (file.type.startsWith('video')) {
     const video = document.createElement('video')

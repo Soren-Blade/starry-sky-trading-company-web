@@ -55,8 +55,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/text/regex-kit']
+const usage = useToolUsage('/text/regex-kit')
 const pattern = ref('')
 const flags = ref('g')
 const testText = ref('')
@@ -77,6 +79,7 @@ function toggleFlag(flag, checked) {
 }
 
 function testRegex() {
+  const startedAt = performance.now()
   regexError.value = ''
   result.value = null
   if (!pattern.value || !testText.value) return
@@ -94,8 +97,10 @@ function testRegex() {
       if (match) matches.push({ text: match[0], index: match.index, groups: match.slice(1) })
     }
     result.value = { matches }
+    usage.record({ durationMs: performance.now() - startedAt, meta: { flags: flags.value, matches: matches.length } })
   } catch (e) {
     regexError.value = e.message
+    usage.record({ ok: false, errorCode: 'REGEX_COMPILE_FAILED', durationMs: performance.now() - startedAt })
   }
 }
 

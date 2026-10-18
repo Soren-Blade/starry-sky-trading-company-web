@@ -50,8 +50,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/code/kit']
+const usage = useToolUsage('/code/kit')
 const source = ref('')
 const operation = ref('format')
 const result = ref(null)
@@ -68,6 +70,7 @@ const copyLabel = computed(() => copyState.value === 'ok' ? TOOL_RESULT.copied :
 
 function process() {
   if (!source.value) return
+  const startedAt = performance.now()
   const text = source.value
   let output = text
   let meta = {}
@@ -99,6 +102,7 @@ function process() {
 
   result.value = { text: output, meta }
   copyState.value = 'idle'
+  usage.record({ durationMs: performance.now() - startedAt, meta: { operation: operation.value } })
 }
 
 function clear() { source.value = ''; result.value = null; copyState.value = 'idle' }

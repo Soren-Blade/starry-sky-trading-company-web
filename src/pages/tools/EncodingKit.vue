@@ -85,8 +85,10 @@ import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
 import { useToolJob } from '@/hooks/useToolJob/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/text/encoding-kit']
+const usage = useToolUsage('/text/encoding-kit')
 const source = ref('')
 const fromEncoding = ref('UTF-8')
 const toEncoding = ref('Base64')
@@ -104,6 +106,7 @@ function swapEncoding() {
 }
 
 async function convertEncoding() {
+  const startedAt = performance.now()
   const text = source.value
   if (!text.trim()) throw new Error(PAGE.invalidEmpty)
   await new Promise((resolve) => { setTimeout(resolve, 0) })
@@ -126,6 +129,8 @@ async function convertEncoding() {
   } else {
     output = `[${fromEncoding.value} → ${toEncoding.value}] 转换示意:\n${text}`
   }
+
+  usage.record({ durationMs: performance.now() - startedAt, meta: { from: fromEncoding.value, to: toEncoding.value } })
 
   return {
     text: output,

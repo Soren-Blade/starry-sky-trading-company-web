@@ -64,8 +64,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/utility/generate']
+const usage = useToolUsage('/utility/generate')
 const genType = ref('uuid')
 const uuidCount = ref(5)
 const pwdLength = ref(16)
@@ -99,12 +101,15 @@ const pwdStrengthLabel = computed(() => { const s = pwdStrength.value; if (s < 4
 const pwdStrengthClass = computed(() => { const s = pwdStrength.value; if (s < 40) return 'weak'; if (s < 70) return 'medium'; return 'strong' })
 
 function generate() {
+  const startedAt = performance.now()
   results.value = []
   switch (genType.value) {
     case 'uuid': for (let i = 0; i < uuidCount.value; i++) results.value.push(uuidv4()); break
     case 'password': results.value = [generatePassword()]; break
     case 'random': for (let i = 0; i < randCount.value; i++) results.value.push(randInt(randMin.value, randMax.value)); break
   }
+  // 多种生成器共用这一个上报点，用 kind 区分
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { kind: genType.value, count: results.value.length } })
 }
 
 function copyAll() { navigator.clipboard.writeText(results.value.join('\n')) }

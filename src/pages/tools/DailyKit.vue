@@ -44,13 +44,23 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/life/daily']
+const usage = useToolUsage('/life/daily')
+let lastUsageAt = 0
+// 输入即时出结果：节流上报，避免每次按键都留痕
+function reportUsage(kind, startedAt) {
+  const at = performance.now()
+  if (at - lastUsageAt < 800) return
+  lastUsageAt = at
+  usage.record({ durationMs: Math.round(at - startedAt), meta: { kind } })
+}
 const mode = ref('bmi')
 const bmiHeight = ref(170)
 const bmiWeight = ref(65)
@@ -111,6 +121,12 @@ const zodiacResult = computed(() => {
   const animals = ['猴','鸡','狗','猪','鼠','牛','虎','兔','龙','蛇','马','羊']
   const animal = animals[d.getFullYear() % 12]
   return { sign: sign + '座', animal }
+})
+watch([bmiHeight, bmiWeight, birthDate, targetDate], ([h, w, birth, target], [prevH, prevW, prevBirth, prevTarget]) => {
+  const startedAt = performance.now()
+  if ((h !== prevH || w !== prevW) && bmiResult.value) reportUsage('bmi', startedAt)
+  else if (birth !== prevBirth && zodiacResult.value) reportUsage('zodiac', startedAt)
+  else if (target !== prevTarget && countdownResult.value) reportUsage('countdown', startedAt)
 })
 </script>
 

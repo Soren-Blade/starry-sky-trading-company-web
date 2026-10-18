@@ -60,8 +60,18 @@ import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/convert/time']
+const usage = useToolUsage('/convert/time')
+let lastUsageAt = 0
+// 输入即时出结果：节流上报，避免每次按键都留痕
+function reportUsage(kind, startedAt) {
+  const at = performance.now()
+  if (at - lastUsageAt < 800) return
+  lastUsageAt = at
+  usage.record({ durationMs: Math.round(at - startedAt), meta: { kind } })
+}
 const mode = ref('timestamp')
 const timestampInput = ref('')
 const date1 = ref('')
@@ -121,6 +131,12 @@ const countdownResult = computed(() => {
 
 watch(mode, () => {
   timestampInput.value = String(Math.floor(Date.now() / 1000))
+})
+
+watch([timestampInput, date1, date2], ([ts, d1, d2], [prevTs, prevD1, prevD2]) => {
+  const startedAt = performance.now()
+  if (ts !== prevTs && tsResult.value.iso !== '-') reportUsage('timestamp', startedAt)
+  else if ((d1 !== prevD1 || d2 !== prevD2) && diffResult.value) reportUsage('diff', startedAt)
 })
 </script>
 

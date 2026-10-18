@@ -39,8 +39,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/dev/hash']
+const usage = useToolUsage('/dev/hash')
 const algo = ref('MD5')
 const source = ref('')
 const result = ref('')
@@ -96,6 +98,7 @@ function md5(s) {
 
 function hash() {
   if (!source.value) return
+  const startedAt = performance.now()
   switch (algo.value) {
     case 'MD5': result.value = md5(source.value); break
     case 'SHA-1': result.value = sha256(source.value).slice(0,40); break
@@ -103,6 +106,8 @@ function hash() {
     case 'SHA-512': result.value = sha256(source.value) + sha256(source.value.split('').reverse().join('')); break
   }
   copyState.value = 'idle'
+  // meta 只放算法名与输入长度，绝不放原文/摘要
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { algorithm: algo.value, length: source.value.length } })
 }
 
 function clear() { source.value = ''; result.value = ''; copyState.value = 'idle' }

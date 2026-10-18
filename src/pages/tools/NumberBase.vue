@@ -53,8 +53,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/text/number-base']
+const usage = useToolUsage('/text/number-base')
 const inputValue = ref('')
 const fromBase = ref(10)
 const toBase = ref(16)
@@ -81,12 +83,14 @@ function convertNumber(val, from, to) {
 
 function convert() {
   if (!inputValue.value.trim()) return
+  const startedAt = performance.now()
   const val = inputValue.value.trim()
   const bases = [2, 8, 10, 16, 36]
   const allBases = {}
   bases.forEach(b => { allBases[`${b}进制`] = convertNumber(val, fromBase.value, b) })
   result.value = { allBases, input: val }
   copyState.value = 'idle'
+  usage.record({ durationMs: performance.now() - startedAt, meta: { from: fromBase.value, bases: bases.length } })
 }
 
 function swap() {

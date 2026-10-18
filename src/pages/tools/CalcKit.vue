@@ -44,13 +44,23 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/convert/calc']
+const usage = useToolUsage('/convert/calc')
+let lastUsageAt = 0
+// 输入即时出结果：节流上报，避免每次按键都留痕
+function reportUsage(kind, startedAt) {
+  const at = performance.now()
+  if (at - lastUsageAt < 800) return
+  lastUsageAt = at
+  usage.record({ durationMs: Math.round(at - startedAt), meta: { kind } })
+}
 const mode = ref('expression')
 const expression = ref('')
 const bmiHeight = ref(170)
@@ -101,6 +111,12 @@ const statsResult = computed(() => {
     中位数: median,
     标准差: Math.sqrt(variance).toFixed(2),
   }
+})
+watch([expression, bmiHeight, bmiWeight, statsData], ([expr, h, w, data], [prevExpr, prevH, prevW, prevData]) => {
+  const startedAt = performance.now()
+  if (expr !== prevExpr && exprResult.value !== null && exprResult.value !== '错误') reportUsage('expression', startedAt)
+  else if ((h !== prevH || w !== prevW) && bmiResult.value) reportUsage('bmi', startedAt)
+  else if (data !== prevData && statsResult.value) reportUsage('stats', startedAt)
 })
 </script>
 

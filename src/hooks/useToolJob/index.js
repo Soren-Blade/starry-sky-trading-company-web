@@ -21,9 +21,13 @@ import { onUnmounted, ref } from 'vue'
  * @param {(fn: Function) => void} [options.onUnmounted]
  *   生命周期注册函数，默认用 Vue 的 `onUnmounted`；
  *   **仅在测试中注入**，用来在不 mount 组件的前提下验证「卸载后不再赋值」。
+ * @param {{ record: (detail: object) => void }} [options.usage]
+ *   可选的留痕器，通常是 `useToolUsage(...)` 的返回值。传了它，
+ *   **每一次完整流转都会自动上报一条**（含耗时与成功/失败），页面不用再自己写；
+ *   留痕失败被完全吞掉，不影响工具结果。
  */
 export function useToolJob(options = {}) {
-  const { run: task, onUnmounted: registerUnmounted = onUnmounted } = options
+  const { run: task, onUnmounted: registerUnmounted = onUnmounted, usage } = options
 
   const state = ref('empty')
   const result = ref(null)
@@ -36,6 +40,16 @@ export function useToolJob(options = {}) {
   registerUnmounted(() => {
     disposed = true
   })
+
+  /** 留痕是旁路：没传 usage、或记录本身抛错，都不该改变任务结果 */
+  function reportUsage(detail) {
+    if (!usage || typeof usage.record !== 'function') return
+    try {
+      usage.record(detail)
+    } catch (error) {
+      // 故意忽略：见上
+    }
+  }
 
   function reset() {
     state.value = 'empty'
@@ -55,11 +69,14 @@ export function useToolJob(options = {}) {
     state.value = 'loading'
     error.value = ''
 
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now()
+
     try {
       const value = typeof task === 'function' ? await task() : null
       if (disposed) return undefined
       result.value = value ?? null
       state.value = 'success'
+      reportUsage({ ok: true, durationMs: Date.now() - startedAt })
       return value ?? null
     } catch (e) {
       if (disposed) return undefined
@@ -68,6 +85,13 @@ export function useToolJob(options = {}) {
       error.value = e && e.message ? String(e.message) : String(e)
       result.value = null
       state.value = 'error'
+      // 失败原因用页面挂上去的稳定错误码（`error.code`），没有就退化成通用码：
+      // 留痕表的失败行必须有错误码，否则「哪类失败最多」答不了。
+      reportUsage({
+        ok: false,
+        errorCode: errorCodeOf(e),
+        durationMs: Date.now() - startedAt,
+      })
       return undefined
     }
   }
@@ -79,6 +103,12 @@ export function useToolJob(options = {}) {
     run: execute,
     reset,
   }
+}
+
+/** 从异常里取一个符合留痕表约束（大写下划线）的错误码 */
+function errorCodeOf(error) {
+  const code = error && typeof error.code === 'string' ? error.code : ''
+  return /^[A-Z][A-Z0-9_]{0,63}$/.test(code) ? code : 'TOOL_JOB_FAILED'
 }
 
 export default useToolJob

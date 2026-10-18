@@ -67,8 +67,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/net/share']
+const usage = useToolUsage('/net/share')
 const shareTitle = ref('')
 const shareDesc = ref('')
 const shareUrl = ref('')
@@ -132,6 +134,7 @@ function getCardStyles(template) {
 }
 
 function process() {
+  const startedAt = performance.now()
   const html = `<div class="share-card">
   <div class="share-card-icon">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -145,6 +148,8 @@ function process() {
 <style>${getCardStyles(shareTemplate.value)}</style>`
   result.value = html
   copyState.value = 'idle'
+  // meta 只放模板名，绝不放标题/描述/URL 正文
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { template: shareTemplate.value } })
 }
 
 function escapeHtml(text) {

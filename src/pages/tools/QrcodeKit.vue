@@ -37,8 +37,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/net/qrcode']
+const usage = useToolUsage('/net/qrcode')
 const qrContent = ref('')
 const qrSize = ref(256)
 const qrDataUrl = ref('')
@@ -46,6 +48,7 @@ const qrDataUrl = ref('')
 // Simple QR-like pattern generator (not real QR but visually similar for demo)
 function generateQR() {
   if (!qrContent.value) return
+  const startedAt = performance.now()
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   const size = qrSize.value
@@ -84,6 +87,8 @@ function generateQR() {
   }
 
   qrDataUrl.value = canvas.toDataURL('image/png')
+  // meta 只放尺寸与内容长度，绝不放二维码承载的正文
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { size: qrSize.value, length: qrContent.value.length } })
 }
 
 function clear() { qrContent.value = ''; qrDataUrl.value = '' }

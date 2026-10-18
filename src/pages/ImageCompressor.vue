@@ -173,8 +173,10 @@ import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
 import { useToolJob } from '@/hooks/useToolJob/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/image/compressor']
+const usage = useToolUsage('/image/compressor')
 const META = TOOL_RESULT.meta
 
 /** 与 input 的 accept 一致：这里再校验一次，拖拽进来的文件不经过 accept 过滤 */
@@ -195,6 +197,7 @@ const fileInput = ref(null)
 
 const { state: jobState, result, error: jobError, run, reset: resetJob } = useToolJob({
   run: compress,
+  usage,
 })
 
 const busy = computed(() => jobState.value === 'loading')
@@ -254,14 +257,17 @@ function releasePreview() {
 /** 选中/拖入的文件都要过这一道：类型与体积不合格时**不**进入状态，只留一条就地提示 */
 function acceptFile(next) {
   if (!next) return
+  const startedAt = performance.now()
 
   if (!ACCEPT_TYPES.includes(next.type)) {
     fileError.value = PAGE.invalidType
+    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_INVALID_TYPE', durationMs: performance.now() - startedAt })
     return
   }
 
   if (next.size > MAX_BYTES) {
     fileError.value = PAGE.invalidSize
+    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_TOO_LARGE', durationMs: performance.now() - startedAt })
     return
   }
 

@@ -52,8 +52,11 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/convert/unit']
+const usage = useToolUsage('/convert/unit')
+let lastUsageAt = 0
 const category = ref('length')
 const inputValue = ref(1)
 const fromUnit = ref('m')
@@ -94,6 +97,7 @@ function convertTemperature(v, from, to) {
 }
 
 function convert() {
+  const startedAt = performance.now()
   const v = inputValue.value
   if (v === '' || v === null) { result.value = null; return }
   const from = fromUnit.value, to = toUnit.value
@@ -110,6 +114,11 @@ function convert() {
     unit: label,
     formula: `1 ${unitLabels[category.value]?.[from] || from} ≈ ${category.value === 'temperature' ? '...' : ((unitData[category.value]?.[from] || 1) / (unitData[category.value]?.[to] || 1)).toExponential(2)} ${label}`
   }
+  // 输入即时换算：按 800ms 节流上报，避免每次按键都留痕
+  const at = performance.now()
+  if (at - lastUsageAt < 800) return
+  lastUsageAt = at
+  usage.record({ durationMs: Math.round(at - startedAt), meta: { category: category.value, from, to } })
 }
 
 function swap() { const t = fromUnit.value; fromUnit.value = toUnit.value; toUnit.value = t; convert() }

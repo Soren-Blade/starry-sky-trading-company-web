@@ -78,8 +78,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/design/layout']
+const usage = useToolUsage('/design/layout')
 const result = ref('')
 const copyState = ref('idle')
 const copyLabel = computed(() => copyState.value === 'ok' ? TOOL_RESULT.copied : copyState.value === 'fail' ? TOOL_RESULT.copyFailed : TOOL_RESULT.copy)
@@ -131,6 +133,7 @@ const containerStyle = computed(() => ({
 }))
 
 function process() {
+  const startedAt = performance.now()
   const lines = [
     '.container {',
     '  display: flex;',
@@ -143,6 +146,7 @@ function process() {
   ]
   result.value = lines.join('\n')
   copyState.value = 'idle'
+  usage.record({ durationMs: performance.now() - startedAt, meta: { direction: flexDirection.value, wrap: flexWrap.value } })
 }
 
 function clear() {

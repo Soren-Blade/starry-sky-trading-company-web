@@ -34,8 +34,10 @@ import { ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/data/sql']
+const usage = useToolUsage('/data/sql')
 const source = ref('')
 const result = ref('')
 
@@ -51,6 +53,7 @@ const keywords = [
 
 function format() {
   if (!source.value) return
+  const startedAt = performance.now()
   let sql = source.value.trim()
     .replace(/\s+/g, ' ')
     .replace(/\s*,\s*/g, ', ')
@@ -89,6 +92,7 @@ function format() {
     .trim()
 
   result.value = sql
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { length: source.value.length } })
 }
 
 function clear() { source.value = ''; result.value = '' }

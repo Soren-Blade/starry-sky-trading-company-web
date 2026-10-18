@@ -46,8 +46,10 @@ import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/data/format']
+const usage = useToolUsage('/data/format')
 const source = ref('')
 const mode = ref('json-pretty')
 const result = ref(null)
@@ -57,6 +59,7 @@ const copyLabel = computed(() => copyState.value === 'ok' ? TOOL_RESULT.copied :
 
 function convert() {
   if (!source.value) return
+  const startedAt = performance.now()
   let output = source.value
   try {
     switch (mode.value) {
@@ -73,7 +76,11 @@ function convert() {
         { const lines = source.value.trim().split('\n'); const headers = lines[0].split(','); output = JSON.stringify(lines.slice(1).map(l => { const vals = l.split(','); return Object.fromEntries(headers.map((h, i) => [h.trim(), vals[i]?.trim()])); }), null, 2) }
         break
     }
-  } catch (e) { output = `错误: ${e.message}` }
+    usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { mode: mode.value, length: source.value.length } })
+  } catch (e) {
+    output = `错误: ${e.message}`
+    usage.record({ ok: false, errorCode: 'DATA_FORMAT_FAILED', durationMs: Math.round(performance.now() - startedAt) })
+  }
   result.value = { text: output }
   copyState.value = 'idle'
 }

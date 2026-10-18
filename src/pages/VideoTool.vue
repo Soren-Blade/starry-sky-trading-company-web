@@ -179,9 +179,11 @@ import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT, VIDEO_TOOL } from '@/constants/index.js'
 import { useToolJob } from '@/hooks/useToolJob/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/video/downloader']
 const META = TOOL_RESULT.meta
+const usage = useToolUsage('/video/downloader')
 
 /** 只接受带协议的完整链接：短链也带协议，粘进来不带协议的一定是没复制全 */
 const LINK_PATTERN = /^\s*https?:\/\/\S+$/i
@@ -195,6 +197,8 @@ const linkError = ref('')
 
 const { state: jobState, result, error: jobError, run, reset: resetJob } = useToolJob({
   run: parse,
+  // 走 job 的主流程由 useToolJob 自动上报（含耗时与失败码）
+  usage,
 })
 
 const busy = computed(() => jobState.value === 'loading')
@@ -230,6 +234,8 @@ async function parse() {
 function start() {
   if (!LINK_PATTERN.test(link.value.trim())) {
     linkError.value = PAGE.invalidLink
+    // 本地校验就先拦下，不走 job，所以这里手动上报失败
+    usage.record({ ok: false, errorCode: 'VIDEO_LINK_INVALID' })
     return
   }
   linkError.value = ''

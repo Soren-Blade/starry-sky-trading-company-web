@@ -29,8 +29,10 @@ import { computed, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
+import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/design/shape']
+const usage = useToolUsage('/design/shape')
 const shadowX = ref(4)
 const shadowY = ref(4)
 const shadowBlur = ref(12)
@@ -48,7 +50,13 @@ const cssCode = computed(() =>
 )
 
 async function copyCss() {
-  try { await navigator.clipboard.writeText(cssCode.value) } catch (e) { /* 剪贴板被拒绝时静默 */ }
+  const startedAt = performance.now()
+  try {
+    await navigator.clipboard.writeText(cssCode.value)
+    usage.record({ durationMs: performance.now() - startedAt, meta: { radius: borderRadius.value } })
+  } catch (e) {
+    usage.record({ ok: false, errorCode: 'SHAPE_COPY_FAILED', durationMs: performance.now() - startedAt })
+  }
 }
 </script>
 
