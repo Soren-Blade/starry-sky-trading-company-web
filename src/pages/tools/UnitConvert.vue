@@ -98,21 +98,23 @@ function convertTemperature(v, from, to) {
 
 function convert() {
   const startedAt = performance.now()
-  const v = inputValue.value
-  if (v === '' || v === null) { result.value = null; return }
+  const v = Number(inputValue.value)
+  // 清空输入框时 v-model.number 会给出 ''，Number('') === 0，必须单独判断
+  if (inputValue.value === '' || inputValue.value === null || !Number.isFinite(v)) { result.value = null; return }
   const from = fromUnit.value, to = toUnit.value
-  let out = v
-  if (category.value === 'temperature') {
-    out = convertTemperature(v, from, to)
-  } else {
-    const rates = unitData[category.value] || {}
-    out = v * (rates[from] || 1) / (rates[to] || 1)
-  }
+  const rates = unitData[category.value] || {}
+  const out = category.value === 'temperature'
+    ? convertTemperature(v, from, to)
+    : v * (rates[from] || 1) / (rates[to] || 1)
   const label = unitLabels[category.value]?.[to] || to
+  const fromLabel = unitLabels[category.value]?.[from] || from
+  const rate = (rates[from] || 1) / (rates[to] || 1)
   result.value = {
     value: Number(out.toFixed(6)).toString(),
     unit: label,
-    formula: `1 ${unitLabels[category.value]?.[from] || from} ≈ ${category.value === 'temperature' ? '...' : ((unitData[category.value]?.[from] || 1) / (unitData[category.value]?.[to] || 1)).toExponential(2)} ${label}`
+    formula: category.value === 'temperature'
+      ? `以摄氏度为中间量：${v} ${fromLabel} = ${Number(out.toFixed(4))} ${label}`
+      : Math.abs(rate - 1) < 1e-12 ? '同单位，数值不变' : `1 ${fromLabel} = ${Number(rate.toPrecision(6))} ${label}`,
   }
   // 输入即时换算：按 800ms 节流上报，避免每次按键都留痕
   const at = performance.now()

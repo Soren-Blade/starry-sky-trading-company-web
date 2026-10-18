@@ -1,20 +1,7 @@
 <template>
-  <ToolPageShell
-    :title="PAGE.title"
-    :eyebrow="PAGE.eyebrow"
-    :description="PAGE.description"
-    :icon="PAGE.icon"
-    :requires-card="PAGE.requiresCard"
-  >
-    <!-- 输入区 -->
+  <ToolPageShell :title="PAGE.title" :eyebrow="PAGE.eyebrow" :description="PAGE.description" :icon="PAGE.icon" :requires-card="PAGE.requiresCard">
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title">
-        <AppIcon name="image" aria-hidden="true" />
-        <span>{{ PAGE.inputTitle }}</span>
-      </h2>
-
-      <!-- 视觉隐藏的 input 放在 label 里：点整块拖拽区都能唤起文件选择，
-           键盘 Tab 也仍然能到达那个 input（不用 display:none，那样等于移除控件）。 -->
+      <h2 class="tool-panel-title"><AppIcon name="image" aria-hidden="true" /><span>{{ PAGE.inputTitle }}</span></h2>
       <label
         class="tool-file-drop"
         :class="{ 'tool-file-drop--active': dragging }"
@@ -22,287 +9,265 @@
         @dragleave="dragging = false"
         @drop.prevent="handleDrop"
       >
-        <span class="tool-file-icon" aria-hidden="true"><AppIcon name="image" /></span>
+        <span class="tool-file-icon"><AppIcon name="image" /></span>
         <span class="tool-file-title">{{ PAGE.dropTitle }}</span>
         <span class="tool-result-note">{{ PAGE.dropHint }}</span>
-        <input
-          ref="fileInput"
-          class="tool-file-input"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          @change="handleChange"
-        />
+        <input ref="fileInput" class="tool-file-input" type="file" accept="image/jpeg,image/png,image/webp" @change="handleChange" />
       </label>
-
-      <!-- 校验失败提示在输入区就地给出（`.u-field-error`），
-           它和处理失败（结果区的红色块）是两件事：前者是「没选对文件」，后者是「跑失败了」。 -->
       <p v-if="fileError" class="u-field-error" role="alert">{{ fileError }}</p>
-      <p v-else-if="file" class="tool-file-name">
-        <AppIcon name="check-circle" aria-hidden="true" />
-        <span>{{ file.name }} · {{ formatBytes(file.size) }}</span>
-      </p>
-
-      <div class="tool-form">
-        <div class="u-field">
-          <label class="u-field-label" for="compressor-quality">{{ PAGE.qualityLabel }}</label>
-          <SelectField
-            id="compressor-quality"
-            v-model="quality"
-            :options="PAGE.qualityOptions"
-            :aria-label="PAGE.qualityLabel"
-          />
-        </div>
-        <div class="u-field">
-          <label class="u-field-label" for="compressor-format">{{ PAGE.formatLabel }}</label>
-          <SelectField
-            id="compressor-format"
-            v-model="format"
-            :options="PAGE.formatOptions"
-            :aria-label="PAGE.formatLabel"
-          />
-        </div>
-      </div>
-
-      <div class="tool-actions">
-        <button type="button" class="u-btn-primary" :disabled="!file || busy" @click="start">
-          {{ PAGE.submit }}
-        </button>
-        <button type="button" class="u-btn-secondary" :disabled="!file" @click="reset">
-          {{ PAGE.reset }}
-        </button>
+      <p v-if="fileName" class="tool-file-name"><AppIcon name="check-circle" aria-hidden="true" /><span>{{ fileName }}（{{ formatBytes(fileSize) }}）</span></p>
+      <div v-if="previewUrl" class="tool-preview-media">
+        <img :src="previewUrl" alt="待压缩的图片" />
       </div>
     </section>
 
-    <!-- 结果区（空 / 加载 / 成功 / 失败四态由 ToolResultPane 渲染） -->
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title">
-        <AppIcon name="check-circle" aria-hidden="true" />
-        <span>{{ PAGE.resultTitle }}</span>
-      </h2>
+      <h2 class="tool-panel-title"><AppIcon name="wrench" aria-hidden="true" /><span>压缩参数</span></h2>
+      <div class="tool-form">
+        <div class="u-field">
+          <label class="u-field-label" for="cmp-target">目标体积（KB）</label>
+          <input id="cmp-target" v-model="targetKb" class="u-input" type="number" min="10" max="5120" step="10" />
+          <p class="u-field-hint">允许 ±10% 误差，最多编码 {{ MAX_ROUNDS }} 次逼近这个体积。</p>
+        </div>
+        <div class="u-field">
+          <label class="u-field-label" for="cmp-format">{{ PAGE.formatLabel }}</label>
+          <SelectField id="cmp-format" v-model="format" :options="FORMAT_OPTIONS" aria-label="输出格式" />
+          <p class="u-field-hint">PNG 是无损格式，质量参数无效，所以这里只提供 JPEG 与 WebP。</p>
+        </div>
+      </div>
+      <div class="tool-actions">
+        <button type="button" class="u-btn-primary" :disabled="!file || state === 'loading'" @click="compress">
+          {{ state === 'loading' ? '压缩中…' : PAGE.submit }}
+        </button>
+        <button type="button" class="u-btn-secondary" :disabled="state === 'loading'" @click="reset">{{ PAGE.reset }}</button>
+      </div>
+    </section>
 
-      <ToolResultPane
-        :state="jobState"
-        :title="PAGE.emptyTitle"
-        :description="PAGE.emptyDesc"
-        :error="jobError"
-        icon="image"
-      >
-        <template v-if="result">
-          <div class="tool-preview-media">
-            <img :src="result.previewUrl" :alt="PAGE.resultTitle" />
-          </div>
-
-          <div class="tool-result-meta">
-            <span class="tool-result-meta-item">
-              {{ META.originalSize }}
-              <span class="tool-result-value">{{ formatBytes(result.originalBytes) }}</span>
-            </span>
-            <span class="tool-result-meta-item">
-              {{ META.outputSize }}
-              <span class="tool-result-value">{{ formatBytes(result.compressedBytes) }}</span>
-            </span>
-            <span class="tool-result-meta-item">
-              {{ META.saved }}
-              <span class="tool-result-value">{{ savedPercent }}</span>
-            </span>
-            <span class="tool-result-meta-item">
-              {{ META.format }}
-              <span class="tool-result-value">{{ result.format }}</span>
-            </span>
-          </div>
-
-          <p class="tool-result-note">{{ PAGE.resultNote }}</p>
-        </template>
-
+    <section class="ui-card tool-panel">
+      <h2 class="tool-panel-title"><AppIcon name="clipboard" aria-hidden="true" /><span>{{ PAGE.resultTitle }}</span></h2>
+      <ToolResultPane :state="state" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" :error="errorMessage" loading-text="正在重新编码并搜索质量参数…">
+        <div v-if="result" class="tool-result-meta">
+          <span class="tool-result-meta-item"><span>{{ META.originalSize }}</span><strong>{{ formatBytes(fileSize) }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ META.outputSize }}</span><strong>{{ formatBytes(result.outputBytes) }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ SAVED_LABEL }}</span><strong>{{ relativePercent }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ META.quality }}</span><strong>{{ Math.round(result.quality * 100) }}%</strong></span>
+        </div>
+        <p v-if="result" class="tool-result-note">
+          {{ result.met ? '已命中目标体积（±10%）。' : `在质量范围内最接近目标：${formatBytes(result.outputBytes)}，未落入 ±10% 容差。` }}
+        </p>
+        <p v-if="result" class="tool-result-note">{{ RESULT_NOTE }}</p>
+        <div v-if="result" class="tool-preview-media">
+          <img :src="result.url" alt="压缩后的图片" />
+        </div>
         <template #actions>
-          <button type="button" class="u-btn-secondary" disabled :title="PAGE.resultNote">
-            {{ PAGE.download }}
-          </button>
+          <button v-if="result" type="button" class="u-btn-primary" @click="download">{{ PAGE.download }}</button>
         </template>
       </ToolResultPane>
     </section>
 
-    <!-- 辅助信息 -->
     <template #aside>
-      <section class="ui-card tool-aside-card">
-        <h3 class="tool-aside-title">
-          <span class="tool-aside-title-icon" aria-hidden="true"><AppIcon name="info" /></span>
-          <span>{{ TOOL_PAGE.usageTitle }}</span>
-        </h3>
-        <ul class="tool-aside-list">
-          <li v-for="item in PAGE.asideItems" :key="item">{{ item }}</li>
-        </ul>
-      </section>
-
-      <section class="ui-card tool-aside-card">
-        <h3 class="tool-aside-title">
-          <span class="tool-aside-title-icon" aria-hidden="true">
-            <AppIcon name="shield-alert" />
-          </span>
-          <span>{{ TOOL_PAGE.noticeTitle }}</span>
-        </h3>
-        <p class="tool-aside-note">
-          <span class="tool-aside-note-icon" aria-hidden="true">
-            <AppIcon name="alert-triangle" />
-          </span>
-          <span>{{ PAGE.asideNotice }}</span>
-        </p>
-      </section>
+      <div class="ui-card tool-aside-card">
+        <h3 class="tool-aside-title"><span class="tool-aside-title-icon"><AppIcon name="info" aria-hidden="true" /></span><span>{{ TOOL_PAGE.usageTitle }}</span></h3>
+        <ul class="tool-aside-list"><li v-for="(item, index) in ASIDE_ITEMS" :key="index">{{ item }}</li></ul>
+      </div>
+      <div class="ui-card tool-aside-card">
+        <h3 class="tool-aside-title"><span class="tool-aside-title-icon"><AppIcon name="alert-triangle" aria-hidden="true" /></span><span>{{ TOOL_PAGE.noticeTitle }}</span></h3>
+        <p class="tool-aside-note">体积下限受图片分辨率限制：质量降到 {{ Math.round(QUALITY_MIN * 100) }}% 仍超出目标时，需要先缩小尺寸（可用图片工具箱的缩放/裁剪）。</p>
+      </div>
     </template>
   </ToolPageShell>
 </template>
 
 <script setup>
-/**
- * 图片压缩工具页（骨架）。
- *
- * 真实能力（读取图片 → 重新编码 → 下载）本期**没有接入**，但这一页不是空壳：
- * 选图、格式校验、档位与输出格式、四态流转、体积估算、本地预览都是真的，
- * 只有「编码」那一步是按档位系数估算的占位实现（页面上如实标注）。
- * 这样做的理由：编码器（canvas / WebCodecs）要处理跨域、色彩空间、超大图与降级，
- * 一旦引入就必须有对应的测试与兜底；而这一期的目标是**把工具页骨架立起来**，
- * 让真实实现将来只需要替换一个 `compress()`。
- *
- * 图片始终留在浏览器里：这里不发起任何请求，也没有上传入口。
- * 预览用的 objectURL 在换图 / 重置 / 卸载时都要 revoke，否则一张大图会一直占着内存。
- */
 import { computed, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
 import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
-import { useToolJob } from '@/hooks/useToolJob/index.js'
 import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/image/compressor']
 const usage = useToolUsage('/image/compressor')
+
 const META = TOOL_RESULT.meta
-
-/** 与 input 的 accept 一致：这里再校验一次，拖拽进来的文件不经过 accept 过滤 */
+// 常量表里的 resultNote / asideItems 还写着「按档位系数估算」，页面内覆盖为真实口径，不改 constants。
+const RESULT_NOTE = '在浏览器内重新编码，画质由质量参数决定；体积是按真实编码结果逐步逼近出来的。'
+const SAVED_LABEL = '体积变化'
+const ASIDE_ITEMS = ['按目标体积二分搜索质量参数（0.30 – 0.95），最多 8 次真实编码。', '显示的是编码后的实际字节数，不是估算。', '图片不上传服务器，压缩结果可直接下载。']
 const ACCEPT_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const FORMAT_OPTIONS = [
+  { value: 'jpeg', label: 'JPEG' },
+  { value: 'webp', label: 'WebP' },
+]
+const MIME = { jpeg: 'image/jpeg', webp: 'image/webp' }
+const EXT = { jpeg: 'jpg', webp: 'webp' }
 const MAX_BYTES = 5 * 1024 * 1024
+const MAX_ROUNDS = 8
+const TOLERANCE = 0.1
+const QUALITY_MIN = 0.3
+const QUALITY_MAX = 0.95
 
-/** 占位编码的档位系数（真实编码接入后连同 resultNote 一起换掉） */
-const QUALITY_RATIO = { high: 0.8, medium: 0.6, low: 0.4 }
-const ENCODE_DELAY_MS = 600
-
-const file = ref(null)
-const fileError = ref('')
-const dragging = ref(false)
-const quality = ref('medium')
-const format = ref('keep')
-const previewUrl = ref('')
 const fileInput = ref(null)
+const file = ref(null)
+const fileName = ref('')
+const fileSize = ref(0)
+const previewUrl = ref('')
+const targetKb = ref('200')
+const format = ref('jpeg')
+const dragging = ref(false)
+const fileError = ref('')
+const state = ref('empty')
+const result = ref(null)
+const errorMessage = ref('')
 
-const { state: jobState, result, error: jobError, run, reset: resetJob } = useToolJob({
-  run: compress,
-  usage,
-})
-
-const busy = computed(() => jobState.value === 'loading')
-
-const savedPercent = computed(() => {
-  const current = result.value
-  if (!current || !current.originalBytes) return '—'
-  const saved = Math.max(0, current.originalBytes - current.compressedBytes)
-  return `${Math.round((saved / current.originalBytes) * 100)}%`
-})
-
-// 占位编码的「耗时」：让加载态有机会渲染一帧，真实编码接入后换成实际工作
-const delay = (ms) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-
-/** 体积按 B / KB / MB 三档展示，够用且不会出现「0.00 MB」 */
 function formatBytes(bytes) {
-  const value = Number(bytes) || 0
-  if (value < 1024) return `${value} B`
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
-  return `${(value / 1024 / 1024).toFixed(2)} MB`
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
-/** 结果里的格式：保持原格式时如实回显原文件的 MIME，而不是编一个「原格式」 */
-function outputFormat() {
-  if (format.value === 'keep') return file.value?.type || '保持原格式'
-  const option = PAGE.formatOptions.find((item) => item.value === format.value)
-  return option ? option.label : format.value
-}
-
-/**
- * 真实实现将来就替换这里：读文件 → 编码 → 得到新的 Blob 与体积。
- * 现在返回的是按档位系数估算的体积 + 本地预览地址。
- */
-async function compress() {
-  if (!file.value) throw new Error(PAGE.needFile)
-  await delay(ENCODE_DELAY_MS)
-  const ratio = QUALITY_RATIO[quality.value] ?? QUALITY_RATIO.medium
-  return {
-    originalBytes: file.value.size,
-    compressedBytes: Math.max(1, Math.round(file.value.size * ratio)),
-    format: outputFormat(),
-    previewUrl: previewUrl.value,
-  }
-}
+// 体积变化按真实编码结果算：正数表示变小，负数表示反而变大（此时页面会提示换格式或先缩尺寸）。
+const relativePercent = computed(() => {
+  if (!result.value || !fileSize.value) return '—'
+  const delta = (1 - result.value.outputBytes / fileSize.value) * 100
+  return delta >= 0 ? `-${delta.toFixed(1)}%` : `+${Math.abs(delta).toFixed(1)}%`
+})
 
 function releasePreview() {
-  const url = previewUrl.value
-  if (url && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
-    URL.revokeObjectURL(url)
-  }
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewUrl.value = ''
 }
 
-/** 选中/拖入的文件都要过这一道：类型与体积不合格时**不**进入状态，只留一条就地提示 */
-function acceptFile(next) {
-  if (!next) return
-  const startedAt = performance.now()
+function releaseResult() {
+  if (result.value) URL.revokeObjectURL(result.value.url)
+  result.value = null
+}
 
+function acceptFile(next) {
+  releaseResult()
+  releasePreview()
+  fileError.value = ''
+  state.value = 'empty'
+  if (!next) return
   if (!ACCEPT_TYPES.includes(next.type)) {
     fileError.value = PAGE.invalidType
-    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_INVALID_TYPE', durationMs: performance.now() - startedAt })
+    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_INVALID_TYPE' })
     return
   }
-
   if (next.size > MAX_BYTES) {
     fileError.value = PAGE.invalidSize
-    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_TOO_LARGE', durationMs: performance.now() - startedAt })
+    usage.record({ ok: false, errorCode: 'IMAGE_COMPRESS_TOO_LARGE', meta: { size: next.size } })
     return
   }
-
-  fileError.value = ''
-  releasePreview()
   file.value = next
-  if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
-    previewUrl.value = URL.createObjectURL(next)
-  }
-  resetJob()
+  fileName.value = next.name
+  fileSize.value = next.size
+  previewUrl.value = URL.createObjectURL(next)
 }
 
 function handleChange(event) {
-  const input = event?.target
-  acceptFile(input?.files?.[0] || null)
-  // 清掉 input 的值：否则再选**同一个文件**不会触发 change，看起来像是点了没反应
-  if (input) input.value = ''
+  acceptFile((event.target.files || [])[0])
+  event.target.value = ''
 }
 
 function handleDrop(event) {
   dragging.value = false
-  acceptFile(event?.dataTransfer?.files?.[0] || null)
+  acceptFile((event.dataTransfer.files || [])[0])
 }
 
-function start() {
-  run()
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('图片解码失败，请确认文件没有损坏。'))
+    image.src = url
+  })
+}
+
+function encode(canvas, mime, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob)
+      else reject(new Error('浏览器拒绝了本次编码，请换一种输出格式。'))
+    }, mime, quality)
+  })
+}
+
+// 质量越高体积越大，是单调关系，所以能二分；每一轮都是真实 toBlob，不是比例估算。
+async function searchQuality(canvas, mime, target) {
+  let low = QUALITY_MIN
+  let high = QUALITY_MAX
+  let best = null
+  for (let round = 0; round < MAX_ROUNDS; round += 1) {
+    const quality = Number(((low + high) / 2).toFixed(3))
+    const blob = await encode(canvas, mime, quality)
+    const current = { blob, quality }
+    if (!best || Math.abs(blob.size - target) < Math.abs(best.blob.size - target)) best = current
+    if (Math.abs(blob.size - target) <= target * TOLERANCE) return current
+    if (blob.size > target) high = quality
+    else low = quality
+    if (high - low <= 0.02) break
+  }
+  return best
+}
+
+async function compress() {
+  if (!file.value || !previewUrl.value) return
+  const target = Math.max(10, Number(targetKb.value) || 200) * 1024
+  const startedAt = performance.now()
+  releaseResult()
+  state.value = 'loading'
+  errorMessage.value = ''
+  try {
+    const image = await loadImage(previewUrl.value)
+    const canvas = document.createElement('canvas')
+    canvas.width = image.naturalWidth
+    canvas.height = image.naturalHeight
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('当前浏览器不支持 canvas 2D，无法压缩。')
+    context.drawImage(image, 0, 0)
+    const mime = MIME[format.value]
+    const best = await searchQuality(canvas, mime, target)
+    if (!best) throw new Error('编码没有产出有效结果，请换一张图片再试。')
+    result.value = {
+      url: URL.createObjectURL(best.blob),
+      outputBytes: best.blob.size,
+      quality: best.quality,
+      met: Math.abs(best.blob.size - target) <= target * TOLERANCE,
+      name: `${file.value.name.replace(/\.[^.]+$/, '')}-compressed.${EXT[format.value]}`,
+    }
+    state.value = 'success'
+    usage.record({ durationMs: performance.now() - startedAt, meta: { originalSize: fileSize.value, outputSize: best.blob.size, quality: best.quality } })
+  } catch (error) {
+    state.value = 'error'
+    errorMessage.value = error && error.message ? error.message : '压缩失败，请换一张图片再试。'
+    usage.record({ durationMs: performance.now() - startedAt, ok: false, errorCode: 'IMAGE_COMPRESS_FAILED' })
+  }
+}
+
+function download() {
+  if (!result.value) return
+  const link = document.createElement('a')
+  link.href = result.value.url
+  link.download = result.value.name
+  link.click()
 }
 
 function reset() {
+  releaseResult()
   releasePreview()
   file.value = null
+  fileName.value = ''
+  fileSize.value = 0
   fileError.value = ''
-  if (fileInput.value) fileInput.value.value = ''
-  resetJob()
+  state.value = 'empty'
+  errorMessage.value = ''
 }
 
-onUnmounted(releasePreview)
+onUnmounted(() => {
+  releasePreview()
+  releaseResult()
+})
 </script>

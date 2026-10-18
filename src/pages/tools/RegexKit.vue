@@ -20,6 +20,7 @@
       <div class="u-field">
         <label class="u-field-label" for="regex-test">测试文本</label>
         <textarea id="regex-test" v-model="testText" class="u-input tool-textarea" :placeholder="PAGE.testPlaceholder" spellcheck="false"></textarea>
+        <p class="u-field-hint">为避免灾难性回溯卡死页面，测试文本限制为 50KB；匹配超过 1 秒会提示你优化正则。浏览器无法中断正在执行的 RegExp，超时只能提示，不能强制停止。</p>
       </div>
     </section>
 
@@ -27,11 +28,15 @@
       <h2 class="tool-panel-title"><AppIcon name="check-circle" aria-hidden="true" /><span>{{ PAGE.resultTitle }}</span></h2>
       <ToolResultPane :state="result ? 'success' : 'empty'" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" icon="search">
         <template v-if="result">
+          <p v-if="result.tooSlow" class="tool-result-note regex-slow" role="alert">本次匹配耗时 {{ result.elapsedMs }}ms，超过 1 秒，可能存在灾难性回溯。请避免嵌套量词（如 (a+)+），或缩短测试文本。</p>
           <div v-if="result.matches.length" class="regex-matches">
-            <p class="tool-result-note">找到 {{ result.matches.length }} 个匹配</p>
+            <p class="tool-result-note">找到 {{ result.matches.length }} 个匹配，耗时 {{ result.elapsedMs }}ms</p>
             <div v-for="(match, i) in result.matches" :key="i" class="regex-match-row">
               <span class="regex-match-index">#{{ i + 1 }}</span>
-              <code class="regex-match-text">{{ match.text }}</code>
+              <div class="regex-match-body">
+                <code class="regex-match-text">{{ match.text || '（空匹配）' }}</code>
+                <span v-if="match.groups.length" class="regex-match-groups">捕获组: {{ match.groups.map((g) => g ?? 'undefined').join(' | ') }}</span>
+              </div>
               <span class="regex-match-pos">位置: {{ match.index }}</span>
             </div>
           </div>
@@ -50,7 +55,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
@@ -64,6 +69,7 @@ const flags = ref('g')
 const testText = ref('')
 const regexError = ref('')
 const result = ref(null)
+let timer = 0
 
 const flagsOptions = [
   { label: 'g 全局', value: 'g' },
@@ -83,8 +89,20 @@ function testRegex() {
   regexError.value = ''
   result.value = null
   if (!pattern.value || !testText.value) return
+  if (new Blob([testText.value]).size > 50 * 1024) {
+    regexError.value = '测试文本超过 50KB。灾难性回溯会让页面长时间无响应，请缩短文本或改用更精确的正则。'
+    usage.record({ ok: false, errorCode: 'REGEX_INPUT_TOO_LARGE', durationMs: Math.round(performance.now() - startedAt) })
+    return
+  }
+  let regex
   try {
-    const regex = new RegExp(pattern.value, flags.value)
+    regex = new RegExp(pattern.value, flags.value)
+  } catch (e) {
+    regexError.value = `正则编译失败：${e.message}。请检查括号、方括号、转义字符和标志位是否合法。`
+    usage.record({ ok: false, errorCode: 'REGEX_COMPILE_FAILED', durationMs: Math.round(performance.now() - startedAt) })
+    return
+  }
+  try {
     const matches = []
     let match
     if (flags.value.includes('g')) {
@@ -96,21 +114,30 @@ function testRegex() {
       match = regex.exec(testText.value)
       if (match) matches.push({ text: match[0], index: match.index, groups: match.slice(1) })
     }
-    result.value = { matches }
-    usage.record({ durationMs: performance.now() - startedAt, meta: { flags: flags.value, matches: matches.length } })
+    const elapsedMs = Math.round(performance.now() - startedAt)
+    result.value = { matches, elapsedMs, tooSlow: elapsedMs > 1000 }
+    usage.record({ durationMs: elapsedMs, meta: { flags: flags.value, matches: matches.length } })
   } catch (e) {
-    regexError.value = e.message
-    usage.record({ ok: false, errorCode: 'REGEX_COMPILE_FAILED', durationMs: performance.now() - startedAt })
+    regexError.value = `匹配执行失败：${e.message}`
+    usage.record({ ok: false, errorCode: 'REGEX_EXEC_FAILED', durationMs: Math.round(performance.now() - startedAt) })
   }
 }
 
-watch([pattern, flags, testText], () => { testRegex() }, { debounce: 200 })
+watch([pattern, flags, testText], () => {
+  clearTimeout(timer)
+  timer = setTimeout(testRegex, 200)
+})
+
+onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>
 .regex-matches { display: flex; flex-direction: column; gap: calc(var(--space-unit)); }
-.regex-match-row { display: flex; align-items: center; gap: calc(var(--space-unit)); padding: calc(var(--space-unit)); background: var(--bg-surface-2); border-radius: var(--radius-input); }
+.regex-match-row { display: flex; align-items: flex-start; gap: calc(var(--space-unit)); padding: calc(var(--space-unit)); background: var(--bg-surface-2); border-radius: var(--radius-input); }
 .regex-match-index { font-size: var(--fs-label); color: var(--accent); min-width: 32px; }
-.regex-match-text { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-primary); flex: 1; word-break: break-all; }
-.regex-match-pos { font-size: var(--fs-label); color: var(--text-muted); }
+.regex-match-body { display: flex; flex: 1; flex-direction: column; gap: calc(var(--space-unit) * 0.5); min-width: 0; }
+.regex-match-text { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-primary); word-break: break-all; }
+.regex-match-groups { font-size: var(--fs-label); color: var(--text-muted); word-break: break-all; }
+.regex-match-pos { font-size: var(--fs-label); color: var(--text-muted); white-space: nowrap; }
+.regex-slow { color: var(--danger); }
 </style>

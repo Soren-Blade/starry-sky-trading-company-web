@@ -42,6 +42,7 @@
           <div class="countdown-item"><span class="countdown-value">{{ countdownResult.minutes }}</span><span class="countdown-label">分</span></div>
           <div class="countdown-item"><span class="countdown-value">{{ countdownResult.seconds }}</span><span class="countdown-label">秒</span></div>
         </div>
+        <p v-if="countdownResult && countdownResult.expired" class="tool-result-note">目标时间已过，倒计时全部归零。</p>
       </template>
     </section>
 
@@ -95,19 +96,27 @@ const nowDate = computed(() => new Date(now.value).toLocaleDateString('zh-CN', {
 
 const tsResult = computed(() => {
   const ts = timestampInput.value.trim()
-  if (!ts || isNaN(ts)) return { iso: '-', local: '-', relative: '-' }
+  if (!ts || !/^-?\d+$/.test(ts)) return { iso: '-', local: '-', relative: '-' }
   let ms = Number(ts)
-  if (ts.length <= 10) ms *= 1000
+  if (Math.abs(ms) < 1e11) ms *= 1000
   const d = new Date(ms)
-  const diff = Date.now() - ms
-  const rel = diff > 0 ? `${Math.floor(diff / 86400000)} 天前` : `${Math.floor(-diff / 86400000)} 天后`
-  return { iso: d.toISOString(), local: d.toLocaleString('zh-CN'), relative: rel }
+  // 超出 Date 可表示范围时 toISOString 会抛 RangeError，必须挡掉，否则整页渲染中断
+  if (Number.isNaN(d.getTime())) return { iso: '-', local: '-', relative: '超出可表示的日期范围' }
+  return { iso: d.toISOString(), local: d.toLocaleString('zh-CN'), relative: formatRelative(Date.now() - ms) }
 })
+
+/** 相对时间：只在 1 分钟以内说「秒」，避免永远显示「0 天前」 */
+function formatRelative(diff) {
+  const abs = Math.abs(diff)
+  const unit = abs < 60000 ? [Math.floor(abs / 1000), '秒'] : abs < 3600000 ? [Math.floor(abs / 60000), '分钟'] : abs < 86400000 ? [Math.floor(abs / 3600000), '小时'] : [Math.floor(abs / 86400000), '天']
+  return `${unit[0]} ${unit[1]}${diff >= 0 ? '前' : '后'}`
+}
 
 const diffResult = computed(() => {
   if (!date1.value || !date2.value) return null
   const d1 = new Date(date1.value).getTime()
   const d2 = new Date(date2.value).getTime()
+  if (Number.isNaN(d1) || Number.isNaN(d2)) return null
   const diff = Math.abs(d2 - d1)
   return {
     days: Math.floor(diff / 86400000),

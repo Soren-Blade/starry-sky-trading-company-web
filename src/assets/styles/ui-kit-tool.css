@@ -382,4 +382,291 @@
   .tool-result-actions > * {
     width: 100%;
   }
+
+  /* §12 计算网格在窄屏收紧，§9 文件卡片隐藏缩略图把宽度让给文件名。
+     这两条也属于 767 断点，统一写在这里，避免同一个断点出现两个 @media 块。 */
+  .tool-calc-grid {
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  }
+
+  .tool-file-card-thumb {
+    display: none;
+  }
+
+  /* §8 模式切换在窄屏改成单行横滑：折行会让标签和面板标题挤在一起 */
+  .tool-mode-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tool-mode-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tool-mode-tab {
+    flex: none;
+    padding: 0 calc(var(--space-unit) * 1.75);
+  }
+}
+
+/* ── §8 模式切换 ─────────────────────────────────────────────── */
+/* 一个工具页承载多个操作（生成/识别、合并/拆分）时才用。
+   形态照 `ui-showcase/components/tools.html` 的「模式切换」一节：下划线式标签，
+   不用胶囊按钮 —— 胶囊在这个位置会跟面板里的主操作按钮抢视觉重量。 */
+.tool-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: var(--stroke-width) solid var(--border);
+  margin-bottom: calc(var(--space-unit) * 1.5);
+}
+
+.tool-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  height: 40px;
+  padding: 0 calc(var(--space-unit) * 2.25);
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+
+.tool-mode-tab:hover {
+  color: var(--accent);
+}
+
+/* 选中态同时用颜色、粗细和一条 2px 底线：不靠颜色单一编码。
+   底线用 inset 阴影而不是 border-bottom —— 否则会跟容器那条 1px 细线错位。 */
+.tool-mode-tab.is-active {
+  color: var(--accent);
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
+.tool-mode-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* ── §9 文件卡片列表 ──────────────────────────────────────────── */
+/* 多文件工具（PDF 合并、批量压缩）用列表而不是塞进输入框：
+   文件名可能很长，缩略图让用户一眼确认拿对了文件。 */
+.tool-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit));
+}
+
+.tool-file-card {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface-2);
+}
+
+.tool-file-card-thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-input);
+  background: var(--bg-soft);
+  object-fit: cover;
+}
+
+.tool-file-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.tool-file-card-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-file-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.25);
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+}
+
+.tool-file-card-remove {
+  flex: none;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-interactive);
+}
+
+.tool-file-card-remove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── §10 差异对比 ────────────────────────────────────────────── */
+.tool-diff {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.tool-diff-line {
+  display: flex;
+  gap: calc(var(--space-unit));
+  padding: 0 calc(var(--space-unit) * 1.25);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tool-diff-line--add {
+  background: var(--success-bg);
+}
+
+.tool-diff-line--remove {
+  background: var(--danger-bg);
+}
+
+.tool-diff-gutter {
+  flex: none;
+  width: 2.5em;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+/* ── §11 历史记录 ────────────────────────────────────────────── */
+/* 只在「本机保存」的历史上使用（localStorage），因此固定条目高度、
+   时间用等宽数字，滚动时眼动更稳。 */
+.tool-history {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.tool-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.25);
+  padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: var(--bg-surface-2);
+  font-size: var(--fs-sm);
+}
+
+.tool-history-time {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── §12 计算器（多输入 + 大结果） ────────────────────────────── */
+.tool-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--grid-gap);
+}
+
+.tool-calc-value {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-h2);
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.tool-calc-note {
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+}
+
+/* ── §13 设计参数（左参数 + 右预览） ──────────────────────────── */
+.tool-design-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--grid-gap);
+  align-items: start;
+}
+
+.tool-design-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface-2);
+}
+
+.tool-design-code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+/* ── §14 代码视图（带语言条的高亮块） ────────────────────────── */
+.tool-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--radius-input) var(--radius-input) 0 0;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+}
+
+.tool-code-lang {
+  font-family: var(--font-mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.tool-preview-code {
+  max-height: 420px;
+  margin: 0;
+  padding: calc(var(--space-unit) * 1.5);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-input) var(--radius-input);
+  background: var(--bg-surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+/* ── §15 响应式补充（新组件） ─────────────────────────────────── */
+/* 断点只允许 1199 / 991 / 767 / 575，与全站保持一致。
+   767 那一档的规则统一写在 §7，避免同一断点出现两个 @media 块。 */
+@media (max-width: 1199px) {
+  /* 参数 + 预览两栏在中屏会把预览压到 200px 以下，改为上下堆叠 */
+  .tool-design-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

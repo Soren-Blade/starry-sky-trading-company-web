@@ -242,14 +242,15 @@ test('视频工具的路径与数据库里的 tool_path 一致（跨仓库契约
   assert.match(router, /import\('@\/pages\/VideoTool\.vue'\)/, '该路径要指向占位页')
 })
 
-test('占位页要如实说明「开发中」，并给出可走的下一步', async () => {
+test('视频工具页改为本地分析：写明做不到的事，并给出出路', async () => {
   const html = await renderComponent('pages/VideoTool.vue', {})
 
-  expectIncludes(html, VIDEO_TOOL.status, '要标明功能开发中')
-  expectIncludes(html, VIDEO_TOOL.body, '要有一段说明，而不是空白页')
-  // 已激活的用户点进来必须**有出路**：回工具页、或看自己的卡密
+  // 这一页曾经是「功能开发中」的占位页。现在它做的是本地视频分析（读元信息 + 抽帧），
+  // 因此必须明确写出「不做在线链接解析、不做转码」，否则用户会以为它能下载视频；
+  // 同时仍要能从这页回到工具页，不能是死胡同。
+  expectIncludes(html, '不在本页能力范围内', '要说明在线解析不在能力范围内')
+  expectIncludes(html, '转码', '要说明转码这类操作本页不提供')
   expectIncludes(html, VIDEO_TOOL.backToTools, '要能回工具页')
-  expectIncludes(html, VIDEO_TOOL.myCards, '要能去看我的卡密')
 })
 
 test('占位页不写死域名、不假装已可用', () => {

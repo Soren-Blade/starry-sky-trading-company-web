@@ -1,178 +1,243 @@
 <template>
   <ToolPageShell :title="PAGE.title" :eyebrow="PAGE.eyebrow" :description="PAGE.description" :icon="PAGE.icon" :requires-card="PAGE.requiresCard">
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="globe" aria-hidden="true" /><span>{{ PAGE.inputTitle }}</span></h2>
-      <div class="u-field">
-        <label class="u-field-label">查询类型</label>
-        <SelectField v-model="netMode" :options="netModeOptions" />
-      </div>
-      <div class="u-field">
-        <label class="u-field-label">{{ PAGE.sourceLabel }}</label>
-        <textarea v-model="source" class="u-input tool-textarea" :placeholder="sourcePlaceholder" spellcheck="false"></textarea>
-      </div>
-      <div class="tool-actions">
-        <button type="button" class="u-btn-primary" :disabled="!source" @click="process">{{ PAGE.submit }}</button>
-        <button type="button" class="u-btn-secondary" @click="clear">{{ PAGE.reset }}</button>
-      </div>
+      <h2 class="tool-panel-title"><AppIcon name="monitor" aria-hidden="true" /><span>本机网络与 UA</span></h2>
+      <p class="tool-mode-hint">全部读自浏览器自身公开字段（navigator / Intl / screen），不发起任何请求。浏览器未暴露的字段如实显示「未提供」，不编造。</p>
+      <dl class="net-facts">
+        <div v-for="row in localRows" :key="row.label" class="net-fact"><dt>{{ row.label }}</dt><dd :class="{ 'net-fact-mono': row.mono }">{{ row.value }}</dd></div>
+      </dl>
     </section>
-
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="check-circle" aria-hidden="true" /><span>{{ PAGE.resultTitle }}</span></h2>
-      <ToolResultPane :state="result ? 'success' : 'empty'" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" icon="globe">
-        <template v-if="result"><pre class="tool-preview">{{ result }}</pre></template>
-        <template #actions><button type="button" class="u-btn-primary" :disabled="!result" @click="copy">{{ copyLabel }}</button></template>
-      </ToolResultPane>
+      <h2 class="tool-panel-title"><AppIcon name="link" aria-hidden="true" /><span>URL 解析与查询参数</span></h2>
+      <div class="u-field"><label class="u-field-label" for="net-url">URL</label><input id="net-url" v-model="urlInput" class="u-input" placeholder="https://example.com/path?a=1#top" spellcheck="false" @keyup.enter="parseUrl" /></div>
+      <div class="tool-actions">
+        <button type="button" class="u-btn-primary" @click="parseUrl">解析</button>
+        <button type="button" class="u-btn-secondary" @click="resetUrl">清空</button>
+      </div>
+      <p v-if="urlError" class="tool-calc-note" role="alert">{{ urlError }}</p>
+      <template v-if="urlParts.length">
+        <dl class="net-facts">
+          <div v-for="row in urlParts" :key="row.label" class="net-fact"><dt>{{ row.label }}</dt><dd class="net-fact-mono">{{ row.value }}</dd></div>
+        </dl>
+        <h3 class="net-sub">查询参数（改完点下面的按钮，下方即真实拼接结果）</h3>
+        <div v-for="(param, index) in params" :key="index" class="net-param">
+          <input v-model="param.key" class="u-input net-param-key" aria-label="参数名" placeholder="key" />
+          <input v-model="param.value" class="u-input net-param-value" aria-label="参数值" placeholder="value" />
+          <button type="button" class="u-btn-secondary" @click="params.splice(index, 1)">删除</button>
+        </div>
+        <div class="tool-actions">
+          <button type="button" class="u-btn-secondary" @click="params.push({ key: '', value: '' })">添加参数</button>
+          <button type="button" class="u-btn-primary" @click="copyRebuilt">{{ copied ? '已复制' : '复制拼接结果' }}</button>
+        </div>
+        <pre class="tool-preview net-code">{{ rebuiltUrl }}</pre>
+      </template>
     </section>
-
+    <section class="ui-card tool-panel">
+      <h2 class="tool-panel-title"><AppIcon name="globe" aria-hidden="true" /><span>服务端查询</span></h2>
+      <p class="tool-mode-hint">公网 IP、DNS、目标站响应头、OG 预览浏览器都拿不到（无法 ICMP、没有 DNS API、跨域读不到对方内容），必须由服务端代理完成。</p>
+      <div class="tool-mode-tabs" role="tablist" aria-label="查询类型">
+        <button v-for="tab in serverTabs" :key="tab.value" type="button" role="tab" class="tool-mode-tab" :class="{ 'is-active': serverMode === tab.value }" :aria-selected="serverMode === tab.value" @click="pickServerMode(tab.value)">{{ tab.label }}</button>
+      </div>
+      <div v-if="serverMode !== 'ip'" class="u-field"><label class="u-field-label" for="net-target">{{ serverMode === 'dns' ? '域名' : '目标 URL' }}</label><input id="net-target" v-model="target" class="u-input" :placeholder="targetPlaceholder" spellcheck="false" @keyup.enter="runServer" /></div>
+      <div v-if="serverMode === 'dns'" class="u-field"><label class="u-field-label">记录类型</label><SelectField v-model="dnsType" :options="dnsTypeOptions" /></div>
+      <div class="tool-actions">
+        <button type="button" class="u-btn-primary" :disabled="busy || (serverMode !== 'ip' && !target.trim())" @click="runServer">{{ busy ? '查询中…' : '查询' }}</button>
+      </div>
+      <p v-if="serverNote" class="tool-calc-note" role="status">{{ serverNote }}</p>
+      <pre v-if="serverOutput" class="tool-preview net-code">{{ serverOutput }}</pre>
+    </section>
     <template #aside>
       <section class="ui-card tool-aside-card">
         <h3 class="tool-aside-title"><AppIcon name="info" /> {{ TOOL_PAGE.usageTitle }}</h3>
         <ul class="tool-aside-list"><li v-for="item in PAGE.asideItems" :key="item">{{ item }}</li></ul>
       </section>
       <section class="ui-card tool-aside-card">
-        <h3 class="tool-aside-title"><AppIcon name="alert-triangle" /> {{ TOOL_PAGE.noticeTitle }}</h3>
-        <p class="tool-aside-note"><AppIcon name="alert-triangle" /> {{ PAGE.asideNotice }}</p>
+        <h3 class="tool-aside-title"><AppIcon name="alert-triangle" /> 明确不做</h3>
+        <p class="tool-aside-note">浏览器拿不到 ICMP/TCP 套接字，本页不提供 ping、traceroute、端口扫描——原先的「Ping 模拟」是随机数编的假回包，已删除。</p>
       </section>
     </template>
   </ToolPageShell>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
-import ToolResultPane from '@/components/ToolResultPane.vue'
-import { TOOL_PAGE, TOOL_PAGES, TOOL_RESULT } from '@/constants/index.js'
+import { TOOL_PAGE, TOOL_PAGES } from '@/constants/index.js'
 import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/net/kit']
 const usage = useToolUsage('/net/kit')
-const netMode = ref('ip')
-const source = ref('')
-const result = ref('')
-const copyState = ref('idle')
 
-const netModeOptions = [
-  { label: 'IP 验证', value: 'ip' },
-  { label: '子网计算', value: 'subnet' },
-  { label: 'Ping 模拟', value: 'ping' },
-  { label: 'DNS 查询', value: 'dns' },
-]
+// ── 本机信息（只在 onMounted 里碰浏览器全局：SSR 下没有 navigator/screen）──
+const localRows = ref([])
 
-const sourcePlaceholder = computed(() => {
-  switch (netMode.value) {
-    case 'ip': return '输入 IPv4 地址，如 192.168.1.1'
-    case 'subnet': return '输入 CIDR，如 192.168.1.0/24'
-    case 'ping': return '输入域名或 IP，如 baidu.com'
-    case 'dns': return '输入域名，如 example.com'
-    default: return PAGE.sourcePlaceholder
-  }
+/** 极简 UA 解析：能说准就写准，说不准如实说「未知」，不假装识别所有客户端 */
+function parseUA(ua) {
+  if (!ua) return { browser: '未提供', platform: '未提供', device: '未提供' }
+  const known = [
+    [/(?:Edg|Edge)\/(\d+)/, 'Edge'], [/(?:OPR|Opera)\/(\d+)/, 'Opera'], [/(?:Chrome|CriOS)\/(\d+)/, 'Chrome'],
+    [/(?:Firefox|FxiOS)\/(\d+)/, 'Firefox'], [/Version\/(\d+)[\d.]* (?:Mobile\/\S+ )?Safari/, 'Safari'],
+  ]
+  const hit = known.find(([re]) => re.test(ua))
+  const browser = /MicroMessenger/i.test(ua) ? '微信内置浏览器' : hit ? `${hit[1]} ${hit[0].exec(ua)[1]}` : '未知浏览器'
+  // 平台按「首个命中的规则」判定：UA 里常同时出现多个系统名，顺序错了会误判
+  const platforms = [
+    [/Windows NT 10/, 'Windows 10/11'], [/Windows/, 'Windows'], [/Android/, 'Android'],
+    [/(iPhone|iPad|iPod)/, 'iOS / iPadOS'], [/Mac OS X/, 'macOS'], [/Linux/, 'Linux'],
+  ]
+  const platform = platforms.find(([re]) => re.test(ua))?.[1] ?? '未知系统'
+  const device = /Mobi|Android|iPhone/.test(ua) ? '手机' : /iPad|Tablet/.test(ua) ? '平板' : '桌面'
+  return { browser, platform, device }
+}
+
+function collectLocal() {
+  const nav = window.navigator
+  const uaInfo = parseUA(nav.userAgent)
+  // 网络信息 API 只有 Chromium 系有；Firefox/Safari 上如实显示「未提供」
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection
+  const screenInfo = window.screen
+  const ratio = window.devicePixelRatio || 1
+  localRows.value = [
+    { label: '浏览器', value: uaInfo.browser, mono: true }, { label: '平台', value: uaInfo.platform, mono: true },
+    { label: '设备类型', value: uaInfo.device }, { label: '界面语言', value: nav.language || '未提供' },
+    { label: '时区', value: Intl.DateTimeFormat().resolvedOptions().timeZone || '未提供', mono: true },
+    { label: '屏幕', value: `${screenInfo.width}×${screenInfo.height}（${ratio}× 像素比）` },
+    { label: '网络有效类型', value: conn && conn.effectiveType ? `${conn.effectiveType}` : '浏览器未提供' },
+    { label: '估算下行带宽', value: conn && typeof conn.downlink === 'number' ? `${conn.downlink} Mbps` : '浏览器未提供' },
+    { label: 'CPU 逻辑核心', value: nav.hardwareConcurrency ? `${nav.hardwareConcurrency} 个` : '浏览器未提供' },
+    { label: '设备内存', value: nav.deviceMemory ? `${nav.deviceMemory} GB（约）` : '浏览器未提供' },
+    { label: '原始 UA', value: nav.userAgent || '未提供', mono: true },
+  ]
+}
+
+onMounted(collectLocal)
+
+// ── URL 解析与查询参数 ─────────────────────────────────────────
+const urlInput = ref('')
+const urlError = ref('')
+const urlParts = ref([])
+const params = ref([])
+const copied = ref(false)
+// 解析后的 URL 对象不放 ref：它不可序列化，也不需要响应式
+let parsedUrl = null
+
+const rebuiltUrl = computed(() => {
+  if (!parsedUrl) return ''
+  const query = params.value
+    .filter((item) => item.key.trim())
+    .map((item) => `${encodeURIComponent(item.key.trim())}=${encodeURIComponent(item.value)}`)
+    .join('&')
+  return `${parsedUrl.origin}${parsedUrl.pathname}${query ? `?${query}` : ''}${parsedUrl.hash}`
 })
 
-const copyLabel = computed(() => copyState.value === 'ok' ? TOOL_RESULT.copied : copyState.value === 'fail' ? TOOL_RESULT.copyFailed : TOOL_RESULT.copy)
-
-watch(netMode, () => { source.value = ''; result.value = ''; copyState.value = 'idle' })
-
-function isValidIPv4(ip) {
-  const parts = ip.split('.')
-  if (parts.length !== 4) return false
-  return parts.every(p => {
-    const n = parseInt(p, 10)
-    return p === String(n) && n >= 0 && n <= 255
-  })
-}
-
-function ipToLong(ip) {
-  return ip.split('.').reduce((acc, part) => (acc << 8) + parseInt(part, 10), 0) >>> 0
-}
-
-function longToIP(long) {
-  return [(long >>> 24) & 0xFF, (long >>> 16) & 0xFF, (long >>> 8) & 0xFF, long & 0xFF].join('.')
-}
-
-function validateIP(ip) {
-  if (!isValidIPv4(ip)) return `错误：${ip} 不是有效的 IPv4 地址`
-  const parts = ip.split('.').map(Number)
-  let type = '公网地址'
-  if (parts[0] === 10) type = '私有地址 (A类)'
-  else if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) type = '私有地址 (B类)'
-  else if (parts[0] === 192 && parts[1] === 168) type = '私有地址 (C类)'
-  else if (parts[0] === 127) type = '回环地址'
-  else if (parts[0] >= 224) type = '组播/保留地址'
-  else if (parts[0] === 0 || parts[0] === 255) type = '保留地址'
-  return `IP 地址：${ip}\n格式：有效 IPv4\n类型：${type}\n二进制：${parts.map(p => p.toString(2).padStart(8, '0')).join('.')}`
-}
-
-function calcSubnet(cidr) {
-  const m = cidr.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})$/)
-  if (!m) return '错误：格式应为 x.x.x.x/x，如 192.168.1.0/24'
-  const ip = m[1]
-  const prefix = parseInt(m[2], 10)
-  if (!isValidIPv4(ip)) return '错误：IP 地址无效'
-  if (prefix < 0 || prefix > 32) return '错误：前缀长度应为 0-32'
-  const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0
-  const ipLong = ipToLong(ip)
-  const networkLong = (ipLong & mask) >>> 0
-  const broadcastLong = (networkLong | (~mask >>> 0)) >>> 0
-  const hostCount = prefix >= 31 ? 0 : broadcastLong - networkLong - 1
-  return `CIDR：${cidr}\n网络地址：${longToIP(networkLong)}\n广播地址：${longToIP(broadcastLong)}\n子网掩码：${longToIP(mask)}\n可用主机数：${hostCount}\nIP 范围：${longToIP(networkLong + 1)} - ${longToIP(broadcastLong - 1)}`
-}
-
-function simulatePing(host) {
-  const lines = [`正在 Ping ${host} [${host}] 具有 32 字节的数据:`]
-  for (let i = 1; i <= 4; i++) {
-    const time = Math.floor(Math.random() * 40) + 10
-    const ttl = Math.floor(Math.random() * 64) + 64
-    lines.push(`来自 ${host} 的回复: 字节=32 时间=${time}ms TTL=${ttl}`)
-  }
-  const min = Math.floor(Math.random() * 15) + 10
-  const max = min + Math.floor(Math.random() * 20) + 5
-  const avg = Math.floor((min + max) / 2)
-  lines.push('')
-  lines.push(`${host} 的 Ping 统计信息:`)
-  lines.push('    数据包: 已发送 = 4，已接收 = 4，丢失 = 0 (0% 丢失)，')
-  lines.push('往返行程的估计时间(以毫秒为单位):')
-  lines.push(`    最短 = ${min}ms，最长 = ${max}ms，平均 = ${avg}ms`)
-  return lines.join('\n')
-}
-
-function simulateDNS(domain) {
-  const lines = [`服务器:  DNS-Simulator`, `Address:  127.0.0.1`, '', `非权威应答:`, `名称:    ${domain}`]
-  const hash = domain.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  const aRecords = [`Addresses:  ${(hash % 223 + 1)}.${(hash % 256)}.${(hash % 256)}.${(hash % 254 + 1)}`]
-  if (hash % 3 === 0) aRecords.push(`          ${(hash % 223 + 2)}.${(hash % 256)}.${(hash % 256)}.${(hash % 254 + 2)}`)
-  lines.push(...aRecords)
-  lines.push(`\n别名:  www.${domain}`)
-  lines.push(`\nMX 记录:`)
-  lines.push(`  ${domain}\tMX preference = 10, mail exchanger = mail.${domain}`)
-  lines.push(`\nNS 记录:`)
-  lines.push(`  ${domain}\tnameserver = ns1.${domain}`)
-  lines.push(`  ${domain}\tnameserver = ns2.${domain}`)
-  lines.push(`\nTXT 记录:`)
-  lines.push(`  ${domain}\ttext = "v=spf1 include:_spf.${domain} ~all"`)
-  return lines.join('\n')
-}
-
-function process() {
-  if (!source.value) return
+function parseUrl() {
   const startedAt = performance.now()
-  const s = source.value.trim()
-  switch (netMode.value) {
-    case 'ip': result.value = validateIP(s); break
-    case 'subnet': result.value = calcSubnet(s); break
-    case 'ping': result.value = simulatePing(s); break
-    case 'dns': result.value = simulateDNS(s); break
-    default: result.value = '未知查询类型'
+  const raw = urlInput.value.trim()
+  urlError.value = ''
+  copied.value = false
+  if (!raw) { urlError.value = '请先输入 URL'; return }
+  try {
+    parsedUrl = new URL(raw)
+  } catch {
+    parsedUrl = null
+    urlParts.value = []
+    params.value = []
+    urlError.value = '不是合法的绝对 URL（需要带协议，例如 https:// 开头）'
+    usage.record({ ok: false, errorCode: 'NET_URL_INVALID', durationMs: Math.round(performance.now() - startedAt) })
+    return
   }
-  copyState.value = 'idle'
-  // meta 只放检测类型，绝不放输入的域名/IP
-  const failed = result.value.startsWith('错误')
-  usage.record(failed
-    ? { ok: false, errorCode: 'NET_QUERY_FAILED', durationMs: Math.round(performance.now() - startedAt) }
-    : { durationMs: Math.round(performance.now() - startedAt), meta: { kind: netMode.value } })
+  urlParts.value = [
+    { label: '协议', value: parsedUrl.protocol }, { label: '主机', value: parsedUrl.host },
+    { label: '域名', value: parsedUrl.hostname }, { label: '端口', value: parsedUrl.port || '默认端口' },
+    { label: '路径', value: parsedUrl.pathname }, { label: '锚点', value: parsedUrl.hash || '（无）' },
+  ]
+  params.value = [...parsedUrl.searchParams.entries()].map(([key, value]) => ({ key, value }))
+  // meta 只放字段计数，绝不放用户输入的完整 URL
+  usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { params: params.value.length } })
 }
 
-function clear() { source.value = ''; result.value = ''; copyState.value = 'idle' }
-async function copy() { if (!result.value) return; try { await navigator.clipboard.writeText(result.value); copyState.value = 'ok' } catch (e) { copyState.value = 'fail' } }
+async function copyRebuilt() {
+  if (!rebuiltUrl.value) return
+  try {
+    await navigator.clipboard.writeText(rebuiltUrl.value)
+    copied.value = true
+  } catch {
+    copied.value = false
+  }
+}
+
+function resetUrl() {
+  parsedUrl = null
+  urlInput.value = ''
+  urlError.value = ''
+  urlParts.value = []
+  params.value = []
+  copied.value = false
+}
+
+// ── 服务端查询（接口未部署时必须降级，不能把页面打崩）──────────────
+const serverTabs = [
+  { label: '公网 IP', value: 'ip' }, { label: 'DNS', value: 'dns' },
+  { label: '响应头', value: 'headers' }, { label: 'OG 预览', value: 'og' },
+]
+const serverMode = ref('ip')
+const dnsType = ref('A')
+const dnsTypeOptions = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'TXT'].map((value) => ({ label: value, value }))
+const target = ref('')
+const busy = ref(false)
+const serverNote = ref('')
+const serverOutput = ref('')
+const targetPlaceholder = computed(() => (serverMode.value === 'dns' ? 'example.com' : 'https://example.com（要带协议）'))
+
+function pickServerMode(mode) {
+  serverMode.value = mode
+  serverNote.value = ''
+  serverOutput.value = ''
+}
+
+async function runServer() {
+  const startedAt = performance.now()
+  busy.value = true
+  serverNote.value = ''
+  serverOutput.value = ''
+  const kind = serverMode.value
+  try {
+    // 动态 import：只有真正发起请求时才把 api 层拉进这个页面的 chunk
+    const { default: toolApi } = await import('@/api/ask/toolApi.js')
+    const body = kind === 'ip' ? await toolApi.getNetIp()
+      : kind === 'dns' ? await toolApi.getNetDns(target.value.trim(), dnsType.value)
+        : kind === 'headers' ? await toolApi.getNetHeaders(target.value.trim())
+          : await toolApi.getNetOg(target.value.trim())
+    // 未部署时开发服务器常回整页 HTML，axios 返回的是字符串而不是对象
+    if (!body || typeof body !== 'object') throw new Error('响应不是 JSON')
+    const payload = body.data !== undefined ? body.data : body
+    serverOutput.value = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)
+    usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { kind } })
+  } catch {
+    serverNote.value = `后端未部署或暂不可用：该查询需要服务端代理（/toolApi/net/${kind}），本次请求失败。本页其余功能不依赖后端。`
+    usage.record({ ok: false, errorCode: 'SERVER_UNAVAILABLE', durationMs: Math.round(performance.now() - startedAt), meta: { kind } })
+  } finally {
+    busy.value = false
+  }
+}
 </script>
+
+<style scoped>
+.net-facts { display: grid; gap: calc(var(--space-unit) * 0.5); margin: calc(var(--space-unit) * 1.5) 0 0; }
+.net-fact { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: calc(var(--space-unit) * 1.5); padding: calc(var(--space-unit) * 0.75) 0; border-bottom: 1px solid var(--border); }
+.net-fact dt { color: var(--text-muted); font-size: var(--fs-label); }
+.net-fact dd { margin: 0; overflow-wrap: anywhere; font-size: var(--fs-sm); }
+.net-fact-mono { font-family: var(--font-mono); }
+.net-sub { margin: calc(var(--space-unit) * 2) 0 calc(var(--space-unit) * 1); color: var(--text-secondary); font-size: var(--fs-label); }
+.net-param { display: flex; gap: calc(var(--space-unit) * 1); margin-bottom: calc(var(--space-unit) * 1); }
+.net-param-key { flex: 0 0 30%; }
+.net-param-value { flex: 1 1 auto; min-width: 0; }
+.net-code { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .net-fact { grid-template-columns: 1fr; gap: calc(var(--space-unit) * 0.25); }
+  .net-param { flex-wrap: wrap; }
+  .net-param-key, .net-param-value { flex: 1 1 100%; }
+}
+</style>

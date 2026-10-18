@@ -12,8 +12,8 @@
           <label class="u-field-label">表达式</label>
           <input v-model="expression" class="u-input" placeholder="例如: (1+2)*3" />
         </div>
-        <div v-if="exprResult !== null" class="expr-result">
-          <span class="expr-value">= {{ exprResult }}</span>
+        <div v-if="exprEval" class="expr-result">
+          <span class="expr-value" :class="{ 'expr-value-error': !exprEval.ok }">= {{ exprEval.text }}</span>
         </div>
       </template>
 
@@ -67,19 +67,27 @@ const bmiHeight = ref(170)
 const bmiWeight = ref(65)
 const statsData = ref('')
 
-const exprResult = computed(() => {
-  if (!expression.value.trim()) return null
+// 只放行数字、四则运算、括号、百分号与空白，其余字符一律剔除后再交给 Function，
+// 这样输入里不可能混进标识符或属性访问（eval 类实现最常见的逃逸口）。
+const exprEval = computed(() => {
+  const text = expression.value.trim()
+  if (!text) return null
+  const sanitized = text.replace(/[^0-9+\-*/().%\s]/g, '')
+  if (!sanitized.trim()) return { ok: false, text: '表达式只支持数字与 + - * / ( ) %' }
   try {
-    const sanitized = expression.value.replace(/[^0-9+\-*/().\s]/g, '')
-    if (!sanitized) return null
-    return Function(`"use strict"; return (${sanitized})`)()
-  } catch { return '错误' }
+    const value = Function(`"use strict"; return (${sanitized})`)()
+    if (typeof value !== 'number' || !Number.isFinite(value)) return { ok: false, text: '结果不是有限数值（检查是否除以 0）' }
+    // toPrecision(12) 去掉 0.1+0.2=0.30000000000000004 这类浮点尾巴
+    return { ok: true, text: String(Number(value.toPrecision(12))) }
+  } catch {
+    return { ok: false, text: '表达式语法有误，无法计算' }
+  }
 })
 
 const bmiResult = computed(() => {
   if (!bmiHeight.value || !bmiWeight.value) return null
   const h = bmiHeight.value / 100
-  const v = (bmiWeight.value / (h * h)).toFixed(1)
+  const v = Number((bmiWeight.value / (h * h)).toFixed(1))
   let label = ''
   if (v < 18.5) label = '偏瘦'
   else if (v < 24) label = '正常'
@@ -114,8 +122,10 @@ const statsResult = computed(() => {
 })
 watch([expression, bmiHeight, bmiWeight, statsData], ([expr, h, w, data], [prevExpr, prevH, prevW, prevData]) => {
   const startedAt = performance.now()
-  if (expr !== prevExpr && exprResult.value !== null && exprResult.value !== '错误') reportUsage('expression', startedAt)
-  else if ((h !== prevH || w !== prevW) && bmiResult.value) reportUsage('bmi', startedAt)
+  if (expr !== prevExpr && exprEval.value) {
+    if (exprEval.value.ok) reportUsage('expression', startedAt)
+    else usage.record({ ok: false, errorCode: 'CALC_EXPRESSION_INVALID', durationMs: Math.round(performance.now() - startedAt) })
+  } else if ((h !== prevH || w !== prevW) && bmiResult.value) reportUsage('bmi', startedAt)
   else if (data !== prevData && statsResult.value) reportUsage('stats', startedAt)
 })
 </script>
@@ -123,6 +133,7 @@ watch([expression, bmiHeight, bmiWeight, statsData], ([expr, h, w, data], [prevE
 <style scoped>
 .expr-result { display: flex; justify-content: center; padding: calc(var(--space-unit) * 3); background: var(--bg-surface-2); border-radius: var(--radius-card); }
 .expr-value { font-family: var(--font-mono); font-size: var(--fs-h2); font-weight: var(--fw-heading); color: var(--accent); }
+.expr-value-error { font-size: var(--fs-body); color: var(--danger); }
 .bmi-bar { padding: calc(var(--space-unit) * 2); }
 .bmi-track { position: relative; height: 8px; background: linear-gradient(to right, #3b82f6, #22c55e, #f59e0b, #ef4444); border-radius: 4px; }
 .bmi-marker { position: absolute; top: -4px; width: 16px; height: 16px; background: var(--text-primary); border-radius: 50%; border: 2px solid var(--accent); transform: translateX(-50%); }

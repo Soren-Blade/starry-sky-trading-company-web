@@ -44,10 +44,51 @@ function reportToolUsage(payload) {
     return request.post(`${baseURL}/usage`, payload, { timeout: 5000 })
 }
 
+// ── 网络工具（必须走服务端代理）──────────────────────────────────
+//
+// 这三件事浏览器做不到，所以只能问服务端：
+//   · 公网 IP：浏览器知道自己能上网，但不知道出口 IP；
+//   · DNS：没有浏览器 API，且必须由服务端代查才不受 CORS 限制；
+//   · 目标站响应头 / OG：跨域 HEAD/GET 会被 CORS 拦掉，页面也读不到对方 HTML。
+//
+// 接口正在并行开发、**可能尚未部署**，因此统一给较短超时，并在调用方
+// （NetKit / ShareKit）catch 后降级成「后端未部署」提示 —— 绝不冒泡成页面报错。
+function getNetIp() {
+    return request.get(`${baseURL}/net/ip`, { timeout: 8000 })
+}
+
+/**
+ * @param {string} name 域名
+ * @param {string} [type] 记录类型 A/AAAA/CNAME/MX/NS/TXT
+ */
+function getNetDns(name, type = 'A') {
+    return request.get(`${baseURL}/net/dns`, { params: { name, type }, timeout: 10000 })
+}
+
+/** @param {string} url 目标地址（含协议） */
+function getNetHeaders(url) {
+    return request.get(`${baseURL}/net/headers`, { params: { url }, timeout: 10000 })
+}
+
+/** @param {string} url 目标地址（含协议） */
+function getNetOg(url) {
+    return request.get(`${baseURL}/net/og`, { params: { url }, timeout: 10000 })
+}
+
+/** 短链：失败即代表服务未部署，调用方回退展示原始链接 */
+function createShortLink(url) {
+    return request.post(`${baseURL}/shortlink`, { url }, { timeout: 8000 })
+}
+
 export default {
     getTools,
     getToolClasses,
     getTool,
     getAppleIds,
     reportToolUsage,
+    getNetIp,
+    getNetDns,
+    getNetHeaders,
+    getNetOg,
+    createShortLink,
 }

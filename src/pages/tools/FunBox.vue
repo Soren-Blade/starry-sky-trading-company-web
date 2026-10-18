@@ -1,13 +1,14 @@
 <template>
   <ToolPageShell :title="PAGE.title" :eyebrow="PAGE.eyebrow" :description="PAGE.description" :icon="PAGE.icon" :requires-card="PAGE.requiresCard">
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="gamepad" aria-hidden="true" /><span>趣味工具</span></h2>
-      <div class="u-field"><label class="u-field-label">游戏</label>
+      <h2 class="tool-panel-title"><AppIcon name="gamepad" aria-hidden="true" /><span>娱乐模式</span></h2>
+      <p class="tool-result-note">以下只是本地随机数带来的娱乐结果，不测算任何真实概率或运势，也不连接服务器。</p>
+      <div class="u-field"><label class="u-field-label">玩法</label>
         <SelectField v-model="mode" :options="PAGE.modeOptions" />
       </div>
 
       <template v-if="mode === 'dice'">
-        <div class="u-field"><label class="u-field-label">骰子个数</label><input v-model.number="diceCount" type="number" min="1" max="10" class="u-input" /></div>
+        <div class="u-field"><label class="u-field-label">骰子个数（1-10）</label><input v-model.number="diceCount" type="number" min="1" max="10" class="u-input" /></div>
         <div class="tool-actions">
           <button type="button" class="u-btn-primary" @click="rollDice">投掷</button>
         </div>
@@ -46,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
@@ -55,7 +56,7 @@ import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/fun/box']
 const usage = useToolUsage('/fun/box')
-// 三个小工具共用这一个上报点，用 kind 区分
+// 三种玩法共用一个上报点，用 kind 区分
 function reportUsage(kind, startedAt) {
   usage.record({ durationMs: Math.round(performance.now() - startedAt), meta: { kind } })
 }
@@ -71,23 +72,43 @@ const pickResult = ref('')
 const diceSum = computed(() => diceResult.value.reduce((a, b) => a + b, 0))
 const pickOptions = computed(() => pickList.value.split('\n').map(s => s.trim()).filter(Boolean))
 
-function rand(max) { const arr = new Uint32Array(1); crypto.getRandomValues(arr); return (arr[0] % max) + 1 }
+// 拒绝采样取 [0, max) 的均匀随机整数：直接取模会让小 index 略占优，骰子就不公平了
+function randomBelow(max) {
+  const buffer = new Uint32Array(1)
+  const limit = Math.floor(4294967296 / max) * max
+  let value = 0
+  do {
+    crypto.getRandomValues(buffer)
+    value = buffer[0]
+  } while (value >= limit)
+  return value % max
+}
+
 function rollDice() {
   const startedAt = performance.now()
-  diceResult.value = Array.from({ length: diceCount.value }, () => rand(6))
+  const count = Math.max(1, Math.min(10, Math.floor(diceCount.value) || 1))
+  diceResult.value = Array.from({ length: count }, () => randomBelow(6) + 1)
   reportUsage('dice', startedAt)
 }
+
+// 硬币动画用 setTimeout：卸载时清掉，避免在已销毁组件上写状态
+let flipTimer = null
+onUnmounted(() => {
+  if (flipTimer) clearTimeout(flipTimer)
+  flipTimer = null
+})
 
 function flipCoin() {
   const startedAt = performance.now()
   coinFlipping.value = true
   coinResult.value = ''
-  setTimeout(() => {
-    const isHead = crypto.getRandomValues(new Uint8Array(1))[0] % 2 === 0
+  flipTimer = setTimeout(() => {
+    const isHead = randomBelow(2) === 0
     coinResult.value = isHead ? '正面' : '反面'
     coinStats.value.total++
     if (isHead) coinStats.value.heads++; else coinStats.value.tails++
     coinFlipping.value = false
+    flipTimer = null
     reportUsage('coin', startedAt)
   }, 600)
 }
@@ -95,7 +116,7 @@ function flipCoin() {
 function pickRandom() {
   if (!pickOptions.value.length) return
   const startedAt = performance.now()
-  pickResult.value = pickOptions.value[rand(pickOptions.value.length) - 1]
+  pickResult.value = pickOptions.value[randomBelow(pickOptions.value.length)]
   reportUsage('pick', startedAt)
 }
 </script>
