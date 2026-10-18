@@ -3,7 +3,13 @@
     外层只做两件事：给面板一个定位参照、给浮层留出左右各一个间距单位的探出余量
     （面板比触发器宽，贴着视口边缘时才不会被挤出去）。
   -->
-  <div ref="rootRef" class="datepicker-field" @keydown="handleKeydown" @focusout="handleFocusOut">
+  <div
+    ref="rootRef"
+    class="datepicker-field"
+    :class="{ 'is-open': open }"
+    @keydown="handleKeydown"
+    @focusout="handleFocusOut"
+  >
     <!--
       触发器是真实 button（不是 input + 图标）：它不接收文本，只负责开合；
       真 button 自带 Enter / Space 激活，不必自己模拟键盘。
@@ -850,7 +856,8 @@ watch(
   position: absolute;
   top: calc(100% + var(--dropdown-offset));
   left: 0;
-  z-index: 20;
+  /* 与 .u-select-panel 同一档：高于顶栏（100）与吸顶侧栏，低于模态框（2000） */
+  z-index: var(--z-dropdown);
   /*
    * 上限取**视口**而不是字段：
    *

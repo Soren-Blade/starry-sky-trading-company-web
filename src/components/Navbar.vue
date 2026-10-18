@@ -284,7 +284,7 @@
               卡密管理
             </router-link>
             <!--
-              每日签到归「账号资产」而不是「会员权益」：非会员同样每天签到赚积分，
+              每日签到归「账号资产」而不是会员那一组：非会员同样每天签到赚积分，
               它是个人中心功能（`/user/checkin`），不是会员门槛。
             -->
             <router-link
@@ -305,48 +305,11 @@
             -->
 
             <!--
-              会员与积分单独成组：上面几项是「账号资产」，这组是「会员权益」。
-              用分隔线 + 小组标题分开，否则下拉会变成一条平铺长条。
-              「会员中心」同样**刻意不放**：顶栏皇冠入口已经是它。
+              会员相关的四项（套餐 / 积分 / 成长值 / 优惠券）整组已移除：
+              它们在个人中心与顶栏皇冠入口都能到达，下拉里再列一遍就会把面板撑长、
+              并让真正高频的账号动作沉到折叠线以下。会员中心本身同样不放（顶栏皇冠即入口）。
+              退出登录是唯一的「离开」动作，保留在末尾并用分隔线隔开。
             -->
-            <div class="u-dropdown-divider"></div>
-            <p class="dropdown-group-label">会员权益</p>
-            <router-link
-              role="menuitem"
-              class="u-dropdown-item"
-              to="/member/plans"
-              @click="handleMenuClick"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="credit-card" /></span>
-              会员套餐
-            </router-link>
-            <router-link
-              role="menuitem"
-              class="u-dropdown-item"
-              to="/points"
-              @click="handleMenuClick"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="star" /></span>
-              积分中心
-            </router-link>
-            <router-link
-              role="menuitem"
-              class="u-dropdown-item"
-              to="/member/growth"
-              @click="handleMenuClick"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="arrow-up" /></span>
-              成长值
-            </router-link>
-            <router-link
-              role="menuitem"
-              class="u-dropdown-item"
-              to="/coupons"
-              @click="handleMenuClick"
-            >
-              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="ticket" /></span>
-              我的优惠券
-            </router-link>
             <div class="u-dropdown-divider"></div>
             <button
               type="button"
@@ -396,7 +359,9 @@
  * 组成：品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉。
  *
  * 三个刻意的结构决定：
- *   1. **sticky 而不是 fixed**。规范要求 `position: sticky; top: 0; z-index: 100`；
+ *   1. **sticky 而不是 fixed**。规范要求 `position: sticky; top: 0`，
+ *      层级取 `--z-nav`（20）—— 与下拉同层，靠 DOM 顺序压住页面内容，
+ *      但仍低于吸顶浮层（500）与弹窗（2000）。
  *      切过来之后顶栏参与文档流，主内容不再需要 `padding-top` 占位。
  *   2. **毛玻璃写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
  *      `backdrop-filter` 会让元素成为 fixed 后代的包含块 —— 写在导航栏上时，
@@ -769,7 +734,7 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   /* 规范：z-index 100。低于模态框（2000）与提示框（3000） */
-  z-index: 100;
+  z-index: var(--z-nav);
   transition: box-shadow var(--transition-surface);
 }
 
@@ -1143,10 +1108,10 @@ onUnmounted(() => {
  *  1. 动画：全局 `.u-dropdown` 用的是 `--enter-duration`(0.5s)，那是**页面进入**的节奏；
  *     下拉是就地展开的动作，0.5s 会让人以为界面卡住了。这里收紧到 180ms，
  *     只覆盖本组件、不动共享令牌（改令牌会连带改掉所有页面的进入动画）。
- *  2. 高度：面板有 10 项，短屏（笔记本、手机横屏）会超出视口，而全局 `.u-dropdown`
- *     是 `overflow: hidden` —— 不显式给滚动轴，底部的「退出登录」永远看不到。
- *     `--dropdown-max-height`(280px) 此前无人消费，正好用在这里。
- *  3. 宽度：`--dropdown-width` 只有 200px，带图标后「我的优惠券」会折行，
+ *  2. 高度：桌面端**不再限高**——面板只剩 6 项（游客 7 项），最高约 300px，
+ *     远小于任何可用视口；此前给 280px 上限反而把「退出登录」压进滚动区。
+ *     只在 767px 及以下的窄屏上限制在视口内（见文末媒体查询）。
+ *  3. 宽度：`--dropdown-width` 只有 200px，带图标后条目会折行，
  *     取 224px（28 个间距单位）当下限，长条目不再挤成两行。
  */
 .user-dropdown {
@@ -1154,9 +1119,7 @@ onUnmounted(() => {
   top: calc(100% + var(--space-unit) * 1.5);
   right: 0;
   width: max(var(--dropdown-width), calc(var(--space-unit) * 28));
-  max-height: var(--dropdown-max-height);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   animation: enterUp 180ms var(--enter-ease) both;
 }
 
@@ -1402,9 +1365,13 @@ onUnmounted(() => {
     padding-right: calc(var(--nav-padding-x) * 0.6);
   }
 
-  /* 窄屏下把下拉限制在视口内：顶栏右侧还挂着图标入口，200px 面板会顶出屏幕 */
+  /* 窄屏下把下拉限制在视口内：顶栏右侧还挂着图标入口，200px 面板会顶出屏幕。
+     触屏设备横屏可用高度可能只有 350px 左右，这里才真正需要滚动轴。 */
   .user-dropdown {
     max-width: calc(100vw - var(--space-unit) * 4);
+    max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   /* 触控目标：桌面 36px 的条目在手指下太窄，窄屏放宽到 44px 并允许换行 */

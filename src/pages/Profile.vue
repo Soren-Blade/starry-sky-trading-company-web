@@ -311,6 +311,53 @@
         </form>
       </section>
     </div>
+    <!--
+      操作日志（可导出）：数据来源是服务端 `sstc.tool_usage` 里 `user_id` 等于本人
+      的记录，由 `GET /userLogsApi/` 读取。刻意**只放导出、不放页面内列表**：
+      日志是「需要留证时才翻」的东西，常驻一张几百行的表只会把资料表单推下去。
+      时间窗三档（一个月 / 半年 / 一年）与导出的 CSV 列由服务端决定，
+      前端只负责把 blob 接成下载 —— 口径放在服务端，换接口时不会两边各写一套。
+    -->
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-logs" aria-label="操作日志">
+      <div class="profile-logs-head">
+        <div class="profile-logs-text">
+          <p class="profile-logs-title">操作日志</p>
+          <p class="profile-logs-desc">
+            你在各工具页的操作记录（时间、工具、动作、耗时、结果）。可导出为 CSV，最多近一年、5000 条。
+          </p>
+        </div>
+        <button
+          type="button"
+          class="u-btn-primary"
+          :disabled="downloadingLogs"
+          :aria-busy="downloadingLogs"
+          @click="handleDownloadLogs"
+        >
+          <span v-if="downloadingLogs" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+          <span>{{ downloadingLogs ? '导出中…' : '下载日志' }}</span>
+        </button>
+      </div>
+
+      <!-- 时间范围只影响「导出多少」，不影响页面上的任何数据，因此按 tablist 表达 -->
+      <div class="u-tabs u-tabs--pill profile-logs-tabs" role="tablist" aria-label="导出时间范围">
+        <button
+          v-for="item in LOG_RANGES"
+          :key="item.value"
+          type="button"
+          role="tab"
+          class="u-tab"
+          :class="{ 'u-tab--active': logRange === item.value }"
+          :aria-selected="logRange === item.value"
+          @click="logRange = item.value"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+
+      <p class="page-note profile-logs-note">
+        日志只记录「你用了哪个工具、做了什么、成功与否」，不包含你在输入框里填写的内容；游客身份没有账号历史。
+      </p>
+    </section>
   </div>
 </template>
 
@@ -344,6 +391,8 @@ import { formatPointsValue } from '@/constants/member.js'
 import DatePickerField from '@/components/DatePickerField.vue'
 // 性别用自绘下拉：原生 <select> 的弹出层同理，五套主题都管不到
 import SelectField from '@/components/SelectField.vue'
+// 操作日志导出：时间窗与 CSV 列都由服务端决定，这里只挑范围、接 blob
+import { LOG_RANGES, downloadMyLogs } from '@/api/ask/userLogs'
 
 const userStore = useUserStore()
 const memberStore = useMemberStore()
@@ -574,6 +623,46 @@ const handleSubmit = async () => {
     }
   } finally {
     saving.value = false
+  }
+}
+
+/**
+ * 操作日志导出。
+ *
+ * 三件事决定了这里的写法：
+ *   1. 响应是 blob 而不是 JSON —— axios 的响应拦截器对 blob 会原样返回，
+ *      因此不能按 `result.success` 判断，失败情况由 reject 表达。
+ *   2. 文件名带日期，与「导出这一刻」对应；范围写进文件名，
+ *      用户同一天下两个范围也不会互相覆盖。
+ *   3. `revokeObjectURL` 延后一拍：部分浏览器在 click 之后立刻 revoke，
+ *      下载会拿到空文件。
+ */
+const logRange = ref('30d')
+const downloadingLogs = ref(false)
+
+const handleDownloadLogs = async () => {
+  if (downloadingLogs.value) return
+  downloadingLogs.value = true
+  try {
+    const blob = await downloadMyLogs({ range: logRange.value })
+    if (!(blob instanceof Blob)) {
+      throw new Error('导出失败，请稍后重试')
+    }
+
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `tool-usage-${logRange.value}-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+    notify.success('日志已开始下载')
+  } catch (error) {
+    notify.error(error?.message || '导出失败，请稍后重试')
+  } finally {
+    downloadingLogs.value = false
   }
 }
 
@@ -913,6 +1002,47 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* ── 操作日志导出（1.7.0，`GET /userLogsApi/`） ─────────────────
+   刻意不做成表格：日志是「需要留证时才翻」的东西，常驻列表会把资料表单推下去。
+   版面 = 标题 + 一句话说明 + 右侧下载按钮，下面一行时间范围 tab。 */
+.ui-card.profile-logs {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+}
+.profile-logs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+}
+.profile-logs-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
+}
+.profile-logs-title {
+  margin: 0;
+  font-weight: var(--fw-heading);
+}
+.profile-logs-desc,
+.profile-logs-note {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+/* 胶囊 tab 自带上下内边距，这里压到 40px 行高 —— 与工具页模式页签一致，
+   默认高度放在这张卡里显得比「下载日志」按钮重。 */
+.profile-logs-tabs {
+  margin: 0;
+}
+.profile-logs-tabs .u-tab {
+  height: 32px;
+  padding: 0 calc(var(--space-unit) * 1.75);
+  font-size: var(--fs-label);
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
   .profile-layout {
@@ -959,6 +1089,16 @@ onMounted(() => {
   .ui-card.profile-invite {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* 操作日志：窄屏把「说明 + 按钮」压成竖排，避免按钮被文字挤成一小块 */
+  .profile-logs-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .profile-logs-head .u-btn-primary {
+    align-self: flex-start;
   }
 }
 </style>

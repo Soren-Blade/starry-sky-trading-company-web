@@ -359,6 +359,18 @@ img {
   color: var(--placeholder);
 }
 
+/* 多行输入框：不跟单行框一起变胶囊。
+ *
+ * 液态玻璃的 --radius-input 是 9999px —— 40px 高的单行框正好是胶囊（规范如此），
+ * 但 `<textarea>` 通常 100–200px 高，同一个 9999px 会让左右两端变成半圆「跑道」，
+ * 输入区的第一行会贴着弧线走。这里换成 --radius-input-tall（该套取值 20px），
+ * 另外四套的加高值与该套单行值相同，观感不变。
+ * 可换行的只读值（.u-field-value）同理：它可能是单行也可能是多行。 */
+textarea.u-input,
+.u-field-value {
+  border-radius: var(--radius-input-tall);
+}
+
 /* 聚焦态：五套风格的做法各不相同（外发光 / 加模糊 / 换边框 / 硬阴影 / outline），
  * 因此不许在这里写死 box-shadow —— 全部由令牌决定 */
 .u-input:focus {
@@ -677,7 +689,7 @@ button.u-tag:hover:not(.u-tag--accent) {
   position: fixed;
   top: var(--toast-offset);
   right: var(--toast-offset);
-  z-index: 3000;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--toast-gap);
@@ -751,7 +763,7 @@ button.u-tag:hover:not(.u-tag--accent) {
 .u-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-modal);
   display: flex;
   padding: var(--container-padding);
   overflow-y: auto;

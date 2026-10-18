@@ -4,7 +4,13 @@
     承接调用方透传的 class / style（id 除外，理由见 rootAttrs）。
     面板与触发器都是它的直接子节点，因此不需要再套一层壳。
   -->
-  <div ref="rootRef" class="u-select" v-bind="rootAttrs()" @keydown="handleKeydown">
+  <div
+    ref="rootRef"
+    class="u-select"
+    :class="{ 'is-open': open }"
+    v-bind="rootAttrs()"
+    @keydown="handleKeydown"
+  >
     <!--
       触发器是真实 <button>：它不接收文本，只负责开合，因此 Enter / Space 的
       「激活」语义由浏览器原生给出，不必自己模拟键盘。
@@ -39,7 +45,7 @@
       面板用 v-if 而不是 v-show：关闭时选项必须真的离开无障碍树与 Tab 序列
       （长列表留着的话，要按几十次 Tab 才能走出这个字段）。
     -->
-    <div v-if="open" ref="panelRef" class="u-select-panel">
+    <div v-if="open" ref="panelRef" class="u-select-panel" :class="{ 'u-select-panel--up': dropUp }">
       <!-- 搜索框复用 .u-input（尺寸令牌已在基础层落地），.u-select-search 只负责留白 -->
       <div v-if="searchable" class="u-select-search">
         <input
@@ -193,7 +199,7 @@ export function isSameSelectValue(a, b) {
 </script>
 
 <script setup>
-import { computed, nextTick, ref, useAttrs, useId, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useAttrs, useId, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { useClickOutside } from '@/hooks/useClickOutside/index.js'
 
@@ -246,6 +252,15 @@ const rootAttrs = () => {
 
 const open = ref(false)
 const keyword = ref('')
+/**
+ * 面板是否向上展开。
+ *
+ * 触发器靠近视口底部时，向下展开的面板会被视口裁掉（工具页的表单常排在
+ * 页面下半段），表现就是「下拉列表被遮挡」。方向由 openPanel 按实时矩形决定，
+ * 窗口滚动 / 缩放时重算 —— 面板本身仍是 `.u-select` 的绝对定位子元素，
+ * 不做 teleport（父级 overflow 与层叠上下文都已在样式里处理）。
+ */
+const dropUp = ref(false)
 const rootRef = ref(null)
 const triggerRef = ref(null)
 const panelRef = ref(null)
@@ -396,12 +411,41 @@ const scrollSelectedIntoView = () => {
   if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'nearest' })
 }
 
+/**
+ * 面板该往上开还是往下开。
+ *
+ * 默认向下展开，但触发器靠近视口底部时（工具页的表单常排在页面下半段，
+ * 页面底部还压着页脚），向下展开的面板会被视口裁掉一半，看起来就是
+ * 「下拉列表被遮挡」。这里按可用空间决定方向：
+ *   · 下方空间 ≥ 面板高度 → 向下；
+ *   · 否则上方空间更大 → 向上；
+ *   · 两边都放不下 → 向上（至少首选项在视口内，且面板自己能滚）。
+ * 空间按 trigger 的矩形算，不依赖任何布局假设，窗口缩放后才需要重算。
+ */
+const updateDropDirection = () => {
+  if (!open.value) return
+  const trigger = triggerRef.value
+  const panel = panelRef.value
+  if (!trigger?.getBoundingClientRect || !panel?.getBoundingClientRect) return
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const panelRect = panel.getBoundingClientRect()
+  const viewportHeight = globalThis.innerHeight || 0
+  if (!viewportHeight) return
+
+  const spaceBelow = viewportHeight - triggerRect.bottom
+  const spaceAbove = triggerRect.top
+  dropUp.value = spaceBelow < panelRect.height && spaceAbove > spaceBelow
+}
+
 const openPanel = () => {
   if (props.disabled) return
   open.value = true
   // 每次打开都从完整列表开始：上次的过滤词留着，会让人以为「选项变少了」
   keyword.value = ''
   nextTick(() => {
+    // 先定方向再聚焦：方向会改变面板位置，聚焦引起的滚动会跟着跳
+    updateDropDirection()
     // 搜索型下拉：焦点进搜索框，打开即可输入
     if (props.searchable) searchRef.value?.focus?.()
     scrollSelectedIntoView()
@@ -503,6 +547,27 @@ watch(
     if (isDisabled) closePanel()
   }
 )
+
+/*
+ * 面板打开期间跟随滚动 / 缩放重算展开方向。
+ *
+ * 捕获阶段监听：面板可能出现在任意可滚动容器（工具页的主区、会员页的
+ * 长表单）里，只在 window 上监听会漏掉容器内部的滚动。滚动事件频繁，
+ * 但这里只读两个矩形，不做 DOM 写入以外的重排触发，代价可以忽略。
+ */
+const handleViewportChange = () => {
+  updateDropDirection()
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleViewportChange, { passive: true, capture: true })
+  window.addEventListener('resize', handleViewportChange, { passive: true })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleViewportChange, { capture: true })
+  window.removeEventListener('resize', handleViewportChange)
+})
 </script>
 
 <style scoped>

@@ -40,13 +40,21 @@
   min-width: 0;
 }
 
-/* 返回工具页：RouterLink 不是 button，.u-btn-* 不给排版属性，这里补齐 */
+/* 返回工具页：RouterLink 不是 button，.u-btn-* 不给排版属性，这里补齐。
+   它是页头与工具区之间的独立一行，必须自己带下边距 —— 上层不是 flex 容器，
+   面板不会替它留出间隙（此前两者贴在一起，看起来像「按钮塞进了面板里」）。 */
 .tool-shell-back {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space-unit) * 0.75);
   align-self: flex-start;
+  margin-bottom: calc(var(--space-unit) * 2);
   text-decoration: none;
+}
+
+/* 侧栏下方的返回入口（长页里滚动到末尾时用）不需要额外下边距 */
+.tool-shell-back + .tool-shell-back {
+  margin-bottom: 0;
 }
 
 /* 页头标题里的小图标：`.page-shell-title` 是块级，这里用 inline-flex 跟文字同基线。
@@ -106,6 +114,9 @@
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: var(--leading-body);
+  /* 加高控件用圆角而不是胶囊：液态玻璃的单行输入框是 9999px，套到 176px 高的
+     文本域上会变成两端半圆，首行文字贴着弧线。取值见 variables.css 的加高档令牌。 */
+  border-radius: var(--radius-input-tall);
   resize: vertical;
 }
 
@@ -419,20 +430,20 @@
   display: flex;
   flex-wrap: wrap;
   border-bottom: var(--stroke-width) solid var(--border);
-  margin-bottom: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 2);
 }
 
 .tool-mode-tab {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space-unit) * 0.75);
-  height: 40px;
+  height: var(--btn-height);
   padding: 0 calc(var(--space-unit) * 2.25);
   border: 0;
   background: transparent;
   color: var(--text-secondary);
   font-family: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   cursor: pointer;
   transition: var(--transition-interactive);
 }
@@ -460,15 +471,15 @@
 .tool-file-list {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit));
+  gap: calc(var(--space-unit) * 1.25);
 }
 
 .tool-file-card {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
-  border: 1px solid var(--border);
+  gap: calc(var(--space-unit) * 1.25);
+  padding: calc(var(--space-unit) * 1.25);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-input);
   background: var(--bg-surface-2);
 }
@@ -507,7 +518,7 @@
   flex: none;
   width: var(--icon-btn-size);
   height: var(--icon-btn-size);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-input);
   background: transparent;
   color: var(--text-muted);
@@ -524,7 +535,7 @@
 .tool-diff {
   max-height: 360px;
   overflow: auto;
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-input);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
@@ -568,9 +579,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.25);
+  gap: var(--space-unit);
   padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.5);
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-input);
   background: var(--bg-surface-2);
   font-size: var(--fs-sm);
@@ -586,8 +597,8 @@
 /* ── §12 计算器（多输入 + 大结果） ────────────────────────────── */
 .tool-calc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: var(--grid-gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: calc(var(--space-unit) * 1.5);
 }
 
 .tool-calc-value {
@@ -617,7 +628,7 @@
   justify-content: center;
   min-height: 200px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   background: var(--bg-surface-2);
 }
@@ -628,15 +639,25 @@
 }
 
 /* ── §14 代码视图（带语言条的高亮块） ────────────────────────── */
+/* 圆角与边框由外层 `.tool-code` 统一承担，语言条只画一条下边框 ——
+   若三段各自带圆角，液态玻璃（--radius-input: 9999px）会把代码块
+   上下压成两个胶囊头。参照 `ui-showcase/components/tools.html` 的代码视图。 */
+.tool-code {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
 .tool-code-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.5);
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius-input) var(--radius-input) 0 0;
+  gap: var(--space-unit);
+  padding: var(--space-unit) calc(var(--space-unit) * 1.75);
+  border-bottom: var(--stroke-width) solid var(--border);
   background: var(--bg-elevated);
   color: var(--text-muted);
   font-size: var(--fs-label);
@@ -645,17 +666,17 @@
 .tool-code-lang {
   font-family: var(--font-mono);
   letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  text-transform: var(--label-transform);
 }
 
 .tool-preview-code {
   max-height: 420px;
   margin: 0;
-  padding: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.75);
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: 0 0 var(--radius-input) var(--radius-input);
-  background: var(--bg-surface);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: 1.6;
@@ -670,3 +691,4 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+

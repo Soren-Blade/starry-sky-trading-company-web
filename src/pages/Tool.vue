@@ -384,7 +384,10 @@ watch(
 
 .workspace-body {
   display: grid;
-  grid-template-columns: var(--dropdown-width) minmax(0, 1fr);
+  /* 左轨比 --dropdown-width(200px) 宽一档：分类名是「转换工具 / 网络工具」这种四字词，
+   * 200px 减去两侧内边距只剩 160px，图标 + 名称 + 计数挤在一行里必须各自压缩，
+   * 于是文字被截断、计数贴到边缘。240px 是「四字名 + 两位数计数」刚好不挤的宽度。 */
+  grid-template-columns: calc(var(--space-unit) * 30) minmax(0, 1fr);
   align-items: start;
   gap: var(--section-gap);
 }
@@ -412,6 +415,13 @@ watch(
   gap: calc(var(--space-unit) * 1.5);
 }
 
+/* 两组之间用一条分隔线隔开：「使用方式」是筛选开关，「分类」是导航列表，
+ * 之前两组只靠间距区分，视觉上连成一条 9 行的长列表，看不出是两类东西。 */
+.rail-group + .rail-group {
+  padding-top: calc(var(--space-unit) * 2.5);
+  border-top: var(--stroke-width) solid var(--border);
+}
+
 .rail-label {
   margin: 0;
   font-family: var(--font-mono);
@@ -425,25 +435,35 @@ watch(
 .rail-list {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
   /* 分类多到超出视口时轨内自滚，吸顶面板不会被拉出屏幕。
    *
    * 上限按**条目高度**而不是 var(--space-unit) * n 表达：后者会随主题密度漂移
    * （「技术单色」的 --space-unit 是 4px，同样的 40 个单位只有 160px，
    * 6 个分类就会滚起来、少显示两个）。这与本文件开头「控件内部节奏一律取
    * 组件尺寸令牌」的约定也一致。 */
-  max-height: calc(var(--dropdown-item-height) * 8);
+  max-height: calc(var(--dropdown-item-height) * 10);
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* 竖排分类项：做法参照 .u-dropdown-item--active（左侧强调竖条 + 柔和强调底），
-   但这里是导航列表而不是下拉菜单，因此按令牌自己写，不套 .u-dropdown-item */
+   但这里是导航列表而不是下拉菜单，因此按令牌自己写，不套 .u-dropdown-item。
+ *
+ * 两个必须显式写的属性：
+ *   · `flex: 0 0 auto` —— 列表是限高的 column flex 容器，条目默认 `flex-shrink: 1`，
+ *     一旦条目总高超过 max-height，浏览器会把**每一行都压扁**来塞进容器：
+ *     36px 的条目被压到 20px，文字贴着文字。这是「分类列表太拥挤」的真正原因，
+ *     不是行高给得小。
+ *   · `min-height` 而不是 `height` —— 触屏上放大的字号要让行自己长高，不能裁掉。 */
 .rail-item {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: calc(var(--space-unit) * 1.25);
   width: 100%;
-  height: var(--dropdown-item-height);
+  min-height: calc(var(--space-unit) * 5);
   padding: 0 calc(var(--space-unit) * 1.5);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
@@ -458,10 +478,11 @@ watch(
 .rail-item::before {
   content: '';
   position: absolute;
-  top: calc(50% - var(--dropdown-item-height) / 2);
+  top: calc(50% - var(--space-unit) * 1.5);
   left: 0;
   width: var(--dropdown-active-bar);
-  height: var(--dropdown-item-height);
+  height: calc(var(--space-unit) * 3);
+  border-radius: var(--radius-pill);
   background: transparent;
 }
 
@@ -480,9 +501,20 @@ watch(
 }
 
 .rail-icon {
-  flex-shrink: 0;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 2.5);
   font-size: var(--input-icon-size);
   line-height: 1;
+  color: var(--text-muted);
+  transition: color var(--transition-interactive);
+}
+
+.rail-item:hover .rail-icon,
+.rail-item--active .rail-icon {
+  color: var(--accent);
 }
 
 .rail-name {
@@ -495,16 +527,26 @@ watch(
 
 /* 每项右侧的工具数：等宽数字，避免个位数/两位数切换时标签左右抖 */
 .rail-count {
-  flex-shrink: 0;
+  flex: none;
+  min-width: calc(var(--space-unit) * 2.25);
+  padding: 0 var(--space-unit);
   font-family: var(--font-mono);
   font-size: var(--tag-font-size);
   font-variant-numeric: tabular-nums;
+  line-height: 1.6;
+  text-align: center;
   color: var(--text-muted);
+  background: var(--bg-soft);
+  border-radius: var(--radius-pill);
+  transition:
+    background-color var(--transition-interactive),
+    color var(--transition-interactive);
 }
 
 /* 选中项的计数跟着标签一起提亮（--text-muted 在强调底上对比度不足） */
 .rail-item--active .rail-count {
   color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* 已收藏开关：形态来自 .u-btn-secondary，选中态（aria-pressed）换成强调底 */
@@ -690,7 +732,9 @@ watch(
   }
 
   .rail-item {
-    height: calc(var(--dropdown-item-height) * var(--mobile-control-scale));
+    /* min-height 而不是 height：桌面的固定行高在触屏上会让 44px 的触控目标
+       反而被字号撑破；这里只给下限，条目自己按内容长高。 */
+    min-height: calc(var(--dropdown-item-height) * var(--mobile-control-scale) * 1.2);
     padding: 0 calc(var(--space-unit) * 1.25 * var(--mobile-padding-scale));
   }
 

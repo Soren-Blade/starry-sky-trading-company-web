@@ -263,7 +263,7 @@ onUnmounted(() => {
   position: fixed;
   right: calc(var(--space-unit) * 3);
   bottom: calc(var(--space-unit) * 3);
-  z-index: 900;
+  z-index: var(--z-sticky);
   animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
@@ -281,7 +281,7 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 950;
+  z-index: var(--z-sticky);
   height: var(--progress-height);
   overflow: hidden;
   background: var(--progress-track);
@@ -313,7 +313,7 @@ onUnmounted(() => {
 .boot-screen {
   position: fixed;
   inset: 0;
-  z-index: 2500;
+  z-index: var(--z-boot);
   display: flex;
   align-items: center;
   justify-content: center;

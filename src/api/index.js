@@ -6,6 +6,7 @@ import kami from './ask/kami'
 import cart from './ask/cart'
 import order from './ask/order'
 import favorite from './ask/favorite'
+import userLogs from './ask/userLogs'
 
 /**
  * 接口门面
@@ -24,4 +25,5 @@ export default {
     ...cart,
     ...order,
     ...favorite,
+    ...userLogs,
 }

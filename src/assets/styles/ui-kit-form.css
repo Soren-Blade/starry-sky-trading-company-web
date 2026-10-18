@@ -176,7 +176,10 @@
   position: absolute;
   top: calc(100% + var(--dropdown-offset));
   left: 0;
-  z-index: 20;
+  /* 层级取 --z-dropdown，与顶栏同层（20）—— 两者都靠 DOM 顺序决定先后，
+   * 面板在页面内容里出现得更晚，所以滚动到顶栏下方时仍然看得见。
+   * 浮层不要压过导航：一旦超过它，滚到顶部时面板会长出半截悬在顶栏之上。 */
+  z-index: var(--z-dropdown);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -191,6 +194,29 @@
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--dropdown-radius);
   box-shadow: var(--shadow-float);
+}
+
+/* 向上展开：触发器在视口下半段时，向下开的面板会被视口裁掉一半。
+ * 方向由 SelectField 按实时矩形决定（见 updateDropDirection）。 */
+.u-select-panel--up {
+  top: auto;
+  bottom: calc(100% + var(--dropdown-offset));
+}
+
+/* 面板被「后面那张卡片」整块盖住的问题（液态玻璃必现）。
+ *
+ * 玻璃主题的输入框、卡片都带 backdrop-filter，而「backdrop-filter 不是 none」
+ * 本身会创建层叠上下文 —— 面板再高也只能在卡片内部比较层级，页面上排在
+ * DOM 更靠后的结果卡片照样盖上来。所以卡片内部有展开中的浮层时，把
+ * **控件与卡片一起**抬到 --z-dropdown 层；卡片不抬，面板出不去的。
+ * （`:has` 在项目支持的浏览器里均可用；不支持时只是回到抬控件这一层，
+ *  与改动前的表现一致，不会更差。） */
+.u-select.is-open,
+.datepicker-field.is-open,
+.ui-card:has(.u-select.is-open),
+.ui-card:has(.datepicker-field.is-open) {
+  position: relative;
+  z-index: var(--z-dropdown);
 }
 
 /* 选项列表：唯一的高度受限 + 可滚动区域 */

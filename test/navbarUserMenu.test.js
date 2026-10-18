@@ -11,11 +11,12 @@ import { ICONS } from '../src/utils/iconSet.js'
  * 头像下拉菜单本身（`Navbar.vue` 里的 `.u-dropdown.user-dropdown`）
  *
  * 这一组断言钉的是三件**容易在后续改动里被悄悄破坏**的事：
- *   1. 去重：下拉里不得再出现顶栏已有的入口（会员中心 / 消息中心）。
+ *   1. 去重：下拉里不得再出现顶栏已有的入口（会员中心 / 消息中心），
+ *      会员权益整组（会员套餐 / 积分中心 / 成长值 / 优惠券）也已经下线。
  *      这是本次优化的硬约束 —— 同一个目标两个入口，用户会开始怀疑哪个才是「真的」。
  *   2. 可达性：`aria-haspopup` / `role="menu"` / `menuitem` / ↑↓ 与 Esc 必须成对存在。
  *      只加 `role="menu"` 而不处理键盘，比不加更容易误导读屏用户。
- *   3. 视觉契约：可滚动、宽度下限、触控高度、180ms 展开动画。
+ *   3. 视觉契约：桌面端不限高（只剩 6 项）、宽度下限、窄屏触控高度、180ms 展开动画。
  *
  * 面板默认收起（`v-if`），渲染结果里只有触发器 —— 结构断言因此读源码，
  * 渲染断言的只是触发器身上那三个属性。这与 `renderIdentity.test.js` 的结论一致。
@@ -80,7 +81,7 @@ test('默认收起：渲染结果里只有触发器，面板不进 DOM（也就�
   assert.equal(html.includes('id="user-menu"'), false, '收起时不该渲染面板')
 })
 
-test('不与顶栏重复：下拉里没有「会员中心」与「消息中心」', () => {
+test('去重：会员与消息的入口只在顶栏，下拉里连会员子页也不出现', () => {
   // 顶栏那两处入口是唯一的（会员中心=皇冠，消息中心=信封）
   assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-member"/)
   assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail"/)
@@ -88,17 +89,17 @@ test('不与顶栏重复：下拉里没有「会员中心」与「消息中心�
   assert.doesNotMatch(DROPDOWN, /to="\/member"/, '会员中心的唯一入口是顶栏皇冠')
   assert.doesNotMatch(DROPDOWN, /to="\/mail"/, '消息中心的唯一入口是顶栏信封')
 
-  // /member 的子页顶栏没有入口，去重时不能连它们一起删掉
-  assert.match(DROPDOWN, /to="\/member\/plans"/)
-  assert.match(DROPDOWN, /to="\/member\/growth"/)
+  // 「会员权益」整组已下线：会员子页 / 积分 / 优惠券都不再出现在下拉里
+  assert.doesNotMatch(DROPDOWN, /会员权益/, '会员权益组应已移除')
+  ;['/member/plans', '/member/growth', '/points', '/coupons'].forEach((path) => {
+    assert.doesNotMatch(DROPDOWN, new RegExp(`to="${path}"`), `${path} 不该再出现在下拉里`)
+  })
 })
 
-test('分组与排序：先「账号资产」（个人中心→我的订单→我的收藏→卡密管理→每日签到），再「会员权益」', () => {
+test('分组与排序：只保留「账号资产」一组，退出登录独立收尾', () => {
   const accountLabelAt = DROPDOWN.indexOf('>账号资产<')
-  const memberLabelAt = DROPDOWN.indexOf('>会员权益<')
   assert.ok(accountLabelAt > -1, '缺少「账号资产」组标题')
-  assert.ok(memberLabelAt > -1, '缺少「会员权益」组标题')
-  assert.ok(accountLabelAt < memberLabelAt, '组标题顺序反了')
+  assert.equal(DROPDOWN.indexOf('>会员权益<'), -1, '会员权益组标题必须已移除')
 
   const paths = ['/user/profile', '/user/orders', '/user/favorites', '/user/kami', '/user/checkin']
   const positions = paths.map((path) => DROPDOWN.indexOf(`to="${path}"`))
@@ -109,7 +110,14 @@ test('分组与排序：先「账号资产」（个人中心→我的订单→�
   })
 
   assert.ok(positions[0] > accountLabelAt, '组标题必须在自己的条目之前')
-  assert.ok(memberLabelAt > positions[positions.length - 1], '会员组必须排在账号组之后')
+
+  // 退出登录排在所有跳转条目之后，且前面有分隔线（它不属于「账号资产」）
+  const logoutAt = DROPDOWN.indexOf('class="u-dropdown-item logout"')
+  assert.ok(logoutAt > positions[positions.length - 1], '退出登录必须排在最后')
+  assert.ok(
+    DROPDOWN.lastIndexOf('u-dropdown-divider', logoutAt) > positions[positions.length - 1],
+    '退出登录前必须有分隔线'
+  )
 })
 
 test('图标：每个条目的图标位数量一致、全部 aria-hidden、图标名都在图标集里', () => {
@@ -145,18 +153,20 @@ test('键盘：↑/↓ 循环、Home/End 到首尾、Esc 关闭并把焦点还�
   assert.match(NAVBAR_SOURCE, /querySelectorAll\('\.u-dropdown-item:not\(:disabled\)'\)/)
 })
 
-test('尺寸与动效：面板可滚动、宽度下限消费共享令牌、展开动画收紧到 180ms', () => {
+test('尺寸与动效：桌面端不限高、宽度下限消费共享令牌、展开动画收紧到 180ms', () => {
   const at = NAVBAR_SOURCE.indexOf('.user-dropdown {')
   assert.ok(at > -1, '找不到 .user-dropdown 规则')
   const block = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('}', at))
 
-  assert.match(block, /max-height: var\(--dropdown-max-height\)/, '短视口底部条目会看不到')
-  assert.match(block, /overflow-y: auto/)
+  // 桌面端面板只剩 6 项，任何视口都放得下：加高度上限只会把「退出登录」压进滚动区
+  assert.doesNotMatch(block, /max-height/, '桌面端不该限制面板高度')
+  assert.doesNotMatch(block, /overflow-y: auto/, '桌面端不该出现滚动轴')
+  assert.match(block, /overflow: visible/)
   assert.match(block, /width: max\(var\(--dropdown-width\)/, '200px 宽度放不下带图标的长条目')
   assert.match(block, /animation: enterUp 180ms var\(--enter-ease\)/, '展开动画必须落在 150–200ms')
 })
 
-test('窄屏触控：767 断点下不溢出视口、条目高度 ≥44px', () => {
+test('窄屏触控：767 断点下不溢出视口、条目高度 ≥44px、放不下时才滚动', () => {
   const mobileAt = NAVBAR_SOURCE.indexOf('@media (max-width: 767px)')
   assert.ok(mobileAt > -1, '找不到 767 断点')
   const block = NAVBAR_SOURCE.slice(
@@ -165,6 +175,8 @@ test('窄屏触控：767 断点下不溢出视口、条目高度 ≥44px', () =>
   )
 
   assert.match(block, /\.user-dropdown \{[\s\S]*?max-width: calc\(100vw - var\(--space-unit\) \* 4\)/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(100vh/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?overflow-y: auto/)
   assert.match(block, /\.user-dropdown \.u-dropdown-item \{[\s\S]*?min-height: 44px/)
 })
 

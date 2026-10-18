@@ -202,7 +202,7 @@
 .u-drawer-scrim {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-modal);
   background-color: var(--drawer-scrim);
   backdrop-filter: var(--drawer-scrim-backdrop);
   -webkit-backdrop-filter: var(--drawer-scrim-backdrop);
@@ -218,7 +218,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 2001;
+  z-index: calc(var(--z-modal) + 1);
   display: flex;
   flex-direction: column;
   width: var(--drawer-width);

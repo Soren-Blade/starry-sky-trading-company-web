@@ -87,10 +87,16 @@ test('启动期间遮罩挂在应用壳**外面**：否则 inert 会把遮罩自
   )
 })
 
-test('遮罩 z-index 压在 toast 之下：启动期间的告警必须看得见', () => {
-  // toast 是 3000（global.css 的 .toast-host），遮罩取 2500
-  assert.match(APP_SOURCE, /\.boot-screen \{[\s\S]*?z-index: 2500;/, '遮罩应为 2500')
-  assert.match(APP_SOURCE, /\.route-progress \{[\s\S]*?z-index: 950;/, '进度条应为 950')
+test('遮罩压在 toast 之下：启动期间的告警必须看得见', () => {
+  // 层级统一走 variables.css 的 --z-* 令牌：遮罩 --z-boot(2500) < toast --z-toast(3000)
+  assert.match(APP_SOURCE, /\.boot-screen \{[\s\S]*?z-index: var\(--z-boot\);/, '遮罩应取 --z-boot')
+  assert.match(APP_SOURCE, /\.route-progress \{[\s\S]*?z-index: var\(--z-sticky\);/, '进度条应取 --z-sticky')
+
+  const vars = readFileSync(join(WEB_ROOT, 'src', 'assets', 'styles', 'variables.css'), 'utf8')
+  const valueOf = (name) => Number((vars.match(new RegExp(`${name}:\\s*(\\d+);`)) || [])[1])
+  assert.ok(valueOf('--z-boot') < valueOf('--z-toast'), '--z-boot 必须小于 --z-toast')
+  assert.ok(valueOf('--z-nav') < valueOf('--z-modal'), '导航必须低于弹窗')
+  assert.equal(valueOf('--z-dropdown'), valueOf('--z-nav'), '下拉与导航同层（由 DOM 顺序决定先后）')
 })
 
 test('尊重减少动态效果：进度条与遮罩都有降级', () => {

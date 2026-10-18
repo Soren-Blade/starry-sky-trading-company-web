@@ -267,17 +267,22 @@ test('路由：/support 游客可进（无 requiresAuth），/mail 仍要登录'
 
 // ── 源码断言：文本域的高度与圆角（textarea 吃掉单行框令牌会变胶囊） ──
 
-test('源码：两处文本域都用 .support-textarea，且高度固定、圆角固定', () => {
+test('源码：两处文本域都用 .support-textarea，且高度固定、圆角用「大输入框」档', () => {
   // --radius-input 是「单行输入框」的令牌，五套主题各一档（液态玻璃下是
   // 9999px 全胶囊）。单行框用胶囊很好看，但文本域高度一大，四角就变成夸张的
-  // 尖胶囊 —— 高度越大越明显。所以文本域自己锁定卡片档圆角，并把高度固定住。
+  // 尖胶囊 —— 高度越大越明显。
+  //
+  // 1.7.0 之前这里锁的是 --radius-card（等于把「文本域不是输入框」写死在页面上，
+  // 别的页面各自再抄一遍）；现在统一成 --radius-input-tall：液态玻璃下 20px、
+  // 其余主题仍取单行档，文本域只在「高度大 + 圆角随高度变形」这一件事上和单行框分道。
   const at = SUPPORT_SOURCE.indexOf('.support-textarea {')
   assert.ok(at > -1, '应有 .support-textarea 规则')
   const body = SUPPORT_SOURCE.slice(at, SUPPORT_SOURCE.indexOf('}', at))
 
   assert.equal(/height:\s*auto/.test(body), false, '不能是 height:auto（高度随内容涨，圆角跟着变形）')
   assert.match(body, /height: calc\(var\(--space-unit\) \* 18\)/)
-  assert.match(body, /border-radius: var\(--radius-card\)/)
+  assert.match(body, /border-radius: var\(--radius-input-tall\)/)
+  assert.equal(/border-radius: var\(--radius-card\)/.test(body), false, '不要再退回卡片圆角')
   assert.equal(/border-radius: var\(--radius-input\)/.test(body), false)
   assert.match(body, /resize: vertical/, '仍是「可竖直拖拽」的普通文本域')
 

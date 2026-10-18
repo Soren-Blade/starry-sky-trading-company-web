@@ -64,6 +64,9 @@ export default defineConfig(({ mode }) => {
         // `/uploads/avatars/xxx.webp` 这样的相对路径，不代理的话 dev 下
         // 会打到 dev server 自己（404），表现为「上传成功但头像不显示」。
         '/uploads': { target: apiTarget, changeOrigin: true },
+        // v1.7.0 新增：个人操作日志导出（读 `sstc.tool_usage` 里本人的记录）。
+        // 它刻意与 `/userApi` 分前缀（守卫不同：只认注册账号），因此这里必须单列。
+        '/userLogsApi': { target: apiTarget, changeOrigin: true },
         '/userBackend': { target: apiTarget, changeOrigin: true },
         '/health': { target: apiTarget, changeOrigin: true },
       },
