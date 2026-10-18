@@ -69,6 +69,7 @@
 </template>
 
 <script setup>
+import { formatBytes, formatDuration } from '@/utils/format.js'
 import { onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
@@ -100,21 +101,6 @@ const meta = ref(null)
 const thumbUrl = ref('')
 const objectUrl = ref('')
 const errorMessage = ref('')
-
-function formatBytes(bytes) {
-  if (!bytes) return '0 B'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-}
-
-function formatDuration(seconds) {
-  if (!Number.isFinite(seconds) || seconds <= 0) return '未知'
-  const total = Math.round(seconds)
-  const minute = Math.floor(total / 60)
-  const second = total % 60
-  return `${minute}:${String(second).padStart(2, '0')}`
-}
 
 function guessContainer(name) {
   const extension = (name.split('.').pop() || '').toLowerCase()

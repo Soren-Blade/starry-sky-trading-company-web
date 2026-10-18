@@ -79,6 +79,7 @@
 </template>
 
 <script setup>
+import { formatBytes, sizeDeltaLabel } from '@/utils/format.js'
 import { computed, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
@@ -121,19 +122,8 @@ const state = ref('empty')
 const result = ref(null)
 const errorMessage = ref('')
 
-function formatBytes(bytes) {
-  if (!bytes) return '0 B'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
-}
-
 // 体积变化按真实编码结果算：正数表示变小，负数表示反而变大（此时页面会提示换格式或先缩尺寸）。
-const relativePercent = computed(() => {
-  if (!result.value || !fileSize.value) return '—'
-  const delta = (1 - result.value.outputBytes / fileSize.value) * 100
-  return delta >= 0 ? `-${delta.toFixed(1)}%` : `+${Math.abs(delta).toFixed(1)}%`
-})
+const relativePercent = computed(() => (result.value ? sizeDeltaLabel(fileSize.value, result.value.outputBytes) : '—'))
 
 function releasePreview() {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
