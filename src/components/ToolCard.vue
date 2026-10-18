@@ -27,7 +27,7 @@
           <!-- 实心/空心表达选中状态；颜色走 currentColor，仍是单色并随主题变化 -->
           <AppIcon name="heart" :filled="isFavorited" />
         </span>
-        <span class="favorite-count">{{ tool.collection_count > 99 ? '99+' : tool.collection_count }}</span>
+        <span class="u-badge u-badge--ring favorite-count">{{ tool.collection_count > 99 ? '99+' : tool.collection_count }}</span>
       </button>
     </div>
 
@@ -161,26 +161,13 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
   font-size: var(--fs-h3);
 }
 
-/* 数量徽标压在圆形按钮的右上角：微型徽标圆角 + 强调底 + 反白字，
-   描边取卡片表面色，与卡片背景连成一体而不需要额外的描边令牌 */
+/* 数量徽标压在圆形按钮的右上角。尺寸/圆角/字号/底色来自共享的 .u-badge
+ * （--badge-height / --badge-min-width / --badge-radius / --badge-bg），
+ * 这里只留定位；描边由 .u-badge--ring 用卡片表面色画出来。 */
 .favorite-count {
   position: absolute;
   top: calc(var(--space-unit) * -1);
   right: calc(var(--space-unit) * -1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: calc(var(--space-unit) * 2.5);
-  height: calc(var(--space-unit) * 2.5);
-  padding: 0 calc(var(--space-unit) * 0.5);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border: var(--stroke-width) solid var(--bg-surface);
-  border-radius: var(--micro-badge-radius);
 }
 
 .tool-header {

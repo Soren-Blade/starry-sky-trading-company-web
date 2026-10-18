@@ -87,7 +87,7 @@
           :aria-label="cartLabel"
         >
           <AppIcon name="shopping-cart" />
-          <span v-if="cartCount > 0" class="navbar-cart-badge" aria-hidden="true">
+          <span v-if="cartCount > 0" class="u-badge u-badge--ring navbar-cart-badge" aria-hidden="true">
             {{ cartCount > 99 ? '99+' : cartCount }}
           </span>
         </router-link>
@@ -105,7 +105,7 @@
           :aria-label="memberLabel"
         >
           <AppIcon name="crown" />
-          <span v-if="memberStore.levelName" class="navbar-member-badge" aria-hidden="true">
+          <span v-if="memberStore.levelName" class="u-badge u-badge--ring navbar-member-badge" aria-hidden="true">
             {{ memberStore.levelName }}
           </span>
         </router-link>
@@ -124,7 +124,7 @@
           :aria-label="mailLabel"
         >
           <AppIcon name="mail" />
-          <span v-if="mailStore.hasUnread" class="navbar-mail-badge" aria-hidden="true">
+          <span v-if="mailStore.hasUnread" class="u-badge u-badge--ring navbar-mail-badge" aria-hidden="true">
             {{ mailStore.unreadLabel }}
           </span>
         </router-link>
@@ -1210,30 +1210,27 @@ onUnmounted(() => {
   flex: none;
 }
 
-/* 角标压在图标按钮右上角：微型徽标圆角 + 强调底 + 反白字，
-   与 ToolCard 的收藏数徽标同构（描边取顶栏表面色，与背景连成一体）。
-   三处共用一套规格：购物车是件数、会员是等级名（V1–V8，两位字符）、
-   消息是未读条数，尺寸与字重完全一致才像同一套东西。 */
+/* 角标压在图标按钮右上角。尺寸/圆角/字号/底色一律来自共享的 .u-badge
+ * （--badge-height 18px、--badge-min-width、--badge-radius、--badge-bg…），
+ * 这里只留定位与顶栏自身的描边颜色。
+ *
+ * 三处的语义不同，因此会员等级不走徽标底色：
+ *   · 购物车件数 / 未读消息数 —— 是「数量」，用 .u-badge 默认的 --badge-bg；
+ *   · 会员等级（V1–V8）—— 是「身份状态」，徽标底色在 neo 主题下是橙、
+ *     tech 下是红，读起来像告警，所以改为强调色 + 反白字。 */
 .navbar-cart-badge,
 .navbar-member-badge,
 .navbar-mail-badge {
   position: absolute;
   top: calc(var(--space-unit) * -0.5);
   right: calc(var(--space-unit) * -0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: calc(var(--space-unit) * 2.5);
-  height: calc(var(--space-unit) * 2.5);
-  padding: 0 calc(var(--space-unit) * 0.5);
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  line-height: 1;
+  /* 描边取顶栏表面色，与背景连成一体（.u-badge--ring 的默认值是 --bg-surface） */
+  --badge-ring-color: var(--bg-nav);
+}
+
+.navbar-member-badge {
+  background-color: var(--accent);
   color: var(--text-on-accent);
-  background: var(--accent);
-  border: var(--stroke-width) solid var(--bg-nav);
-  border-radius: var(--micro-badge-radius);
 }
 
 /* ── 汉堡按钮 ───────────────────────────────────────────── */

@@ -132,25 +132,28 @@
             </li>
           </ul>
 
-          <!-- 只有一页时不渲染控件（避免出现点不动的按钮） -->
-          <div v-if="inviteStore.totalPages > 1" class="invite-pager">
-            <button
-              type="button"
-              class="u-btn-secondary"
-              :disabled="!inviteStore.hasPrev"
-              @click="goPage(inviteStore.page - 1)"
-            >
-              上一页
-            </button>
-            <span class="invite-pager-info">{{ inviteStore.page }} / {{ inviteStore.totalPages }}</span>
-            <button
-              type="button"
-              class="u-btn-secondary"
-              :disabled="!inviteStore.hasNext"
-              @click="goPage(inviteStore.page + 1)"
-            >
-              下一页
-            </button>
+          <!-- 只有一页时不渲染控件（避免出现点不动的按钮）。
+               版式走共享的 .u-mm-pager，与邮件/优惠券/积分/订单等页一致。 -->
+          <div v-if="inviteStore.totalPages > 1" class="u-mm-pager">
+            <span class="u-mm-pager-info">{{ inviteStore.page }} / {{ inviteStore.totalPages }}</span>
+            <div class="u-mm-pager-btns">
+              <button
+                type="button"
+                class="u-btn-secondary"
+                :disabled="!inviteStore.hasPrev"
+                @click="goPage(inviteStore.page - 1)"
+              >
+                上一页
+              </button>
+              <button
+                type="button"
+                class="u-btn-secondary"
+                :disabled="!inviteStore.hasNext"
+                @click="goPage(inviteStore.page + 1)"
+              >
+                下一页
+              </button>
+            </div>
           </div>
         </template>
       </section>
@@ -452,19 +455,6 @@ onMounted(() => {
   color: var(--accent);
 }
 .invite-record-reward.is-muted {
-  color: var(--text-muted);
-}
-
-.invite-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 2);
-  margin-top: calc(var(--space-unit) * 3);
-}
-.invite-pager-info {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 

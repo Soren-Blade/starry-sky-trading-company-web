@@ -118,27 +118,31 @@
         </li>
       </ul>
 
-      <!-- 分页：只有一页时不渲染，避免出现一个孤零零的「1」 -->
-      <nav v-if="pagination.total_pages > 1" class="orders-pager" aria-label="订单分页">
-        <button
-          type="button"
-          class="u-btn-secondary"
-          :disabled="!pagination.has_prev || loading"
-          @click="goPage(pagination.page - 1)"
-        >
-          上一页
-        </button>
-        <span class="orders-pager-info">
+      <!-- 分页：只有一页时不渲染，避免出现一个孤零零的「1」。
+           版式统一走共享的 .u-mm-pager（左信息 / 右按钮 + 顶部分隔线），
+           与邮件、优惠券、积分等页的分页同一套观感。 -->
+      <nav v-if="pagination.total_pages > 1" class="u-mm-pager" aria-label="订单分页">
+        <span class="u-mm-pager-info">
           {{ pagination.page }} / {{ pagination.total_pages }}
         </span>
-        <button
-          type="button"
-          class="u-btn-secondary"
-          :disabled="!pagination.has_next || loading"
-          @click="goPage(pagination.page + 1)"
-        >
-          下一页
-        </button>
+        <div class="u-mm-pager-btns">
+          <button
+            type="button"
+            class="u-btn-secondary"
+            :disabled="!pagination.has_prev || loading"
+            @click="goPage(pagination.page - 1)"
+          >
+            上一页
+          </button>
+          <button
+            type="button"
+            class="u-btn-secondary"
+            :disabled="!pagination.has_next || loading"
+            @click="goPage(pagination.page + 1)"
+          >
+            下一页
+          </button>
+        </div>
       </nav>
     </template>
   </div>
@@ -480,20 +484,6 @@ onMounted(() => {
 
 .order-actions {
   margin-left: auto;
-}
-
-.orders-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 2);
-  margin-top: var(--section-gap);
-}
-
-.orders-pager-info {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
 }
 
 .orders-empty-actions {

@@ -235,7 +235,10 @@ test('源码：列表区分「空态 / 列表 / 分页」，且空态里有去�
   assert.match(SUPPORT_SOURCE, /ul class="support-list"/)
   assert.match(SUPPORT_SOURCE, /SUPPORT\.messageCount\(item\.message_count \|\| 0\)/)
   assert.match(SUPPORT_SOURCE, /v-if="supportStore\.threadsTotalPages > 1"/)
-  assert.match(SUPPORT_SOURCE, /support-pager-info/)
+  // 分页版式统一走共享的 .u-mm-pager（左信息 / 右按钮），不再自带 support-pager
+  assert.match(SUPPORT_SOURCE, /class="u-mm-pager"/)
+  assert.match(SUPPORT_SOURCE, /u-mm-pager-info/)
+  assert.match(SUPPORT_SOURCE, /u-mm-pager-btns/)
 })
 
 test('源码：详情面板含消息记录与追问表单，作者用中文名+来源区分', () => {

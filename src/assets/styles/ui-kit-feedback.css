@@ -478,6 +478,32 @@
   margin-top: var(--empty-btn-gap);
 }
 
+/* 紧凑变体：用在「列表为空」这类嵌在卡片/面板内部的位置。
+ *
+ * 默认的 .u-empty 是整页空态（80px 上边距 + 64px 图标），放进面板里会空出
+ * 一大片。紧凑档把纵向间距收到 48/16、图标收到 40px、标题降回正文字号，
+ * 同时**去掉卡片外框**：`.page-empty` 原先自带 --bg-surface-2 底 + 描边 + 圆角，
+ * 与「空态只是内容缺失、不是一张卡」的语义不符，也让同站点出现两种空态观感。 */
+.u-empty--compact {
+  padding: calc(var(--space-unit) * 6) var(--container-padding) calc(var(--space-unit) * 3);
+}
+
+.u-empty--compact .u-empty-icon {
+  width: calc(var(--empty-icon-size) * 0.625);
+  height: calc(var(--empty-icon-size) * 0.625);
+  font-size: calc(var(--empty-icon-size) * 0.625);
+  margin-bottom: calc(var(--space-unit) * 1.5);
+}
+
+.u-empty--compact .u-empty-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+}
+
+.u-empty--compact .u-empty-actions {
+  gap: calc(var(--space-unit) * 1.5);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
  * §18 通知徽标 Badge（B31）
  *   数字走等宽字体 + `tabular-nums`：个位数与「99+」宽度稳定，堆叠时不跳。
@@ -515,9 +541,10 @@
 }
 
 /* 与背景同色的分离描边：把徽标从底图里「切」出来。
- * 颜色取宿主表面色 --bg-surface（令牌层只给了宽度，没给颜色）。 */
+ * 颜色默认取宿主表面色 --bg-surface；顶栏这种另有表面色（--bg-nav）的地方
+ * 用 --badge-ring-color 就地覆盖，不必为每个宿主复制一份规则。 */
 .u-badge--ring {
-  box-shadow: 0 0 0 var(--badge-ring-width) var(--bg-surface);
+  box-shadow: 0 0 0 var(--badge-ring-width) var(--badge-ring-color, var(--bg-surface));
 }
 
 /* 纯圆点态：尺寸换成 --badge-dot-size，内边距清零 */

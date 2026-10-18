@@ -320,28 +320,30 @@
 
             <nav
               v-if="supportStore.threadsTotalPages > 1"
-              class="support-pager"
+              class="u-mm-pager"
               aria-label="会话分页"
             >
-              <button
-                type="button"
-                class="u-btn-secondary support-pager-btn"
-                :disabled="!supportStore.threadsHasPrev"
-                @click="goThreadsPage(supportStore.threadsPage - 1)"
-              >
-                上一页
-              </button>
-              <span class="support-pager-info">
+              <span class="u-mm-pager-info">
                 第 {{ supportStore.threadsPage }} / {{ supportStore.threadsTotalPages }} 页
               </span>
-              <button
-                type="button"
-                class="u-btn-secondary support-pager-btn"
-                :disabled="!supportStore.threadsHasNext"
-                @click="goThreadsPage(supportStore.threadsPage + 1)"
-              >
-                下一页
-              </button>
+              <div class="u-mm-pager-btns">
+                <button
+                  type="button"
+                  class="u-btn-secondary"
+                  :disabled="!supportStore.threadsHasPrev"
+                  @click="goThreadsPage(supportStore.threadsPage - 1)"
+                >
+                  上一页
+                </button>
+                <button
+                  type="button"
+                  class="u-btn-secondary"
+                  :disabled="!supportStore.threadsHasNext"
+                  @click="goThreadsPage(supportStore.threadsPage + 1)"
+                >
+                  下一页
+                </button>
+              </div>
             </nav>
           </template>
         </template>
@@ -825,24 +827,6 @@ onMounted(() => {
 
 .support-item-open {
   flex: none;
-}
-
-.support-pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: calc(var(--space-unit) * 1.5);
-}
-
-.support-pager-info {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.support-pager-btn {
-  min-width: calc(var(--space-unit) * 8);
 }
 
 /* ── 会话详情 ────────────────────────────────────────────── */

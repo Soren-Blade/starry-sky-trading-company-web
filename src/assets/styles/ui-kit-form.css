@@ -398,13 +398,20 @@
 }
 
 /* 不确定态：一条 --checkbox-indeterminate-width 宽的横线，压在勾形之上
- * （勾形在选中态同样存在，靠 z-index 让横线胜出） */
-.u-checkbox--indeterminate .u-checkbox-box {
+ * （勾形在选中态同样存在，靠 z-index 让横线胜出）
+ *
+ * 两个选择器缺一不可：`--indeterminate` 是给「由组件状态驱动」的用法，
+ * 而 `input:indeterminate` 是原生属性 —— 购物车全选框写的是
+ * `:indeterminate.prop="部分选中 && 非全选"`，只有原生属性会被设置。
+ * 早先只写了类选择器，导致部分选中时复选框显示成「完全未选中」。 */
+.u-checkbox--indeterminate .u-checkbox-box,
+.u-checkbox input:indeterminate + .u-checkbox-box {
   background: var(--checkbox-checked-bg);
   border-color: var(--checkbox-checked-bg);
 }
 
-.u-checkbox--indeterminate .u-checkbox-box::after {
+.u-checkbox--indeterminate .u-checkbox-box::after,
+.u-checkbox input:indeterminate + .u-checkbox-box::after {
   /* 横线高度取 --stroke-width 的一半，而不是字面量 1px：
    * 这样它始终比勾选框自身的描边更细（tech 下 0.5px 渲染成一条发丝线，
    * neo 的 2px 描边则给出 1px，粗野风格下也不会细到看不见）。 */

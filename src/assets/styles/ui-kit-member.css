@@ -110,7 +110,10 @@
 }
 
 .u-mm-section-more:focus-visible {
-  outline: var(--focus-ring);
+  /* --focus-ring 是 box-shadow 的值（0 0 0 3px rgba(...)），放进 outline 简写
+   * 会被整条丢弃；三件套写法见 ui-kit-form.css 里输入框的聚焦态。 */
+  box-shadow: var(--focus-ring);
+  outline: var(--stroke-width) solid var(--accent);
   outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-pill);
 }
@@ -417,7 +420,9 @@
 }
 
 .u-mm-asset:focus-visible {
-  outline: var(--focus-ring);
+  /* 同上：--focus-ring 只能给 box-shadow，outline 简写不认这个值。 */
+  box-shadow: var(--focus-ring);
+  outline: var(--stroke-width) solid var(--accent);
   outline-offset: var(--focus-ring-offset);
 }
 
@@ -879,11 +884,13 @@
   gap: calc(var(--space-unit) * 0.25);
   aspect-ratio: 1;
   padding: calc(var(--space-unit) * 0.5);
-  font-size: var(--fs-label);
+  /* 几何与日历格同源：签到格和下方「本月日历」上下相邻，圆角/字号不一致时
+   * 两排格子会一眼看出不是一套（--datepicker-cell-radius 在 neo 是 0、tech 是 8）。 */
+  font-size: var(--datepicker-font-size);
   color: var(--text-muted);
   background: var(--bg-soft);
   border: var(--stroke-width) solid transparent;
-  border-radius: var(--radius-input);
+  border-radius: var(--datepicker-cell-radius);
 }
 
 .u-mm-checkin-cell--checked {

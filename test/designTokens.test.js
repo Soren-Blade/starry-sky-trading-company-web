@@ -86,6 +86,11 @@ function usageCounts(tokens, files) {
 const RUNTIME_SCOPED_VARS = [
   // 列表/卡片序号，组件用 :style="{ '--i': index }" 注入，供 .u-enter 计算错峰延迟
   '--i',
+  // 滑块已选段宽度，ThemeSwitcher 按当前值算百分比注入（无值时有 0% 兜底）
+  '--range-fill',
+  // 徽标描边色，.u-badge--ring 消费；默认 --bg-surface，
+  // 顶栏/工具卡等「底色不是 --bg-surface」的位置就地覆盖
+  '--badge-ring-color',
 ]
 
 /** 统一断点（见 variables.css 末尾的文档注释与 project-ui-system Skill） */

@@ -145,6 +145,7 @@
                   :max="field.max"
                   :step="field.step"
                   :value="themeStore.custom[field.key]"
+                  :style="{ '--range-fill': rangeFill(field) }"
                   @input="onRangeInput(field.key, $event)"
                 />
 
@@ -270,6 +271,22 @@ const { modalRef, activate, deactivate } = useModalA11y({
 const onRangeInput = (key, event) => {
   const value = Number(event.target.value)
   if (Number.isFinite(value)) themeStore.setCustom(key, value)
+}
+
+/**
+ * 已选部分的宽度百分比，喂给 `.theme-range` 的 `--range-fill`。
+ *
+ * 原生 range 的轨道只有一种底色 —— 不画已选段就看不出当前处在这一档偏左还是偏右，
+ * 四档的主题缩放尤其难读（用户反馈过「不知道拖到哪儿了」）。用线性渐变把
+ * `--accent` 铺到 thumb 位置即可，track 与 thumb 的颜色仍走令牌。
+ */
+const rangeFill = (field) => {
+  const min = Number(field.min ?? 0)
+  const max = Number(field.max ?? 100)
+  const value = Number(themeStore.custom[field.key] ?? min)
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max === min) return '0%'
+  const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)))
+  return `${(ratio * 100).toFixed(2)}%`
 }
 
 /** 左右方向键在页签之间切换（WAI-ARIA tabs 约定） */
@@ -490,9 +507,23 @@ watch(
   width: 100%;
   height: var(--progress-height);
   appearance: none;
-  background: var(--progress-track);
+  /* 已选段（--range-fill，由 rangeFill() 计算）用强调色铺到 thumb，
+     未选段仍是 --progress-track；两者都来自令牌。 */
+  background: linear-gradient(
+    to right,
+    var(--accent) 0,
+    var(--accent) var(--range-fill, 0%),
+    var(--progress-track) var(--range-fill, 0%),
+    var(--progress-track) 100%
+  );
   border-radius: var(--progress-radius);
   cursor: pointer;
+}
+
+/* 键盘聚焦：轨道本身没有可聚焦的盒子，靠 :focus-visible 外环补 */
+.theme-range:focus-visible {
+  outline: var(--stroke-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .theme-range::-webkit-slider-thumb {

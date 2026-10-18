@@ -365,9 +365,10 @@ img {
  * 但 `<textarea>` 通常 100–200px 高，同一个 9999px 会让左右两端变成半圆「跑道」，
  * 输入区的第一行会贴着弧线走。这里换成 --radius-input-tall（该套取值 20px），
  * 另外四套的加高值与该套单行值相同，观感不变。
- * 可换行的只读值（.u-field-value）同理：它可能是单行也可能是多行。 */
-textarea.u-input,
-.u-field-value {
+ *
+ * 可换行的只读值（.u-field-value）同理，但它自己的定义在下面的「只读字段」一节，
+ * 圆角直接写在那里 —— 曾在这里一起给过，随后被那一节的定义按同特异性覆盖掉。 */
+textarea.u-input {
   border-radius: var(--radius-input-tall);
 }
 
@@ -521,7 +522,9 @@ textarea.u-input,
 .ui-card-body {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 1.25);
+  /* 卡体内元素间距取最小档 8px（COMPONENTS.md 的纵向阶梯为 8/16/24/48/96；
+   * 这里原先是 *1.25 = 10px，既不在阶梯上，与 8px 也看不出差别）。 */
+  gap: var(--space-unit);
   flex: 1;
   min-width: 0;
 }
@@ -530,9 +533,16 @@ textarea.u-input,
   cursor: pointer;
 }
 
-.ui-card-interactive:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+/* 可聚焦的卡片：既要吃掉主题焦点环，也要有 outline 兜底。
+ *
+ * `.ui-card-interactive` 目前 0 处引用（历史类名），真正可聚焦的是商品卡
+ * `ProductCard.vue` 的 `.product-card`（`role="link" tabindex="0"`，5 个页面复用）。
+ * 它原先吃不到任何 focus 规则，键盘 Tab 过去时只有 UA 默认边框。 */
+.ui-card-interactive:focus-visible,
+.product-card:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: var(--stroke-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
 }
 
 .ui-card-title {
@@ -986,68 +996,9 @@ button.u-tag:hover:not(.u-tag--accent) {
   height: 100%;
   object-fit: cover;
 }
-
-/*
- * 复选框：原生 input 视觉隐藏，方块由 .u-checkbox-box 绘制。
- * 这样勾选图标（--checkbox-icon-size）与选中色才能完全走令牌 ——
- * 原生 input 的 accent-color 只接受颜色，控制不了尺寸与圆角。
- */
-.u-checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  cursor: pointer;
-  user-select: none;
-}
-
-.u-checkbox input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.u-checkbox-box {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: var(--checkbox-size);
-  height: var(--checkbox-size);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--checkbox-radius);
-  transition:
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive);
-}
-
-.u-checkbox-box::after {
-  content: '';
-  width: var(--checkbox-icon-size);
-  height: var(--checkbox-icon-size);
-  /* 勾形用 clip-path 画，避免引 SVG 或写死一个颜色 */
-  clip-path: polygon(14% 44%, 0 65%, 38% 100%, 100% 16%, 82% 2%, 36% 62%);
-  background: var(--text-on-accent);
-  opacity: 0;
-  transition: opacity var(--transition-interactive);
-}
-
-.u-checkbox input:checked + .u-checkbox-box {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.u-checkbox input:checked + .u-checkbox-box::after {
-  opacity: 1;
-}
-
-.u-checkbox input:focus-visible + .u-checkbox-box {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
+/* 复选框与单选框的样式统一在 ui-kit-form.css 的「选择与开关」一节。
+ * 这里曾有一份语义相同的旧定义（gap 6px、--bg-surface-2、display: grid 之类），
+ * 因分片加载顺序靠前而被整块覆盖 —— 改它不会生效，只会让人以为改错了地方。 */
 /* ────────────────────────────────────────────────────────────
  * 13. 共享区块头 / 页面头
  * ──────────────────────────────────────────────────────────── */
@@ -1261,14 +1212,16 @@ button.u-tag:hover:not(.u-tag--accent) {
   border-radius: var(--radius-input);
 }
 
-/* 空态：事务页的空列表统一用它，与 HotProductsSection 的 .grid-note 同构 */
+/* 空态：事务页的空列表统一用它，与 HotProductsSection 的 .grid-note 同构。
+ *
+ * 与 `.u-empty--compact` 同一档几何（48/16 纵向、标题 --fs-body），区别只在于
+ * 这里没有图标位、也不用插槽 —— 页面侧沿用现有 28 处 `.page-empty` 标记不动。
+ * 原先它自带 --bg-surface-2 底 + 描边 + 圆角，读起来像「一张空卡片」，
+ * 与 `.u-empty` 的无框空态并存时，同一站点会出现两种「没有数据」的观感。 */
 .page-empty {
-  padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2.5);
+  padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2);
   text-align: center;
   color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
 }
 
 .page-empty-title {
@@ -1315,7 +1268,10 @@ button.u-tag:hover:not(.u-tag--accent) {
  * 那里按 --field-error-size / --field-error-gap / --field-success-icon 令牌化，
  * 并且会消掉与 .u-field 的 flex gap 叠加出来的双倍间距。此处不要重复定义。 */
 
-/* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开 */
+/* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开。
+ *
+ * 圆角取 --radius-input-tall 而不是 --radius-input：只读值可能是单行也可能是多行，
+ * 而液态玻璃的 --radius-input 是 9999px，多行时会变成跑道圆角（与 textarea 同理）。 */
 .u-field-value {
   min-height: var(--input-height);
   display: flex;
@@ -1326,7 +1282,7 @@ button.u-tag:hover:not(.u-tag--accent) {
   color: var(--text-primary);
   background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-input-tall);
   overflow-wrap: anywhere;
 }
 
@@ -1548,6 +1504,16 @@ button.u-tag:hover:not(.u-tag--accent) {
     content: "";
     position: absolute;
     inset: -18px;
+  }
+
+  /* 弹窗关闭按钮：--modal-close-size 五主题同为 32px，-6px → 44×44。
+     它已经是 position: absolute（不能再塞进上面 position: relative 的清单），
+     定位本身就让 ::after 以按钮自身为基准，所以只补 inset。
+     弹窗里的 ✕ 是本项目移动端命中区最靠边的高频目标，登录弹窗尤其常见。 */
+  .u-modal-close::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
   }
 
   /* ── 导航栏内部单独一套环（2026-10-12 实测补正）──

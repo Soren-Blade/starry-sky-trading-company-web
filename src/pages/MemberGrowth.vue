@@ -94,7 +94,7 @@
       <section class="growth-matrix" aria-labelledby="growth-matrix-title">
         <h2 id="growth-matrix-title" class="growth-section-title">升到各档多拿什么</h2>
         <div class="u-table-wrap">
-          <table class="u-table u-mm-ladder u-mm-matrix-table">
+          <table class="u-table u-table--zebra u-mm-ladder u-mm-matrix-table">
             <caption class="visually-hidden">各等级档位的权益数值对照</caption>
             <thead>
               <tr>
