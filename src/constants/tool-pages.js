@@ -357,6 +357,7 @@ export const TOOL_PAGES_EXTRA = {
     ],
     resultTitle: '换算结果',
     submit: '换算',
+    swap: '交换单位',
     emptyTitle: '输入数值后换算',
     emptyDesc: '选择类别和单位，输入数值后即时换算。',
     asideItems: ['支持 18 种常见单位类别。', '输入即时换算，无需点击。', '温度换算自动处理偏移量。'],

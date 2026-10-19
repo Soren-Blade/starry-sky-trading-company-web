@@ -20,7 +20,7 @@
           >
             <span class="products-skeleton u-skeleton"></span>
           </li>
-          <li class="u-loading-block">
+          <li class="u-loading-block" role="status">
             <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
             <span>{{ PRODUCT_GRID.loading }}</span>
           </li>

@@ -177,7 +177,7 @@ function clear() {
 .layout-gap-number { width: 56px; padding: 4px 6px; border: 1px solid var(--stroke-color); border-radius: var(--radius-input); background: var(--bg-surface-2); color: var(--text-primary); font-family: var(--font-mono); font-size: var(--fs-sm); }
 .layout-gap-unit { font-size: var(--fs-sm); color: var(--text-secondary); }
 .layout-preview-wrap { padding: calc(var(--space-unit) * 3); background: var(--bg-surface-2); border-radius: var(--radius-card); margin-bottom: calc(var(--space-unit) * 2); min-height: 160px; }
-.layout-preview-item { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; border-radius: var(--radius-input); font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: var(--fw-heading); flex-shrink: 0; }
+.layout-preview-item { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--text-on-accent); border-radius: var(--radius-input); font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: var(--fw-heading); flex-shrink: 0; }
 @media (max-width: 575px) {
   .layout-grid { grid-template-columns: 1fr; }
 }

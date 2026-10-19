@@ -15,7 +15,7 @@
           <label class="u-field-label">从</label>
           <SelectField v-model="fromUnit" :options="unitOptions" />
         </div>
-        <button type="button" class="u-btn-secondary swap-btn" @click="swap"><AppIcon name="arrow-left-right" /></button>
+        <button type="button" class="u-btn-secondary swap-btn" :aria-label="PAGE.swap" @click="swap"><AppIcon name="arrow-left-right" /></button>
         <div class="u-field">
           <label class="u-field-label">到</label>
           <SelectField v-model="toUnit" :options="unitOptions" />

@@ -549,11 +549,12 @@ watch(
   background: var(--accent-soft);
 }
 
-/* 已收藏开关：形态来自 .u-btn-secondary，选中态（aria-pressed）换成强调底 */
+/* 已收藏开关：形态来自 .u-btn-secondary，选中态（aria-pressed）换成强调底。
+   文字色不在这里定 —— 未选中时底色是 --btn-secondary-bg，必须继续用 .u-btn-secondary
+   的 --text-primary；--text-on-accent 只在强调底上成立（只在选中态覆写）。 */
 .rail-favorites {
   gap: calc(var(--space-unit) * 1.25);
   width: 100%;
-  color: var(--text-on-accent);
 }
 
 .rail-favorites[aria-pressed='true'] {

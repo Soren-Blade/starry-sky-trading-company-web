@@ -50,6 +50,7 @@
               v-model="loginForm.username"
               class="u-input"
               type="text"
+              autocomplete="username"
               placeholder="请输入用户名/邮箱/手机号"
               required
             />
@@ -62,6 +63,7 @@
               v-model="loginForm.password"
               class="u-input"
               type="password"
+              autocomplete="current-password"
               placeholder="请输入密码"
               required
             />
@@ -121,6 +123,7 @@
               v-model="registerForm.username"
               class="u-input"
               type="text"
+              autocomplete="username"
               placeholder="请输入用户名"
               required
             />
@@ -133,6 +136,7 @@
               v-model="registerForm.email"
               class="u-input"
               type="email"
+              autocomplete="email"
               placeholder="请输入邮箱地址"
               required
             />
@@ -145,6 +149,7 @@
               v-model="registerForm.password"
               class="u-input"
               type="password"
+              autocomplete="new-password"
               placeholder="请输入密码"
               required
             />
@@ -157,6 +162,7 @@
               v-model="registerForm.confirmPassword"
               class="u-input"
               type="password"
+              autocomplete="new-password"
               placeholder="请再次输入密码"
               required
             />
