@@ -132,7 +132,8 @@ const CASES = [
     policy: 'member_only',
     member: false,
     status: 'vip',
-    statusText: '会员专属',
+    // 状态点不再重复标签上的「会员专属」（同一行两个一样的方块），改说「未解锁」
+    statusText: '未解锁',
     action: 'none',
     goldTag: '会员专属',
   },
@@ -241,6 +242,9 @@ test('维护中：整行 is-maintain + 橙点「维护中」，按钮置灰不�
   assert.match(act, /ec-status--maintain/)
   assert.ok(act.includes('维护中'))
   assert.match(act, /<button[^>]*disabled/, '维护中按钮必须 disabled')
+  // 状态点已经是「维护中」，按钮再写同样的字会并排出现两个「维护中」
+  assert.ok(!/<button[^>]*>\s*维护中\s*<\/button>/.test(act), '维护中按钮文案不应与状态点重复')
+  assert.ok(act.includes('暂不可用'))
   assert.ok(!html.includes(TOOL_PAGE.openTool), '维护中不能出现「打开工具」')
 })
 

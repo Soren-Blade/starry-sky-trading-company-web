@@ -76,7 +76,7 @@
         type="button"
         disabled
       >
-        {{ ACCESS_TEXT.maintain }}
+        {{ ACCESS_TEXT.unavailable }}
       </button>
     </div>
   </div>
@@ -102,8 +102,17 @@ const ACCESS_TEXT = Object.freeze({
   memberFree: '会员免费',
   needMember: '需开通会员',
   memberOnly: '会员专属',
+  /**
+   * 会员专属的非会员态。
+   *
+   * 不能再用「会员专属」当状态点文案 —— 同一行里金色标签已经写着这四个字，
+   * 状态点再重复一遍，视觉上是两个一模一样的小方块并排。
+   */
+  locked: '未解锁',
   acquire: '获取',
   maintain: '维护中',
+  /** 维护中的按钮文案，与状态点同词会变成「维护中 ⋯ 维护中」 */
+  unavailable: '暂不可用',
   offline: '已下架',
   memberFreeHint: '会员免卡密，非会员需使用卡密激活',
 })
@@ -185,7 +194,8 @@ const status = computed(() => {
       : { tone: 'vip', text: ACCESS_TEXT.needMember }
   }
   if (accessPolicy.value === 'member_only') {
-    return { tone: 'vip', text: ACCESS_TEXT.memberOnly }
+    // 非会员时标签区已经挂了金色「会员专属」，状态点改说「未解锁」，避免同一行重复四个字
+    return { tone: 'vip', text: isMember.value ? ACCESS_TEXT.memberOnly : ACCESS_TEXT.locked }
   }
   return { tone: 'online', text: ACCESS_TEXT.available }
 })
