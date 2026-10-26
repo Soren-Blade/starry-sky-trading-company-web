@@ -606,8 +606,9 @@ watch(
 
 .tools-grid {
   display: grid;
-  /* 卡片最小宽度走 --card-width，随主题密度一起缩放 */
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
+  /* ToolRow 是整行布局（图标 + 名称/描述 + 标签 + 状态 + 操作），必须一行一个；
+     沿用卡片时代的 auto-fill 会让每列只分到 --card-width，描述被挤成单字竖排 */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--grid-gap);
 }
 
@@ -751,9 +752,9 @@ watch(
     max-width: none;
   }
 
-  /* 两列而不是「自动铺」：--card-width 在窄屏会把 auto-fill 撑破容器 */
+  /* 行式卡片在窄屏同样一行一个：两列会让描述与操作按钮无处安放 */
   .tools-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .empty-note {

@@ -85,7 +85,7 @@
 
       <!-- 工具收藏 -->
       <template v-else>
-        <ul v-if="toolList.length" class="favorites-grid">
+        <ul v-if="toolList.length" class="favorites-grid favorites-grid--tools">
           <li v-for="(entry, index) in toolList" :key="entry.target_id" class="favorites-cell">
             <ToolCard
               v-if="entry.target"
@@ -222,6 +222,11 @@ onMounted(() => {
   flex-direction: column;
   gap: calc(var(--space-unit));
   min-width: 0;
+}
+
+/* 收藏的工具用 ToolRow 整行布局，不能跟着商品走多列网格（会把描述挤成单字竖排） */
+.favorites-grid.favorites-grid--tools {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 /* 卡片在收藏页里要撑满格子高度，取消收藏按钮才落在同一水平线 */

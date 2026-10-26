@@ -296,6 +296,11 @@ onMounted(() => {
   list-style: none;
 }
 
+/* 工具结果走 ToolRow 整行布局，只有商品结果才铺多列 */
+.search-grid.search-grid--tools {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .search-cell {
   display: flex;
   min-width: 0;
