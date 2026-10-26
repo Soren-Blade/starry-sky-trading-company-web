@@ -1,5 +1,8 @@
 <template>
   <div class="page-shell order-detail-page">
+    <!-- 加载态与错误态也保留面包屑：否则订单不存在时用户没有回列表的路 -->
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <div v-if="loading" class="u-loading-block" role="status">
       <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
       <span>正在加载订单…</span>
@@ -202,6 +205,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
@@ -213,6 +217,13 @@ import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
 
 const route = useRoute()
 const themeStore = useThemeStore()
+
+/** 面包屑：订单详情是「首页 → 我的订单」下的三级页，两段父级都可点回去 */
+const breadcrumbItems = [
+  { label: '首页', to: '/home' },
+  { label: '我的订单', to: '/user/orders' },
+  { label: TRADE.orderDetail },
+]
 
 const order = ref(null)
 const loading = ref(true)

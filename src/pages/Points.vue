@@ -38,15 +38,14 @@
       <template v-else>
         <!-- 分段：概览（余额 / 构成 / 入口）与流水（可筛选、可翻页的明细）
              —— M2 起 `/points/history` 并入本页，旧地址在路由里重定向过来 -->
-        <div class="u-tabs points-tabs" role="tablist" aria-label="积分中心分区">
+        <div class="ec-tabs points-tabs" role="tablist" aria-label="积分中心分区">
           <button
             v-for="item in TABS"
             :key="item.value"
             type="button"
-            class="u-tab"
+            class="ec-tabs__item"
             role="tab"
-            :aria-selected="tab === item.value"
-            :class="{ 'u-tab--active': tab === item.value }"
+            :aria-selected="tab === item.value ? 'true' : 'false'"
             @click="switchTab(item.value)"
           >
             {{ item.label }}

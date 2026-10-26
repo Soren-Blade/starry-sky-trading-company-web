@@ -932,9 +932,10 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | --- | --- |
 | `SelectField.vue` | 纯 CSS 驱动的下拉选择（`role="combobox"` / `listbox` / `option`，`aria-expanded` / `aria-selected` / `aria-controls`），键盘支持方向键 / Home / End / Esc / Tab，外部点击用捕获阶段 `pointerdown` 关闭。选项过滤与命中拆分的纯函数从普通 `<script>` 块导出，供测试直接调用 |
 | `DatePickerField.vue` | 日期选择面板：恒 6×7 = 42 格、周一起始、跨月留白可见但不可点；`min` / `max` 越界禁用，带「今天 / 清除」与四键翻页（上一年 / 上一月 / 下一月 / 下一年）。面板宽度取 `--datepicker-width`，渲染后实测高度、下方放不下且上方更宽裕时翻到触发器上方（`.datepicker-panel--up`） |
-| `PageBreadcrumb.vue` | EC `.ec-breadcrumb` 的薄封装：`items` 从外到内、末项 `aria-current="page"` 不可点。商品详情 / 商品分类 / 我的订单在用 |
+| `PageBreadcrumb.vue` | EC `.ec-breadcrumb` 的薄封装：`items` 从外到内、末项 `aria-current="page"` 不可点。商品详情 / 商品分类 / 我的订单 / 订单详情 / 会员套餐 / 会员权益 / 成长值七处在用；详情页把它放在加载与错误分支**之外**，失败态也有回列表的路 |
 | `AppAlert.vue` | EC `.ec-alert` 的薄封装：`variant`（info / success / warning / danger）、`title`、`body`、`icon`（`null` 用默认、`''` 不显示） |
 | `ToastHost.vue` | EC `.ec-toast-layer` + `.ec-toast`，**没有关闭按钮**（EC：Toast 无操作按钮）；成功 2s、错误与警告 3s、最多 3 条；悬停与聚焦暂停；移动端贴底、从下往上堆 |
+| 分区页签 | 直接用 `.ec-tabs` + `.ec-tabs__item`（消息中心 / 积分中心 / 支持中心）：选中态只由 `aria-selected="true"` 驱动，不另加 `--active` 类名，指示条由设计系统的 `::after` 提供。个人中心的导出时间范围是胶囊分段选择器，EC 无该变体，保留自研 `.u-tabs--pill` |
 
 | 组件 | 说明 |
 | --- | --- |

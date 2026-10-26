@@ -1,9 +1,8 @@
 <template>
   <div class="page-shell page-shell--narrow growth-page">
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <header class="page-shell-head">
-      <p class="page-shell-eyebrow">
-        <router-link class="growth-back" :to="{ name: 'Member' }">会员中心</router-link>
-      </p>
       <h1 class="page-shell-title">成长值</h1>
       <p class="page-shell-desc">
         消费、签到、开通会员与卡密兑奖都会攒成长值。成长值只升不降、不过期，攒够门槛就升级。
@@ -226,10 +225,18 @@ import { computed, onMounted } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import { MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
 import { formatISOTime } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
+
+/** 面包屑：成长值是会员中心下的二级页（原来是页眉里一个「会员中心」回链） */
+const breadcrumbItems = [
+  { label: '首页', to: '/home' },
+  { label: '会员中心', to: '/member' },
+  { label: '成长值' },
+]
 
 const memberStore = useMemberStore()
 const userStore = useUserStore()
@@ -378,14 +385,6 @@ onMounted(() => {
 }
 .growth-skeleton-line {
   height: calc(var(--space-unit) * 2);
-}
-
-/* ── 返回会员中心（详情子页回枢纽） ─────────────────── */
-.growth-back {
-  color: var(--accent);
-}
-.growth-back:hover {
-  text-decoration: underline;
 }
 
 /* ── 逐档权益对照：门槛表只放门槛，权益数值集中在这里 ── */

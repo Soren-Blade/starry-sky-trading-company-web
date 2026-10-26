@@ -1,5 +1,7 @@
 <template>
   <div class="page-shell page-shell--narrow member-benefits-page">
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <header class="page-shell-head">
       <h1 class="page-shell-title">会员权益详解</h1>
       <p class="page-shell-desc">
@@ -163,10 +165,18 @@
 import { computed, onMounted } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import { MEMBER_BENEFITS, MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
 
 const memberStore = useMemberStore()
+
+/** 面包屑：权益详解是会员中心下的二级页 */
+const breadcrumbItems = [
+  { label: '首页', to: '/home' },
+  { label: '会员中心', to: '/member' },
+  { label: '会员权益' },
+]
 
 /** 八项权益 → 矩阵列（列顺序与字段名的唯一实例在 `constants/member.js`） */
 const MATRIX_COLUMNS = memberMatrixColumns()

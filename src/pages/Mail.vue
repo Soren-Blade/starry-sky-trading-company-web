@@ -33,14 +33,15 @@
     </section>
 
     <template v-else>
-      <div class="u-tabs" role="tablist" aria-label="消息中心分区">
+      <!-- 分区页签直接用设计系统的 `.ec-tabs`：选中态由 aria-selected 驱动，
+           不再需要 `u-tab--active` 这个类名分支 -->
+      <div class="ec-tabs" role="tablist" aria-label="消息中心分区">
         <button
           v-for="item in MAIL_TABS"
           :key="item.value"
           type="button"
           role="tab"
-          class="u-tab"
-          :class="{ 'u-tab--active': tab === item.value }"
+          class="ec-tabs__item"
           :aria-selected="tab === item.value ? 'true' : 'false'"
           @click="tab = item.value"
         >

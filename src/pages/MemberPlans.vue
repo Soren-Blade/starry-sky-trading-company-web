@@ -1,5 +1,7 @@
 <template>
   <div class="page-shell page-shell--narrow member-plans-page">
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <header class="page-shell-head">
       <h1 class="page-shell-title">会员套餐</h1>
       <p class="page-shell-desc">开通会员即可享受消费折扣、积分加成与每月券包</p>
@@ -146,6 +148,7 @@ import { useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import VipCard from '@/components/VipCard.vue'
 import { discountLabel } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
@@ -155,6 +158,13 @@ import { notify } from '@/hooks/useToast/index.js'
 const memberStore = useMemberStore()
 const userStore = useUserStore()
 const router = useRouter()
+
+/** 面包屑：会员套餐是会员中心下的二级页 */
+const breadcrumbItems = [
+  { label: '首页', to: '/home' },
+  { label: '会员中心', to: '/member' },
+  { label: '会员套餐' },
+]
 
 /** 正在提交的 plan_id；同一时刻只允许一单在途 */
 const submitting = ref('')

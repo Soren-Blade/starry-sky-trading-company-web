@@ -1,7 +1,7 @@
 <template>
   <!--
     两个根节点是刻意的：HelpModal 必须是遮罩层的**兄弟**而不是子节点。
-    `.u-modal-overlay` 上有 backdrop-filter，而 backdrop-filter 会让元素成为
+    `.ec-overlay` 上有 backdrop-filter，而 backdrop-filter 会让元素成为
     fixed 后代的包含块（与 Navbar 踩过的坑同源）—— 嵌在里面的弹窗会以
     遮罩层的 padding box 为参照定位，并在遮罩层滚动时跟着滚。
   -->

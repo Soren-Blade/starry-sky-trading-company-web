@@ -25,15 +25,14 @@
       {{ SUPPORT.guestNote }}
     </p>
 
-    <div class="u-tabs" role="tablist">
+    <div class="ec-tabs" role="tablist" aria-label="支持中心分区">
       <button
         v-for="item in SUPPORT_TABS"
         :key="item.value"
         type="button"
-        class="u-tab support-tab"
+        class="ec-tabs__item support-tab"
         role="tab"
-        :aria-selected="tab === item.value"
-        :class="{ 'u-tab--active': tab === item.value }"
+        :aria-selected="tab === item.value ? 'true' : 'false'"
         @click="switchTab(item.value)"
       >
         <span>{{ item.label }}</span>
