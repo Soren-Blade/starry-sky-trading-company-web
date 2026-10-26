@@ -89,35 +89,6 @@
   color: var(--text-muted);
 }
 
-/* 「更多 / 详情」入口。用 accent 而非 text-primary：它是次级动作，
- * 不该和区块标题抢视觉重量。 */
-.u-mm-section-more {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  flex-shrink: 0;
-  align-self: flex-end;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--accent);
-  transition: color var(--transition-interactive);
-}
-
-.u-mm-section-more:hover {
-  color: var(--accent-strong);
-}
-
-.u-mm-section-more:focus-visible {
-  /* --focus-ring 是 box-shadow 的值（0 0 0 3px rgba(...)），放进 outline 简写
-   * 会被整条丢弃；三件套写法见 ui-kit-form.css 里输入框的聚焦态。 */
-  box-shadow: var(--focus-ring);
-  outline: var(--stroke-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
-  border-radius: var(--radius-pill);
-}
-
 .u-mm-section-body {
   min-width: 0;
 }
@@ -184,66 +155,6 @@
   margin-top: calc(var(--space-unit) * 2);
 }
 
-/* 骨架态：复用 .u-skeleton 的动画与色，只补一层纵向排布。
- * 不用 .u-mm-state 的居中 —— 骨架要贴左，居中会让「占位」看起来像「内容」。 */
-.u-mm-state-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: var(--skeleton-line-gap);
-  width: 100%;
-  padding: calc(var(--space-unit) * 1.5) 0;
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
- * §3 共享层 · 元信息行 u-mm-meta
- *
- * 「标签 + 值」的横排。值走等宽 + tabular-nums：金额、日期、编号对齐后
- * 竖着扫一列不会左右跳（与 `.u-badge` 用等宽的理由相同）。
- * ════════════════════════════════════════════════════════════════════════════ */
-
-.u-mm-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 3);
-  min-width: 0;
-}
-
-.u-mm-meta-item {
-  display: flex;
-  align-items: baseline;
-  gap: calc(var(--space-unit) * 0.75);
-  min-width: 0;
-}
-
-.u-mm-meta-icon {
-  align-self: center;
-  flex-shrink: 0;
-  color: var(--text-muted);
-}
-
-.u-mm-meta-label {
-  flex-shrink: 0;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-muted);
-}
-
-.u-mm-meta-value {
-  font-family: var(--font-mono);
-  font-size: var(--fs-body);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.u-mm-meta-value--muted {
-  color: var(--text-muted);
-}
-
 /* ════════════════════════════════════════════════════════════════════════════
  * §4 共享层 · 分页壳 u-mm-pager
  *
@@ -277,55 +188,6 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
- * §5 会员 · 等级徽章 u-mm-tier
- *
- * 八档等级 × 四种身份标识（`identity_tier`：none / badge / title / limited）。
- * 「无标识」不是「第四种颜色」，而是**回到中性** —— 身份标识是稀缺资源，
- * 只有 V3 以上才配得上着色。三种着色由弱到强：soft 底 → 实底 → 深实底。
- * ════════════════════════════════════════════════════════════════════════════ */
-
-.u-mm-tier {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  height: var(--tag-height);
-  padding: 0 var(--tag-padding-x);
-  font-family: var(--font-mono);
-  font-size: var(--tag-font-size);
-  font-weight: var(--tag-font-weight);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  white-space: nowrap;
-  color: var(--text-secondary);
-  background-color: var(--bg-soft);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--tag-radius);
-}
-
-.u-mm-tier--badge {
-  color: var(--accent);
-  background-color: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.u-mm-tier--title {
-  color: var(--text-on-accent);
-  background-color: var(--accent);
-  border-color: var(--accent);
-}
-
-.u-mm-tier--limited {
-  color: var(--text-on-accent);
-  background-color: var(--accent-strong);
-  border-color: var(--accent-strong);
-}
-
-.u-mm-tier-sub {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.72;
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
  * §6 会员 · 身份卡 u-mm-identity
  *
  * 会员中心首屏的第一块。三件事必须同时可见：**我是谁**（等级徽章 + 昵称）、
@@ -345,8 +207,6 @@
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
 }
 
 .u-mm-identity-main {
@@ -458,12 +318,6 @@
   font-size: var(--fs-label);
   line-height: var(--leading-body);
   color: var(--text-muted);
-}
-
-/* 即将过期：只染提示文字，卡面保持中性 */
-.u-mm-asset--warning .u-mm-asset-hint {
-  color: var(--warning);
-  font-weight: var(--fw-label);
 }
 
 /* 零值：数值降一档对比度。不是错误，只是「这里暂时没有东西」 */
@@ -616,23 +470,12 @@
   color: var(--text-muted);
 }
 
-/* 不适用：后端按契约「不下发这个键」，前端整格不渲染。
- * 这条修饰符留给「确实要占位」的场景（例如矩阵对齐）。 */
-.u-mm-benefit--na {
-  background: transparent;
-  border-style: dashed;
-}
-
-.u-mm-benefit--na .u-mm-benefit-value {
-  color: var(--disabled-text);
-}
-
 /* ════════════════════════════════════════════════════════════════════════════
  * §10 会员 · 等级阶梯 u-mm-ladder
  *
  * 结构规定：`.u-table` 必须包在 `.u-table-wrap` 里（R10），否则窄屏
- * min-content 会顶宽页面。当前档整行高亮 —— 高亮用左边框而不是底色，
- * 因为 neo-brutalism 与 technical-monochrome 的表格底色对比度本来就低。
+ * min-content 会顶宽页面。当前档整行高亮 —— 高亮用左边框而不是底色：
+ * EC 的行悬停底色与斑马纹都很淡，再铺一层选中底色会看不出差别。
  * ════════════════════════════════════════════════════════════════════════════ */
 
 .u-mm-ladder {
@@ -850,7 +693,7 @@
 }
 
 /* 已用 / 已过期：整体降对比度。用 opacity 而不是换色 ——
- * 换色在五套主题下要各调一次，opacity 是主题无关的。 */
+ * 换色在明暗两套主题下要各调一次，opacity 是主题无关的。 */
 .u-mm-coupon.is-used,
 .u-mm-coupon.is-expired {
   opacity: var(--state-disabled-opacity);
@@ -948,14 +791,6 @@
   font-size: var(--fs-label);
   line-height: var(--leading-body);
   color: var(--text-muted);
-}
-
-.u-mm-balance-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-top: calc(var(--space-unit) * 1.5);
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -1316,8 +1151,8 @@
  * §20 邮件 · 通知条目 u-mm-mail
  *
  * 两态：未读 / 已读。未读**同时**用左侧 accent 竖条 + 标题字重 + 圆点标记，
- * 三重编码 —— 只靠底色的话，在 bento-editorial 这种底色本身就偏暖的主题下
- * 几乎看不出来。
+ * 三重编码 —— 只靠底色的话，浅色主题下与斑马纹几乎分不出来
+ * （这也是 EC 反模式 AP-10「不得仅用颜色表达状态」的落点）。
  * ════════════════════════════════════════════════════════════════════════════ */
 
 .u-mm-mail-list {
@@ -1456,12 +1291,6 @@
   color: var(--text-muted);
 }
 
-/* 锁定行：只把开关降对比度，说明文字保持可读 ——
- * 用户需要知道「为什么关不掉」，而不只是「关不掉」。 */
-.u-mm-pref--locked .u-mm-pref-name {
-  color: var(--text-secondary);
-}
-
 /* ════════════════════════════════════════════════════════════════════════════
  * §22 邮件 · 联系邮箱 u-mm-account
  *
@@ -1587,48 +1416,6 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
- * §25 页面级区块骨架
- *
- * 会员中心的 7 个区块、详情页的「返回 + 区块堆叠」。
- * 骨架只管**堆叠节奏**，不管内容 —— 内容由 §1–§24 的组件填。
- * 宽度不在这里定：窄页族的宽度唯一出口是 `.page-shell--narrow`
- * （由 `test/componentClasses.test.js` 强制），本文件不设 max-width。
- * ════════════════════════════════════════════════════════════════════════════ */
-
-.u-mm-hub,
-.u-mm-detail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--section-gap);
-  min-width: 0;
-}
-
-.u-mm-detail-back {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  align-self: flex-start;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--text-muted);
-  transition: color var(--transition-interactive);
-}
-
-.u-mm-detail-back:hover {
-  color: var(--accent);
-}
-
-/* 两列信息布局：详情页的「左主叙事 / 右信息块」。
- * 用 minmax(0, 1fr) 而不是 1fr —— 长内容会把裸 1fr 轨道顶宽（批次 4 的坑）。 */
-.u-mm-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: var(--grid-gap);
-  align-items: start;
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
  * §26 响应式
  *
  * 纪律：**每个断点在本文件里只出现一次**（`designTokens.test.js` 会拦重复声明）。
@@ -1641,10 +1428,6 @@
   .u-mm-asset-grid,
   .u-mm-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .u-mm-split {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .u-mm-benefit-grid {

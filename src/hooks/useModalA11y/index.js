@@ -4,7 +4,7 @@ import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll'
 /**
  * 模态弹窗的无障碍约定（项目里唯一的实现）
  *
- * 这段逻辑此前在 `LoginModal.vue` 与 `ThemeSwitcher.vue` 中各写了一份，
+ * 这段逻辑此前在 `LoginModal.vue` 与已删除的主题弹窗中各写了一份，
  * 本文件是第三处需要它（联系客服弹窗）时抽出来的 —— 三份逐字相同的
  * 「Escape 关闭 + Tab 焦点陷阱 + 焦点归还 + 滚动锁定」正是该收敛的信号。
  *
@@ -20,12 +20,12 @@ import { useBodyScroll } from '@/hooks/useBodyScroll/useBodyScroll'
  *
  *   const { modalRef } = useModalA11y({ close: () => emit('close') })
  *
- * 用法（常驻组件 + 由状态开关，如 ThemeSwitcher）：
+ * 用法（常驻组件 + 由状态开关，如登录弹窗）：
  *
  *   const { modalRef, activate, deactivate } = useModalA11y({
  *     close: () => store.closePanel(),
  *     auto: false,
- *     initialFocus: '.theme-close',
+ *     initialFocus: '.modal-close',
  *   })
  *   watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
  *

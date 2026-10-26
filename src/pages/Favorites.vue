@@ -53,6 +53,7 @@
               :product="entry.target"
               :style="{ '--i': index }"
               @go-detail="goDetail"
+              @add-to-cart="addToCart"
             />
             <!-- 收藏的商品被删除：保留一行并给出清理入口，
                  静默消失会让用户以为收藏功能坏了 -->
@@ -133,7 +134,7 @@ import ToolCard from '@/components/ToolCard.vue'
 import { PAGES, TRADE } from '@/constants/index.js'
 
 const favoriteStore = useFavoriteStore()
-const { goDetail } = useProductActions()
+const { goDetail, addToCart } = useProductActions()
 const { openTool } = useOpenTool()
 
 const activeTab = ref('product')

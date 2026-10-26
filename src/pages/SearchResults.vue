@@ -45,7 +45,7 @@
 
         <ul v-else class="search-grid">
           <li v-for="(product, index) in products" :key="product.id" class="search-cell">
-            <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" />
+            <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" @add-to-cart="addToCart" />
           </li>
         </ul>
       </section>
@@ -125,6 +125,7 @@ import ProductCard from '@/components/ProductCard.vue'
 import ToolCard from '@/components/ToolCard.vue'
 import { useFavoriteStore } from '@/stores/favorite'
 import { useOpenTool } from '@/hooks/useOpenTool'
+import { useProductActions } from '@/hooks/useProductActions'
 import { useUserStore } from '@/stores/user'
 import { useToolStore } from '@/stores/tool'
 import { notify } from '@/hooks/useToast/index.js'
@@ -136,6 +137,9 @@ const favoriteStore = useFavoriteStore()
 const userStore = useUserStore()
 const toolStore = useToolStore()
 const { openTool } = useOpenTool()
+// 商品的「加入购物车」与登录拦截统一走 useProductActions，
+// 避免搜索结果页自己再写一套静默失败的副本。
+const { addToCart } = useProductActions()
 
 /** 每类最多展示多少条。上限由 constants 给，避免两处各写一个数字 */
 const LIMIT = SEARCH_PAGE.limit

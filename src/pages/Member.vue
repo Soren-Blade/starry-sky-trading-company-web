@@ -32,33 +32,18 @@
       </div>
 
       <template v-else>
-        <!-- ① 身份区：等级、到期倒计时、续费/开通入口（外观见 ui-kit-member.css §6） -->
-        <section class="u-mm-identity">
-          <div class="u-mm-identity-main">
-            <span class="u-tag" :class="{ 'u-tag--accent': memberStore.isMember }">
-              {{ identityTag }}
-            </span>
-            <p class="u-mm-identity-name">
-              {{ memberStore.isMember ? '会员生效中' : '尚未开通会员' }}
-            </p>
-            <p class="u-mm-identity-expiry" :class="{ 'u-mm-identity-expiry--warning': expiringSoon }">
-              <template v-if="memberStore.isMember">
-                到期 {{ formatDate(overview.expires_at) }}（剩余 {{ overview.days_left }} 天）
-              </template>
-              <template v-else> 开通会员即可解锁八项权益，成长值到账即时生效 </template>
-            </p>
-          </div>
-          <div class="u-mm-identity-actions">
-            <router-link
-              v-if="memberPlansAvailable"
-              :to="{ name: 'MemberPlans' }"
-              class="u-btn-primary"
-            >
-              {{ memberStore.isMember ? '续费会员' : '开通会员' }}
-            </router-link>
-            <router-link :to="{ name: 'MemberBenefits' }" class="u-btn-secondary">权益详解</router-link>
-          </div>
-        </section>
+        <!-- ① 身份卡：等级/到期/成长值/入口统一交给 VipCard，数据仍只来自 getOverview -->
+        <VipCard
+          :level="memberStore.level"
+          :name="identityName"
+          :expire-at="identityExpireAt"
+          :expire-hint="identityExpireHint"
+          :expiring="expiringSoon"
+          :growth="overview.growth ?? 0"
+          :growth-max="identityGrowthMax"
+          :growth-hint="identityGrowthHint"
+          :actions="identityActions"
+        />
 
         <!-- ② 资产概览：三卡就地显示数值，不写「去查看」（卡面见 ui-kit-member.css §7） -->
         <section class="u-mm-asset-grid" aria-label="资产概览">
@@ -249,6 +234,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppIcon from '@/components/AppIcon.vue'
+import VipCard from '@/components/VipCard.vue'
 import {
   MEMBER_BENEFITS,
   MEMBER_BENEFIT_MAP,
@@ -265,8 +251,6 @@ const userStore = useUserStore()
 const router = useRouter()
 
 const overview = computed(() => memberStore.overview || {})
-
-const identityTag = computed(() => memberStore.levelName || '非会员')
 
 const expiringSoon = computed(
   () => memberStore.isMember && (overview.value.days_left ?? 0) <= MEMBER_EXPIRING_DAYS
@@ -399,6 +383,57 @@ const expiryHint = computed(() => {
   return `剩余 ${overview.value.days_left} 天`
 })
 
+/** 身份卡（VipCard）的展示数据：全部由既有 overview 派生，不新增任何接口调用 */
+const identityName = computed(() =>
+  memberStore.isMember ? memberStore.levelName || '会员' : '尚未开通会员'
+)
+
+const identityExpireAt = computed(() => {
+  if (!memberStore.isMember) return '开通后解锁八项权益'
+  const formatted = formatDate(overview.value.expires_at)
+  return formatted === '——' ? '' : formatted
+})
+
+const identityExpireHint = computed(() => {
+  if (!memberStore.isMember) return '成长值到账即时生效'
+  if (overview.value.days_left == null) return ''
+  return `剩余 ${overview.value.days_left} 天`
+})
+
+/** 满级没有下一档，进度用「成长值 / 成长值」自然落到 100%，文案另说明已是最高等级 */
+const identityGrowthMax = computed(() => {
+  const growth = Number(overview.value.growth) || 0
+  if (!hasNext.value) return growth
+  return growth + (Number(overview.value.growth_to_next) || 0)
+})
+
+const identityGrowthHint = computed(() => {
+  if (!memberStore.isMember) return '开通会员后开始累计'
+  if (!memberStore.overview) return ''
+  if (!hasNext.value) return '已达最高等级'
+  return `距 ${overview.value.next_level_name || overview.value.next_level}还差 ${overview.value.growth_to_next}`
+})
+
+/** 卡内最多两个入口；路由不存在时直接不渲染，避免指向 404 */
+const identityActions = computed(() => {
+  const actions = []
+  if (memberPlansAvailable.value) {
+    actions.push({
+      label: memberStore.isMember ? '续费会员' : '开通会员',
+      to: { name: 'MemberPlans' },
+      variant: 'primary',
+    })
+  }
+  if (router.hasRoute('MemberBenefits')) {
+    actions.push({
+      label: '权益详解',
+      to: { name: 'MemberBenefits' },
+      variant: 'secondary',
+    })
+  }
+  return actions
+})
+
 /** 可用性由路由表推断，不手写布尔（手写会忘了改，入口会指向 404） */
 const SHORTCUTS = [
   { label: '每日签到', icon: 'check-circle', to: { name: 'UserCheckin' } },
@@ -443,7 +478,7 @@ onMounted(() => {
   font-weight: var(--fw-heading);
 }
 
-/* ① 身份区：见 ui-kit-member.css §6 的 .u-mm-identity（含卡面、间距与 warning 文字） */
+/* ① 身份卡：结构、三档外观与未拥有权益的灰度都封装在 VipCard / ec-business.css 里 */
 
 /* ② 资产概览：卡面见 §7 的 .u-mm-asset-*；这里只留分片没建模的「查看明细」链接，
    它是页面自己的动作，不属于资产卡契约。待办提醒原来也在这里，现已独立成 §19 的行。 */

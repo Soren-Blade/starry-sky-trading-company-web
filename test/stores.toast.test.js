@@ -13,7 +13,7 @@ const { useToastStore, TOAST_DURATION, TOAST_MAX } = await loadAppModule('/store
  * 提示框 store
  *
  * 覆盖规范里的三条行为约定：3000ms 自动消失、悬停暂停后剩余时间继续、
- * 超出上限时挤掉最早的一条。位置与尺寸属于 CSS（`.u-toast-host` / `.u-toast`），
+ * 超出上限时挤掉最早的一条。位置与尺寸属于设计系统 CSS（`.ec-toast-layer` / `.ec-toast`），
  * 不在这里测。
  */
 
@@ -53,19 +53,33 @@ test('push：合法文案入队并返回自增 id，文案做 trim', async () =>
 
 test('语义 helper 写入对应 type，未知 type 退回 info', async () => {
   const store = await freshStore()
-  store.success('a')
-  store.warning('b')
-  store.error('c')
-  // 注意：一次只放 TOAST_MAX 条，否则会触发「挤掉最早一条」把首条顶掉
-  store.push('d', 'not-a-type')
-  assert.deepEqual(
-    store.items.map((item) => item.type),
-    ['success', 'warning', 'error', 'info']
-  )
+  // 一次只放一条：TOAST_MAX 是 3，连推 4 条会把最早的一条挤掉，
+  // 「挤掉最早一条」由下面的专门用例覆盖，这里只想验证 type 映射。
+  for (const [call, expected] of [
+    ['success', 'success'],
+    ['warning', 'warning'],
+    ['error', 'error'],
+    ['info', 'info'],
+  ]) {
+    store.clear()
+    store[call]('x')
+    assert.equal(store.items[0].type, expected)
+  }
 
   store.clear()
-  store.info('e')
+  store.push('d', 'not-a-type')
   assert.equal(store.items[0].type, 'info')
+})
+
+test('时长按类型取 EC 规范值：成功 2s、错误 3s', async () => {
+  const store = await freshStore()
+  store.success('成功')
+  store.error('失败')
+  store.info('信息')
+  const byType = Object.fromEntries(store.items.map((item) => [item.type, item.duration]))
+  assert.equal(byType.success, 2000, 'EC：成功提示 2s')
+  assert.equal(byType.error, 3000, 'EC：错误提示 3s')
+  assert.equal(byType.info, TOAST_DURATION, '规范未规定的类型沿用兜底值')
 })
 
 test('icon：按 type 返回图标，未知 type 退回信息图标', async () => {

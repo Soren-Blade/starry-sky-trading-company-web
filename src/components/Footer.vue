@@ -93,9 +93,6 @@ import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
   margin-top: var(--section-gap);
   color: var(--text-footer);
   background: var(--bg-footer);
-  /* 玻璃主题的页脚是半透明表面，需要同一套磨砂令牌才不会糊成一片灰 */
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
 }
 
 .footer-container {
@@ -125,10 +122,11 @@ import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
   margin-bottom: calc(var(--space-unit) * 2);
 }
 
-/* 装饰性浮动：无装饰动效的主题该令牌为 none */
+/* Logo 图标：只做字号与字重，不加装饰性动画 —— EC 的动效全部用在
+ * 「状态变化」上（hover / 展开 / 入场），常驻循环只用于加载与骨架。 */
 .logo-icon {
   font-size: calc(var(--fs-h3) * 1.4);
-  animation: var(--decor-animation);
+  line-height: 1;
 }
 
 .logo-text {
@@ -178,9 +176,8 @@ import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
   letter-spacing: var(--tracking-label);
   color: var(--text-footer);
   background: var(--bg-soft);
-  /* 描边取 currentColor（= --text-footer）：页脚底色五套各不相同
-   * （深底 / 浅底 / 深蓝），只有跟着页脚文字色走才能保证控件始终可见 ——
-   * 截图里 tech-minimal 的圆钮原本几乎和页脚糊在一起。 */
+  /* 描边取 currentColor（= --text-footer）：页脚底色与页面底色不是同一档
+   * （surface vs base），只有跟着页脚文字色走才能保证控件在两套明暗下都清晰可见。 */
   border: var(--stroke-width) solid currentColor;
   border-radius: var(--radius-pill);
   transition:
@@ -203,7 +200,7 @@ import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
   color: var(--text-footer-muted);
 }
 
-/* 分割线：宽度也走描边令牌，neo-brutalism 下自动变粗 */
+/* 分割线：宽度走描边令牌（EC 全域 1px） */
 .footer-divider {
   height: var(--stroke-width);
   margin-bottom: calc(var(--section-gap) * 0.4);

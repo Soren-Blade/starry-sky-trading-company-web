@@ -5,10 +5,10 @@
     fixed 后代的包含块（与 Navbar 踩过的坑同源）—— 嵌在里面的弹窗会以
     遮罩层的 padding box 为参照定位，并在遮罩层滚动时跟着滚。
   -->
-  <div class="u-modal-overlay" @click.self="$emit('close')">
+  <div class="ec-overlay" @click.self="$emit('close')">
     <div
       ref="modalRef"
-      class="u-modal"
+      class="ec-dialog login-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="login-modal-title"
@@ -17,8 +17,13 @@
         {{ activeTab === 'login' ? '登录' : '注册' }}
       </h2>
 
-      <button type="button" class="u-modal-close" @click="$emit('close')" aria-label="关闭弹窗">
-        ✕
+      <button
+        type="button"
+        class="ec-icon-btn login-dialog-close"
+        @click="$emit('close')"
+        aria-label="关闭弹窗"
+      >
+        <AppIcon name="x" />
       </button>
 
       <!-- Tabs -->
@@ -40,7 +45,7 @@
       </div>
 
       <!-- Tab Content -->
-      <div class="u-modal-body tab-content">
+      <div class="tab-content">
         <!-- Login Form -->
         <form v-if="activeTab === 'login'" class="form login-form" @submit.prevent="handleLogin">
           <div class="form-group">
@@ -237,6 +242,7 @@ import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import HelpModal from '@/components/HelpModal.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import {
   getRememberPreference,
   getRememberedIdentifier,
@@ -423,23 +429,40 @@ const switchTab = (tab) => {
 /*
  * 登录/注册弹窗
  *
- * 外壳（宽度 480~520px、内边距 24~28px、圆角 16~24px、遮罩、阴影、关闭按钮尺寸）
- * 全部来自 global.css 的 .u-modal-overlay / .u-modal / .u-modal-close 与 --modal-* 令牌；
- * 输入框与按钮同理复用 .u-input / .u-btn-primary / .u-btn-secondary / .u-checkbox。
+ * 按设计系统 §8.3：需要用户当场决策、但字段不多，所以用 Dialog。
+ * 外壳（遮罩、宽 400~720、圆角、阴影、入场动画）全部来自 `.ec-overlay` /
+ * `.ec-dialog`；关闭按钮用 `.ec-icon-btn` + 图标集里的 x。
+ * 输入框与按钮同理复用 .u-input / .u-btn-primary / .u-btn-secondary / .u-checkbox，
  * 这里只保留登录弹窗特有的内部布局。
  */
 
-/* ── 页签：下划线式，与主题弹窗的胶囊页签区分开 ─────────── */
+.login-dialog {
+  position: relative;
+  padding: var(--ec-space-5);
+}
+
+/*
+ * 关闭按钮浮在右上角。`.ec-dialog` 本身没有内边距（它把间距交给
+ * `__head/__body/__foot`），这里的内容是「页签 + 表单」连续排布，
+ * 用绝对定位比再套一层 head 更贴近原本的视觉。
+ */
+.login-dialog-close {
+  position: absolute;
+  top: var(--ec-space-4);
+  right: var(--ec-space-4);
+  z-index: 1;
+}
+
+/* ── 页签：下划线式，与胶囊式分段控件（如明暗切换）区分开 ─────────── */
 .modal-tabs {
   display: flex;
   /*
-   * 右侧给关闭按钮让位。页签行与 ✕ 处在同一条垂直带上，不让位的话
+   * 右侧给关闭按钮让位。页签行与关闭键处在同一条垂直带上，不让位的话
    * 「注册」页签会一直铺到弹窗右边缘、压在按钮底下 ——
-   * 即便 ✕ 已经靠 z-index 提到上层（见 global.css 的 .u-modal-close），
+   * 即便关闭键已经靠 z-index 提到上层（见下方 .login-dialog-close），
    * 页签的悬停底色与选中下划线仍会紧贴按钮，看上去像是按钮的一部分。
-   * 与 .u-modal-title 的 padding-right 是同一套做法。
    */
-  padding-right: calc(var(--modal-close-size) + var(--space-unit));
+  padding-right: calc(var(--ec-control-h-sm) + var(--ec-space-2));
   margin-bottom: calc(var(--space-unit) * 3);
   border-bottom: var(--stroke-width) solid var(--divider);
 }
@@ -477,7 +500,7 @@ const switchTab = (tab) => {
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--modal-title-gap);
+  gap: var(--ec-space-4);
   animation: enterUp var(--enter-duration) var(--enter-ease) both;
 }
 
@@ -591,7 +614,7 @@ const switchTab = (tab) => {
 /* ── 结果提示：语义色 10% 底 + 语义色文字（规范第八节的颜色变体）── */
 .error-message,
 .success-message {
-  margin-top: var(--modal-title-gap);
+  margin-top: var(--ec-space-4);
   padding: var(--tag-padding-y) calc(var(--space-unit) * 1.5);
   font-size: var(--fs-sm);
   text-align: center;

@@ -123,16 +123,22 @@ test('重放请求不得无限重试（必须存在 __isRetry 标记）', () => 
 
 test('刷新逻辑与 request 实例同模块（避免循环依赖）', () => {
   const request = read('src/api/request.js')
-  const hook = read('src/hooks/useRefreshToken/index.js')
 
-  // 实现应内联在 request.js
+  // 实现内联在 request.js：历史上它曾在独立模块里 import request 实例，
+  // 形成「request → useRefreshToken → request」的循环依赖。
+  // 那个再导出薄壳（hooks/useRefreshToken）已随清理删除，这里守住
+  // 「实现只有一处、就在 request.js」这条结论本身。
   assert.match(request, /export function refreshToken\s*\(/, 'request.js 应导出 refreshToken')
-
-  // hook 只做再导出，不得从 request 实例化新的 axios 或反向 import 造成循环
   assert.equal(
-    /import\s+request\s+from/.test(hook),
+    /import\s+request\s+from/.test(request),
     false,
-    'useRefreshToken 不应再直接 import request 实例（会形成循环依赖）'
+    'request.js 不得 import 自身实例（会形成循环依赖）'
+  )
+  // 全仓库不得再出现那个薄壳
+  assert.equal(
+    fs.existsSync(path.join(SRC, 'hooks', 'useRefreshToken')),
+    false,
+    'useRefreshToken 薄壳已删除，不应复活'
   )
 })
 

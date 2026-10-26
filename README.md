@@ -99,14 +99,15 @@ starry-sky-trading-company-web/
     │       ├── mail.js           # /mailApi
     │       └── support.js        # /supportApi
     ├── assets/
+    │   ├── ec/                   # EC 设计系统（tokens 四层 + 组件库，原样拷贝，勿手改）
     │   ├── styles/
-    │   │   ├── variables.css     # 设计令牌名册（+ 默认主题 tech-minimal 的兜底值）
-    │   │   └── global.css        # 重置、共享结构类（.ui-card/.u-cta/...）、共享动效
+    │   │   ├── variables.css     # 旧令牌名 → EC 语义令牌的对照表（不持有色值）
+    │   │   └── global.css        # 重置、共享组件类（.u-btn/.ui-card/...）、共享动效
     │   └── README.md             # assets 目录说明与令牌清单
     ├── components/               # 区块、卡片与弹窗组件（见 §6）
     ├── constants/
     │   ├── index.js              # 常量出口（只 re-export content.js）
-    │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / SUPPORT / FOOTER / 主题弹窗
+    │   └── content.js            # 全站文案：SITE / NAV_MENU / HERO / SECTIONS / PAGES / SUPPORT / FOOTER / 明暗切换
     ├── hooks/
     │   ├── useToken/index.js             # localStorage 读写 token（含「记住我」）
 │   ├── useBootScreen/index.js        # 首屏遮罩的三个时间闸（延迟/最短/最长）
@@ -141,11 +142,7 @@ starry-sky-trading-company-web/
     │   ├── hero.js               # 首页人格位（1.6.0 M8）：会员速览（可能整块缺席）
     │   ├── mail.js               # 站内信
     │   ├── support.js            # 客服工单
-    │   └── theme.js              # 设计风格：切换、单项自定义、持久化、写入 :root
-    ├── theme/                    # 设计风格（样式体系的运行时层）
-    │   ├── presets.js            # 五套风格的完整令牌取值 + 可调项定义
-    │   ├── compose.js            # 预设 + 单项自定义 → 最终令牌表（纯函数）
-    │   └── color.js              # 解析/压暗/转 rgba/缩放 px 的小工具
+    │   └── theme.js              # 明暗主题：三档切换、写 data-theme、持久化
     └── utils/
         ├── index.js              # throttle / domUtils.smoothScroll / formatUtils
         ├── assetUrl.js           # 后端静态资源地址解析（/uploads/... → API 基地址）
@@ -187,7 +184,7 @@ app.mount('#app')
 
 `App.vue` 提供全局骨架：
 
-- `<Navbar />` 固定顶栏（品牌 + 主导航 + **收成图标的搜索** + 样式主题切换 + 账号入口 + **会员入口**（皇冠图标，有身份即显示；开通后角标显示等级名）+ 移动端抽屉）
+- `<Navbar />` 固定顶栏（品牌 + 主导航 + **收成图标的搜索** + 明暗切换 + 账号入口 + **会员入口**（皇冠图标，有身份即显示；开通后角标显示等级名）+ 移动端抽屉）
 - `<main class="main-content"><router-view /></main>` 路由出口；
   `padding-top: var(--navbar-height)` 在这里统一给出，**各页面不再自己写顶栏占位**
 - `<Footer />` 页脚
@@ -371,7 +368,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 顶栏 `100` < 回到顶部 `900` < 路由进度条 `950` < 模态框 `2000` < 启动遮罩 `2500` < toast `3000`
 
 **导航菜单**（`constants/index.js` 的 `NAV_MENU`，被 `Navbar` 渲染）：首页、商品分类、热门推荐、工具分享、关于我们。
-顶栏右侧另有：样式主题、**购物车（带角标）**、登录/注册或用户头像下拉。
+顶栏右侧另有：明暗切换、**购物车（带角标）**、登录/注册或用户头像下拉。
 
 下拉分两组：**账号资产**（个人中心 / 我的订单 / 我的收藏 / 卡密管理 / 每日签到）与
 **会员权益**（会员套餐 / 积分中心 / 成长值 / 我的优惠券），
@@ -662,7 +659,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 ### `theme.js` — `useThemeStore`
 
-设计风格的运行时状态。**这里不写任何设计数值**（数值在 `src/theme/presets.js`）。
+明暗主题的运行时状态。**这里不写任何设计数值**（取值在 EC 令牌层，见 §9.3）。
 
 | 成员 | 说明 |
 | --- | --- |
@@ -862,9 +859,9 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在四套主题里明显长大变方。**收起态隐藏 UA 的搜索清除按钮**（`::-webkit-search-cancel-button`）：收起后输入框只剩图标那样宽，这个 ✕ 会画在放大镜上（搜索后回车、鼠标仍停在框内时最明显）；横向留白统一由 `.u-search` 的内边距承担，输入框自身左右 padding 为 0，收起时它的盒子才是真正的 0）、`ThemeSwitcher`、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（「账号资产」组含 个人中心 / 我的订单 / 我的收藏 / 卡密管理 / 每日签到，「会员权益」组含 会员套餐 / 积分中心 / **成长值** / 我的优惠券，末尾是退出登录。**会员中心与消息中心刻意不放进下拉** —— 顶栏皇冠与信封已经是它们，同一个目标两个入口会让人怀疑哪个是真的。面板 `role="menu"`、条目 `role="menuitem"`、触发器 `aria-haspopup`/`aria-controls`/`aria-expanded`，`↓` 展开落焦首项、`↑/↓` 循环、`Esc` 关闭并还焦；`max-height: var(--dropdown-max-height)` + `overflow-y: auto` 解决短视口看不到底；展开动画 180ms）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数。**游客看不到这个信封**：游客的站内通知永远是空的（服务端 `enqueue_notification` 对非注册用户直接返回 false），给一个点进去什么都没有的入口不如不给 —— 游客的诉求（问客服）走 `/support`，入口在页脚与帮助弹窗里）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏：品牌、`NAV_MENU` 导航、**收成图标的搜索**（点击展开并聚焦；**展开前后放大镜位置不变**：浮层右缘固定、向左生长，放大镜是浮层最后一个子元素。收起态与展开态**共用同一套令牌、只有宽度变**，否则点击时盒子会在明暗两套里明显长大变方。**收起态隐藏 UA 的搜索清除按钮**（`::-webkit-search-cancel-button`）：收起后输入框只剩图标那样宽，这个 ✕ 会画在放大镜上（搜索后回车、鼠标仍停在框内时最明显）；横向留白统一由 `.u-search` 的内边距承担，输入框自身左右 padding 为 0，收起时它的盒子才是真正的 0）、`ThemeSwitch`（EC 三档明暗控件；≤767px 搬进抽屉）、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（「账号资产」组含 个人中心 / 我的订单 / 我的收藏 / 卡密管理 / 每日签到，「会员权益」组含 会员套餐 / 积分中心 / **成长值** / 我的优惠券，末尾是退出登录。**会员中心与消息中心刻意不放进下拉** —— 顶栏皇冠与信封已经是它们，同一个目标两个入口会让人怀疑哪个是真的。面板 `role="menu"`、条目 `role="menuitem"`、触发器 `aria-haspopup`/`aria-controls`/`aria-expanded`，`↓` 展开落焦首项、`↑/↓` 循环、`Esc` 关闭并还焦；`max-height: var(--dropdown-max-height)` + `overflow-y: auto` 解决短视口看不到底；展开动画 180ms）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数。**游客看不到这个信封**：游客的站内通知永远是空的（服务端 `enqueue_notification` 对非注册用户直接返回 false），给一个点进去什么都没有的入口不如不给 —— 游客的诉求（问客服）走 `/support`，入口在页脚与帮助弹窗里）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
-| `ThemeSwitcher.vue` | 导航栏右侧的图标按钮 + 样式切换弹窗：五套风格整体切换，或按字号/密度/圆角/强调色/字体族/背景图逐项微调。新增可调项只需在 `theme/presets.js` 的 `CUSTOM_FIELDS` 加一条 |
+| `ThemeSwitch.vue` | 导航栏右侧的明暗切换：EC 的 `.theme-switch` 三档分段控件（浅色 / 深色 / 跟随系统）。结构契约 `data-set-theme` + `aria-pressed` + `role="group"`，与设计系统行为层（`js/ec.js`）一致；点击只调 `themeStore.setMode()`，不持有任何视觉值。窄屏（≤767px）在顶栏隐藏、改由抽屉底部的同一组件承担 —— 390px 的顶栏放不下 80px 的三档控件 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE`。底部链接的第一项是**客服中心 `/support`** —— 顶栏信封只给注册用户，游客要有一个不带身份门槛的入口 |
 | `LoginModal.vue` | 登录/注册弹窗。登录支持用户名/邮箱/手机号自动判别 `login_type`；注册成功后自动切回登录页签。「忘记密码」与新窗口「微信/QQ 登录」都指向 `HelpModal`（如实说明第三方登录尚未接入）。模态约定见下 |
 | `HelpModal.vue` | 通用「说明 + 联系方式」弹窗：标题、引导段、编号步骤、可点的 `tel:`/`mailto:` 联系方式，以及**「去提交反馈」→ `/support`**（`feedback` 属性默认 `true`，弹窗里既然写了「请联系客服」，就得给一个真能到达的地方；`/support` 不需要登录，所以这个按钮对游客同样有效）。联系方式取自 `constants/CONTACT`，与页脚、关于我们共用一份 |
@@ -892,11 +889,16 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | 组件 | 说明 |
 | --- | --- |
 | `MemberLevelLadder.vue` | **等级阶梯表**（8 档：等级 / 成长值门槛 / 消费折扣 / 积分倍率），`/member/plans` 与成长值页共用一张表。数据是服务端 `getMemberPlans` 的 `levels[]`，**门槛与倍率原样展示**（前端不抄第二份数字），折扣只经 `constants/member.js` 的 `discountLabel` 翻译。`currentLevel` 标的是**生效等级**（付费档与成长值档取高者），只标记不参与计算；`levels` 为空时整块不渲染。`showRewards=false` 时藏掉折扣与倍率两列（成长值页只有门槛数据，留着会渲染成一片空白） |
+| `VipCard.vue` | 会员专属卡（EC `.ec-vip`）：身份 → 权益网格 → 方案选择三层。`VIP_APPEARANCE` 把 v1–v8 映射成三档外观（v1–v3 silver、v4–v6 gold、v7–v8 black，非法值回落 v1）；未拥有的权益只降透明度到 `.4` 并转灰、**不用危险色**；卡上按钮 `slice(0, 3)` 硬上限。用在会员中心身份区与会员方案页的当前等级。**权益页与等级阶梯页刻意不换**：前者是公共清单、没有个人卡槽位，后者是语义化表格 |
 
 ### 弹窗（模态）约定
 
+容器一律用设计系统的 `.ec-overlay`：**登录弹窗 = Dialog**（`.ec-dialog`，单字段决策）、
+**帮助弹窗 = Drawer**（`.ec-drawer`，长内容、可回看）。`global.css` 里**不再保留 `.u-modal*` 别名** ——
+两个同名单类选择器并存时后注入者胜，会表现为「改了没效果」。
+
 约定**只有一个实现**：`hooks/useModalA11y/index.js`。
-`LoginModal`、`ThemeSwitcher`、`HelpModal` 三处都用它，不再各写一份。
+`LoginModal`、`HelpModal` 两处都用它，不再各写一份。
 
 | 约定 | 实现位置 |
 | --- | --- |
@@ -905,6 +907,8 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | **焦点陷阱**：`Tab` / `Shift+Tab` 在弹窗内循环 | `useModalA11y` |
 | **焦点归还**：打开前记录 `document.activeElement`，关闭时归还 | `useModalA11y` |
 | **滚动锁定**：`useBodyScroll`（引用计数），关闭自动恢复 | `useModalA11y` |
+| 关闭键是 `.ec-icon-btn` + `AppIcon name="x"`（不用 ✕ 字形，否则字号一变就与按钮尺寸脱钩） | 组件模板 |
+| **登录弹窗的关闭键必须 `position: absolute` + `z-index`**，页签行必须 `padding-right` 让位 | `test/modalLayering.test.js` |
 
 两种用法：
 
@@ -912,21 +916,31 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 // 挂载即打开（LoginModal / HelpModal）
 const { modalRef } = useModalA11y({ close: () => emit('close') })
 
-// 常驻组件 + 由状态开关（ThemeSwitcher）
+// 常驻组件 + 由状态开关（登录弹窗）
 const { modalRef, activate, deactivate } = useModalA11y({ close, auto: false, initialFocus: '.theme-close' })
 watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 ```
 
-> **嵌套弹窗必须是兄弟节点，不能是子节点。** `.u-modal-overlay` 上有 `backdrop-filter`，
+> **嵌套弹窗必须是兄弟节点，不能是子节点。** `.ec-overlay` 上有 `backdrop-filter`，
 > 而 `backdrop-filter` 会让元素成为 `fixed` 后代的包含块（与 Navbar 踩过的坑同源）——
 > 嵌在里面的弹窗会以遮罩层的 padding box 为参照定位，并在遮罩层滚动时跟着滚。
 > `LoginModal` 因此用**两个根节点**（遮罩层 + `HelpModal`）。
 
+### 表单与反馈
+
 | 组件 | 说明 |
 | --- | --- |
-| `ProductCard.vue` | 商品卡：图片、标题、价格、浏览/销量/库存三个指标、购买按钮。整卡可点击（`role="link"` + Enter/Space） |
-| `ToolCard.vue` | 工具卡：封面或 icon、分类、描述、收藏按钮、"打开工具" |
-| `ToolPageShell.vue` | **工具页公共壳**：页头（`eyebrow` / `AppIcon` + 标题 / 简介）+ 返回工具页按钮 + 主区（默认插槽）+ 侧栏（`#aside` 插槽，无插槽时整页单列）+ 可选的「需卡密激活」标注。五个工具页共用，新增工具页只需给它标题与图标 |
+| `SelectField.vue` | 纯 CSS 驱动的下拉选择（`role="combobox"` / `listbox` / `option`，`aria-expanded` / `aria-selected` / `aria-controls`），键盘支持方向键 / Home / End / Esc / Tab，外部点击用捕获阶段 `pointerdown` 关闭。选项过滤与命中拆分的纯函数从普通 `<script>` 块导出，供测试直接调用 |
+| `DatePickerField.vue` | 日期选择面板：恒 6×7 = 42 格、周一起始、跨月留白可见但不可点；`min` / `max` 越界禁用，带「今天 / 清除」与四键翻页（上一年 / 上一月 / 下一月 / 下一年）。面板宽度取 `--datepicker-width`，渲染后实测高度、下方放不下且上方更宽裕时翻到触发器上方（`.datepicker-panel--up`） |
+| `PageBreadcrumb.vue` | EC `.ec-breadcrumb` 的薄封装：`items` 从外到内、末项 `aria-current="page"` 不可点。商品详情 / 商品分类 / 我的订单在用 |
+| `AppAlert.vue` | EC `.ec-alert` 的薄封装：`variant`（info / success / warning / danger）、`title`、`body`、`icon`（`null` 用默认、`''` 不显示） |
+| `ToastHost.vue` | EC `.ec-toast-layer` + `.ec-toast`，**没有关闭按钮**（EC：Toast 无操作按钮）；成功 2s、错误与警告 3s、最多 3 条；悬停与聚焦暂停；移动端贴底、从下往上堆 |
+
+| 组件 | 说明 |
+| --- | --- |
+| `ProductCard.vue` | 商品卡（EC `.ec-product`）：封面 → 角标 → 标题 → `.ec-price--md` 三段式 → 元信息 → CTA 行。CTA 行依次是**收藏图标 / 加入购物车图标 / 立即购买主按钮**：收藏在 EC 里本来放封面右上角，本站按需求移到行首（模板与样式都有「不要改回去」的注释）；售罄加 `.is-soldout`、CTA 降级为 outline「到货提醒」并禁用加购。事件 `go-detail` / `add-to-cart` 在商品分类 / 收藏夹 / 搜索结果 / 商品详情四处都已接线 |
+| `ToolCard.vue` | 工具行（EC `.ec-tool`）：图标 40×40 → 名称+描述 → 平台标签 → 状态点 → 操作。按 `access_policy` 分四档（`free` / `card` / `member_free` / `member_only`）再叠加会员身份，共 8 种组合；`member_free` 非会员给金色「会员免费」标签 + 「获取」跳卡密页，`member_only` 非会员只留「会员专属」标签、不渲染按钮。维护中置灰 + 橙点；已下架优先级最高、无操作 |
+| `ToolPageShell.vue` | **工具页公共壳**：页头（`eyebrow` / `AppIcon` + 标题 / 简介）+ 返回工具页按钮 + 主区（默认插槽）+ 侧栏（`#aside` 插槽，无插槽时整页单列）+ 可选的「需卡密激活」标注。页头还认可选的 `accessPolicy` / `hasEntitlement`，按策略显示「已激活 / 需卡密激活 / 会员免费 / 会员专属」。五个工具页共用，新增工具页只需给它标题与图标 |
 | `ToolResultPane.vue` | **工具页结果区四态**：`empty`（`.u-empty` + 可填 `#empty-actions`）/ `loading`（`role="status"` + `aria-busy`）/ `success`（`#actions` 放主操作）/ `error`（`role="alert"` + `#error` 重试）。状态名与文案由调用页给，组件不认业务 |
 | `AppleIdCard.vue` | Apple ID 账号卡：账号、密码（可显隐、可复制）、状态、地区、更新时间 |
 
@@ -1089,16 +1103,16 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 ## 9. 样式体系
 
-全站支持**五套可切换的设计风格**，且每套风格从「风格语言」（颜色/字体/阴影/动效）
-到「组件尺寸」（输入框高度、按钮圆角、卡片宽度、模态框宽度……）都完全由设计令牌驱动。
-令牌清单与用法见 [`src/assets/README.md`](src/assets/README.md)。
+全站视觉由 **EC Design System** 提供（`src/assets/ec/`，面向数字商品电商的业务级设计系统）：
+颜色、字阶、间距、圆角、阴影、动效、组件与明暗主题全部由它定义，本站不自建第二套。
+令牌清单与用法见设计系统自带的 `DESIGN.md` / `README.md`。
 
 ### 9.0 图标：一律用 `AppIcon` 的线性单色图标
 
 **界面里不得再用 emoji 当图标。** 这不是审美偏好，是两条硬约束：
 
 1. **emoji 的颜色不受 CSS 控制** —— 它由字体渲染成彩色位图，`color` 对它无效，
-   于是「悬停变色」「五套主题的强调色」在这些位置**全部失效**；
+   于是「悬停变色」「明暗两套的强调色」在这些位置**全部失效**；
 2. 字形随平台/字体变化，同一个页面在不同系统上观感不一致。
 
 因此所有图标走 [`AppIcon.vue`](src/components/AppIcon.vue) + [`utils/iconSet.js`](src/utils/iconSet.js)：
@@ -1130,150 +1144,95 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 > 那是「颜色由 emoji 决定」的旧方案。图标统一后该模块无人引用，已连同它的
 > 两个测试文件删除；底纹改为 `--accent` + 低透明度（跟随主题）。
 
-### 9.1 五套风格
+### 9.1 EC 设计系统（唯一的视觉来源）
 
-| id | 名称 | 底色 | 强调色 | 风格语言 |
-| --- | --- | --- | --- | --- |
-| `tech-minimal`（默认） | Tech Minimal 暗色科技极简 | `#0a0a0a` | `#3b82f6` | 无阴影、1px 边框分层；标题 Inter；价格 JetBrains Mono（小数小一号）；入场 translateY 12px，60ms 递增 |
-| `liquid-glass` | Liquid Glass Commerce 液态玻璃·电商 | 紫粉渐变网格 | `#6366f1` | 半透明面板 + `blur(16px) saturate(180%)`（悬停与聚焦提到 24px）；入场 scale 0.96 带弹性；背景网格 20s 流动 |
-| `bento-editorial` | Bento Editorial 便当盒编辑风 | `#f7f7f5` | `#d62872` | 边框驱动而非阴影驱动；大卡片标题 Playfair Display；价格 Oxygen 且无小数 |
-| `neo-brutalism` | Neo-Brutalism Accent 新粗野主义·点缀 | `#ffffff` | `#ff6b35` | 2px 纯黑描边 + 零模糊硬阴影；主按钮 `6px 6px 0 #000`、悬停 `translate(3px,3px)`、`0.1s linear`；卡片硬投影 `4px→8px`；标题压缩大写 |
-| `technical-monochrome` | Technical Monochrome 技术单色·等宽 | `#0d0d0d` | `#22c55e` | 等宽字体贯穿所有层级；4-6px 小圆角；价格 `$` 前缀 + `#141414` 底色、无小数；悬停只换边框色（卡片描边转绿） |
-| `bento-editorial` 补充 | — | — | — | 大标题的中文走 `Songti SC / Noto Serif SC / SimSun` 衬线回落（Playfair 无 CJK 字形），所以它的 `h1` 比其余四套窄约 28px —— 属「允许改字体」的范畴，不影响整页高 |
-
-> **尺寸不参与风格区分。** 上表只描述颜色 / 字体 / 圆角 / 阴影 / 动效这些不改变盒子几何的差异；
-> 组件的高宽与间距五套完全相同，见 9.2。
->
-> 一处已知偏差：`technical-monochrome` 声明「等宽贯穿所有层级」，但等宽只对**拉丁与数字**
-> 成立 —— JetBrains Mono 不含 CJK 字形，中文回落到 `PingFang SC / Microsoft YaHei`
-> 这类**比例**字体。要真正等宽需引入固定宽度的中文字面（NSimSun / Sarasa Mono SC 等），
-> 那会改动全部中文的度量与换行，收益不明而风险明确，故**有意保留现状**。
-
-### 9.2 尺寸统一（切主题不改变几何）
-
-**组件尺寸不再逐主题取值。** 凡是会改变盒子几何的量 —— 高 / 宽 / 内边距 / 间距 /
-字号 / 行高 / 密度基准 / 控件与轨道尺寸 —— 五套取值**完全相同**，统一以默认主题
-`tech-minimal` 为基准：
+本站的样式**不再自建**。视觉语言、组件、令牌、明暗主题全部来自
+`ec-design-system`（一份面向数字商品电商的业务级设计系统），原样拷贝在
+`src/assets/ec/`：
 
 ```
-组件              五套统一值
-输入框高度         40px
-主按钮高度         40px
-图标按钮           40×40
-卡片宽度           280px（大卡同宽）
-卡片内边距         20px
-卡片图片高度       200px
-卡片间距           16px
-价格字号           20px
-提示框宽度         360px
-模态框宽度         480px
-下拉选项高度       36px
-标签高度           22px
-导航高度           64px
-分页按钮           36×36
-进度条高度         4px
-复选框             18px
-间距单位           8px
-正文行高           1.5
-移动缩放系数       0.85
+src/assets/ec/
+├── tokens/           四层令牌（Primitive → Semantic → Component → Business）+ 暗色覆写
+│   ├── tokens.css      入口，@import 顺序不可调换
+│   ├── primitive.css   唯一允许写色值的层之一
+│   ├── semantic.css    语义角色（背景 / 文字 / 描边 / 行动 / 功能 / 渐变）
+│   ├── type.css        字阶（7 级）+ 字体族
+│   ├── component.css   组件旋钮（按钮 / 输入 / 卡片 / 表格 / 弹层 …）
+│   ├── business.css    业务语义（价格 / 卡密 / 会员 / 状态点）
+│   └── theme-dark.css  暗色覆写（只改 token，组件层零改动）
+├── ec.css           组件库：基线 + 原子 + 组合（.ec-btn / .ec-card / .ec-input …）
+└── ec-business.css  业务组件（.ec-price / .ec-product / .ec-code / .ec-vip …）
 ```
 
-这样切换主题时布局不跳动，用户不会觉得「窗口变大或变小」。
-**逐断点真机实测**（headless Chrome，iframe 逐套重载 `/home`，同一份数据；数字是整页高 px）：
+> **同步规则**：`src/assets/ec/` 是设计系统的原样拷贝，**只在同步时整体替换**，
+> 不在本地逐条改。唯一允许的本地改动是 `ec.css` 顶部的 `@import` 路径
+> （原文件在 `css/` 下、tokens 在兄弟目录，拷贝后两者同层，`../tokens/` 改为 `./tokens/`）。
 
-| 视口宽 | tech | glass | bento | neo | mono | 极差 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1440 | 4877 | 4877 | 4877 | 4886 | 4877 | 9px |
-| 1199 | 4467 | 4467 | 4467 | 4476 | 4467 | 9px |
-| 991 | 4075 | 4075 | 4075 | 4087 | 4075 | 12px |
-| 767 | 5954 | 5954 | 5954 | 5978 | 5954 | 24px |
-| 575 | 5727 | 5727 | 5727 | 5753 | 5727 | 26px |
-| 390 | 5727 | 5727 | 5727 | 5753 | 5745 | 26px |
+组件库分三层，页面可以直接用：
 
-组件尺寸在六断点 × 五主题下全部一致：导航 64px、≤767 档 54px，
-输入框 / 搜索框 / 图标按钮 38×38（仅 neo 因 2px 描边为 36×36）。
-残留的 9–26px 只来自两个允许的来源：**字体族不同导致的文本换行差异**，
-以及 **neo 的 2px 描边**（它比其余四套粗 1px，是风格签名）。
-
-> ⚠️ **主题差异只能走令牌，不得在组件里按 `data-theme` 分叉。**
-> 曾经有一条 `:root[data-theme='bento-editorial'] .products-cell--featured
-> { grid-column: span 2 }`（理由是「只有 bento 定义了大卡片 400px」，
-> 而那个 400px 已随尺寸统一并入 280px）—— 令牌层再干净，一条这样的规则就能绕过去：
-> 1199px 与 991px 下 bento 的九个商品从 3 行变 4 行，整页高多出 **475px**。
-> 现在由 `test/themeContract.test.js` 的「组件样式不得按主题分叉」扫全部
-> `.vue` / `.css` 拦住（剥注释后匹配 `[data-theme=`）。
-
-**按风格保留逐主题的是**（都不改变盒子几何）：颜色、字体族、字重/字距/大小写、
-圆角、阴影、滤镜、过渡与入场动效，以及描边粗细（1–2px）。
-
-```
-组件             TechMin  LiquidGlass  Bento   NeoBrutal  TechMono
-输入框圆角        12px     9999px       24px    8px        6px
-主按钮圆角        8px      14px         10px    0px        6px
-卡片圆角          12px     20px         16px    12px       4px
-卡片图片圆角      8px      16px         12px    8px        4px
-下拉面板圆角      12px     16px         12px    0px        4px
-复选框圆角        4px      6px          4px     0px        2px
-提示框圆角        6px      10px         8px     0px        4px
-描边粗细          1px      1px          1px     2px        1px
-```
-
-完整取值在 `src/theme/presets.js`（几何类集中在一个 `尺寸统一组` 注释块下的 `SHARED`，
-风格类留在逐主题 `MATRIX`）。两条守卫在 `test/themeContract.test.js`：
-
-1. **组件尺寸在五套主题下完全一致** —— 逐格断言上表的统一值；
-2. **全部几何令牌在五套主题下一致** —— 扫全部 415 个令牌兜底，判据里的 `--fs-`
-   与 `--leading-` 不可省（它们不含 height/width/size 任何词根，漏了就会静默漂移）。
-
-新增令牌时若它改变几何，却没有放进统一组，第 2 条会直接失败。
-
-移动端缩放统一在 `global.css` 末尾的三个媒体查询里用 `--mobile-*` 系数实现：
-控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题字号 ×0.7、正文字号 ×0.95、圆角保持不变。
-（**注意**：主题在 `app.mount()` 之前就把令牌写成 `<html>` 的行内样式，行内样式优先于
-`:root`，所以**不能在 `@media` 里重定义令牌** —— 移动端缩放必须在每个使用点写成
-`calc(var(--x) * var(--mobile-*-scale))`。）
-
-### 9.3 令牌的三层结构
-
-| 层 | 文件 | 职责 |
+| 层 | 类名 | 例子 |
 | --- | --- | --- |
-| 名册与兜底 | `assets/styles/variables.css` | 令牌**名** + 默认主题的值；JS 执行前的首屏兜底 |
-| 取值 | `src/theme/presets.js` | 五套风格的完整取值（唯一数值来源）。分两块：`SHARED` = 五套同值（含几何统一组），`MATRIX` = 一行令牌 × 五列取值的逐主题差异（只剩风格类） |
-| 合成与应用 | `src/theme/compose.js` + `src/stores/theme.js` | 叠加「单项自定义」并把结果写到 `:root` |
+| 原子 | `.ec-btn` `.ec-input` `.ec-tag` `.ec-status` `.ec-avatar` | `<button class="ec-btn ec-btn--primary">` |
+| 组合 | `.ec-card` `.ec-tabs` `.ec-steps` `.ec-table` `.ec-dialog` `.ec-empty` | `<div class="ec-card ec-card--lg">` |
+| 业务 | `.ec-price` `.ec-product` `.ec-tool` `.ec-vip` `.ec-code` `.ec-redeem` | `<span class="ec-price ec-price--md">` |
 
-`main.js` 在 `app.mount()` **之前**调用 `useThemeStore(pinia).init()`，
-把令牌同步写到 `<html>` 的行内样式上 —— 放到 `onMounted` 会让用户先看到默认主题闪一下。
+### 9.2 令牌桥接层（为什么页面不用改类名）
 
-### 9.4 切换与单项自定义
+旧令牌名（`--bg-page` / `--text-primary` / `--accent` / `--fs-body` / `--radius-card` …）
+被 90 个页面与 6 个组件分片引用了 400 余处。它们**全部保留**，但值改为指向 EC 语义令牌：
 
-导航栏右侧的 🎨 图标按钮打开弹窗（`ThemeSwitcher.vue`），两个页签：
+```css
+/* src/assets/styles/variables.css —— 一张对照表，不持有任何色值 */
+--bg-page:       var(--ec-bg-base);
+--text-primary:  var(--ec-text-primary);
+--text-muted:    var(--ec-text-tertiary);   /* neutral-450，5.47:1（旧值只有 2.53） */
+--accent:        var(--ec-action-primary);
+--fs-h1:         var(--ec-h1-size);
+--radius-card:   var(--ec-radius-lg);
+```
 
-- **整体风格**：五套风格整体切换（含色板预览、当前项标记）。
-- **单项修改**：全局字号 / 间距与控件密度 / 圆角缩放 / 强调色 / 字体族 / 页面背景图与不透明度。
-  强调色会**自动派生**悬停色（压暗 18%）、柔和底色、按钮悬停底色与「强调色之上的文字色」
-  （按相对亮度决定黑或白），因此换个品牌色不会出现看不清的按钮文字。
+结果是：**取值只有一个来源**（EC），改动面收敛到一个文件，而 90 个页面零改动完成换肤。
 
-控件由 `theme/presets.js` 的 `CUSTOM_FIELDS` 数据驱动渲染 ——
-**新增一个可调项只需加一条描述，不用改组件模板**。选择保存在
-`localStorage` 的 `SSTC_THEME_PREF`，刷新后保留。
+铁律（由 `test/themeContract.test.js` 强制）：
 
-### 9.5 与数据层的联动
+- `variables.css` 只允许 `var(--ec-*)` 与结构性常量（1px、比例），**不得出现色值**；
+- 不得覆写 `--ec-*`（覆写会让 EC 的暗色层失效）；
+- 页面与组件的样式里出现 `#hex` / `rgba()` 即失败（工具页的取色器除外，那是用户数据）。
 
-风格会改变价格的表现形式，因此货币与小数位属于**数据层**而不是模板：
+### 9.3 明暗切换（EC theme-switch）
 
-- `theme/presets.js` 每套主题声明 `price: { prefix, decimals }`
-  （tech/glass 是 `¥` 两位小数，bento/neo 是 `¥` 无小数，mono 是 `$` 无小数）；
-- `useThemeStore()` 暴露 `pricePrefix` / `priceDecimals`；
+主题只有**一维**：`light` / `dark` / `auto`。
+
+- `stores/theme.js` 只做三件事：记住用户选择、把 `data-theme` + `data-theme-mode` 写到
+  `<html>`、持久化到 `localStorage` 的 `ec-theme`（键与 EC 文档站一致）。
+  它**不合成任何取值** —— 暗色由 `theme-dark.css` 在属性选择器下覆写同一批令牌。
+- 导航栏右侧是 `ThemeSwitch.vue`：EC 的 `.theme-switch` 三档分段控件
+  （浅色 / 深色 / 跟随系统），结构契约 `data-set-theme` + `aria-pressed` + `role="group"`，
+  与设计系统的行为层（`js/ec.js`）完全一致。
+- 窄屏（≤767px）把它搬进移动端抽屉：390px 的顶栏要放下搜索 / 购物车 / 会员 / 消息 /
+  头像 / 汉堡六个入口，再塞一组 80px 的三档控件必然溢出。
+- `index.html` 里有一段**同步脚本**兜底首屏：它在 JS 包下载完成之前读同一个键、
+  写同样两个属性，避免「先看到浅色再闪一下切深色」。
+
+> 旧版是「五套风格矩阵 + 单项微调」（`src/theme/presets.js` 1732 行，把几百个令牌
+> 逐条写进 `<html>` 的行内样式）。行内样式会盖掉 EC 的暗色覆写，所以那套实现
+> 与新令牌层不兼容，已整体删除（`src/theme/` 目录、`ThemeSwitcher.vue`）。
+
+### 9.4 与数据层的联动
+
+价格仍然是**分段**渲染（整数 / 小数各一个 span，小数小一号），因为三段式排版
+需要分别设字号，拼成一个字符串就做不到了：
+
+- `useThemeStore()` 暴露 `pricePrefix`（`¥`）与 `priceDecimals`（2）——
+  EC 只有一套人民币口径，不再按主题切换货币；
 - `formatUtils.splitPrice(price, currency)` 把价格拆成
-  `{ prefix, integer, decimals, text }`，**模板据此对小数部分单独设字号**（规范：小数小一号）；
-  `formatPrice` 仍在，返回拼好的整串，默认行为与旧版一致；
+  `{ prefix, integer, decimals, text }`；
 - `ProductCard.vue` 从 store 取货币再拆分渲染，模板里不写货币符号；
   划线原价与折扣标签直接消费后端已返回的 `original_price` / `has_discount` / `discount_percent`
   （见 server `router/products.js`），不在前端重算折扣。
 
 同理，商品搜索的匹配规则放在 `shopStore` 的 `filteredProducts` getter 里，
 导航栏搜索栏与商品网格共用同一份规则。
-
 ### 9.6 共享组件类
 
 组件规范表的落地点是 `global.css` 里的一批共享类，组件只负责布局：
@@ -1312,9 +1271,10 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 
 ### 9.7 提示框为什么不用 antd 的 message
 
-规范要求提示框「右上角固定、距顶/距右 24px、堆叠间距 12px、3000ms 自动消失、悬停暂停」，
-并给出五套风格的宽度/内边距/圆角/阴影/图标尺寸。antd 的 `message` 只能顶部居中、
-样式由它自己的样式表固定、完全不消费本项目的令牌（五套风格下长得一模一样）。
+提示框按 EC Toast 的规格实现：顶部居中、最大宽 320px、最多同屏 3 条、
+成功 2s / 错误 3s 自动消失、悬停暂停、无操作按钮。
+antd 的 `message` 只能顶部居中且样式由它自己的样式表固定，
+完全不消费本项目的令牌 —— 换明暗时它会是一块「没跟着变」的异色区域。
 
 因此改为自建：`stores/toast.js`（队列、计时、悬停暂停）+ `components/ToastHost.vue`
 （唯一渲染出口，挂在 `App.vue` 根部）+ `hooks/useToast/index.js`
@@ -1379,15 +1339,20 @@ About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会
 
 ### 9.11 组件套件（第四轮：第三批规范 21 节）
 
-第二批只做到「组件尺寸」，这批是完整的交互组件：**19 个族、212 个新令牌**，
-拆成四个分片文件（按族划分，不按页面）：
+第二批只做到「组件尺寸」，这批是完整的交互组件，拆成四个分片文件
+（按族划分，不按页面）。**2026-10-25 做过一次整族清理**：规范给了 19 族，
+其中 9 族在全站 0 个使用点，已连同它们的令牌一起删除（跳号即已删）：
 
-| 文件 | 覆盖 |
-| --- | --- |
-| `ui-kit-form.css` | §1 下拉/选择器、§2 复选框、§3 单选框、§4 开关、§5 滑块 |
-| `ui-kit-nav.css` | §6 步骤条、§7 手风琴、§8 选项卡、§9 面包屑 |
-| `ui-kit-data.css` | §10 表格、§11 日期选择器、§12 文件上传、§13 评分 |
-| `ui-kit-feedback.css` | §14 气泡、§15 抽屉、§16 骨架、§17 空态、§18 徽标、§19 滚动条、§21 通用状态 |
+| 文件 | 现存 | 已删 |
+| --- | --- | --- |
+| `ui-kit-form.css` | §1 下拉/选择器、§2 复选框、§4 开关 | §3 单选框、§5 滑块 |
+| `ui-kit-nav.css` | §8 选项卡 | §6 步骤条、§7 手风琴、§9 面包屑 |
+| `ui-kit-data.css` | §10 表格、§11 日期选择器 | §12 文件上传、§13 评分 |
+| `ui-kit-feedback.css` | §16 骨架、§17 空态、§18 徽标、§19 滚动条、§21 通用状态 | §14 气泡、§15 抽屉 |
+
+删除判据是**全站 0 引用**（含模板字面量与动态拼接，用子串搜索复核），
+不是「暂时没人用」—— 因此 `test/kitAllowlist.js` 那张「规范已给、页面还没写」的
+白名单随之失去存在理由，当前是空表且应当保持为空。
 
 `main.js` 的引入顺序是 **variables → global → 四个分片**：分片要覆盖基础层的旧实现
 （骨架屏动画、滚动条、`.u-field-error` 三处已从 `global.css` 删除）。
@@ -1398,16 +1363,18 @@ About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会
   高度/内边距/圆角/字号/描边分别与 `--input-height` / `--input-padding-*` /
   `--radius-input` / `--input-font-size` / `--stroke-*` 逐值相同。好处是下拉框与相邻
   输入框**天然对齐**，不需要 `calc()` 凑。
-- `--dropdown-shadow` **没有登记**：§1 的面板阴影五套取值与既有的 `--shadow-float` 逐值相同
+- `--dropdown-shadow` **没有登记**：§1 的面板阴影取值与既有的 `--shadow-float` 相同
   （tech `0 8px 24px rgba(0,0,0,.4)` / glass `0 8px 32px rgba(99,102,241,.12)` /
   bento `0 4px 16px rgba(0,0,0,.08)` / neo `6px 6px 0 #000000` / mono `none`），
   于是共用，并在 `themeContract.test.js` 留了一条**反向断言**防止日后又拆开。
 
-**死令牌白名单**（`test/kitAllowlist.js`）：`designTokens.test.js` 原本要求「已登记的必须有人用」，
-而这批组件里有一部分的使用页面还没写。白名单四条规则 —— 未登记引用失败；已登记无人用且不在白名单失败；
+**死令牌白名单**（`test/kitAllowlist.js`）：`designTokens.test.js` 要求「已登记的令牌必须有人用」，
+白名单是它唯一的豁免口，四条规则 —— 未登记引用失败；已登记无人用且不在白名单失败；
 在白名单允许但必须写明 `family` 与 `expectedConsumer`；**在白名单却已有人用则失败**。
 第四条是关键：白名单只能缩小，不能腐烂。
-**当前白名单是空表** —— 四个分片自身即消费者，415 个令牌全部有人用。
+**当前白名单是空表** —— 9 个 0 引用的族已删除，剩下的令牌全部有人用。
+新增组件族时若短期内没有页面消费，正确做法是**先写页面再落样式**，
+而不是往白名单里加一行。
 
 **标记契约**（接线时必须遵守，否则样式不生效）：
 
@@ -1416,21 +1383,18 @@ About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会
 | 半星 | `[aria-checked="mixed"]`（整星 `"true"`，空星无属性） |
 | 表格 | `.u-table` 是真 `<table>`，假定 `thead`/`tbody`；`aria-sort` 放 `th`、`aria-selected` 放 `tr`；**无 sticky 表头**（规范未给 max-height） |
 | 日期选择器 | 只读 `aria-readonly="true"` 在 `.u-datepicker` 根上；「今天」要同时给 `color` 与 `box-shadow`（标记值用 `currentColor`） |
-| 滑块气泡 | `.u-slider-bubble` 必须是 `.u-slider` 的直接子元素（轨道 `overflow: hidden`） |
+| 半星 | 已随评分族删除 |
+| 表格 | `.u-table` 是真 `<table>`，假定 `thead`/`tbody`；`aria-selected` 放 `tr`；**无 sticky 表头**（规范未给 max-height）。排序列（`aria-sort`）的样式已删，需要时按 `variables.css` 的 C10 段补回 |
+| 日期选择器 | 只读 `aria-readonly="true"` 在 `.u-datepicker` 根上；「今天」要同时给 `color` 与 `box-shadow`（标记值用 `currentColor`） |
 | 下拉 | `.u-select-panel` 不滚动、`.u-select-list` 滚动（否则搜索型下拉的搜索框会跟着滚走） |
-| 抽屉 | `u-is-open` 写在元素自己身上或共同祖先 `.u-drawer-root` 上，两种都支持 |
-| 气泡提示 | 必须给方向变体（`.u-tooltip--top/--bottom/--left/--right`），否则不显示箭头 |
-| 文件上传 | `.u-upload--drag` 是 **dragover 激活态**，不是静态外观 |
-| 手风琴 | `.u-accordion-item` 必须**只有两个子元素**：`button.u-accordion-head` + `div.u-accordion-body`（单项是两行 grid，多一个子元素就会多出一行） |
-| 步骤条 | 连接线写在项末尾，或作为 `<li class="u-step-line">`；末项不必写（写了也被 `:last-child` 隐藏） |
 | 聚焦 | 分片**不抹掉**全局 `:focus-visible` 的 outline，而是叠加 `box-shadow: var(--focus-ring)` —— 强制色/高对比度模式下仍可见，这是无障碍底线 |
-| 加载圈 | `.u-loading-spinner` 弧线取 `currentColor`（主按钮底色就是 accent，取 accent 会隐形）；区块级的 `.u-spinner` 仍在 `global.css` |
-| 字段错误 | 挂在外层 `.u-field` 上（`.u-field-error` / `.u-field-success` 作子元素） |
+| 加载圈 | 区块级用 `global.css` 的 `.u-spinner`；按钮内联圈已由 EC 的 `.ec-btn.is-loading` 提供 |
+| 字段错误 | 挂在外层 `.u-field` 上（`.u-field-error` / `.u-field-success` 作子元素，样式在 feedback 分片） |
 
 **视觉复核怎么做**（`bsk` 不可用时的替代路径）：把 `variables.css` + `global.css` + 四个分片
-内联进一个静态 HTML，再把某主题的 415 个令牌写成 `<html style="…">`（等价于 store 运行时做的事），
-用 headless Chrome 截图。这条路径发现过一个真问题 —— `--drawer-radius` 的取值方向是反的
-（`0 16px 16px 0` 圆的是屏幕外那两角），已修。
+内联进一个静态 HTML，再用 headless Chrome 截图 + 读 computedStyle。
+这条路径发现过的真问题：渐变按钮的 `background-color` 是 transparent，
+对比度探针会一路取到页面底色、测出 1.00 的假失败 —— 必须单独算渐变的三个 stop。
 
 ### 9.12 组件套件（第五批：会员与邮件域，前缀 `.u-mm-`）
 
@@ -1440,10 +1404,10 @@ About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会
 
 | 段 | 覆盖 |
 | --- | --- |
-| §1–§4 共享层 | 区块壳 `u-mm-section`、**四态容器 `u-mm-state`**（未登录/骨架/错误/空态）、元信息行 `u-mm-meta`、分页壳 `u-mm-pager` |
+| §1–§4 共享层 | 区块壳 `u-mm-section`、**四态容器 `u-mm-state`**（未登录/骨架/错误/空态）、分页壳 `u-mm-pager`（元信息行 `u-mm-meta` 于 2026-10-25 删除：0 引用） |
 | §5–§19 会员域 | 等级徽章、身份卡、资产摘要卡、成长进度、权益格、等级阶梯、权益矩阵、套餐卡、优惠券卡、签到格、积分余额、流水行、任务条目、商城条目、待办条 |
 | §20–§24 邮件域 | 通知条目、偏好开关行、联系邮箱、台账统计卡、台账行 |
-| §25 布局 | `u-mm-hub` / `u-mm-detail` / `u-mm-split` 三个页面骨架 |
+| §25 布局 | 原 `u-mm-hub` / `u-mm-detail` / `u-mm-split` 三个页面骨架已于 2026-10-25 删除（0 引用） |
 
 三条纪律（与其余分片一致，`test/designTokens.test.js` 与 `test/componentClasses.test.js` 守着）：
 
@@ -1495,11 +1459,12 @@ About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会
 
 ### 9.14 硬编码与断点纪律
 
-- 组件样式**只允许消费令牌**。需要新色值/新尺寸时，先在 `variables.css` 登记语义化令牌，
-  再补 `presets.js` 五套取值（`test/themeContract.test.js` 会校验两者集合一致）。
+- 组件样式**只允许消费令牌**。需要新色值时，先在 EC 的 Semantic 层找到角色；
+  找不到就补一个语义角色（并附对比度验算），**不要**在页面里写第二套色值。
+  旧名登记在 `variables.css` 的对照表里，新增令牌要同时进那张表。
 - **不许有死令牌**：`test/designTokens.test.js` 会把「定义了没人用」和
-  「引用了未定义令牌」都判为失败；判定「有人用」时会排除 `variables.css` 与整个
-  `src/theme/`（那是写出令牌名的地方）。
+  「引用了未定义令牌」都判为失败；判定「有人用」时会排除 `variables.css` 与
+  `assets/ec/tokens/`（那是写出令牌名的地方）。
 - **规范里有、产品里没有对应组件的档位不入册**（Radio 目前无使用场景、
   头像只登记实际使用的那一档），否则会触发死令牌检查。
 - **断点没有令牌**：CSS 自定义属性不能出现在 `@media` 条件里，实际断点必须写字面量，
@@ -1729,19 +1694,24 @@ test/
 
 ### 主题契约测试
 
-`themeContract.test.js` 是新样式体系的安全网，覆盖三类只有"打开浏览器点一遍"才容易发现的缺陷：
+`themeContract.test.js` 是 EC 主题层的安全网，覆盖五类只有"打开浏览器点一遍"才容易发现的缺陷：
 
-1. **名册 ↔ 预设一致**：`variables.css` 登记的每个令牌，五套主题都必须给出取值（反之亦然）。
-   漏一处，该令牌在某个主题下会静默落回别的主题的值。
-2. **合成不产出空令牌**：五套主题 × 极端自定义组合（字号 85%~130%、密度 80%~130%、
-   圆角 0~200%、`NaN`/负数/超范围）逐个走 `assertTokenContract`，任何缺失/空串都会失败。
-3. **组件尺寸速查总表逐格断言**：25 行 × 5 列的组件尺寸（输入框/按钮/卡片/导航/
-   分页/进度条/复选框……）与规范表格逐格比对，改错一个数字就会失败；
-   另有聚焦态的五种做法、主按钮悬停态的五种做法、价格五套规格、
-   「5 套通用」部分的一致性、基础层风格语言等专项守卫。
+1. **状态机**：三档（light / dark / auto）、写 `data-theme` + `data-theme-mode`、
+   持久化到 `ec-theme`、auto 跟随系统、脏数据回落浅色、旧键（`SSTC_THEME_PREF`）被清理。
+2. **控件契约**：`ThemeSwitch.vue` 必须带 `data-set-theme` / `aria-pressed` / `role="group"`，
+   三档图标真的存在于 `iconSet`；`Navbar` 用的是 `ThemeSwitch` 而不是已删除的 `ThemeSwitcher`。
+3. **令牌唯一来源**：除 `assets/ec/tokens/` 与工具页的取色器外，
+   任何样式出现 `#hex` / `rgba()` 即失败；桥接层不得覆写 `--ec-*`；
+   引用的每个 `--ec-*` 都必须在令牌层里存在。
+4. **暗色覆写完整**：背景 / 文字 / 描边 / 行动 / 功能 / 渐变六组语义角色都要有暗色值；
+   暗色主按钮必须是「亮面 + 深字」（白字压在 `#A5AEFF` 上只有 2.08:1）。
+5. **对比度（可复算）**：用 WCAG 2.1 相对亮度公式实测 —— 主按钮渐变三段压白字 ≥ 4.5、
+   暗色深字压亮面 ≥ 4.5、三级文字在各自底色上 ≥ 4.5；同时把
+   「品牌渐变 cyan 端白字只有 1.81:1」这条**反例**也钉住，
+   防止有人把装饰渐变改回按钮底。
 
-此外还覆盖了强调色派生（自动压暗 + 按钮悬停底色 + 反白/反黑文字）、背景图 URL 白名单
-（`javascript:` 被丢弃、引号/换行被剔除）、缩放只作用于对应令牌组等行为。
+第 5 类是本设计系统存在的理由：这类缺陷上线不报错，只在弱视用户、低亮度屏幕
+与截图分享时暴露。
 
 ### 测试基础设施（无新增依赖）
 

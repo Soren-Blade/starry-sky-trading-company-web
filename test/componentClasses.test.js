@@ -33,6 +33,9 @@ const WEB_ROOT = join(import.meta.dirname, '..')
 const SRC = join(WEB_ROOT, 'src')
 
 const SHARED_STYLES = [
+  // EC 设计系统的组件库：`.ec-*` 全局可用，页面可以直接用
+  'assets/ec/ec.css',
+  'assets/ec/ec-business.css',
   'assets/styles/global.css',
   'assets/styles/ui-kit-data.css',
   'assets/styles/ui-kit-feedback.css',

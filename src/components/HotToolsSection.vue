@@ -49,6 +49,7 @@ import { useFavoriteStore } from '@/stores/favorite'
 import { useOpenTool } from '@/hooks/useOpenTool'
 import { useUserStore } from '@/stores/user'
 import { useToolStore } from '@/stores/tool'
+import { useMemberStore } from '@/stores/member'
 import { notify } from '@/hooks/useToast/index.js'
 import { SECTIONS, TOOL_PAGE } from '@/constants/index.js'
 
@@ -60,7 +61,20 @@ const props = defineProps({
 const favoriteStore = useFavoriteStore()
 const userStore = useUserStore()
 const toolStore = useToolStore()
+const memberStore = useMemberStore()
 const { openTool } = useOpenTool()
+
+const ACCESS_POLICIES = ['free', 'card', 'member_free', 'member_only']
+
+/**
+ * 与 ToolCard 保持同一套策略回退：字段缺失时按 requires_card 推断，
+ * 否则迁移窗口期（服务端还没回填 access_policy）会把收费工具误判成免费。
+ */
+const accessPolicyOf = (tool) => {
+  const declared = tool?.access_policy
+  if (ACCESS_POLICIES.includes(declared)) return declared
+  return tool?.requires_card === true ? 'card' : 'free'
+}
 
 /** 首页只放一行（4 个），榜单页给多一点 */
 const LIMIT = 4
@@ -76,9 +90,17 @@ const favoriteTools = computed(() => new Set(favoriteStore.toolIds))
 /** 取不到工具就整块不渲染：它是补充推荐，缺了不该留个空洞 */
 const shouldRender = computed(() => (loading.value && !failed.value) || tools.value.length > 0)
 
-/** 与工具页/搜索页同一套判断：免费工具永远算可用 */
+/**
+ * 与工具页/搜索页同一套判断，但先按策略分流：
+ *   - free：永远算可用；
+ *   - card：看卡密权益列表；
+ *   - member_free / member_only：会员身份即视为已拥有。
+ * 免费工具仍然不读权益列表，避免列表未加载时把免费工具误标成「需卡密」。
+ */
 const hasEntitlement = (tool) => {
-  if (tool.requires_card !== true) return true
+  const policy = accessPolicyOf(tool)
+  if (policy === 'free') return true
+  if (policy === 'member_free' || policy === 'member_only') return Boolean(memberStore?.isMember)
   if (!userStore.userId) return false
   const ids = toolStore.validToolIds
   return Array.isArray(ids) && ids.includes(Number(tool.id))
@@ -166,16 +188,20 @@ async function loadTools() {
   padding-top: calc(var(--section-gap) * 0.3);
 }
 
+/*
+ * ToolCard 现在是设计系统的 `.ec-tool` 行（图标 / 名称与描述 / 标签 / 状态与操作
+ * 四段横向排布），不再适合多列栅格，所以这里固定单列，让每行占满内容宽度。
+ */
 .tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
-  gap: var(--grid-gap);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ec-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* 卡片是 .u-enter 入场元素，靠 --i 做错峰 */
+/* 行是 .u-enter 入场元素，靠 --i 做错峰 */
 .tools-cell {
   display: flex;
   min-width: 0;
@@ -198,9 +224,5 @@ async function loadTools() {
  * 加一个 `rank` prop，由卡片内部挑一个不与「新」/收藏冲突的位置渲染。
  */
 
-@media (max-width: 575px) {
-  .tools-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 </style>

@@ -1,0 +1,41 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · Layer 4 — Business（业务语义层）
+   ----------------------------------------------------------------------------
+   仅 11 个业务组件可消费本层（构建期由 lint L-04 校验）。
+   原子/组合组件引用本层 = error：它们是通用件，不允许知道「价格」「卡密」。
+   ========================================================================== */
+
+:root {
+  /* ── PriceText ────────────────────────────────────────────────────────── */
+  --ec-price-current:  var(--ec-red-600);    /* 当前价，恒为红（中式电商约定：涨红） */
+  --ec-price-original: var(--ec-neutral-400);/* 原价，恒带删除线 */
+  --ec-price-save:     var(--ec-green-700);  /* 省额，恒为绿 */
+  --ec-price-symbol:   var(--ec-price-current);
+
+  /* ── CardCodeBox（卡密） ──────────────────────────────────────────────── */
+  --ec-code-surface: var(--ec-neutral-950);
+  --ec-code-text:    var(--ec-neutral-100);
+  --ec-code-border:  rgba(91, 108, 255, .28);
+  --ec-code-glow:    0 0 24px -8px rgba(91, 108, 255, .55);
+  --ec-code-mask:    var(--ec-neutral-500);
+
+  /* ── VipCard（会员） ──────────────────────────────────────────────────── */
+  --ec-vip-gold:       var(--ec-gold-500);
+  --ec-vip-gold-ink:   var(--ec-gold-800);   /* 浅底上的金色文字 */
+  --ec-vip-gold-text:  #3A2A05;              /* 金色渐变面上的文字（浅金底） */
+  --ec-vip-black:      #171A23;
+  --ec-vip-silver:     linear-gradient(135deg, var(--ec-neutral-50) 0%, var(--ec-neutral-200) 100%);
+
+  /* ── StatusDot（工具/订单状态） ───────────────────────────────────────── */
+  --ec-status-online:   var(--ec-green-500);
+  --ec-status-maintain: var(--ec-amber-500);
+  --ec-status-offline:  var(--ec-neutral-400);
+  --ec-status-expired:  var(--ec-red-500);
+  --ec-status-vip:      var(--ec-gold-500);
+  --ec-status-owned:    var(--ec-blue-500);
+
+  /* ── 兑换与订单 ───────────────────────────────────────────────────────── */
+  --ec-redeem-cell:     44px;               /* 兑换输入单格高 */
+  --ec-redeem-gap:      8px;
+  --ec-order-step-done: var(--ec-success);
+}

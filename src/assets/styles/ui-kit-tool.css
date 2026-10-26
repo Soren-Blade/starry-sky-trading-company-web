@@ -114,7 +114,7 @@
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: var(--leading-body);
-  /* 加高控件用圆角而不是胶囊：液态玻璃的单行输入框是 9999px，套到 176px 高的
+  /* 加高控件用圆角而不是胶囊：--radius-input 是给单行输入框的令牌，
      文本域上会变成两端半圆，首行文字贴着弧线。取值见 variables.css 的加高档令牌。 */
   border-radius: var(--radius-input-tall);
   resize: vertical;
@@ -352,22 +352,6 @@
   color: var(--warning);
 }
 
-.tool-aside-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit));
-}
-
-.tool-aside-link {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  font-size: var(--fs-sm);
-  color: var(--accent);
-  text-decoration: none;
-}
-
 /* ── §7 响应式 ───────────────────────────────────────────────── */
 @media (max-width: 991px) {
   /* 窄屏把侧栏折到主区下面：两栏在 700px 宽时会把输入区挤到不可用 */
@@ -398,10 +382,6 @@
      这两条也属于 767 断点，统一写在这里，避免同一个断点出现两个 @media 块。 */
   .tool-calc-grid {
     grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  }
-
-  .tool-file-card-thumb {
-    display: none;
   }
 
   /* §8 模式切换在窄屏改成单行横滑：折行会让标签和面板标题挤在一起 */
@@ -484,15 +464,6 @@
   background: var(--bg-surface-2);
 }
 
-.tool-file-card-thumb {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-input);
-  background: var(--bg-soft);
-  object-fit: cover;
-}
-
 .tool-file-card-body {
   flex: 1;
   min-width: 0;
@@ -531,69 +502,6 @@
   color: var(--danger);
 }
 
-/* ── §10 差异对比 ────────────────────────────────────────────── */
-.tool-diff {
-  max-height: 360px;
-  overflow: auto;
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-input);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-}
-
-.tool-diff-line {
-  display: flex;
-  gap: calc(var(--space-unit));
-  padding: 0 calc(var(--space-unit) * 1.25);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.tool-diff-line--add {
-  background: var(--success-bg);
-}
-
-.tool-diff-line--remove {
-  background: var(--danger-bg);
-}
-
-.tool-diff-gutter {
-  flex: none;
-  width: 2.5em;
-  color: var(--text-muted);
-  text-align: right;
-  user-select: none;
-}
-
-/* ── §11 历史记录 ────────────────────────────────────────────── */
-/* 只在「本机保存」的历史上使用（localStorage），因此固定条目高度、
-   时间用等宽数字，滚动时眼动更稳。 */
-.tool-history {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.75);
-}
-
-.tool-history-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-unit);
-  padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.5);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-input);
-  background: var(--bg-surface-2);
-  font-size: var(--fs-sm);
-}
-
-.tool-history-time {
-  flex: none;
-  color: var(--text-muted);
-  font-size: var(--fs-label);
-  font-variant-numeric: tabular-nums;
-}
-
 /* ── §12 计算器（多输入 + 大结果） ────────────────────────────── */
 .tool-calc-grid {
   display: grid;
@@ -601,46 +509,14 @@
   gap: calc(var(--space-unit) * 1.5);
 }
 
-.tool-calc-value {
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  font-variant-numeric: tabular-nums;
-  word-break: break-all;
-}
-
 .tool-calc-note {
   color: var(--text-muted);
   font-size: var(--fs-label);
 }
 
-/* ── §13 设计参数（左参数 + 右预览） ──────────────────────────── */
-.tool-design-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: var(--grid-gap);
-  align-items: start;
-}
-
-.tool-design-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  overflow: hidden;
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-panel);
-  background: var(--bg-surface-2);
-}
-
-.tool-design-code {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-}
-
 /* ── §14 代码视图（带语言条的高亮块） ────────────────────────── */
 /* 圆角与边框由外层 `.tool-code` 统一承担，语言条只画一条下边框 ——
-   若三段各自带圆角，液态玻璃（--radius-input: 9999px）会把代码块
+   若三段各自带圆角，--radius-input 会把代码块
    上下压成两个胶囊头。参照 `ui-showcase/components/tools.html` 的代码视图。 */
 .tool-code {
   display: flex;
@@ -680,15 +556,5 @@
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   line-height: 1.6;
-}
-
-/* ── §15 响应式补充（新组件） ─────────────────────────────────── */
-/* 断点只允许 1199 / 991 / 767 / 575，与全站保持一致。
-   767 那一档的规则统一写在 §7，避免同一断点出现两个 @media 块。 */
-@media (max-width: 1199px) {
-  /* 参数 + 预览两栏在中屏会把预览压到 200px 以下，改为上下堆叠 */
-  .tool-design-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 

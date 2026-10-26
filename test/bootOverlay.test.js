@@ -88,15 +88,53 @@ test('启动期间遮罩挂在应用壳**外面**：否则 inert 会把遮罩自
 })
 
 test('遮罩压在 toast 之下：启动期间的告警必须看得见', () => {
-  // 层级统一走 variables.css 的 --z-* 令牌：遮罩 --z-boot(2500) < toast --z-toast(3000)
+  // 层级统一走 variables.css 的 --z-* 令牌：遮罩 --z-boot < toast --z-toast
   assert.match(APP_SOURCE, /\.boot-screen \{[\s\S]*?z-index: var\(--z-boot\);/, '遮罩应取 --z-boot')
   assert.match(APP_SOURCE, /\.route-progress \{[\s\S]*?z-index: var\(--z-sticky\);/, '进度条应取 --z-sticky')
 
+  // 桥接层把 --z-* 指到 EC 的 --ec-z-*，所以要**顺着 var() 解析一次**再比数值。
+  // 直接正则会读到空字符串（Number('') === 0），于是所有比较都假通过。
   const vars = readFileSync(join(WEB_ROOT, 'src', 'assets', 'styles', 'variables.css'), 'utf8')
-  const valueOf = (name) => Number((vars.match(new RegExp(`${name}:\\s*(\\d+);`)) || [])[1])
-  assert.ok(valueOf('--z-boot') < valueOf('--z-toast'), '--z-boot 必须小于 --z-toast')
-  assert.ok(valueOf('--z-nav') < valueOf('--z-modal'), '导航必须低于弹窗')
-  assert.equal(valueOf('--z-dropdown'), valueOf('--z-nav'), '下拉与导航同层（由 DOM 顺序决定先后）')
+  const ecTokens = ['semantic'].map((f) =>
+    readFileSync(join(WEB_ROOT, 'src', 'assets', 'ec', 'tokens', `${f}.css`), 'utf8')
+  )
+  const layerOf = (source, name) => {
+    const raw = (source.match(new RegExp(`${name}:\\s*([^;]+);`)) || [])[1]
+    return raw ? raw.trim() : null
+  }
+  const valueOf = (name) => {
+    let raw = layerOf(vars, name)
+    assert.ok(raw, `${name} 必须定义`)
+    const ref = raw.match(/var\((--ec-[a-z0-9-]+)\)/)
+    if (ref) {
+      const ecRaw = ecTokens.map((t) => layerOf(t, ref[1])).find(Boolean)
+      assert.ok(ecRaw, `${name} 指向的 ${ref[1]} 必须在 EC 令牌层里存在`)
+      raw = ecRaw
+    }
+    const num = Number(raw.replace(/px$/, ''))
+    assert.ok(Number.isFinite(num), `${name} 应能解析出数值，实际 ${raw}`)
+    return num
+  }
+
+  // Toast 层由设计系统的 `.ec-toast-layer` 直接取 `--ec-z-toast`，
+  // 桥接层不再保留 `--z-toast` 别名（无消费者的令牌会被死令牌检查拦下），
+  // 因此这里直接读 EC 令牌比较。
+  const ecValueOf = (name) => {
+    const raw = ecTokens.map((t) => layerOf(t, name)).find(Boolean)
+    assert.ok(raw, `${name} 必须在 EC 令牌层里存在`)
+    const num = Number(raw.replace(/px$/, ''))
+    assert.ok(Number.isFinite(num), `${name} 应能解析出数值，实际 ${raw}`)
+    return num
+  }
+
+  assert.ok(valueOf('--z-boot') < ecValueOf('--ec-z-toast'), '--z-boot 必须小于 toast 层')
+  // Dialog / Drawer 改用 `.ec-overlay` 后，弹窗层级由它自带的 `--ec-z-overlay` 决定，
+  // 桥接层不再转出 `--z-modal`（同样为了不留无消费者令牌）。
+  assert.ok(valueOf('--z-nav') < ecValueOf('--ec-z-overlay'), '导航必须低于弹窗遮罩')
+  assert.ok(ecValueOf('--ec-z-overlay') < valueOf('--z-boot'), '启动遮罩必须压在弹窗之上')
+  // EC 的刻度里下拉（200）高于吸顶（100）：浮层必须能盖过顶栏，
+  // 否则吸顶栏一滚到顶部就会把用户菜单裁掉半截。
+  assert.ok(valueOf('--z-dropdown') > valueOf('--z-nav'), '下拉必须压过吸顶导航')
 })
 
 test('尊重减少动态效果：进度条与遮罩都有降级', () => {

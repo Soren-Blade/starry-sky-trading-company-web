@@ -225,7 +225,6 @@ const handleLearnMore = () => {
 .hero-feature-icon {
   font-size: var(--fs-h3);
   line-height: 1;
-  animation: var(--decor-animation);
 }
 
 /* ── 视觉面板：一块表面 + 品牌标记，不含装饰性渐变 ────────────── */
@@ -256,7 +255,6 @@ const handleLearnMore = () => {
 .hero-panel-mark {
   font-size: calc(var(--fs-display) * 0.8);
   line-height: 1;
-  animation: var(--decor-animation);
 }
 
 .hero-panel-text {

@@ -1,0 +1,79 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · Layer 2.5 — Typography（字阶与字体族）
+   ----------------------------------------------------------------------------
+   字阶只有 7 级，禁止在业务里新造字号。价格/数字必须走 --ec-font-num +
+   tabular-nums；卡密必须走 --ec-font-mono + .08em 字距。
+   中文正文下限 12px（caption），11px 仅允许用于角标与标签（micro）。
+   ========================================================================== */
+
+:root {
+  /* ── 字体族 ───────────────────────────────────────────────────────────── */
+  --ec-font-sans: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei",
+                  system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ec-font-num:  "DIN Alternate", "Bahnschrift", "Roboto Condensed",
+                  "HarmonyOS Sans SC", system-ui, sans-serif;
+  --ec-font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", Consolas,
+                  ui-monospace, monospace;
+
+  /* ── 字阶（size / line-height / weight / tracking） ───────────────────── */
+  --ec-display-size: 32px;  --ec-display-lh: 40px;  --ec-display-weight: 700;  --ec-display-track: -.02em;
+  --ec-h1-size:      24px;  --ec-h1-lh:      32px;  --ec-h1-weight:      600;  --ec-h1-track:      -.015em;
+  --ec-h2-size:      20px;  --ec-h2-lh:      28px;  --ec-h2-weight:      600;  --ec-h2-track:      -.01em;
+  --ec-h3-size:      16px;  --ec-h3-lh:      24px;  --ec-h3-weight:      600;  --ec-h3-track:      0;
+  --ec-body-size:    14px;  --ec-body-lh:    22px;  --ec-body-weight:    400;
+  --ec-caption-size: 12px;  --ec-caption-lh: 18px;  --ec-caption-weight: 400;
+  --ec-micro-size:   11px;  --ec-micro-lh:   16px;  --ec-micro-weight:   500;  --ec-micro-track: .02em;
+
+  /* ── 价格字阶（三段式：符号 / 整数 / 小数） ────────────────────────────── */
+  --ec-price-sym-sm: 12px;  --ec-price-int-sm: 22px;  --ec-price-dec-sm: 14px;
+  --ec-price-sym-md: 14px;  --ec-price-int-md: 28px;  --ec-price-dec-md: 18px;
+  --ec-price-sym-lg: 16px;  --ec-price-int-lg: 34px;  --ec-price-dec-lg: 22px;
+
+  /* ── 卡密字号（等宽，逐位可数） ────────────────────────────────────────── */
+  --ec-code-size-sm: 14px;
+  --ec-code-size-md: 18px;
+  --ec-code-size-lg: 22px;
+  --ec-code-track:   .08em;
+
+  /* ── 行宽上限（可读性） ────────────────────────────────────────────────── */
+  --ec-measure: 68ch;
+  --ec-measure-tight: 46ch;
+}
+
+/* ═══ 语义排版工具类（文档站与业务共用，全部消费上面的 token） ═══════════ */
+
+.ec-display, .ec-h1, .ec-h2, .ec-h3,
+.ec-body, .ec-caption, .ec-micro { margin: 0; }
+
+.ec-display {
+  font-size: var(--ec-display-size); line-height: var(--ec-display-lh);
+  font-weight: var(--ec-display-weight); letter-spacing: var(--ec-display-track);
+  color: var(--ec-text-primary);
+}
+.ec-h1 {
+  font-size: var(--ec-h1-size); line-height: var(--ec-h1-lh);
+  font-weight: var(--ec-h1-weight); letter-spacing: var(--ec-h1-track);
+  color: var(--ec-text-primary);
+}
+.ec-h2 {
+  font-size: var(--ec-h2-size); line-height: var(--ec-h2-lh);
+  font-weight: var(--ec-h2-weight); letter-spacing: var(--ec-h2-track);
+  color: var(--ec-text-primary);
+}
+.ec-h3 {
+  font-size: var(--ec-h3-size); line-height: var(--ec-h3-lh);
+  font-weight: var(--ec-h3-weight); color: var(--ec-text-primary);
+}
+.ec-body    { font-size: var(--ec-body-size);    line-height: var(--ec-body-lh);    font-weight: var(--ec-body-weight);    color: var(--ec-text-primary); }
+.ec-caption { font-size: var(--ec-caption-size); line-height: var(--ec-caption-lh); font-weight: var(--ec-caption-weight); color: var(--ec-text-secondary); }
+.ec-micro   { font-size: var(--ec-micro-size);   line-height: var(--ec-micro-lh);   font-weight: var(--ec-micro-weight);
+              letter-spacing: var(--ec-micro-track); color: var(--ec-text-tertiary); }
+
+/* 数字与等宽：价格、库存、统计必须加，否则数字跳动会抖列宽 */
+.ec-num  { font-family: var(--ec-font-num); font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.ec-mono { font-family: var(--ec-font-mono); font-variant-numeric: tabular-nums; }
+.ec-code-text { font-family: var(--ec-font-mono); letter-spacing: var(--ec-code-track); font-variant-numeric: tabular-nums; }
+
+.ec-muted { color: var(--ec-text-secondary); }
+.ec-dim   { color: var(--ec-text-tertiary); }
+.ec-measure { max-width: var(--ec-measure); }

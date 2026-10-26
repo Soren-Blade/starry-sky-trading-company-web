@@ -2,14 +2,14 @@
  * 常量与站点文案
  *
  * 两个原则：
- *   1. **不在这里写死任何设计数值** —— 颜色、字号、圆角全部来自设计令牌
- *      （`assets/styles/variables.css` + `theme/presets.js`）。
+ *   1. **不在这里写死任何设计数值** —— 颜色、字号、圆角全部来自 EC 设计系统的
+ *      语义令牌（`assets/ec/tokens/`），本文件不持有任何色值。
  *      历史上这里有一份 `COLORS` / `TAG_COLORS` 硬编码色表，既无人使用，
  *      又与令牌形成两份事实来源，已删除。
  *   2. **全站文案集中在此** —— 改文案只碰这一个文件，不用在组件里四处搜。
- *      若文案变动牵动了数据结构（例如价格要带货币前缀），必须同时改数据层：
- *      价格格式化见 `utils/index.js` 的 `formatUtils.formatPrice`，
- *      货币来源见 `theme/presets.js` 每套主题的 `price` 字段。
+ *      价格格式化见 `utils/index.js` 的 `formatUtils.formatPrice`；
+ *      货币口径由 `stores/theme.js` 的 `pricePrefix` / `priceDecimals` 提供
+ *      （EC 只有一套人民币口径：¥ + 两位小数）。
  */
 
 // 扩展工具页（28 个）的文案单独成文件，避免这里继续膨胀到读不动。
@@ -913,19 +913,19 @@ export const LEGAL = {
   },
 }
 
-/** 样式主题弹窗 */
-export const THEME_PANEL = {
-  trigger: '样式主题',
-  title: '样式主题',
-  subtitle: '五套设计风格统一切换，也可以只微调个别样式。选择会保存在本机。',
-  presetTab: '整体风格',
-  customTab: '单项修改',
-  currentBadge: '使用中',
-  customizedBadge: '已微调',
-  resetField: '还原此项',
-  resetCustom: '还原全部微调',
-  resetAll: '恢复默认',
-  customizedNote: (count) => `已微调 ${count} 项`,
-  previewHint: '色板预览',
-  close: '关闭',
+/**
+ * 明暗切换（EC theme-switch）
+ *
+ * EC 的主题只有三档，控件是一个 segmented 组：浅色 / 深色 / 跟随系统。
+ * 顺序即按钮顺序 —— 从「最亮」到「最暗」再到「交给系统」，符合直觉。
+ *
+ * 图标名对应 `utils/iconSet.js`；颜色由 currentColor 决定，因此跟随令牌。
+ */
+export const THEME_SWITCH = {
+  label: '明暗模式',
+  modes: [
+    { mode: 'light', label: '浅色', icon: 'sun' },
+    { mode: 'dark', label: '深色', icon: 'moon' },
+    { mode: 'auto', label: '跟随系统', icon: 'monitor' },
+  ],
 }

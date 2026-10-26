@@ -2,17 +2,16 @@
  * 组件套件 · 表单类控件（第三批规范分片 1/4）
  * ============================================================================
  *
- * 负责五节，类名一律以 `u-` 起头，与其它三个分片不发生交集：
+ * 负责三节，类名一律以 `u-` 起头，与其它三个分片不发生交集：
  *   §1 下拉 / 选择器 —— .u-select / -trigger / -arrow / -panel / -item / -group /
  *                       -search / -empty / -hit
- *   §2 复选框        —— .u-checkbox / -box / -label / --indeterminate
- *   §3 单选框        —— .u-radio-group / .u-radio / -box / -label
+ *   §2 复选框        —— .u-checkbox / -box（--indeterminate 已删：无消费者）
  *   §4 开关          —— .u-switch / -track / -thumb / -label
- *   §5 滑块          —— .u-slider / -track / -fill / -thumb / -ticks / -tick / -bubble
  *
- * 失败态一律由**外层的 .u-field--error / .u-field--success**（global.css 的字段外壳）
- * 驱动，控件内部不重复实现校验；错误文案用 .u-select-error / .u-checkbox-error，
- * 间距与字号取 --field-error-gap / --field-error-size。
+ * 2026-10-25 清理：§3 单选框（.u-radio-*）与 §5 滑块（.u-slider-*）整族删除 ——
+ * 两族在全站 0 个使用点，.u-field--error / --success、.u-select-error、
+ * .u-checkbox-error 同理。失败态改由使用点在 scoped 样式里表达。
+ * 间距与字号仍可取 --field-error-gap / --field-error-size。
  *
  * 与 global.css 的分工
  * ----------------------------------------------------------------------------
@@ -22,21 +21,20 @@
  * 选中 / 禁用 / 错误 / 成功」的完整状态矩阵 —— 这是各页面零散 scoped 样式
  * 做不到的部分。因此：
  *   · 不重复实现 global.css 已有的外壳（.u-input / .u-field / .u-dropdown 不动）；
- *   · 与既有 .u-checkbox 规则并存时靠**选择器特异性**取胜
- *     （如 `.u-checkbox input:checked + .u-checkbox-box`），全程不用 !important；
+ *   · 与既有 .u-checkbox 规则并存时靠**选择器特异性**取胜，全程不用 !important；
  *   · 下拉触发器不另造外观，几何全部复用输入框令牌（--input-height /
  *     --input-padding-* / --radius-input / --input-font-size / --stroke-*），
  *     下拉面板复用 --dropdown-* 与 --bg-elevated / --border。
  *
  * 令牌纪律
  * ----------------------------------------------------------------------------
- * 本文件出现的每一个值都来自 variables.css 的名册（逐套取值在 theme/presets.js）
+ * 本文件出现的每一个值都来自 variables.css 的对照表（取值最终落在 EC 令牌层）
  * 或 `calc(var(--space-unit) * n)`：没有硬编码色值、没有裸 px 尺寸、没有 em/rem 字号。
  * 唯一需要解释的写法是 `calc(var(--stroke-width) * 0.5)`（复选框不确定态的细横线）
  * 与 `clip-path` 的勾形百分比、`translate(-50%, -50%)` 居中表达式 —— 它们都由令牌
  * 或纯百分比派生，同样不承载写死的视觉尺度。
  * 下拉面板阴影复用基础层的 --shadow-float（令牌契约方确认：§1 的面板阴影列与它
- * 五套逐值相同，故未另立 --dropdown-shadow）。
+ * 两套相同，故未另立 --dropdown-shadow）。
  *
  * 移动端缩放
  * ----------------------------------------------------------------------------
@@ -118,32 +116,6 @@
   opacity: var(--state-disabled-opacity);
 }
 
-/* 错误 / 成功：均由容器带语义类，触发器只管换色与图标，
- * 因此校验逻辑不需要在下拉内部再实现一遍 */
-.u-field--error .u-select-trigger {
-  border-color: var(--danger);
-}
-
-.u-field--success .u-select-trigger {
-  border-color: var(--success);
-}
-
-/* 成功勾：直接用字形（尺寸由字号决定），不额外插入元素 */
-.u-field--success .u-select-trigger::after {
-  content: '✓';
-  flex-shrink: 0;
-  font-size: var(--field-success-icon);
-  line-height: 1;
-  color: var(--success);
-}
-
-/* 错误文字：与 .u-field-error 同构，交给使用点写在触发器之后 */
-.u-select-error {
-  margin-top: var(--field-error-gap);
-  font-size: var(--field-error-size);
-  color: var(--danger);
-}
-
 /* 箭头：用 mask 而不是 border 拼三角形 —— 这样颜色能取 --select-arrow-color，
  * 尺寸能取 --select-arrow-size，且不会在窄屏出现「三角跟着字号变」的偏差 */
 .u-select-arrow {
@@ -167,10 +139,8 @@
 }
 
 /* 面板：圆角与内边距来自 B7，表面色与描边来自基础层，阴影复用基础层的
- * --shadow-float —— 它在五套下的取值与规范 §1 的面板阴影列逐值相同
- * （tech 0 8px 24px rgba(0,0,0,.4) / glass 0 8px 32px rgba(99,102,241,.12)
- *  / bento 0 4px 16px rgba(0,0,0,.08) / neo 6px 6px 0 #000 / mono none），
- * 所以没有另立 --dropdown-shadow；mono 为 none 时这里也不能兜底写死阴影。
+ * --shadow-float（= EC 的 --ec-shadow-lg）—— 下拉 / 提示框 / 卡片浮层
+ * 三处同源，所以没有另立 --dropdown-shadow。
  * 面板本身不滚动 —— 滚动交给内层列表，搜索框才能常驻在列表上方 */
 .u-select-panel {
   position: absolute;
@@ -187,10 +157,6 @@
   min-width: var(--dropdown-width);
   padding: var(--dropdown-padding-y) 0;
   background: var(--bg-elevated);
-  /* 毛玻璃：只有 liquid-glass 的 --effect-backdrop 不是 none，也只有它的
-   * --bg-elevated 是半透明 —— 缺这层模糊时选项会与背后的页面文字叠在一起。 */
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--dropdown-radius);
   box-shadow: var(--shadow-float);
@@ -203,11 +169,11 @@
   bottom: calc(100% + var(--dropdown-offset));
 }
 
-/* 面板被「后面那张卡片」整块盖住的问题（液态玻璃必现）。
+/* 面板被「后面那张卡片」整块盖住的问题。
  *
- * 玻璃主题的输入框、卡片都带 backdrop-filter，而「backdrop-filter 不是 none」
- * 本身会创建层叠上下文 —— 面板再高也只能在卡片内部比较层级，页面上排在
- * DOM 更靠后的结果卡片照样盖上来。所以卡片内部有展开中的浮层时，把
+ * 任何**创建了层叠上下文**的祖先（transform / filter / opacity / isolation…）
+ * 都会把浮层的 z-index 关在卡片内部 —— 面板再高也只能在卡片里比层级，
+ * 页面上排在 DOM 更靠后的卡片照样盖上来。所以卡片内部有展开中的浮层时，把
  * **控件与卡片一起**抬到 --z-dropdown 层；卡片不抬，面板出不去的。
  * （`:has` 在项目支持的浏览器里均可用；不支持时只是回到抬控件这一层，
  *  与改动前的表现一致，不会更差。） */
@@ -404,13 +370,11 @@
  * 而 `input:indeterminate` 是原生属性 —— 购物车全选框写的是
  * `:indeterminate.prop="部分选中 && 非全选"`，只有原生属性会被设置。
  * 早先只写了类选择器，导致部分选中时复选框显示成「完全未选中」。 */
-.u-checkbox--indeterminate .u-checkbox-box,
 .u-checkbox input:indeterminate + .u-checkbox-box {
   background: var(--checkbox-checked-bg);
   border-color: var(--checkbox-checked-bg);
 }
 
-.u-checkbox--indeterminate .u-checkbox-box::after,
 .u-checkbox input:indeterminate + .u-checkbox-box::after {
   /* 横线高度取 --stroke-width 的一半，而不是字面量 1px：
    * 这样它始终比勾选框自身的描边更细（tech 下 0.5px 渲染成一条发丝线，
@@ -437,163 +401,6 @@
 .u-checkbox:has(input:disabled) {
   color: var(--disabled-text);
   cursor: not-allowed;
-}
-
-.u-checkbox-label {
-  font-size: var(--checkbox-label-size);
-  line-height: var(--leading-body);
-}
-
-/* 错误 / 成功：在字段容器上给语义类，控件本身只换描边 */
-.u-field--error .u-checkbox-box {
-  border-color: var(--danger);
-}
-
-.u-field--success .u-checkbox-box {
-  border-color: var(--success);
-}
-
-.u-checkbox-error {
-  margin-left: var(--field-error-gap);
-  font-size: var(--field-error-size);
-  color: var(--danger);
-}
-
-/* ════════════════════════════════════════════════════════════════
- * §3 单选框
- *
- * 结构：
- *   <fieldset class="u-radio-group">
- *     <legend class="u-radio-group-label">标题</legend>
- *     <label class="u-radio"><input type="radio" name="x" /><span class="u-radio-box"
- *       ></span><span class="u-radio-label">选项</span></label>
- *   </fieldset>
- * ════════════════════════════════════════════════════════════════ */
-
-.u-radio-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--radio-group-gap-y);
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.u-radio-group--horizontal {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: var(--radio-group-gap-y) var(--radio-group-gap-x);
-  align-items: center;
-}
-
-.u-radio-group-label {
-  /* fieldset 图例不能是 flex 容器，否则 Chrome 会把它从边框里挪出来 */
-  display: block;
-  margin-bottom: var(--radio-group-label-gap);
-  padding: 0;
-  font-size: var(--radio-group-label-size);
-  font-weight: var(--radio-group-label-weight);
-  color: var(--text-primary);
-}
-
-.u-radio-group--horizontal .u-radio-group-label {
-  flex-basis: 100%;
-}
-
-.u-radio {
-  display: flex;
-  align-items: center;
-  gap: var(--radio-label-gap);
-  min-height: var(--tag-height);
-  color: var(--text-primary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.u-radio input {
-  position: absolute;
-  width: var(--stroke-width);
-  height: var(--stroke-width);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 外圈：常态 1px 描边；选中态加粗到 --radio-checked-border-width */
-.u-radio-box {
-  position: relative;
-  display: block;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  width: var(--radio-size);
-  height: var(--radio-size);
-  background: transparent;
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--radius-pill);
-  transition:
-    border-color var(--transition-interactive),
-    border-width var(--transition-interactive),
-    box-shadow var(--transition-interactive);
-}
-
-.u-radio:hover .u-radio-box {
-  border-color: var(--accent);
-}
-
-/* 内圆：绝对居中，选中时 scale(1) —— 比改宽高少一次重排 */
-.u-radio-box::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  box-sizing: border-box;
-  width: var(--radio-dot-size);
-  height: var(--radio-dot-size);
-  background: var(--radio-checked-color);
-  border-radius: var(--radius-pill);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform var(--transition-interactive);
-}
-
-.u-radio input:checked + .u-radio-box {
-  border-color: var(--radio-checked-color);
-  border-width: var(--radio-checked-border-width);
-}
-
-.u-radio input:checked + .u-radio-box::after {
-  transform: translate(-50%, -50%) scale(1);
-}
-
-.u-radio input:focus-visible + .u-radio-box {
-  box-shadow: var(--focus-ring);
-  outline: var(--stroke-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
-}
-
-.u-radio input:disabled + .u-radio-box {
-  opacity: var(--state-disabled-opacity);
-}
-
-.u-radio:has(input:disabled) {
-  color: var(--disabled-text);
-  cursor: not-allowed;
-}
-
-.u-radio-label {
-  font-size: var(--radio-group-label-size);
-  line-height: var(--leading-body);
-}
-
-.u-radio-label--muted {
-  color: var(--text-muted);
-}
-
-.u-field--error .u-radio-box {
-  border-color: var(--danger);
-}
-
-.u-field--success .u-radio-box {
-  border-color: var(--success);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -654,18 +461,15 @@
   transform: scale(var(--active-scale));
 }
 
-.u-switch[aria-checked='true'] .u-switch-track,
-.u-switch--on .u-switch-track {
+.u-switch[aria-checked='true'] .u-switch-track {
   background: var(--switch-on-bg);
 }
 
-.u-switch[aria-checked='true'] .u-switch-thumb,
-.u-switch--on .u-switch-thumb {
+.u-switch[aria-checked='true'] .u-switch-thumb {
   left: calc(100% - var(--switch-thumb-size) - var(--switch-thumb-inset));
 }
 
-.u-switch[aria-checked='true']:hover .u-switch-track,
-.u-switch--on:hover .u-switch-track {
+.u-switch[aria-checked='true']:hover .u-switch-track {
   background: var(--switch-on-bg);
 }
 
@@ -710,159 +514,6 @@
   line-height: var(--leading-body);
 }
 
-.u-switch-label--muted {
-  color: var(--text-muted);
-}
-
-.u-field--error .u-switch-track {
-  box-shadow: 0 0 0 var(--focus-ring-offset) var(--danger-bg);
-}
-
-.u-field--success .u-switch-track {
-  box-shadow: 0 0 0 var(--focus-ring-offset) var(--success-bg);
-}
-
-/* ════════════════════════════════════════════════════════════════
- * §5 滑块
- *
- * 结构：
- *   <div class="u-slider">
- *     <span class="u-slider-bubble">42</span>
- *     <div class="u-slider-track">
- *       <div class="u-slider-fill" style="width:42%"></div>
- *     </div>
- *     <span class="u-slider-thumb" style="left:42%"></span>
- *     <div class="u-slider-ticks">
- *       <span class="u-slider-tick">0</span><span class="u-slider-tick">100</span>
- *     </div>
- *   </div>
- * 进度与手柄位置由使用点（组件）以内联 width/left 给出 —— 那是运行时数据，
- * 不是设计值，不该进令牌。
- * ════════════════════════════════════════════════════════════════ */
-
-.u-slider {
-  position: relative;
-  /* 左右各让出半个手柄：手柄在 0% / 100% 时圆心仍落在轨道端点上 */
-  padding: calc(var(--slider-thumb-size) * 0.5) 0;
-  user-select: none;
-}
-
-.u-slider-track {
-  position: relative;
-  width: 100%;
-  height: var(--slider-track-h);
-  overflow: hidden;
-  background: var(--slider-track);
-  border-radius: var(--slider-track-radius);
-}
-
-.u-slider-fill {
-  width: 0;
-  height: 100%;
-  background: var(--slider-fill);
-  border-radius: var(--slider-track-radius);
-  transition: width var(--transition-interactive);
-}
-
-/* 手柄骑在轨道两端：top 从 50% 上移到轨道中心 */
-.u-slider-thumb {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  z-index: 2;
-  box-sizing: border-box;
-  width: var(--slider-thumb-size);
-  height: var(--slider-thumb-size);
-  background: var(--slider-fill);
-  border: var(--slider-thumb-border);
-  border-radius: var(--slider-thumb-radius);
-  box-shadow: var(--slider-thumb-shadow);
-  transform: translate(-50%, -50%);
-  transition:
-    box-shadow var(--transition-interactive),
-    transform var(--transition-interactive);
-}
-
-.u-slider:hover .u-slider-thumb {
-  box-shadow: var(--focus-ring);
-  transform: translate(-50%, -50%) scale(var(--active-scale));
-}
-
-.u-slider:focus-within .u-slider-thumb,
-.u-slider-thumb:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: var(--stroke-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
-}
-
-/* 刻度：横排均分，文字色走 --text-muted，字号走 --slider-tick-size */
-.u-slider-ticks {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--slider-tick-gap);
-}
-
-.u-slider-tick {
-  font-size: var(--slider-tick-size);
-  color: var(--text-muted);
-  line-height: var(--leading-body);
-  text-align: center;
-}
-
-/* 当前值气泡：底色是 --accent，文字色是 --slider-bubble-color */
-.u-slider-bubble {
-  position: absolute;
-  bottom: calc(100% - var(--slider-tick-gap));
-  left: 50%;
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: var(--slider-bubble-h);
-  height: var(--slider-bubble-h);
-  padding: var(--slider-bubble-padding);
-  font-size: var(--slider-bubble-size);
-  font-weight: var(--fw-label);
-  color: var(--slider-bubble-color);
-  white-space: nowrap;
-  background: var(--accent);
-  border-radius: var(--slider-bubble-radius);
-  transform: translateX(-50%);
-}
-
-/* 只读滑块：降不透明度、封掉指针与按下态的位移。
- * cursor 写在内层元素上 —— 父级 pointer-events:none 会让父级自身的
- * cursor 不参与命中测试 */
-.u-slider--readonly {
-  opacity: var(--state-disabled-opacity);
-  pointer-events: none;
-}
-
-.u-slider--readonly .u-slider-thumb {
-  cursor: not-allowed;
-  box-shadow: none;
-  transition: none;
-}
-
-/* 错误 / 成功：滑块本体没有文字也没有描边，
- * 状态色只能落在「手柄的外环」与「已选段」两处 */
-.u-field--error .u-slider-thumb {
-  box-shadow: 0 0 0 var(--focus-ring-offset) var(--danger);
-}
-
-.u-field--error .u-slider-fill {
-  background: var(--danger);
-}
-
-.u-field--success .u-slider-thumb {
-  box-shadow: 0 0 0 var(--focus-ring-offset) var(--success);
-}
-
-.u-field--success .u-slider-fill {
-  background: var(--success);
-}
-
 /* ════════════════════════════════════════════════════════════════
  * 响应式
  * 每档只处理「这一档才需要变的量」，避免四处重复同一条规则。
@@ -878,9 +529,7 @@
 /* 小屏：标签与选项字号先降一档正文缩放 */
 @media (max-width: 991px) {
   .u-checkbox,
-  .u-switch,
-  .u-radio-group-label,
-  .u-radio-label {
+  .u-switch {
     font-size: calc(var(--checkbox-label-size) * var(--mobile-body-scale));
   }
 
@@ -915,16 +564,6 @@
     height: calc(var(--checkbox-size) * var(--mobile-control-scale));
   }
 
-  .u-radio-box {
-    width: calc(var(--radio-size) * var(--mobile-control-scale));
-    height: calc(var(--radio-size) * var(--mobile-control-scale));
-  }
-
-  .u-radio-box::after {
-    width: calc(var(--radio-dot-size) * var(--mobile-control-scale));
-    height: calc(var(--radio-dot-size) * var(--mobile-control-scale));
-  }
-
   .u-checkbox-box::after {
     width: calc(var(--checkbox-icon-size) * var(--mobile-control-scale));
     height: calc(var(--checkbox-icon-size) * var(--mobile-control-scale));
@@ -939,34 +578,6 @@
   .u-switch-thumb {
     width: calc(var(--switch-thumb-size) * var(--mobile-control-scale));
     height: calc(var(--switch-thumb-size) * var(--mobile-control-scale));
-  }
-
-  /* 滑块：手柄 ×0.9、刻度与气泡文字 ×0.95、气泡高度 ×0.8 */
-  .u-slider {
-    padding: calc(var(--slider-thumb-size) * var(--mobile-control-scale) * 0.5) 0;
-  }
-
-  .u-slider-thumb {
-    width: calc(var(--slider-thumb-size) * var(--mobile-control-scale));
-    height: calc(var(--slider-thumb-size) * var(--mobile-control-scale));
-  }
-
-  .u-slider-tick {
-    font-size: calc(var(--slider-tick-size) * var(--mobile-body-scale));
-  }
-
-  .u-slider-bubble {
-    height: calc(var(--slider-bubble-h) * var(--mobile-padding-scale));
-    padding: calc(var(--space-unit) * 0.5)
-      calc(var(--space-unit) * var(--mobile-padding-scale));
-    font-size: calc(var(--slider-bubble-size) * var(--mobile-body-scale));
-  }
-
-  /* 单选组：窄屏一律纵排（横排两个选项就开始挤） */
-  .u-radio-group--horizontal {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--radio-group-gap-y);
   }
 
   /* 分组标题降一档标题缩放 */

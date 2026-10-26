@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
   <head>
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
@@ -8,15 +8,43 @@
     <title>星辰商行</title>
 
     <!--
-      五套设计风格用到的字体族。刻意只发一个请求，并用 display=swap：
-      网络不可用时浏览器会退回 variables.css / theme/presets.js 里写好的
-      系统字体栈（含中文 CJK 字体），不会出现空白文字。
+      明暗主题的首屏兜底。
+      必须在任何样式表之前同步执行：主题属性晚一步写入，用户就会先看到浅色、
+      再闪一下切深色（FOUC）。这段脚本与 `stores/theme.js` 的 apply() 完全等价，
+      区别只是它跑在 JS 包下载完成之前。存储键与 EC 设计系统一致（ec-theme）。
+    -->
+    <script>
+      (function () {
+        var mode = 'light'
+        try {
+          var saved = localStorage.getItem('ec-theme')
+          if (saved === 'light' || saved === 'dark' || saved === 'auto') mode = saved
+        } catch (e) {
+          /* 隐私模式下 localStorage 不可读：按浅色渲染，与 store 的兜底一致 */
+        }
+        var dark =
+          mode === 'dark' ||
+          (mode === 'auto' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var root = document.documentElement
+        root.setAttribute('data-theme', dark ? 'dark' : 'light')
+        root.setAttribute('data-theme-mode', mode)
+        root.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
+
+    <!--
+      等宽字体。EC 的 --ec-font-mono 首选项是 JetBrains Mono（卡密、代码块、
+      数字表格都靠它对齐）。正文字体走 EC 的系统字体栈（HarmonyOS Sans SC /
+      PingFang SC / 微软雅黑），不再请求 Web 字体 —— 少一次往返，首屏更快。
+      display=swap：网络不可用时退回系统等宽字体，不会出现空白文字。
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Sans:wght@500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
     >
   </head>
   <body>

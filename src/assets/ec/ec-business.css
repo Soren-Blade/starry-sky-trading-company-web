@@ -1,0 +1,577 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · 业务组件层（Layer 4）
+   ----------------------------------------------------------------------------
+   11 个业务组件。本层是唯一允许消费 --ec-price-* / --ec-code-* / --ec-vip-* /
+   --ec-status-* 的地方（lint L-04）。原子/组合组件不得反向引用本层。
+   ========================================================================== */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PriceText · 三段式价格
+   符号 12/14/16 + 整数 22/28/34 + 小数 14/18/22，当前价恒为红且恒为最大字号
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-price {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+  font-family: var(--ec-font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  line-height: 1;
+}
+.ec-price__main { display: inline-flex; align-items: baseline; color: var(--ec-price-current); }
+.ec-price__sym {
+  font-size: var(--ec-price-sym-sm);
+  font-weight: 500;
+  margin-inline-end: 1px;
+  align-self: flex-start;
+  padding-block-start: 2px;
+}
+.ec-price__int { font-size: var(--ec-price-int-sm); font-weight: 700; letter-spacing: -.01em; }
+.ec-price__dec { font-size: var(--ec-price-dec-sm); font-weight: 600; }
+
+.ec-price--md .ec-price__sym { font-size: var(--ec-price-sym-md); padding-block-start: 3px; }
+.ec-price--md .ec-price__int { font-size: var(--ec-price-int-md); }
+.ec-price--md .ec-price__dec { font-size: var(--ec-price-dec-md); }
+
+.ec-price--lg .ec-price__sym { font-size: var(--ec-price-sym-lg); padding-block-start: 4px; }
+.ec-price--lg .ec-price__int { font-size: var(--ec-price-int-lg); letter-spacing: -.02em; }
+.ec-price--lg .ec-price__dec { font-size: var(--ec-price-dec-lg); }
+
+/* 原价：删除线 + 灰，字号恒小于当前价 */
+.ec-price__origin {
+  font-size: var(--ec-caption-size);
+  font-weight: 400;
+  color: var(--ec-price-original);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+/* 省额：绿，且必须由价格计算得出（禁止硬编码文案） */
+.ec-price__save {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding-inline: 5px;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-success-soft);
+  color: var(--ec-price-save);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-micro-size);
+  font-weight: 600;
+}
+
+/* emphasized：大促强调档。禁止再叠加第二个折扣角标（AP-01 变体） */
+.ec-price--emph .ec-price__main {
+  padding: 2px var(--ec-space-2);
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-danger-soft);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ProductCard · 商品卡
+   优先级：封面 16:10 → 角标 → 标题（≤2 行）→ 价格 → 销量 → 库存 → 唯一 primary
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-product {
+  display: flex;
+  flex-direction: column;
+  background: var(--ec-card-bg);
+  border: 1px solid var(--ec-card-border);
+  border-radius: var(--ec-card-radius);
+  overflow: hidden;
+  transition: transform var(--ec-dur-base) var(--ec-ease-out),
+              box-shadow var(--ec-dur-base) var(--ec-ease-out),
+              border-color var(--ec-dur-base) var(--ec-ease-out);
+}
+.ec-product:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ec-shadow-md);
+  border-color: var(--ec-border-default);
+}
+
+.ec-product__cover {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--ec-grad-brand);
+  overflow: hidden;
+}
+.ec-product__cover img { width: 100%; height: 100%; object-fit: cover; }
+.ec-product__cover--plain { background: var(--ec-bg-sunken); }
+
+/* 角标：最多一个（价格强调与角标二选一） */
+.ec-product__flag {
+  position: absolute;
+  inset-block-start: var(--ec-space-2);
+  inset-inline-start: var(--ec-space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding-inline: 6px;
+  border-radius: var(--ec-radius-xs);
+  background: var(--ec-bg-surface);
+  color: var(--ec-text-primary);
+  font-size: var(--ec-micro-size);
+  font-weight: 600;
+  box-shadow: var(--ec-shadow-sm);
+}
+.ec-product__flag--hot { background: var(--ec-danger-text); color: var(--ec-text-on-action); }
+.ec-product__flag--vip { background: var(--ec-grad-gold); color: var(--ec-vip-gold-text); }
+
+.ec-product__fav {
+  position: absolute;
+  inset-block-start: var(--ec-space-2);
+  inset-inline-end: var(--ec-space-2);
+  display: grid;
+  place-content: center;
+  width: 28px; height: 28px;
+  border: 0;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-bg-surface);
+  color: var(--ec-text-secondary);
+  box-shadow: var(--ec-shadow-sm);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity var(--ec-dur-fast), transform var(--ec-dur-fast), color var(--ec-dur-fast);
+}
+.ec-product:hover .ec-product__fav,
+.ec-product:focus-within .ec-product__fav { opacity: 1; transform: none; }
+.ec-product__fav:hover { color: var(--ec-danger-text); }
+.ec-product__fav[aria-pressed="true"] { opacity: 1; color: var(--ec-danger-text); }
+.ec-product__fav .ic { width: 14px; height: 14px; }
+
+.ec-product__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-2);
+  padding: var(--ec-card-pad-md);
+}
+.ec-product__title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--ec-body-size);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--ec-text-primary);
+  min-height: calc(2 * 1.5em);
+}
+.ec-product__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  font-size: var(--ec-micro-size);
+  color: var(--ec-text-tertiary);
+}
+.ec-product__meta .ic { width: 12px; height: 12px; }
+.ec-product__cta { margin-block-start: var(--ec-space-1); }
+
+/* 售罄：遮罩 + 到货提醒，CTA 降级为 secondary */
+.ec-product.is-soldout .ec-product__cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ec-bg-overlay);
+}
+.ec-product.is-soldout .ec-product__title { color: var(--ec-text-secondary); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ToolRow · 工具行（清单式，效率优先，禁止用 ProductCard 替代）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-tool {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background: var(--ec-bg-surface);
+  border: 1px solid var(--ec-card-border);
+  border-radius: var(--ec-radius-md);
+  transition: border-color var(--ec-dur-fast), background-color var(--ec-dur-fast), opacity var(--ec-dur-fast);
+}
+.ec-tool:hover { border-color: var(--ec-border-default); background: var(--ec-bg-hover); }
+
+.ec-tool__icon {
+  display: grid;
+  place-content: center;
+  width: 40px; height: 40px;
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-action-primary-soft);
+  color: var(--ec-action-primary-hover);
+}
+.ec-tool__icon .ic { width: 20px; height: 20px; }
+
+.ec-tool__main { min-width: 0; }
+.ec-tool__name {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  font-size: var(--ec-body-size);
+  font-weight: 500;
+  color: var(--ec-text-primary);
+}
+.ec-tool__desc {
+  margin: 2px 0 0;
+  font-size: var(--ec-caption-size);
+  color: var(--ec-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ec-tool__tags { display: flex; gap: var(--ec-space-1); flex-wrap: wrap; }
+.ec-tool__act { display: flex; gap: var(--ec-space-2); }
+
+/* 维护中：整行降透明 + 按钮置灰 + 橙色状态点（三者缺一不可，AP-03） */
+.ec-tool.is-maintain { opacity: .6; }
+.ec-tool.is-maintain:hover { background: var(--ec-bg-surface); border-color: var(--ec-card-border); }
+.ec-tool.is-offline { opacity: .45; }
+.ec-tool.is-offline .ec-tool__name { text-decoration: line-through; }
+
+/* 金色标签（会员语义，故在业务层） */
+.ec-tag--gold { color: var(--ec-vip-gold-ink); background: var(--ec-warning-soft); border-color: var(--ec-warning-border); }
+
+/* 需会员：金色按钮，唯一允许在业务面用金色 CTA 的场景 */
+.ec-btn--gold {
+  color: var(--ec-vip-gold-text);
+  background: var(--ec-grad-gold);
+  box-shadow: var(--ec-shadow-gold);
+}
+.ec-btn--gold:hover { filter: brightness(1.04); }
+
+@media (max-width: 768px) {
+  .ec-tool {
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-areas:
+      "icon main"
+      "tags tags"
+      "act  act";
+    row-gap: var(--ec-space-3);
+  }
+  .ec-tool__icon { grid-area: icon; }
+  .ec-tool__main { grid-area: main; }
+  .ec-tool__tags { grid-area: tags; }
+  .ec-tool__act { grid-area: act; }
+  .ec-tool__act .ec-btn { flex: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VipCard · 会员卡（身份层，不承载决策）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-vip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-4);
+  padding: var(--ec-space-5);
+  border-radius: var(--ec-radius-xl);
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--ec-vip-gold-text);
+  background: var(--ec-grad-gold);
+  box-shadow: var(--ec-shadow-gold);
+}
+.ec-vip--black {
+  color: var(--ec-vip-gold);
+  background: var(--ec-grad-black);
+  box-shadow: var(--ec-shadow-lg);
+}
+.ec-vip--silver {
+  color: var(--ec-text-primary);
+  background: var(--ec-vip-silver);
+  box-shadow: var(--ec-shadow-md);
+}
+
+/* 一次性光泽：1.2s，只播一次，不做循环 */
+.ec-vip::after {
+  content: "";
+  position: absolute;
+  inset-block: -40%;
+  inset-inline-start: -60%;
+  width: 40%;
+  rotate: 18deg;
+  background: linear-gradient(90deg,
+      transparent 0%, var(--ec-bg-wash) 50%, transparent 100%);
+  animation: ec-vip-sheen var(--ec-dur-sheen) var(--ec-ease-out) 1 both;
+  pointer-events: none;
+  z-index: 1;
+}
+.ec-vip__head {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+}
+.ec-vip__crown { width: 20px; height: 20px; }
+.ec-vip__name { font-size: var(--ec-h3-size); font-weight: 700; letter-spacing: -.01em; }
+.ec-vip__exp {
+  margin-inline-start: auto;
+  font-family: var(--ec-font-num);
+  font-size: var(--ec-caption-size);
+  opacity: .78;
+}
+.ec-vip__growth { display: flex; flex-direction: column; gap: 6px; }
+.ec-vip__growth .ec-progress { background: var(--ec-bg-wash); }
+.ec-vip__growth-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--ec-font-num);
+  font-size: var(--ec-micro-size);
+  opacity: .82;
+}
+.ec-vip__perks {
+  display: flex;
+  gap: var(--ec-space-4);
+  font-size: var(--ec-caption-size);
+}
+
+@keyframes ec-vip-sheen {
+  0%   { inset-inline-start: -60%; opacity: 0; }
+  15%  { opacity: 1; }
+  100% { inset-inline-start: 130%; opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CardCodeBox · 卡密（风险最高，约束最强）
+   默认脱敏 / 明文 30s 回掩码 / 复制反馈 1.5s / 四状态视觉
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-code {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;          /* 装不下时让操作区换行，绝不截断资产字符串 */
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-3) var(--ec-space-4);
+  background: var(--ec-code-surface);
+  border: 1px solid var(--ec-code-border);
+  border-radius: var(--ec-radius-md);
+  box-shadow: var(--ec-code-glow);
+  overflow: hidden;
+}
+.ec-code__label {
+  flex: none;
+  font-size: var(--ec-micro-size);
+  font-weight: 500;
+  letter-spacing: .04em;
+  color: var(--ec-code-mask);
+}
+.ec-code__value {
+  flex: 1;
+  min-width: max-content;   /* 卡密宁可换行也不省略号 */
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-code-size-md);
+  letter-spacing: var(--ec-code-track);
+  font-variant-numeric: tabular-nums;
+  color: var(--ec-code-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--ec-dur-fast);
+}
+.ec-code__value.is-masked { color: var(--ec-code-mask); }
+.ec-code__act { display: flex; gap: var(--ec-space-1); flex: none; margin-inline-start: auto; }
+
+.ec-code .ec-icon-btn { color: var(--ec-code-mask); }
+.ec-code .ec-icon-btn:hover { background: var(--ec-bg-wash); color: var(--ec-code-text); }
+.ec-code .ec-icon-btn.is-ok { color: var(--ec-status-online); }
+
+/* 窄容器变体：19 位掩码在 260px 内不换行也不截断 */
+.ec-code--sm .ec-code__value { font-size: var(--ec-code-size-sm); letter-spacing: .06em; }
+.ec-code--sm { padding-inline: var(--ec-space-3); gap: var(--ec-space-2); }
+
+/* 四状态 */
+.ec-code--unused { box-shadow: var(--ec-code-glow); }
+.ec-code--used { opacity: .55; }
+.ec-code--used .ec-code__value { text-decoration: line-through; text-decoration-color: var(--ec-code-mask); }
+.ec-code--expired { border-inline-start: 3px solid var(--ec-status-expired); }
+.ec-code--frozen { background: var(--ec-bg-sunken); box-shadow: none; }
+.ec-code--frozen .ec-code__value { color: var(--ec-code-mask); }
+
+/* 详情页强制水印（AP-08 配套）：UID + 时间戳，倾斜 30°，不可选中 */
+.ec-watermark {
+  position: relative;
+}
+.ec-watermark__layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  display: grid;
+  place-content: center;
+  rotate: -30deg;
+  font-family: var(--ec-font-mono);
+  font-size: 11px;
+  line-height: 3.2;
+  letter-spacing: .1em;
+  color: var(--ec-text-tertiary);
+  opacity: .22;
+  overflow: hidden;
+  white-space: pre;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RedeemInput · 兑换输入（自动大写 / 去空格 / 每 4 位插 -）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-redeem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-4);
+  text-align: center;
+}
+.ec-redeem__input {
+  width: 100%;
+  max-width: 420px;
+  height: var(--ec-redeem-cell);
+  padding-inline: var(--ec-space-4);
+  border: 1px solid var(--ec-input-border);
+  border-radius: var(--ec-radius-md);
+  background: var(--ec-input-bg);
+  color: var(--ec-text-primary);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-code-size-md);
+  letter-spacing: .12em;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color var(--ec-dur-fast), box-shadow var(--ec-dur-fast);
+}
+.ec-redeem__input::placeholder { color: var(--ec-input-placeholder); letter-spacing: .08em; }
+.ec-redeem__input:focus { outline: none; border-color: var(--ec-border-focus); box-shadow: var(--ec-ring); }
+.ec-redeem__input.is-error { border-color: var(--ec-danger); background: var(--ec-danger-soft); }
+.ec-redeem__error {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--ec-caption-size);
+  color: var(--ec-danger-text);
+}
+.ec-redeem__error.is-on { display: flex; }
+.ec-redeem__error .ic { width: 12px; height: 12px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SkuSelector · 规格选择（≤3 维且 ≤12 组合用胶囊组，超出走属性树）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-sku { display: flex; flex-direction: column; gap: var(--ec-space-3); }
+.ec-sku__group { display: flex; flex-direction: column; gap: var(--ec-space-2); }
+.ec-sku__label { font-size: var(--ec-caption-size); color: var(--ec-text-tertiary); }
+.ec-sku__opts { display: flex; flex-wrap: wrap; gap: var(--ec-space-2); }
+
+.ec-sku__opt {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--ec-control-h-sm);
+  padding-inline: var(--ec-space-3);
+  border: 1px solid var(--ec-border-default);
+  border-radius: var(--ec-radius-sm);
+  background: var(--ec-bg-surface);
+  color: var(--ec-text-primary);
+  font-family: inherit;
+  font-size: var(--ec-caption-size);
+  cursor: pointer;
+  transition: border-color var(--ec-dur-fast), background-color var(--ec-dur-fast), color var(--ec-dur-fast);
+}
+.ec-sku__opt:hover { border-color: var(--ec-action-primary); color: var(--ec-action-primary-hover); }
+.ec-sku__opt[aria-pressed="true"] {
+  border-color: var(--ec-action-primary-hover);
+  background: var(--ec-action-primary-soft);
+  color: var(--ec-action-primary-hover);
+  font-weight: 600;
+}
+.ec-sku__opt:focus-visible { outline: none; box-shadow: var(--ec-ring); }
+/* 无库存：禁用 + 删除线 + Tooltip 说明原因（AP-07） */
+.ec-sku__opt.is-soldout {
+  color: var(--ec-text-disabled);
+  border-color: var(--ec-border-subtle);
+  background: var(--ec-bg-muted);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.ec-sku__opt.is-soldout:hover { border-color: var(--ec-border-subtle); color: var(--ec-text-disabled); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RedeemResult · 四模板（成功 / 已使用 / 已过期 / 不存在）
+   禁止统一显示「失败」
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-redeem-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ec-space-3);
+  padding: var(--ec-space-8) var(--ec-space-6);
+  text-align: center;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-bg-surface);
+}
+.ec-redeem-result__icon {
+  display: grid;
+  place-content: center;
+  width: 52px; height: 52px;
+  border-radius: var(--ec-radius-full);
+  margin-block-end: var(--ec-space-1);
+}
+.ec-redeem-result__icon .ic { width: 24px; height: 24px; }
+.ec-redeem-result--success .ec-redeem-result__icon { background: var(--ec-success-soft); color: var(--ec-success-text); }
+.ec-redeem-result--used    .ec-redeem-result__icon { background: var(--ec-warning-soft); color: var(--ec-warning-text); }
+.ec-redeem-result--expired .ec-redeem-result__icon { background: var(--ec-danger-soft);  color: var(--ec-danger-text); }
+.ec-redeem-result--notfound .ec-redeem-result__icon { background: var(--ec-bg-muted);    color: var(--ec-text-secondary); }
+.ec-redeem-result__title { font-size: var(--ec-h3-size); font-weight: 600; }
+.ec-redeem-result__desc {
+  max-width: 36ch;
+  font-size: var(--ec-caption-size);
+  line-height: 1.7;
+  color: var(--ec-text-secondary);
+}
+.ec-redeem-result__actions { display: flex; gap: var(--ec-space-2); margin-block-start: var(--ec-space-2); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OrderSteps 补充：最多 5 步，异常态必须显式标注（复用 .ec-steps）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-steps--order .ec-steps__desc { font-family: var(--ec-font-num); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   后台业务件：PageShell（运营后台外壳，只做骨架不做业务逻辑）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ec-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+.ec-shell__side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--ec-space-4) var(--ec-space-2);
+  border-inline-end: 1px solid var(--ec-border-subtle);
+  background: var(--ec-bg-surface);
+}
+.ec-shell__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-2);
+  height: var(--ec-control-h-md);
+  padding-inline: var(--ec-space-3);
+  border-radius: var(--ec-radius-md);
+  color: var(--ec-text-secondary);
+  font-size: var(--ec-caption-size);
+  font-weight: 500;
+}
+.ec-shell__nav:hover { background: var(--ec-bg-hover); color: var(--ec-text-primary); text-decoration: none; }
+.ec-shell__nav.is-active { background: var(--ec-action-primary-soft); color: var(--ec-action-primary-hover); }
+.ec-shell__nav .ic { width: 16px; height: 16px; }
+.ec-shell__main { min-width: 0; padding: var(--ec-space-6); }
+
+@media (max-width: 900px) {
+  .ec-shell { grid-template-columns: 1fr; }
+  .ec-shell__side { display: none; }
+}

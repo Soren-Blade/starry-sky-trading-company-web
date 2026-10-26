@@ -1,73 +1,83 @@
 <template>
-  <div class="tool-card ui-card u-enter">
-    <div class="ui-card-media">
-      <SmartImage v-if="tool.cover_url" :src="tool.cover_url" :alt="tool.tool_name" fallback-class="tool-icon">
-        <AppIcon v-if="iconName" :name="iconName" />
-        <template v-else>{{ tool.icon }}</template>
-      </SmartImage>
-      <!-- 库里的 tools.icon 存的是 emoji（那是**数据**）：先映射成线性图标，
-           映射不到才原样显示 —— 运营随时可能录一个表里没有的 emoji，
-           不能因为不认识就渲染成空白。
-           封面图存在但加载失败时（外链图床不可达），SmartImage 会退化为
-           同一个 .tool-icon 占位观感，不再出现「碎图」。 -->
-      <div v-else class="tool-icon" aria-hidden="true">
-        <AppIcon v-if="iconName" :name="iconName" />
-        <template v-else>{{ tool.icon }}</template>
+  <div class="tool-row ec-tool u-enter" :class="{ 'is-maintain': isMaintain, 'is-offline': isOffline }">
+    <span class="ec-tool__icon tool-row__icon" aria-hidden="true">
+      <AppIcon v-if="iconName" :name="iconName" />
+      <template v-else>{{ tool.icon }}</template>
+    </span>
+
+    <div class="ec-tool__main">
+      <div class="ec-tool__name">
+        <h3 class="tool-row__title">{{ tool.tool_name }}</h3>
+        <span v-if="tool.is_new" class="ec-tag ec-tag--sm ec-tag--primary">新</span>
       </div>
-      <span v-if="tool.is_new" class="u-tag u-tag--accent tool-new-badge">新</span>
+      <p v-if="tool.description" class="ec-tool__desc">{{ tool.description }}</p>
+      <p v-if="hintText" class="tool-row__hint">{{ hintText }}</p>
+    </div>
+
+    <div class="ec-tool__tags">
+      <span v-if="tool.class_name" class="ec-tag ec-tag--sm ec-tag--outline">{{ tool.class_name }}</span>
+      <span v-if="showMemberFreeTag" class="ec-tag ec-tag--sm ec-tag--gold">{{ ACCESS_TEXT.memberFree }}</span>
+      <span v-if="showMemberOnlyTag" class="ec-tag ec-tag--sm ec-tag--gold">{{ ACCESS_TEXT.memberOnly }}</span>
+      <span v-if="showActivatedTag" class="ec-tag ec-tag--sm ec-tag--success">{{ TOOL_PAGE.activatedTag }}</span>
+
+      <!-- 会员专属且非会员时不渲染任何按钮（需求明确要求）；下架工具也没有可执行操作 -->
       <button
-        class="favorite-btn"
-        :class="{ active: isFavorited }"
+        v-if="showFavorite"
+        class="ec-btn ec-btn--ghost ec-btn--sm tool-row__favorite"
+        type="button"
         :aria-pressed="isFavorited"
-        :title="isFavorited ? '取消收藏' : '添加收藏'"
-        :aria-label="isFavorited ? `取消收藏 ${tool.tool_name}` : `收藏 ${tool.tool_name}`"
+        :title="favoriteTitle"
+        :aria-label="favoriteAriaLabel"
         @click.stop="toggleFavorite"
       >
-        <span class="favorite-icon" aria-hidden="true">
-          <!-- 实心/空心表达选中状态；颜色走 currentColor，仍是单色并随主题变化 -->
-          <AppIcon name="heart" :filled="isFavorited" />
-        </span>
-        <span class="u-badge u-badge--ring favorite-count">{{ tool.collection_count > 99 ? '99+' : tool.collection_count }}</span>
+        <AppIcon name="heart" :filled="isFavorited" />
+        <span v-if="favoriteCount">{{ favoriteCount }}</span>
       </button>
     </div>
 
-    <div class="ui-card-body">
-      <div class="tool-header">
-        <h3 class="tool-title">{{ tool.tool_name }}</h3>
-        <div class="tool-category u-tag">{{ tool.class_name }}</div>
-      </div>
+    <div class="ec-tool__act">
+      <span class="ec-status" :class="`ec-status--${status.tone}`">
+        <i class="ec-status__dot"></i>
+        <span>{{ status.text }}</span>
+      </span>
 
-      <p class="tool-description">{{ tool.description }}</p>
+      <button
+        v-if="action === 'open'"
+        class="ec-btn ec-btn--primary ec-btn--sm"
+        type="button"
+        @click.stop="onOpenTool"
+      >
+        {{ TOOL_PAGE.openTool }}
+      </button>
 
-      <!-- Collection count moved to media section as badge -->
+      <!-- 需要卡密且尚未激活：入口带上工具 id，跳到卡密激活页时自动预选 -->
+      <RouterLink
+        v-else-if="action === 'activate'"
+        class="ec-btn ec-btn--primary ec-btn--sm"
+        :to="kamiTarget"
+        @click.stop
+      >
+        {{ TOOL_PAGE.activateNow }}
+      </RouterLink>
 
-      <!-- 需要卡密的工具要在**动手之前**就告知，因此标注放在按钮正上方：
-           放在媒体区会与「新」标记抢左上角，放在标题行又会被长分类名挤 -->
-      <p v-if="tool.requires_card" class="tool-access">
-        <span class="u-tag u-tag--warning tool-access-tag">
-          <AppIcon name="key" />
-          <span>{{ hasEntitlement ? TOOL_PAGE.activatedTag : TOOL_PAGE.needCardTag }}</span>
-        </span>
-        <span class="tool-access-hint">
-          {{ hasEntitlement ? TOOL_PAGE.activatedHint : TOOL_PAGE.needCardHint }}
-        </span>
-      </p>
+      <!-- 会员免费但非会员：还能用卡密，所以给「获取」入口，金色是需求会员语义的唯一 CTA 场景 -->
+      <RouterLink
+        v-else-if="action === 'acquire'"
+        class="ec-btn ec-btn--gold ec-btn--sm"
+        :to="kamiTarget"
+        @click.stop
+      >
+        {{ ACCESS_TEXT.acquire }}
+      </RouterLink>
 
-      <div class="tool-actions">
-        <!-- 需要卡密且尚未激活：按钮变成入口，携带工具 id 跳到卡密激活页，
-             让用户在激活页就能看到「自己在激活哪件工具」，不必再选一次 -->
-        <RouterLink
-          v-if="tool.requires_card && !hasEntitlement"
-          class="tool-btn u-btn-primary tool-activate-link"
-          :to="{ path: '/user/kami', query: { tool_id: String(tool.id) } }"
-          @click.stop
-        >
-          {{ TOOL_PAGE.activateNow }}
-        </RouterLink>
-        <button v-else class="tool-btn u-btn-primary" @click.stop="onOpenTool">
-          {{ TOOL_PAGE.openTool }}
-        </button>
-      </div>
+      <button
+        v-else-if="action === 'maintain'"
+        class="ec-btn ec-btn--outline ec-btn--sm"
+        type="button"
+        disabled
+      >
+        {{ ACCESS_TEXT.maintain }}
+      </button>
     </div>
   </div>
 </template>
@@ -75,10 +85,30 @@
 <script setup>
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
-import SmartImage from '@/components/SmartImage.vue'
+import { useMemberStore } from '@/stores/member.js'
 import { emojiToIconName } from '@/utils/iconSet.js'
 // 文案集中在 constants，改文案只碰一个文件
 import { TOOL_PAGE } from '@/constants/index.js'
+
+/**
+ * 访问策略文案（服务端新契约）
+ *
+ * 这些是本次需求新增的语义，`src/constants/content.js` 由别的改动并行维护，
+ * 因此只在本组件内收敛；页面壳里有一份同名副本（同样不允许改 constants）。
+ */
+const ACCESS_TEXT = Object.freeze({
+  available: '可用',
+  owned: '已拥有',
+  memberFree: '会员免费',
+  needMember: '需开通会员',
+  memberOnly: '会员专属',
+  acquire: '获取',
+  maintain: '维护中',
+  offline: '已下架',
+  memberFreeHint: '会员免卡密，非会员需使用卡密激活',
+})
+
+const ACCESS_POLICIES = ['free', 'card', 'member_free', 'member_only']
 
 const props = defineProps({
   tool: { type: Object, required: true },
@@ -94,193 +124,157 @@ const emit = defineEmits(['open-tool', 'toggle-favorite'])
 /** 库里存的是 emoji，映射成图标名；映射不到返回空串（模板回退成原样显示） */
 const iconName = computed(() => emojiToIconName(props.tool?.icon))
 
+/**
+ * 会员身份。
+ *
+ * 服务端契约里 `member_free` / `member_only` 的判定只认会员状态，而父组件
+ * （工具页 / 搜索结果）暂时只传 `has-entitlement`，因此这里直接读会员 store。
+ * 少部分 SSR 单测不安装 pinia，读取失败时降级为非会员，不能让整张卡挂掉。
+ */
+const memberStore = (() => {
+  try {
+    return useMemberStore()
+  } catch {
+    return null
+  }
+})()
+
+const isMember = computed(() => Boolean(memberStore?.isMember))
+
+/**
+ * 访问策略解析。
+ *
+ * 字段缺失（迁移回填前后的窗口期）必须容错：`tool.requires_card === true`
+ * 回退为 `card`，否则按免费处理。非法值同样走这条兜底。
+ */
+const accessPolicy = computed(() => {
+  const declared = props.tool?.access_policy
+  if (ACCESS_POLICIES.includes(declared)) return declared
+  return props.tool.requires_card === true ? 'card' : 'free'
+})
+
+/** 维护中 / 已下架：服务端契约目前没有这两个字段，按常见命名与状态值做容错探测 */
+const toolStatus = computed(() => String(props.tool?.status || '').toLowerCase())
+const isOffline = computed(
+  () =>
+    props.tool?.is_offline === true ||
+    props.tool?.is_online === false ||
+    toolStatus.value === 'offline' ||
+    toolStatus.value === 'shelved'
+)
+const isMaintain = computed(
+  () =>
+    !isOffline.value &&
+    (props.tool?.is_maintain === true ||
+      toolStatus.value === 'maintain' ||
+      toolStatus.value === 'maintenance')
+)
+
+const status = computed(() => {
+  if (isOffline.value) return { tone: 'offline', text: ACCESS_TEXT.offline }
+  if (isMaintain.value) return { tone: 'maintain', text: ACCESS_TEXT.maintain }
+
+  if (accessPolicy.value === 'card') {
+    return props.hasEntitlement
+      ? { tone: 'owned', text: ACCESS_TEXT.owned }
+      : { tone: 'expired', text: TOOL_PAGE.needCardTag }
+  }
+  if (accessPolicy.value === 'member_free') {
+    return isMember.value
+      ? { tone: 'vip', text: ACCESS_TEXT.memberFree }
+      : { tone: 'vip', text: ACCESS_TEXT.needMember }
+  }
+  if (accessPolicy.value === 'member_only') {
+    return { tone: 'vip', text: ACCESS_TEXT.memberOnly }
+  }
+  return { tone: 'online', text: ACCESS_TEXT.available }
+})
+
+/** 操作区只有一种主操作；null 表示不渲染任何按钮 */
+const action = computed(() => {
+  if (isOffline.value) return null
+  if (isMaintain.value) return 'maintain'
+
+  if (accessPolicy.value === 'card') return props.hasEntitlement ? 'open' : 'activate'
+  if (accessPolicy.value === 'member_free') return isMember.value ? 'open' : 'acquire'
+  if (accessPolicy.value === 'member_only') return isMember.value ? 'open' : null
+  return 'open'
+})
+
+const showMemberFreeTag = computed(
+  () => accessPolicy.value === 'member_free' && !isMember.value
+)
+const showMemberOnlyTag = computed(
+  () => accessPolicy.value === 'member_only' && !isMember.value
+)
+const showActivatedTag = computed(
+  () => accessPolicy.value === 'card' && props.hasEntitlement
+)
+
+/** 没有可执行操作（会员专属的访客 / 已下架）时，收藏按钮也一并收起 */
+const showFavorite = computed(() => action.value !== null)
+
+const hintText = computed(() => {
+  if (isOffline.value || isMaintain.value) return ''
+  if (accessPolicy.value === 'card') {
+    return props.hasEntitlement ? TOOL_PAGE.activatedHint : TOOL_PAGE.needCardHint
+  }
+  if (accessPolicy.value === 'member_free' && !isMember.value) {
+    return ACCESS_TEXT.memberFreeHint
+  }
+  return ''
+})
+
+const kamiTarget = computed(() => ({
+  path: '/user/kami',
+  query: { tool_id: String(props.tool.id) },
+}))
+
+const favoriteCount = computed(() => {
+  const count = Number(props.tool?.collection_count)
+  if (!Number.isFinite(count) || count <= 0) return ''
+  return count > 99 ? '99+' : String(count)
+})
+const favoriteTitle = computed(() => (props.isFavorited ? '取消收藏' : '添加收藏'))
+const favoriteAriaLabel = computed(
+  () => `${props.isFavorited ? '取消收藏' : '收藏'} ${props.tool?.tool_name || ''}`.trim()
+)
+
 const onOpenTool = () => emit('open-tool', props.tool);
 const toggleFavorite = () => emit('toggle-favorite', props.tool);
 </script>
 
 <style scoped>
-/* 外壳（表面/边框/圆角/阴影/hover 位移 + 毛玻璃）来自 global.css 的 .ui-card，
-   正文与媒体区同样复用共享类，这里只保留工具卡特有的内部布局。
-   整卡不可点击（入口是「打开工具」按钮），因此消掉指针暗示 */
-.tool-card {
+/* 行布局全部来自 .ec-tool；这里只补列表格子的宽度与内部排版细节 */
+.tool-row {
+  width: 100%;
   cursor: default;
 }
 
-/* 媒体区没有图片时退化为图标：字号取标题档 --fs-h1，
-   hover 缩放走 --media-hover-scale（mono 主题该令牌为 1，即不缩放） */
-.tool-icon {
-  font-size: var(--fs-h1);
-  transition: transform var(--transition-surface);
+/* AppIcon 用 1em 控制尺寸，图标瓦片按设计系统 20px 档给字号 */
+.tool-row__icon {
+  font-size: var(--ec-h2-size);
 }
 
-.tool-card:hover .tool-icon {
-  transform: scale(var(--media-hover-scale));
-}
-
-/* 「新」标记：外观全部来自共享类 .u-tag / .u-tag--accent
-   （强调底 + 反白字，高度/内边距/圆角由 --tag-* 令牌给全），
-   组件内只负责把它钉在媒体区左上角，不再自写配色与内边距 */
-.tool-new-badge {
-  position: absolute;
-  top: calc(var(--space-unit) * 1.5);
-  left: calc(var(--space-unit) * 1.5);
-}
-
-/* 收藏按钮：尺寸与 .u-icon-btn 同档（--icon-btn-size），
-   胶囊圆角 + 浮起表面 + 描边色走令牌，因此五套主题下形态一致 */
-.favorite-btn {
-  position: absolute;
-  top: calc(var(--space-unit) * 1.5);
-  right: calc(var(--space-unit) * 1.5);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-btn-size);
-  height: var(--icon-btn-size);
-  background: var(--bg-elevated);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  transition:
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive),
-    transform var(--transition-interactive);
-}
-
-.favorite-btn:hover {
-  border-color: var(--accent);
-  transform: var(--btn-hover-transform);
-}
-
-.favorite-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
-.favorite-icon {
-  font-size: var(--fs-h3);
-}
-
-/* 数量徽标压在圆形按钮的右上角。尺寸/圆角/字号/底色来自共享的 .u-badge
- * （--badge-height / --badge-min-width / --badge-radius / --badge-bg），
- * 这里只留定位；描边由 .u-badge--ring 用卡片表面色画出来。 */
-.favorite-count {
-  position: absolute;
-  top: calc(var(--space-unit) * -1);
-  right: calc(var(--space-unit) * -1);
-}
-
-.tool-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-}
-
-.tool-title {
-  flex: 1;
+/* 标题是 .ec-tool__name 的弹性子项：长名字截断，右侧的「新」标记不被挤走 */
+.tool-row__title {
   min-width: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
   margin: 0;
+  font: inherit;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 分类标签复用 .u-tag（高度/内边距/圆角都由共享类给全），
-   这里只保证长分类名不换行（标题才是可压缩的一侧） */
-.tool-category {
-  flex-shrink: 0;
+.tool-row__hint {
+  margin: var(--ec-space-1) 0 0;
+  font-size: var(--ec-caption-size);
+  line-height: var(--ec-caption-lh);
+  color: var(--ec-text-secondary);
 }
 
-.tool-description {
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-  margin: 0;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* 需要卡密的标注行：标签 + 一句提示。放在按钮上方，尺寸与正文同档 */
-.tool-access {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1);
-  margin: 0;
-}
-
-.tool-access-tag {
-  /* .u-tag 给全高度/内边距/圆角/配色，这里只让它横向排图标与文字 */
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  flex-shrink: 0;
-}
-
-.tool-access-hint {
-  font-size: var(--fs-label);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-/* margin-top: auto 把操作区压到卡片底部，卡片等高时按钮在同一水平线 */
-.tool-actions {
-  display: flex;
-  margin-top: auto;
-}
-
-/* 激活入口是 RouterLink（真链接，可中键新开页），
-   因此要补齐 .u-btn-primary 在 <a> 上不会自动获得的排版属性 */
-.tool-activate-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-/* .u-btn-primary 提供底色/圆角/悬停位移与 disabled 样式，
-   这里只负责铺满操作区宽度 */
-.tool-btn {
-  flex: 1;
-  width: 100%;
-}
-
-/* 窄卡片下标题与分类并排会互相挤压，改为上下排列；
-   同时按规范收一档：控件高度 ×0.9、内边距 ×0.8、标题字号 ×0.7、正文字号 ×0.95 */
-@media (max-width: 767px) {
-  .tool-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: calc(var(--space-unit) * 0.5);
-  }
-
-  .tool-title {
-    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
-  }
-
-  .tool-description {
-    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
-  }
-
-  .tool-new-badge {
-    top: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
-    left: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
-  }
-
-  .favorite-btn {
-    top: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
-    right: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
-    width: calc(var(--icon-btn-size) * var(--mobile-control-scale));
-    height: calc(var(--icon-btn-size) * var(--mobile-control-scale));
-  }
+/* 收藏态用主色表达选中；颜色只取令牌 */
+.tool-row__favorite[aria-pressed='true'] {
+  color: var(--ec-action-primary);
 }
 </style>

@@ -1,20 +1,24 @@
 /*
- * 全局样式层
+ * 全局样式层 · EC Design System v1.0
  * ============================================================================
  *
  * 只做四件事：
  *   1. 基础重置（元素级）—— 不设置具体视觉值，全部走令牌；
- *   2. **组件层共享类** —— 按钮 / 输入框 / 卡片 / 价格 / 提示框 / 模态框 /
- *      下拉 / 标签 / 进度 / 加载圈 / 骨架屏 / 头像 / 复选框。
- *      组件规范表里的尺寸全部在这里落地，组件自身只保留布局；
- *   3. 共享结构类 —— .section-header 系列（页面头已删除，见文件末尾说明）；
- *   4. 共享动效 —— 入场（含 scroll-driven reveal）、背景网格、shimmer。
+ *   2. **组件层共享类** —— 按钮 / 输入框 / 卡片 / 价格 / 标签 / 提示框 / 模态框 /
+ *      下拉 / 进度 / 加载圈 / 头像。这些类的实现**逐条对齐 `assets/ec/ec.css`
+ *      的 EC 组件**（同样的渐变承字面、同样的焦点环、同样的七态）；
+ *   3. 共享结构类 —— 区块容器、区块头、事务页外壳、表单字段；
+ *   4. 共享动效 —— 入场、错峰、滚动渐显。
  *
- * 具体视觉值一律来自 variables.css（名册 + 兜底）与 theme/presets.js（五套取值）。
- * 这里出现硬编码色值即视为缺陷。
+ * 为什么这里仍然叫 `.u-*` 而不是直接改成 `.ec-*`：
+ *   这 20 余个类被 90 个页面、6 个组件分片引用。改名是纯机械动作、零视觉收益，
+ *   却把回归面从「一处」放大到「九十处」。因此 `.u-*` 在本项目里是
+ *   **EC 组件的别名**：取值与视觉来自 EC，类名保持项目习惯。
+ *   新写的组件请直接用 `ec-*`（`assets/ec/ec.css` 已全局可用）。
  *
- * 移动端缩放（规范第十四节）在文件末尾的三个媒体查询里统一处理：
- * 高度 ×0.9 / 内边距 ×0.8 / 区块间距 ×0.6 / 标题字号 ×0.7 / 正文字号 ×0.95 / 圆角不变。
+ * 铁律：
+ *   - 本文件不出现色值字面量；颜色只来自 `--ec-*`。
+ *   - 尺寸、圆角、阴影、动效时长一律走令牌，不写第二套数值。
  */
 
 /* ────────────────────────────────────────────────────────────
@@ -34,48 +38,31 @@ body {
 }
 
 body {
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  font-weight: var(--fw-body);
-  line-height: var(--leading-body);
-  color: var(--text-primary);
-  background: var(--bg-page);
-  background-attachment: fixed;
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-body-size);
+  font-weight: var(--ec-body-weight);
+  line-height: var(--ec-body-lh);
+  color: var(--ec-text-primary);
+  background: var(--ec-bg-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--transition-surface), color var(--transition-surface);
+  /* 明暗切换是整站换肤，给底色与文字色一个短过渡，避免硬切 */
+  transition:
+    background-color var(--ec-dur-base) var(--ec-ease-out),
+    color var(--ec-dur-base) var(--ec-ease-out);
 }
 
-/* 背景层：
- *   ::before = 主题自带的渐变网格（仅 glass 有内容，由 --mesh-animation 驱动）
- *   ::after  = 用户自定义背景图（主题弹窗写入 --bg-media）
- * 两层都用 fixed + 负 z-index，不参与文档流、不挡交互。 */
-body::before,
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-}
-
-body::before {
-  z-index: -2;
-  background: var(--bg-mesh);
-  animation: var(--mesh-animation);
-}
-
-body::after {
-  z-index: -1;
-  background-image: var(--bg-media);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  opacity: var(--bg-media-opacity);
-}
+/* 背景层已删除。EC 不使用渐变网格，也没有「用户自定义背景图」这一档 ——
+ * 装饰面会压掉正文对比度，页面底色只有一阶（--ec-bg-base）。
+ * body 的底色由 EC 基线（ec.css）与本文件第 1 节共同提供，不需要伪元素垫层。 */
 
 #app {
   width: 100%;
   min-height: 100vh;
+}
+
+::selection {
+  background: var(--ec-action-primary-dim);
 }
 
 /* 滚动条已迁到 ui-kit-feedback.css（§19）：那里按 --scrollbar-* 令牌化，
@@ -94,11 +81,12 @@ button {
 a {
   color: inherit;
   text-decoration: none;
-  transition: color var(--transition-interactive);
+  transition: color var(--ec-dur-fast) var(--ec-ease-out);
 }
 
 a:hover {
-  color: var(--accent);
+  color: var(--ec-action-primary-hover);
+  text-decoration: none;
 }
 
 input,
@@ -114,7 +102,7 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--placeholder);
+  color: var(--ec-text-placeholder);
 }
 
 ul,
@@ -126,10 +114,10 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-display);
-  font-weight: var(--fw-heading);
-  line-height: 1.2;
-  color: var(--text-primary);
+  font-family: var(--ec-font-sans);
+  font-weight: var(--ec-h3-weight);
+  line-height: 1.25;
+  color: var(--ec-text-primary);
 }
 
 img {
@@ -139,9 +127,11 @@ img {
   -webkit-user-drag: none;
 }
 
+/* 焦点环三件套：全站唯一一组（EC §8.1 focus 态） */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ec-border-focus);
   outline-offset: 2px;
+  border-radius: var(--ec-radius-xs);
 }
 
 .visually-hidden {
@@ -187,17 +177,6 @@ img {
   }
 }
 
-/* 背景渐变网格缓慢流动：20s 循环 */
-@keyframes meshFlow {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1.1);
-  }
-  50% {
-    transform: translate3d(2%, -2%, 0) scale(1.15);
-  }
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -211,196 +190,217 @@ img {
 }
 
 /*
- * 滚动驱动的渐显（scroll-driven animation）。
- * 放在 @supports 内：不支持 `animation-timeline` 的浏览器不会解析到这条规则，
- * 内容保持可见（而不是被 fill-mode 固定在 opacity:0）。
+ * 滚动驱动的渐显（scroll-driven animation）**没有落地**：全站 0 个元素用
+ * `.scroll-reveal`。原实现（`@supports (animation-timeline: view())` +
+ * `animation-range: entry 0% cover 30%`）已随本次清理删除 ——
+ * 没有消费者的规则就是死代码，留着只会让人以为滚动渐显是生效的。
+ * 真要恢复时按这个注释重写即可，逻辑本身不复杂。
  */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .scroll-reveal {
-      animation-name: enterUp;
-      animation-duration: auto;
-      animation-timing-function: linear;
-      animation-fill-mode: both;
-      animation-timeline: view();
-      animation-range: entry 0% cover 30%;
-    }
-  }
-}
 
 /* ────────────────────────────────────────────────────────────
- * 3. 按钮
+ * 3. 按钮（= EC Button）
  *
- * 三档：主按钮（.u-btn-primary）/ 次按钮（.u-btn-secondary）/ 图标按钮（.u-icon-btn）。
- * 尺寸与悬停行为全部来自令牌 —— neo-brutalism 的粗野主义 CTA
- * （0 圆角 + 6px 硬阴影 + 按压位移）因此不需要任何专用代码。
+ * 三档：主按钮 / 次按钮 / 图标按钮。七态齐备。
+ *
+ * **主按钮的底色是 `--ec-grad-action` 而不是 `--ec-grad-brand`。**
+ * 这条区分是 EC v1.0 最重要的结构修正：brand 渐变漂亮，但 cyan 端压白字只有
+ * 1.81:1；action 渐变三段最低 5.53:1，才是「承字面」。品牌渐变只用于
+ * 装饰（封面占位、Hero、头像底），不压任何文字。
  * ──────────────────────────────────────────────────────────── */
 
 .u-btn-primary,
 .u-btn-secondary {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--space-unit) * 0.75);
-  height: var(--btn-height);
-  padding: var(--btn-padding-y) var(--btn-padding-x);
-  font-family: var(--font-body);
-  font-size: var(--btn-font-size);
-  font-weight: var(--btn-font-weight);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  border-radius: var(--btn-radius);
+  gap: var(--ec-button-gap);
+  height: var(--ec-control-h-md);
+  padding-inline: var(--ec-control-px);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-body-size);
+  font-weight: var(--ec-button-font-weight);
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--ec-button-radius);
   white-space: nowrap;
+  user-select: none;
   transition:
-    background-color var(--transition-btn),
-    border-color var(--transition-btn),
-    color var(--transition-btn),
-    box-shadow var(--transition-btn),
-    transform var(--transition-btn);
+    background-color var(--ec-dur-fast) var(--ec-ease-out),
+    border-color var(--ec-dur-fast) var(--ec-ease-out),
+    color var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease-out),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 
 .u-btn-primary {
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border: var(--btn-border-width) solid var(--btn-border-color);
-  box-shadow: var(--btn-shadow);
+  color: var(--ec-button-primary-fg);
+  background: var(--ec-button-primary-bg);
+  box-shadow: var(--ec-button-primary-shadow);
+  /* 这里**不写** `overflow: hidden`（EC 的 .ec-btn--primary 有）。
+   * 内高光是 `::before { inset: 0 }`，本来就不会溢出，不需要裁；
+   * 而移动端给按钮补 44px 命中区用的是 `::after { inset: -12px }` ——
+   * 一旦裁掉，小屏上的主按钮就只剩 32px 高的可点区域（EC 无障碍基线要求 ≥44）。
+   * `isolation: isolate` 仍然保留：它让 ::before 的 z-index:-1 只在本按钮内生效。 */
+  isolation: isolate;
+}
+
+/* 内高光：给渐变面加一层 135° 的极薄白膜，避免「塑料紫」 */
+.u-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ec-grad-sheen);
+  opacity: 0.9;
+  z-index: -1;
 }
 
 .u-btn-primary:hover:not(:disabled) {
-  color: var(--text-on-accent);
-  background: var(--btn-hover-bg);
-  border-color: var(--btn-hover-border);
-  box-shadow: var(--btn-hover-shadow);
-  transform: var(--btn-hover-transform);
+  color: var(--ec-button-primary-fg);
+  box-shadow: var(--ec-button-primary-hover-shadow);
+  filter: brightness(1.06);
 }
 
 .u-btn-primary:active:not(:disabled) {
-  box-shadow: var(--btn-active-shadow);
+  filter: brightness(0.94);
   transform: var(--btn-active-transform);
 }
 
+.u-btn-primary:focus-visible {
+  outline: none;
+  box-shadow: var(--ec-ring);
+}
+
+/* 次按钮：浅底 + 主色字 + 主色描边。
+ *
+ * 字色取 `--ec-action-primary-hover` 而不是 EC 的 `--ec-button-secondary-fg`：
+ * 后者在暗色下是 blue-300 (#A5AEFF)，压在 #1E2340 上实测只有 3.98:1 ——
+ * 14px 正文不达 AA（4.5）。而 hover 档在亮色下是 blue-600（5.2:1）、
+ * 暗色下是 blue-100（12.3:1），两套都过线。这是本站对 EC 的一处**有意偏离**，
+ * 记在此处以免日后同步设计系统时被当成笔误改回去。 */
 .u-btn-secondary {
-  color: var(--text-primary);
-  background: var(--btn-secondary-bg);
-  border: var(--stroke-width) solid var(--stroke-color);
-  transition:
-    background-color var(--transition-btn),
-    border-color var(--transition-btn),
-    color var(--transition-btn),
-    box-shadow var(--transition-btn),
-    transform var(--transition-btn);
+  color: var(--ec-action-primary-hover);
+  background: var(--ec-button-secondary-bg);
+  border-color: var(--ec-action-primary-border);
 }
 
 .u-btn-secondary:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  transform: var(--btn-hover-transform);
+  color: var(--ec-action-primary-hover);
+  background: var(--ec-action-primary-dim);
+  border-color: var(--ec-action-primary);
 }
 
+.u-btn-secondary:active:not(:disabled) {
+  transform: var(--btn-active-transform);
+}
+
+.u-btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: var(--ec-ring);
+}
+
+/* 图标按钮（= EC IconButton）：无文字，36×36，移动端命中区由末尾媒体查询补到 44 */
 .u-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: var(--icon-btn-size);
-  height: var(--icon-btn-size);
-  font-size: var(--icon-btn-icon-size);
+  width: var(--ec-control-h-md);
+  height: var(--ec-control-h-md);
+  font-size: var(--ec-button-icon-size);
   line-height: 1;
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--icon-btn-radius);
+  color: var(--ec-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-md);
   transition:
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive),
-    color var(--transition-interactive);
+    background-color var(--ec-dur-fast) var(--ec-ease-out),
+    border-color var(--ec-dur-fast) var(--ec-ease-out),
+    color var(--ec-dur-fast) var(--ec-ease-out),
+    transform var(--ec-dur-fast) var(--ec-ease-out);
 }
 
 .u-icon-btn:hover:not(:disabled) {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--ec-text-primary);
+  background: var(--ec-bg-hover);
 }
 
+.u-icon-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.u-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ec-ring);
+}
+
+/* 禁用态：opacity .5 + 禁用指针（EC 七态之 disabled） */
 .u-btn-primary:disabled,
 .u-btn-secondary:disabled,
 .u-icon-btn:disabled {
-  background: var(--disabled-bg);
-  color: var(--disabled-text);
-  border-color: transparent;
-  box-shadow: none;
+  opacity: var(--ec-button-disabled-op);
   cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+  filter: none;
   transform: none;
 }
 
 /* ────────────────────────────────────────────────────────────
- * 4. 输入框 / 搜索框
+ * 4. 输入框 / 搜索框（= EC Input）
  * ──────────────────────────────────────────────────────────── */
 
 .u-input {
   width: 100%;
-  height: var(--input-height);
-  padding: var(--input-padding-y) var(--input-padding-x);
-  font-family: var(--font-body);
-  font-size: var(--input-font-size);
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--radius-input);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
+  height: var(--ec-control-h-md);
+  padding-inline: var(--ec-input-px);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-body-size);
+  color: var(--ec-text-primary);
+  background: var(--ec-input-bg);
+  border: 1px solid var(--ec-input-border);
+  border-radius: var(--ec-input-radius);
   transition:
-    border-color var(--transition-interactive),
-    box-shadow var(--transition-interactive),
-    backdrop-filter var(--transition-surface),
-    -webkit-backdrop-filter var(--transition-surface);
+    border-color var(--ec-dur-fast) var(--ec-ease-out),
+    box-shadow var(--ec-dur-fast) var(--ec-ease-out),
+    background-color var(--ec-dur-fast) var(--ec-ease-out);
 }
 
 .u-input::placeholder {
-  color: var(--placeholder);
+  color: var(--ec-input-placeholder);
 }
 
-/* 多行输入框：不跟单行框一起变胶囊。
- *
- * 液态玻璃的 --radius-input 是 9999px —— 40px 高的单行框正好是胶囊（规范如此），
- * 但 `<textarea>` 通常 100–200px 高，同一个 9999px 会让左右两端变成半圆「跑道」，
- * 输入区的第一行会贴着弧线走。这里换成 --radius-input-tall（该套取值 20px），
- * 另外四套的加高值与该套单行值相同，观感不变。
- *
- * 可换行的只读值（.u-field-value）同理，但它自己的定义在下面的「只读字段」一节，
- * 圆角直接写在那里 —— 曾在这里一起给过，随后被那一节的定义按同特异性覆盖掉。 */
+/* 多行输入框：不跟单行框一起收成胶囊 */
 textarea.u-input {
-  border-radius: var(--radius-input-tall);
+  height: auto;
+  min-height: calc(var(--ec-control-h-md) * 2.5);
+  padding-block: var(--ec-space-2);
+  border-radius: var(--ec-radius-lg);
+  line-height: var(--ec-body-lh);
+  resize: vertical;
 }
 
-/* 聚焦态：五套风格的做法各不相同（外发光 / 加模糊 / 换边框 / 硬阴影 / outline），
- * 因此不许在这里写死 box-shadow —— 全部由令牌决定 */
+.u-input:hover {
+  border-color: var(--ec-border-strong);
+}
+
 .u-input:focus {
-  border-color: var(--input-focus-border);
-  box-shadow: var(--input-focus-shadow);
-  outline: var(--input-focus-outline);
-  outline-offset: var(--input-focus-outline-offset);
-  backdrop-filter: var(--input-focus-backdrop);
-  -webkit-backdrop-filter: var(--input-focus-backdrop);
+  border-color: var(--ec-border-focus);
+  box-shadow: var(--ec-ring);
+  outline: none;
 }
 
-/* 搜索框：图标内嵌在左侧，输入区让出图标宽度
+.u-input:disabled {
+  background: var(--ec-bg-muted);
+  border-color: var(--ec-border-subtle);
+  color: var(--ec-text-disabled);
+  cursor: not-allowed;
+}
+
+/* 搜索框：图标内嵌在左侧，输入区让出图标宽度。
  *
- * ⚠ 这里的 `z-index: 0` 不是排版，是**层叠上下文隔离**，不能删。
- *
- * .u-input 在 liquid-glass 下带 `--effect-backdrop`（blur+saturate），
- * 而「backdrop-filter 非 none」会**创建层叠上下文** —— 于是同一容器里的
- * .u-search-icon 从「文档流层」落进这个定位层里，按 DOM 顺序被后画的
- * 输入框盖住，深色笔画被 blur + saturate(1.8) 合成成近乎不可见的浅色。
- * 实测：其余四套主题 --effect-backdrop 为 none，图标对比度 15+ 正常；
- * 唯独玻璃主题渲染对比度只有 1.01（笔画 [222,229,255] 落在底 [221,228,255] 上）。
- *
- * 解法两步（缺一不可，见 .u-search-icon 的 z-index: 1）：
- *   1. 共同祖先自成层叠上下文（z-index: 0），把 z-index **关在容器内**，
- *      否则图标的 z-index 会跑到更高层，盖住将来的下拉 / 浮层；
- *   2. 图标本身给一个**正的** z-index，压过输入框的背景层。
- * z-index 不构成 backdrop root（backdrop root 由 filter / backdrop-filter /
- * opacity / isolation / contain:paint 触发）→ 加 z-index **不会**破坏毛玻璃效果。
- */
+ * `z-index: 0` 是**层叠上下文隔离**，不是排版：它把图标的 z-index 关在容器内，
+ * 否则图标的层级会跑到容器外，盖住将来的下拉 / 浮层。 */
 .u-search {
   position: relative;
   z-index: 0;
@@ -413,8 +413,6 @@ textarea.u-input {
 .u-search-icon {
   position: absolute;
   left: var(--input-padding-x);
-  /* 固定成 --input-icon-size 宽并居中：emoji 的字形宽度通常大于字号，
-   * 不留这个盒子会让图标视觉上贴住占位文字（截图已确认）。 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -422,73 +420,49 @@ textarea.u-input {
   font-size: var(--input-icon-size);
   line-height: 1;
   pointer-events: none;
-  /* 压过带 backdrop-filter 的输入框背景层（原因见 .u-search 上方说明）。 */
   z-index: 1;
-  /*
-   * 颜色锚在 --text-secondary，**不是** --placeholder。
-   *
-   * 两者语义不同：--placeholder 是「占位符文字」色，规范明确要求它是
-   * **低对比**色（每套风格单列的一个弱值）——用它等于主动把图标压灰。
-   * 实测在真实输入框背景上，--placeholder 五套对比度是
-   * 1.57 / 3.98 / 3.08 / 5.13 / 3.46：极简主题深灰压深底只有 1.57，
-   * 便当 3.08、单色 3.46 也都达不到「清晰可辨」。
-   *
-   * --text-secondary 才是项目里「次级但必须看得清」的那一档
-   * （同一对比度口径下为 6.41 / 3.98 / 7.78 / 9.70 / 7.04，五套全部达标），
-   * 而且导航栏自带的 .search-toggle 放大镜按钮用的正是它 —— 展开前后
-   * 两颗放大镜同色，视觉上才是同一件东西。
-   */
-  color: var(--text-secondary);
+  /* 锚在次级文字色而不是占位符色：占位符是「低对比」档，用来画图标会看不清 */
+  color: var(--ec-text-tertiary);
 }
 
 .u-search .u-input {
-  padding-left: calc(
-    var(--input-padding-x) + var(--input-icon-size) + var(--input-icon-gap)
-  );
+  padding-left: calc(var(--input-padding-x) + var(--input-icon-size) + var(--input-icon-gap));
 }
 
 /* ────────────────────────────────────────────────────────────
- * 5. 卡片
+ * 5. 卡片（= EC Card / ProductCard 外壳）
  *
- * 结构：.ui-card（或 .ui-card--lg）> .ui-card-media + .ui-card-body
- * 图片区改为固定高度（规范给的是 px 而不是比例），圆角独立于卡片。
+ * 浅色系统的层级 = 阴影 + 描边双写；暗色系统靠表面提亮 + 1px 描边，
+ * 阴影只做「沉下去」—— 因此这里的阴影取 --ec-shadow-xs，悬停才到 md。
  * ──────────────────────────────────────────────────────────── */
 
 .ui-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
+  gap: var(--ec-space-2);
   width: 100%;
-  padding: var(--card-padding);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
+  padding: var(--ec-card-pad-md);
+  background: var(--ec-card-bg);
+  border: 1px solid var(--ec-card-border);
+  border-radius: var(--ec-card-radius);
+  box-shadow: var(--ec-shadow-xs);
   transition:
-    transform var(--transition-surface),
-    border-color var(--transition-surface),
-    box-shadow var(--transition-surface),
-    backdrop-filter var(--transition-surface),
-    -webkit-backdrop-filter var(--transition-surface);
+    transform var(--ec-dur-base) var(--ec-ease-out),
+    border-color var(--ec-dur-base) var(--ec-ease-out),
+    box-shadow var(--ec-dur-base) var(--ec-ease-out);
 }
 
-/* 大卡片：bento 的 400px 主推卡走这一档，其余风格与常规卡一致。
- * min-width 用 min() 兜底，窄视口下不会把栅格撑破。 */
 .ui-card--lg {
-  padding: var(--card-padding-lg);
-  border-radius: var(--radius-card-lg);
+  padding: var(--ec-card-pad-lg);
+  border-radius: var(--ec-radius-xl);
   min-width: min(100%, var(--card-width-lg));
 }
 
 .ui-card:hover {
   transform: var(--card-hover-transform);
-  border-color: var(--card-hover-border);
-  box-shadow: var(--shadow-card-hover);
-  backdrop-filter: var(--effect-backdrop-hover);
-  -webkit-backdrop-filter: var(--effect-backdrop-hover);
+  border-color: var(--ec-border-default);
+  box-shadow: var(--ec-shadow-md);
 }
 
 .ui-card-media {
@@ -497,8 +471,8 @@ textarea.u-input {
   place-items: center;
   flex-shrink: 0;
   height: var(--card-image-height);
-  background: var(--bg-surface-2);
-  border-radius: var(--radius-media);
+  background: var(--ec-grad-brand);
+  border-radius: var(--ec-radius-md);
   overflow: hidden;
 }
 
@@ -512,7 +486,7 @@ textarea.u-input {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-surface);
+  transition: transform var(--ec-dur-base) var(--ec-ease-out);
 }
 
 .ui-card:hover .ui-card-media img {
@@ -522,419 +496,255 @@ textarea.u-input {
 .ui-card-body {
   display: flex;
   flex-direction: column;
-  /* 卡体内元素间距取最小档 8px（COMPONENTS.md 的纵向阶梯为 8/16/24/48/96；
-   * 这里原先是 *1.25 = 10px，既不在阶梯上，与 8px 也看不出差别）。 */
-  gap: var(--space-unit);
+  gap: var(--ec-space-2);
   flex: 1;
   min-width: 0;
 }
 
-.ui-card-interactive {
-  cursor: pointer;
-}
-
-/* 可聚焦的卡片：既要吃掉主题焦点环，也要有 outline 兜底。
- *
- * `.ui-card-interactive` 目前 0 处引用（历史类名），真正可聚焦的是商品卡
- * `ProductCard.vue` 的 `.product-card`（`role="link" tabindex="0"`，5 个页面复用）。
- * 它原先吃不到任何 focus 规则，键盘 Tab 过去时只有 UA 默认边框。 */
-.ui-card-interactive:focus-visible,
+/* 焦点环：整卡可点（role=link + tabindex）时必须给出可见焦点。
+ * 这里只对 `.product-card` 生效 —— `.ui-card-interactive` 从来没有任何调用方，
+ * 已随清理删除（可交互卡片的 cursor 由各自页面在 scoped 样式里给）。 */
 .product-card:focus-visible {
-  box-shadow: var(--focus-ring);
-  outline: var(--stroke-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
+  outline: none;
+  box-shadow: var(--ec-ring), var(--ec-shadow-md);
 }
 
 .ui-card-title {
-  font-family: var(--font-display);
-  font-size: var(--card-title-size);
-  font-weight: var(--fw-heading);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-body-size);
+  font-weight: var(--ec-h3-weight);
   line-height: var(--leading-title);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
+  color: var(--ec-text-primary);
   display: -webkit-box;
   line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: calc(2 * 1.5em);
 }
 
 .ui-card-sub {
-  font-size: var(--card-sub-size);
-  color: var(--text-muted);
+  font-size: var(--ec-caption-size);
+  color: var(--ec-text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 /* ────────────────────────────────────────────────────────────
- * 6. 价格
+ * 6. 价格（= EC PriceText）
  *
- * 货币符号与小数位由主题决定（见 theme/presets.js 的 price 字段与
- * formatUtils.splitPrice）：bento/neo 无小数，mono 用 $ 前缀。
+ * 三段式：符号 + 整数 + 小数。当前价恒为红、恒为该区域最大字号。
+ * 数字必须走 --ec-font-num + tabular-nums，否则数字跳动会抖列宽。
  * ──────────────────────────────────────────────────────────── */
 
 .u-price {
   display: inline-flex;
   align-items: baseline;
-  padding: 0 calc(var(--space-unit) * 0.5);
-  font-family: var(--font-price);
-  font-size: var(--fs-price);
-  font-weight: var(--fw-price);
-  line-height: 1.1;
-  color: var(--price-color);
+  font-family: var(--ec-font-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-size: var(--ec-price-int-sm);
+  font-weight: var(--ec-display-weight);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ec-price-current);
   background: var(--price-bg);
   border-radius: var(--micro-badge-radius);
 }
 
 /* 小数部分「小一号」 */
 .u-price-decimals {
-  font-size: var(--fs-price-decimals);
+  font-size: var(--ec-price-dec-sm);
+  font-weight: 600;
 }
 
-/* 划线原价：比现价小 2px，弱化处理 */
+/* 划线原价：恒小于当前价，恒带删除线 */
 .u-price-original {
-  font-family: var(--font-price);
-  font-size: var(--fs-price-original);
-  color: var(--text-muted);
+  font-family: var(--ec-font-num);
+  font-size: var(--ec-caption-size);
+  color: var(--ec-price-original);
   text-decoration: line-through;
+  text-decoration-thickness: 1px;
 }
 
-/* 折扣标签：accent 底 + 反白字 */
+/* 折扣标签：EC 用 danger 面 + 反白字（价格语义），不用品牌色 ——
+ * 品牌色是「行动」，折扣是「信息」，两者不能共用一个色相。 */
 .u-discount {
   display: inline-flex;
   align-items: center;
   padding: var(--micro-badge-padding);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--text-on-accent);
-  background: var(--accent);
+  font-family: var(--ec-font-num);
+  font-size: var(--ec-micro-size);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ec-text-on-action);
+  background: var(--ec-danger-text);
   border-radius: var(--micro-badge-radius);
 }
 
 /* ────────────────────────────────────────────────────────────
- * 7. 标签 Tag / Badge
- * 变体：默认（surface + 描边）/ 强调 / 成功 / 警告 / 错误 / 信息
+ * 7. 标签 Tag / Badge（= EC Tag）
+ * 变体：默认 / 强调 / 成功 / 警告 / 错误 / 信息 / 弱化
+ * 统一「浅底 + 同色描边 + 同色文字」三件套，不出现实心色块。
  * ──────────────────────────────────────────────────────────── */
 
 .u-tag {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  height: var(--tag-height);
-  padding: var(--tag-padding-y) var(--tag-padding-x);
-  font-family: var(--font-body);
-  font-size: var(--tag-font-size);
-  font-weight: var(--tag-font-weight);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--tag-radius);
+  gap: var(--ec-space-1);
+  height: var(--ec-tag-h-md);
+  padding-inline: var(--ec-space-2);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-micro-size);
+  font-weight: var(--ec-micro-weight);
+  line-height: 1;
+  letter-spacing: var(--ec-micro-track);
+  color: var(--ec-text-secondary);
+  background: var(--ec-bg-muted);
+  border: 1px solid transparent;
+  border-radius: var(--ec-radius-sm);
   white-space: nowrap;
 }
 
 .u-tag--accent {
-  color: var(--text-on-accent);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--ec-info-text);
+  background: var(--ec-info-soft);
+  border-color: var(--ec-info-border);
 }
 
 .u-tag--success {
-  color: var(--success);
-  background: var(--success-bg);
-  border-color: var(--success);
+  color: var(--ec-success-text);
+  background: var(--ec-success-soft);
+  border-color: var(--ec-success-border);
 }
 
 .u-tag--warning {
-  color: var(--warning);
-  background: var(--warning-bg);
-  border-color: var(--warning);
+  color: var(--ec-warning-text);
+  background: var(--ec-warning-soft);
+  border-color: var(--ec-warning-border);
 }
 
 .u-tag--danger {
-  color: var(--danger);
-  background: var(--danger-bg);
-  border-color: var(--danger);
+  color: var(--ec-danger-text);
+  background: var(--ec-danger-soft);
+  border-color: var(--ec-danger-border);
 }
 
 .u-tag--info {
-  color: var(--info);
-  background: var(--info-bg);
-  border-color: var(--info);
+  color: var(--ec-info-text);
+  background: var(--ec-info-soft);
+  border-color: var(--ec-info-border);
 }
 
-/* 中性弱化：用于「已禁用」与未知状态。
- * 由 useKamiDisplay 的 STATUS_VARIANT.disabled 与 getStatusVariantClass 的兜底产出，
- * 2026-10-12 移除 ant-design-vue 时补上 —— 此前该类没有定义，标签会静默退化成基础 .u-tag。
- * 比基础 .u-tag 再弱一档：文字用 --text-muted，底色用 --bg-surface-2。 */
+/* 中性弱化：用于「已禁用」与未知状态（比基础 .u-tag 再弱一档） */
 .u-tag--muted {
-  color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border-color: var(--stroke-color);
+  color: var(--ec-text-tertiary);
+  background: var(--ec-bg-muted);
+  border-color: var(--ec-border-subtle);
 }
 
 /* 可点击的筛选标签：默认态同 .u-tag，选中态用强调底 */
 button.u-tag {
   cursor: pointer;
   transition:
-    border-color var(--transition-interactive),
-    color var(--transition-interactive),
-    background-color var(--transition-interactive);
+    border-color var(--ec-dur-fast) var(--ec-ease-out),
+    color var(--ec-dur-fast) var(--ec-ease-out),
+    background-color var(--ec-dur-fast) var(--ec-ease-out);
 }
 
 button.u-tag:hover:not(.u-tag--accent) {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--ec-action-primary-border);
+  color: var(--ec-action-primary-hover);
+}
+
+button.u-tag:focus-visible {
+  outline: none;
+  box-shadow: var(--ec-ring);
 }
 
 /* ────────────────────────────────────────────────────────────
  * 8. 提示框 Toast
- * 右上角固定，堆叠间距 12px；移动端贴底（见文件末尾媒体查询）
+ * 直接使用设计系统的 `.ec-toast-layer` / `.ec-toast`（顶部居中、最多 3 条、
+ * 成功 2s / 错误 3s、无操作按钮），此处不再保留同名 alias。
+ * 只有移动端的位置覆盖写在文件末尾的媒体查询里。
  * ──────────────────────────────────────────────────────────── */
-
-.u-toast-host {
-  position: fixed;
-  top: var(--toast-offset);
-  right: var(--toast-offset);
-  z-index: var(--z-toast);
-  display: flex;
-  flex-direction: column;
-  gap: var(--toast-gap);
-  pointer-events: none;
-}
-
-.u-toast {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space-unit) * 1.25);
-  width: var(--toast-width);
-  padding: var(--toast-padding-y) var(--toast-padding-x);
-  font-size: var(--toast-font-size);
-  line-height: var(--leading-body);
-  color: var(--text-primary);
-  background: var(--bg-elevated);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--toast-radius);
-  box-shadow: var(--shadow-float);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
-  pointer-events: auto;
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.u-toast-icon {
-  flex-shrink: 0;
-  font-size: var(--toast-icon-size);
-  line-height: 1;
-}
-
-/* 语义色只作用在图标上：提示框本体保持中性表面，避免一屏多色 */
-.u-toast--success .u-toast-icon {
-  color: var(--success);
-}
-
-.u-toast--warning .u-toast-icon {
-  color: var(--warning);
-}
-
-.u-toast--error .u-toast-icon {
-  color: var(--danger);
-}
-
-.u-toast--info .u-toast-icon {
-  color: var(--info);
-}
-
-.u-toast-text {
-  flex: 1;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.u-toast-close {
-  flex-shrink: 0;
-  font-size: var(--tag-font-size);
-  line-height: 1;
-  color: var(--text-muted);
-  transition: color var(--transition-interactive);
-}
-
-.u-toast-close:hover {
-  color: var(--accent);
-}
 
 /* ────────────────────────────────────────────────────────────
  * 9. 模态框
+ * 直接使用设计系统的 `.ec-overlay` / `.ec-dialog`（登录弹窗）与
+ * `.ec-drawer`（帮助抽屉），此处不再保留 `.u-modal*` 别名：
+ * 两套同名单类选择器并存时，后注入的 scoped 样式会被这里盖掉，
+ * 出现「改了没效果」的假象。
  * ──────────────────────────────────────────────────────────── */
 
-.u-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: flex;
-  padding: var(--container-padding);
-  overflow-y: auto;
-  background: var(--scrim);
-  backdrop-filter: var(--scrim-backdrop);
-  -webkit-backdrop-filter: var(--scrim-backdrop);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.u-modal {
-  position: relative;
-  /* margin: auto 比 flex 居中更稳：内容超高时可滚动到顶部而不是被截断 */
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: var(--modal-width);
-  max-height: calc(100vh - var(--container-padding) * 2);
-  padding: var(--modal-padding);
-  background: var(--bg-elevated);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--modal-shadow);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
-}
-
-.u-modal-title {
-  padding-right: calc(var(--modal-close-size) + var(--space-unit));
-  margin-bottom: var(--modal-title-gap);
-  font-family: var(--font-display);
-  font-size: var(--modal-title-size);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  color: var(--text-primary);
-}
-
-.u-modal-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  margin-bottom: var(--modal-body-gap);
-  font-size: var(--modal-body-size);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-.u-modal-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--modal-footer-gap);
-}
-
-.u-modal-close {
-  position: absolute;
-  top: var(--modal-padding);
-  right: var(--modal-padding);
-  /*
-   * z-index 不能省 —— 这是实测修过的缺陷（「登录弹窗的 ✕ 点了没反应」）。
-   *
-   * 定位元素且 z-index: auto 时，谁的 DOM 靠后谁画在上面。关闭按钮在模板里是
-   * 弹窗的第一个元素，而紧跟其后的内容（登录弹窗的页签行、主题弹窗的标题）
-   * 起始位置与它**重叠**：登录弹窗的 `.tab-btn` 是 `position: relative` +
-   * `flex: 1`，两个页签铺满整行宽度，正好盖在右上角的 ✕ 上。
-   * 于是点在 ✕ 上的点击实际落到「注册」页签 —— 表现为按钮完全失效。
-   *
-   * 提高层叠层级比「给每个弹窗的内容让位」更可靠：新增弹窗时不必记得这件事。
-   * 内容侧仍应留出横向空间（`.u-modal-title` 与登录弹窗的 `.modal-tabs` 都
-   * 做了 padding-right），否则文字会钻到按钮底下。
-   */
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--modal-close-size);
-  height: var(--modal-close-size);
-  font-size: var(--tag-font-size);
-  color: var(--text-muted);
-  border-radius: var(--btn-radius);
-  transition:
-    color var(--transition-interactive),
-    background-color var(--transition-interactive);
-}
-
-.u-modal-close:hover {
-  color: var(--accent);
-  background: var(--bg-soft);
-}
-
 /* ────────────────────────────────────────────────────────────
- * 10. 下拉菜单
+ * 10. 下拉菜单（= EC Select 菜单）
  * 注：原生 <select> 的展开列表由操作系统绘制、无法主题化；
  * 这里覆盖的是自绘下拉（导航栏用户菜单、自定义选择器）。
  * ──────────────────────────────────────────────────────────── */
 
 .u-dropdown {
   min-width: var(--dropdown-width);
-  padding: var(--dropdown-padding-y) 0;
+  padding: var(--ec-space-1);
   overflow: hidden;
-  background: var(--bg-elevated);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--dropdown-radius);
-  box-shadow: var(--shadow-float);
-  backdrop-filter: var(--effect-backdrop);
-  -webkit-backdrop-filter: var(--effect-backdrop);
-  animation: enterUp var(--enter-duration) var(--enter-ease) both;
+  background: var(--ec-bg-raised);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-select-menu-radius);
+  box-shadow: var(--ec-shadow-lg);
+  animation: enterUp var(--ec-dur-fast) var(--ec-ease-out) both;
 }
 
 .u-dropdown-item {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit));
+  gap: var(--ec-space-2);
   width: 100%;
-  height: var(--dropdown-item-height);
-  padding: 0 var(--dropdown-item-padding-x);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
+  height: var(--ec-select-option-h);
+  padding-inline: var(--ec-space-3);
+  font-size: var(--ec-body-size);
+  color: var(--ec-text-primary);
   text-align: left;
-  /* 选中态用左侧竖条表达，因此常态保留等宽透明边框避免位移 */
-  border-left: var(--dropdown-active-bar) solid transparent;
+  border-radius: var(--ec-radius-sm);
   transition:
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive),
-    color var(--transition-interactive);
+    background-color var(--ec-dur-fast),
+    color var(--ec-dur-fast);
 }
 
 .u-dropdown-item:hover {
-  background: var(--bg-soft);
-  color: var(--accent);
+  background: var(--ec-bg-hover);
+  color: var(--ec-text-primary);
 }
 
 .u-dropdown-item--active {
-  border-left-color: var(--accent);
-  background: var(--bg-soft);
-  color: var(--accent);
+  background: var(--ec-action-primary-soft);
+  color: var(--ec-action-primary-hover);
+  font-weight: var(--ec-button-font-weight);
 }
 
 .u-dropdown-divider {
   height: 1px;
-  margin: calc(var(--space-unit) * 0.5) 0;
-  background: var(--divider);
+  margin: var(--ec-space-1) 0;
+  background: var(--ec-border-subtle);
 }
 
 /* ────────────────────────────────────────────────────────────
- * 11. 进度条 / 加载圈 / 骨架屏
+ * 11. 进度条 / 加载圈 / 占位块
  * ──────────────────────────────────────────────────────────── */
 
 .u-progress {
   width: 100%;
-  height: var(--progress-height);
-  background: var(--progress-track);
-  border-radius: var(--progress-radius);
+  height: var(--ec-progress-h);
+  background: var(--ec-bg-sunken);
+  border-radius: var(--ec-radius-full);
   overflow: hidden;
 }
 
 .u-progress-bar {
   height: 100%;
-  background: var(--accent);
-  border-radius: var(--progress-radius);
-  transition: width var(--transition-progress);
+  background: var(--ec-grad-action);
+  border-radius: var(--ec-radius-full);
+  transition: width var(--ec-dur-slow) var(--ec-ease-out);
 }
 
 .u-spinner {
@@ -942,9 +752,9 @@ button.u-tag:hover:not(.u-tag--accent) {
   flex-shrink: 0;
   width: var(--spinner-size-md);
   height: var(--spinner-size-md);
-  border: var(--spinner-border-lg) solid var(--accent-soft);
-  border-top-color: var(--accent);
-  border-radius: 50%;
+  border: var(--spinner-border-lg) solid var(--ec-border-default);
+  border-top-color: var(--ec-action-primary-hover);
+  border-radius: var(--ec-radius-full);
   animation: spin var(--spinner-duration) linear infinite;
 }
 
@@ -966,29 +776,27 @@ button.u-tag:hover:not(.u-tag--accent) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--space-unit) * 1.5);
+  gap: var(--ec-space-3);
   padding: calc(var(--section-gap) * 0.4) var(--container-padding);
-  font-size: var(--fs-body);
-  color: var(--text-muted);
+  font-size: var(--ec-body-size);
+  color: var(--ec-text-tertiary);
 }
 
 /* 骨架屏已迁到 ui-kit-feedback.css（§16）：那里按 --skeleton-* 令牌化，
- * 且动画名逐风格不同（neo 用 skeleton-pulse，其余用 skeleton-shimmer），
- * 因此旧的单一名 shimmer keyframes 也一并删除。此处不要重复定义。 */
+ * 动画名走 EC 的 ec-shimmer。此处不要重复定义。 */
 
 /* ────────────────────────────────────────────────────────────
- * 12. 头像 / 复选框
+ * 12. 头像（= EC Avatar）
  * ──────────────────────────────────────────────────────────── */
 
 .u-avatar {
   display: block;
   flex-shrink: 0;
-  width: var(--avatar-size);
-  height: var(--avatar-size);
+  width: var(--ec-avatar-md);
+  height: var(--ec-avatar-md);
   overflow: hidden;
-  background: var(--bg-surface-2);
-  border: var(--avatar-border-width) solid var(--avatar-border-color);
-  border-radius: var(--avatar-radius);
+  background: var(--ec-action-primary-soft);
+  border-radius: var(--ec-radius-full);
 }
 
 .u-avatar img {
@@ -996,24 +804,19 @@ button.u-tag:hover:not(.u-tag--accent) {
   height: 100%;
   object-fit: cover;
 }
-/* 复选框与单选框的样式统一在 ui-kit-form.css 的「选择与开关」一节。
- * 这里曾有一份语义相同的旧定义（gap 6px、--bg-surface-2、display: grid 之类），
- * 因分片加载顺序靠前而被整块覆盖 —— 改它不会生效，只会让人以为改错了地方。 */
+
+/* 复选框与单选框的样式统一在 ui-kit-form.css 的「选择与开关」一节。 */
+
 /* ────────────────────────────────────────────────────────────
- * 13. 共享区块头 / 页面头
+ * 13. 共享区块头
  * ──────────────────────────────────────────────────────────── */
 
 /*
  * 区块内容容器：限宽 + 居中 + 两侧内边距。
  *
- * **必须是全局类。** 它原先在 `CategoriesSection` 与 `HotProductsSection` 的
- * `<style scoped>` 里各写了一份（逐字相同），而 scoped 样式只作用于本组件 ——
- * 于是新写的区块一旦复用这个类名，就会拿到**零样式**：不限宽、不居中、没有
- * 内边距，整块内容横向铺满视口，与上方区块对不齐。
- * （`HotToolsSection` 一开始就是这么坏的，实测发现。）
- *
- * 这类「布局容器」本来就是跨组件共享的东西，放在共享层只有一份定义；
- * 组件各自的 scoped 副本已删除。
+ * **必须是全局类。** 它曾在两个组件的 `<style scoped>` 里各写了一份，
+ * 而 scoped 样式只作用于本组件 —— 新区块复用这个类名就会拿到零样式：
+ * 不限宽、不居中、没有内边距，整块内容横向铺满视口，与上方区块对不齐。
  */
 .section-inner {
   max-width: var(--container-max);
@@ -1031,47 +834,35 @@ button.u-tag:hover:not(.u-tag--accent) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--space-unit) * 1.5);
-  font-family: var(--font-display);
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  color: var(--text-primary);
-  margin-bottom: calc(var(--space-unit) * 2);
+  gap: var(--ec-space-3);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-h2-size);
+  font-weight: var(--ec-h2-weight);
+  line-height: var(--ec-h2-lh);
+  letter-spacing: var(--ec-h2-track);
+  color: var(--ec-text-primary);
+  margin-bottom: var(--ec-space-2);
 }
 
 .title-icon {
-  display: inline-block;
-  font-size: var(--fs-h2);
-  animation: var(--decor-animation);
+  display: inline-flex;
+  font-size: var(--ec-h2-size);
+  color: var(--ec-action-primary);
 }
 
 .section-description {
-  font-size: var(--fs-body);
-  color: var(--text-secondary);
-  margin: 0;
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: var(--ec-body-size);
+  line-height: var(--ec-body-lh);
+  color: var(--ec-text-secondary);
 }
 
-/*
- * 页面头（.page-header）已删除。
- *
- * 原先除主页外的每个页面都套同一个居中渐变页头，等于「一个模板换文案」。
- * 现在每个页面按自己的信息结构设计开场（索引页的竖排开场、榜单页的横向标题带、
- * 工作台的左轨标题、编辑页的首行眉标……），文案仍集中在 constants/content.js 的 PAGES。
- * 页面标题统一用 --fs-h1，因此该令牌仍然有人消费。
- */
-
 /* ────────────────────────────────────────────────────────────
- * 15. 事务页外壳与表单字段
+ * 14. 事务页外壳与表单字段
  *
- * 为什么这里可以有一套共享外壳，而 `.page-header` 当年必须删掉：
- *   `.page-header` 被删，是因为**营销页**（分类索引 / 榜单 / 工作台 / 目录 /
- *   编辑式双栏）各有自己的信息结构与开场节奏，套同一个居中页头等于
- *   「一个模板换文案」。而购物车、订单、收藏、个人中心、法务与两个详情页
- *   属于**另一族**：信息密集型事务页 —— 窄标题带 + 单列内容 + 明确的动作区，
- *   版式本来就应当一致。把这族的外壳收成一套共享类，
- *   好过在 8 个文件里各抄一遍（约 320 行完全相同的 CSS）。
+ * 购物车、订单、收藏、个人中心、法务与两个详情页属于「信息密集型事务页」——
+ * 窄标题带 + 单列内容 + 明确动作区，版式本来就应当一致，因此收成一套共享类。
  *
  * 用法：
  *   <div class="page-shell">
@@ -1095,18 +886,9 @@ button.u-tag:hover:not(.u-tag--accent) {
   padding: var(--section-gap) var(--container-padding);
 }
 
-/* 窄页变体：会员/积分族（会员中心、会员套餐、积分中心、积分明细、每日签到、
-   我的优惠券）是「一条主叙事 + 若干信息块」的阅读型页面，
-   1320 宽会让卡片被拉成大片空白。这六个页面从一开始就写着这个修饰类，
-   但规则一直没落地（`--container-narrow` 此前只有 `.page-shell-desc` 用），
-   2026-10-12 的真实浏览器核验才发现 —— 所以它必须放在 `.page-shell` 之后。
-   个人中心（Profile.vue）**有意不进这一族**：它是「账号信息 + 修改资料」的双栏
-   面板版式，需要全宽容器。
-
-   宽度契约（2026-10-12 统一）：整族只认 `--container-page-narrow`
-   一条令牌（`clamp(960px, 72vw, 1180px)`），页面自己**不得**再声明 max-width ——
-   否则同族页面在宽屏上又会各走各的比例。返回 `web/test/componentClasses.test.js`
-   的「窄页族宽度契约」用例把关。 */
+/* 窄页变体：会员/积分族是「一条主叙事 + 若干信息块」的阅读型页面，
+   全宽容器会把卡片拉成大片空白。整族只认 --container-page-narrow 一条令牌，
+   页面自己不得再声明 max-width（由 test/componentClasses.test.js 把关）。 */
 .page-shell--narrow {
   max-width: var(--container-page-narrow);
 }
@@ -1116,7 +898,7 @@ button.u-tag:hover:not(.u-tag--accent) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: calc(var(--space-unit) * 1.5);
+  gap: var(--ec-space-3);
   margin-bottom: var(--section-gap);
 }
 
@@ -1124,116 +906,114 @@ button.u-tag:hover:not(.u-tag--accent) {
   flex-direction: row;
   align-items: flex-end;
   justify-content: space-between;
-  gap: calc(var(--space-unit) * 3);
+  gap: var(--ec-space-6);
 }
 
 .page-shell-eyebrow {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--accent);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-micro-size);
+  font-weight: var(--ec-micro-weight);
+  letter-spacing: var(--ec-micro-track);
+  text-transform: uppercase;
+  color: var(--ec-action-primary-hover);
 }
 
 .page-shell-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h1);
-  font-weight: var(--fw-display);
-  letter-spacing: var(--tracking-display);
-  text-transform: var(--heading-transform);
-  color: var(--text-primary);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-h1-size);
+  font-weight: var(--ec-h1-weight);
+  line-height: var(--ec-h1-lh);
+  letter-spacing: var(--ec-h1-track);
+  color: var(--ec-text-primary);
 }
 
 .page-shell-title-link {
   color: inherit;
-  transition: color var(--transition-interactive);
+  transition: color var(--ec-dur-fast);
 }
 
 .page-shell-title-link:hover {
-  color: var(--accent);
+  color: var(--ec-action-primary-hover);
 }
 
 .page-shell-desc {
-  max-width: var(--container-narrow);
+  max-width: 640px;
   margin: 0;
-  font-size: var(--fs-body);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
+  font-size: var(--ec-body-size);
+  line-height: var(--ec-body-lh);
+  color: var(--ec-text-secondary);
 }
 
 /* 面板：事务页的内容块。与 .ui-card 的区别是不带悬停位移与媒体区规则 ——
  * 面板是「一片区域」，不是「一件可点开的东西」 */
 .page-panel {
-  padding: calc(var(--space-unit) * 3);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-panel);
+  padding: var(--ec-card-pad-lg);
+  background: var(--ec-card-bg);
+  border: 1px solid var(--ec-card-border);
+  border-radius: var(--ec-card-radius);
 }
 
 .page-panel + .page-panel {
-  margin-top: calc(var(--space-unit) * 3);
+  margin-top: var(--ec-space-6);
 }
 
 .page-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  margin: 0 0 calc(var(--space-unit) * 2);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
+  gap: var(--ec-space-4);
+  margin: 0 0 var(--ec-space-4);
+  font-family: var(--ec-font-sans);
+  font-size: var(--ec-h3-size);
+  font-weight: var(--ec-h3-weight);
+  line-height: var(--ec-h3-lh);
+  color: var(--ec-text-primary);
 }
 
 /* 小字说明：与正文拉开层级，用于「下单说明」「只读字段提示」这类旁注 */
 .page-note {
   margin: 0;
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-muted);
+  font-size: var(--ec-caption-size);
+  line-height: var(--ec-body-lh);
+  color: var(--ec-text-tertiary);
 }
 
 .page-note--warning {
-  padding: var(--tag-padding-y) calc(var(--space-unit) * 1.5);
-  color: var(--warning);
-  background: var(--warning-bg);
-  border-radius: var(--radius-input);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  color: var(--ec-warning-text);
+  background: var(--ec-warning-soft);
+  border: 1px solid var(--ec-warning-border);
+  border-radius: var(--ec-radius-md);
 }
 
 .page-note--error {
-  padding: var(--tag-padding-y) calc(var(--space-unit) * 1.5);
-  color: var(--danger);
-  background: var(--danger-bg);
-  border-radius: var(--radius-input);
+  padding: var(--ec-space-2) var(--ec-space-3);
+  color: var(--ec-danger-text);
+  background: var(--ec-danger-soft);
+  border: 1px solid var(--ec-danger-border);
+  border-radius: var(--ec-radius-md);
 }
 
-/* 空态：事务页的空列表统一用它，与 HotProductsSection 的 .grid-note 同构。
- *
- * 与 `.u-empty--compact` 同一档几何（48/16 纵向、标题 --fs-body），区别只在于
- * 这里没有图标位、也不用插槽 —— 页面侧沿用现有 28 处 `.page-empty` 标记不动。
- * 原先它自带 --bg-surface-2 底 + 描边 + 圆角，读起来像「一张空卡片」，
- * 与 `.u-empty` 的无框空态并存时，同一站点会出现两种「没有数据」的观感。 */
+/* 空态：与 .u-empty--compact 同一档几何，无框（不再读成「一张空卡片」） */
 .page-empty {
-  padding: calc(var(--space-unit) * 6) calc(var(--space-unit) * 2);
+  padding: var(--ec-space-12) var(--ec-space-6);
   text-align: center;
-  color: var(--text-muted);
+  color: var(--ec-text-tertiary);
 }
 
 .page-empty-title {
-  margin: 0 0 calc(var(--space-unit));
-  font-size: var(--fs-body);
-  color: var(--text-primary);
+  margin: 0 0 var(--ec-space-2);
+  font-size: var(--ec-body-size);
+  font-weight: var(--ec-h3-weight);
+  color: var(--ec-text-primary);
 }
 
 .page-empty-hint {
   margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
+  font-size: var(--ec-caption-size);
+  color: var(--ec-text-secondary);
 }
 
 /* 动作行：一行按钮，窄屏改为整宽堆叠 */
@@ -1241,53 +1021,53 @@ button.u-tag:hover:not(.u-tag--accent) {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.5);
+  gap: var(--ec-space-3);
 }
 
 /* ── 表单字段 ───────────────────────────────────────────────
- * LoginModal 里的 .form-group 只管登录弹窗；事务页新增了资料表单、
- * 结算表单等多处同类结构，统一收在这里，避免第三次抄同一段。 */
+ * 资料表单、结算表单等多处同类结构，统一收在这里，避免第三次抄同一段。 */
 .u-field {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 0.75);
+  gap: var(--ec-space-2);
 }
 
 .u-field-label {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
-  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--ec-space-1);
+  font-size: var(--ec-caption-size);
+  font-weight: var(--ec-button-font-weight);
+  color: var(--ec-text-secondary);
 }
 
 .u-field-hint {
-  font-size: var(--fs-label);
-  color: var(--text-muted);
+  font-size: var(--ec-caption-size);
+  line-height: var(--ec-caption-lh);
+  color: var(--ec-text-tertiary);
 }
 
 /* .u-field-error / .u-field-success 已迁到 ui-kit-feedback.css（§21）：
  * 那里按 --field-error-size / --field-error-gap / --field-success-icon 令牌化，
  * 并且会消掉与 .u-field 的 flex gap 叠加出来的双倍间距。此处不要重复定义。 */
 
-/* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开。
- *
- * 圆角取 --radius-input-tall 而不是 --radius-input：只读值可能是单行也可能是多行，
- * 而液态玻璃的 --radius-input 是 9999px，多行时会变成跑道圆角（与 textarea 同理）。 */
+/* 只读字段：用「值 + 等宽字体」呈现，视觉上与可编辑输入框区分开 */
 .u-field-value {
-  min-height: var(--input-height);
+  min-height: var(--ec-control-h-md);
   display: flex;
   align-items: center;
-  padding: 0 var(--input-padding-x);
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-input-tall);
+  padding-inline: var(--ec-input-px);
+  font-family: var(--ec-font-mono);
+  font-size: var(--ec-body-size);
+  color: var(--ec-text-primary);
+  background: var(--ec-bg-muted);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
   overflow-wrap: anywhere;
 }
 
 /* ────────────────────────────────────────────────────────────
- * 14. 响应式与移动端缩放
+ * 15. 响应式与移动端缩放
  * 统一断点：575 / 767 / 991 / 1199（与 variables.css 末尾的文档注释一致）
  * ──────────────────────────────────────────────────────────── */
 
@@ -1307,54 +1087,50 @@ button.u-tag:hover:not(.u-tag--accent) {
   }
 }
 
-/* 移动端：控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题 ×0.7、正文 ×0.95、圆角不变 */
+/* 移动端：控件高度 ×0.9、内边距 ×0.8、区块间距 ×0.6、标题 ×0.7、正文 ×0.95 */
 @media (max-width: 767px) {
-  .hide-mobile {
-    display: none !important;
-  }
+  /* `.hide-mobile` 已删除：全站 0 个元素用它（需要窄屏隐藏的都在各自页面
+   * 的 scoped 样式里写死了选择器）。 */
 
   body {
-    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+    font-size: calc(var(--ec-body-size) * var(--mobile-body-scale));
   }
 
   /* 控件：高度与内边距一起收，避免「矮了但还是很胖」 */
   .u-btn-primary,
   .u-btn-secondary {
-    height: calc(var(--btn-height) * var(--mobile-control-scale));
-    padding: calc(var(--btn-padding-y) * var(--mobile-padding-scale))
-      calc(var(--btn-padding-x) * var(--mobile-padding-scale));
+    height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
+    padding-inline: calc(var(--ec-control-px) * var(--mobile-padding-scale));
   }
 
   .u-icon-btn {
-    width: calc(var(--icon-btn-size) * var(--mobile-control-scale));
-    height: calc(var(--icon-btn-size) * var(--mobile-control-scale));
+    width: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
+    height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
   }
 
   .u-input {
-    height: calc(var(--input-height) * var(--mobile-control-scale));
-    padding: calc(var(--input-padding-y) * var(--mobile-padding-scale))
-      calc(var(--input-padding-x) * var(--mobile-padding-scale));
+    height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
+    padding-inline: calc(var(--ec-input-px) * var(--mobile-padding-scale));
   }
 
   .u-search .u-input {
     padding-left: calc(
-      var(--input-padding-x) * var(--mobile-padding-scale) + var(--input-icon-size) +
+      var(--ec-input-px) * var(--mobile-padding-scale) + var(--input-icon-size) +
         var(--input-icon-gap)
     );
   }
 
   .u-search-icon {
-    left: calc(var(--input-padding-x) * var(--mobile-padding-scale));
+    left: calc(var(--ec-input-px) * var(--mobile-padding-scale));
   }
 
   /* 卡片：内边距 ×0.8（宽度与列数由各栅格决定） */
   .ui-card {
-    padding: calc(var(--card-padding) * var(--mobile-padding-scale));
-    gap: var(--space-unit);
+    padding: calc(var(--ec-card-pad-md) * var(--mobile-padding-scale));
   }
 
   .ui-card--lg {
-    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
+    padding: calc(var(--ec-card-pad-lg) * var(--mobile-padding-scale));
   }
 
   .ui-card-media,
@@ -1362,30 +1138,40 @@ button.u-tag:hover:not(.u-tag--accent) {
     height: calc(var(--card-image-height) * var(--mobile-padding-scale));
   }
 
-  /* 模态框：宽度 90vw（规范第十四节）、内边距 ×0.8 */
-  .u-modal {
-    max-width: 90vw;
-    padding: calc(var(--modal-padding) * var(--mobile-padding-scale));
+  /* 模态框：EC 的移动端规则是「Dialog 满宽 / Drawer 全屏」 */
+  .ec-overlay {
+    padding: var(--ec-space-4);
   }
 
-  .u-modal-close {
-    top: calc(var(--modal-padding) * var(--mobile-padding-scale));
-    right: calc(var(--modal-padding) * var(--mobile-padding-scale));
+  .ec-dialog {
+    max-width: none;
   }
 
-  /* 提示框：位置移到底部、宽度 calc(100vw - 32px)、堆叠方向反过来更符合拇指区。
-   * 32px 由 --toast-offset(24px) + --space-unit(8px) 派生，不写死。 */
-  .u-toast-host {
-    top: auto;
-    right: 0;
+  .ec-drawer {
+    width: 100vw;
+  }
+
+  .login-dialog {
+    padding: var(--ec-space-4);
+  }
+
+  .login-dialog-close {
+    top: var(--ec-space-4);
+    right: var(--ec-space-4);
+  }
+
+  /* 提示框：移动端贴底、宽度铺满，落在拇指区 */
+  .ec-toast-layer {
+    /* EC 用 inset-block-start 定位到顶部；清掉它并改用 bottom，容器才会收缩到内容高度 */
+    inset-block-start: auto;
     bottom: calc(var(--toast-offset) * 0.5);
-    left: 0;
     align-items: center;
     flex-direction: column-reverse;
   }
 
-  .u-toast {
-    width: calc(100vw - var(--toast-offset) - var(--space-unit));
+  .ec-toast {
+    width: calc(100vw - var(--toast-offset) * 2);
+    max-width: none;
   }
 
   .section-header {
@@ -1394,7 +1180,7 @@ button.u-tag:hover:not(.u-tag--accent) {
 
   .section-title,
   .title-icon {
-    font-size: calc(var(--fs-h2) * var(--mobile-title-scale));
+    font-size: calc(var(--ec-h2-size) * var(--mobile-title-scale));
   }
 
   /* 事务页：区块留白 ×0.6、两侧内边距 ×0.8、标题 ×0.7、正文 ×0.95、
@@ -1408,29 +1194,29 @@ button.u-tag:hover:not(.u-tag--accent) {
   .page-shell-head--row {
     flex-direction: column;
     align-items: flex-start;
-    gap: calc(var(--space-unit) * 2);
+    gap: var(--ec-space-3);
     margin-bottom: calc(var(--section-gap) * var(--mobile-section-scale));
   }
 
   .page-shell-title {
-    font-size: calc(var(--fs-h1) * var(--mobile-title-scale));
+    font-size: calc(var(--ec-h1-size) * var(--mobile-title-scale));
   }
 
   .page-shell-desc {
-    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+    font-size: calc(var(--ec-body-size) * var(--mobile-body-scale));
   }
 
   .page-panel {
-    padding: calc(var(--space-unit) * 3 * var(--mobile-padding-scale));
+    padding: calc(var(--ec-card-pad-lg) * var(--mobile-padding-scale));
   }
 
   .page-panel-head {
-    font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
+    font-size: calc(var(--ec-h3-size) * var(--mobile-title-scale));
   }
 
   .page-empty {
-    padding: calc(var(--space-unit) * 6 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+    padding: calc(var(--ec-space-12) * var(--mobile-padding-scale))
+      calc(var(--ec-space-6) * var(--mobile-padding-scale));
   }
 
   /* 动作行：窄屏整宽堆叠，按钮不再半截宽 */
@@ -1440,22 +1226,18 @@ button.u-tag:hover:not(.u-tag--accent) {
   }
 
   .u-field-value {
-    min-height: calc(var(--input-height) * var(--mobile-control-scale));
-    padding: 0 calc(var(--input-padding-x) * var(--mobile-padding-scale));
+    min-height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
+    padding-inline: calc(var(--ec-input-px) * var(--mobile-padding-scale));
   }
 
-  /* ── 移动端触摸热区补偿（RESPONSIVE.md:217：最小可点区域 44×44）──
-   * 项目刻意用 --mobile-control-scale:0.9 把按钮 / 图标按钮收到 36px（视觉），
-   * 但规范同时要求「外层留 ≥44 热区」（见 .u-icon-btn 行）。此前这一层缺失：
-   * 实测 21 个路由在 390×844 下，图标按钮 / 文字链接 / 关闭按钮的有效命中区
-   * 只有 36×36 / 56×21 / 9×11 等，均 < 44。
-   * 用不可见的 ::after 扩展命中区，视觉尺寸与文档流完全不变；仅增强可点性。
-   * 注意：这是「命中区」补偿，不是放大控件，不触发 R11（圆角不缩放）/ R3
-   * （几何令牌不变），也不破坏「切主题布局不跳动」。 */
+  /* ── 移动端触摸热区补偿（EC §10：点击区 ≥ 44×44）──
+   * 项目把按钮 / 图标按钮收到 32px（视觉），但规范要求「外层留 ≥44 热区」。
+   * 用不可见的 ::after 扩展命中区，视觉尺寸与文档流完全不变。
+   * 注意：这是「命中区」补偿，不是放大控件。 */
   .u-icon-btn,
+  .ec-icon-btn,
   .u-btn-primary,
   .u-btn-secondary,
-  .u-btn-ghost,
   .navbar-logo,
   .user-avatar-btn,
   .legal-toc-link,
@@ -1465,26 +1247,23 @@ button.u-tag:hover:not(.u-tag--accent) {
   .history-filter-btn,
   .contact-link,
   .footer-bottom-links a,
-  .copyright a,
-  .u-toast-close {
+  .copyright a {
     position: relative;
   }
 
-  /* 按钮类（图标按钮 / 主次要幽灵按钮 / 站标）：视觉约 36–40px，
-     -12px 即到 56–64px，已稳超 44；且不过度膨胀以避免密集导航栏相邻环互相吞噬。
-     用户菜单按钮不在这里，它在下面单独一条（需要抬高叠放层级才能拿回被邻居吃掉的重叠带）。 */
+  /* 按钮类（图标按钮 / 主次按钮 / 站标）：视觉约 32–36px，
+     -12px 即到 56–60px，已稳超 44；且不过度膨胀以避免密集导航栏相邻环互相吞噬。 */
   .u-icon-btn::after,
   .u-btn-primary::after,
   .u-btn-secondary::after,
-  .u-btn-ghost::after,
   .navbar-logo::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: -12px;
   }
 
   /* 文字链接类（法务目录 / 切换 / 返回 / 联系 / 页脚 / 版权）：实测高仅 16–21px，
-     -12px 仅补到 40–45px（不足 44）。-16px → 16 + 32 = 48px，稳达规范。 */
+     -16px → 48px，稳达规范。 */
   .legal-toc-link::after,
   .legal-switch-link::after,
   .link-btn::after,
@@ -1493,49 +1272,30 @@ button.u-tag:hover:not(.u-tag--accent) {
   .contact-link::after,
   .footer-bottom-links a::after,
   .copyright a::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: -16px;
   }
 
-  /* 关闭按钮本身是 X 字形（9×11），-16px 仅到 41×43（仍 <44）；
-     -18px → 9 + 36 = 45，11 + 36 = 47，达 44。 */
-  .u-toast-close::after {
-    content: "";
+  /* 弹窗关闭按钮：EC 的 .ec-icon-btn 是 28px，-8px → 44×44。 */
+  .ec-icon-btn::after {
+    content: '';
     position: absolute;
-    inset: -18px;
+    inset: -8px;
   }
 
-  /* 弹窗关闭按钮：--modal-close-size 五主题同为 32px，-6px → 44×44。
-     它已经是 position: absolute（不能再塞进上面 position: relative 的清单），
-     定位本身就让 ::after 以按钮自身为基准，所以只补 inset。
-     弹窗里的 ✕ 是本项目移动端命中区最靠边的高频目标，登录弹窗尤其常见。 */
-  .u-modal-close::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-  }
-
-  /* ── 导航栏内部单独一套环（2026-10-12 实测补正）──
-   * 导航栏右侧图标间距只有 8px（390×844 实测：搜索 159–199、主题 207–243、
-   * 购物车 251–287、头像 295–327、汉堡 335–371，间距依次 9/8/8/8），
-   * 全局 -12px 的环在这里互相重叠，而命中测试是「后绘制者胜」——
-   * 实测用户菜单只有 29×55（比视觉宽度还窄）、购物车与汉堡各 43×57。
-   * 这里统一用 -6px（36 + 12 = 48 名义），重叠带按下面的优先级归属：
-   * 用户菜单视觉只有 32px（必须 6px 才到 44），给它最高层级先拿；
-   * 购物车与汉堡让出 4px 后实测 43×47（差 1px 是用户菜单的重叠带吃掉的），
-   * 汉堡右侧还有 19px 空白可吃。改前实测：用户菜单 29×55、购物车/汉堡各 43×57。
-   * 注意：放大镜（.search-toggle）不在这一套里 —— 它被 .search-field 的
-   * overflow: clip（Navbar.vue:717-722 为防聚焦抖动刻意加的）裁掉，改不动。 */
+  /* ── 导航栏内部单独一套环 ──
+   * 导航栏右侧图标间距只有 8px，全局 -12px 的环在这里互相重叠，
+   * 而命中测试是「后绘制者胜」。这里统一用 -6px，重叠带按优先级归属。 */
   .navbar .u-icon-btn::after,
   .navbar .navbar-cart::after,
   .navbar .u-icon-btn.menu-toggle::after {
     inset: -6px;
   }
 
-  /* 用户菜单按钮不是 .u-icon-btn，这里必须自带 content/position（没有可继承的基础规则）。 */
+  /* 用户菜单按钮不是 .u-icon-btn，这里必须自带 content/position。 */
   .navbar .user-avatar-btn::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: -6px;
     z-index: 1;
@@ -1543,15 +1303,11 @@ button.u-tag:hover:not(.u-tag--accent) {
 }
 
 @media (max-width: 575px) {
-  .u-modal-overlay {
-    padding: calc(var(--container-padding) * var(--mobile-padding-scale));
-  }
-
-  .u-modal-foot {
+  .ec-drawer__foot {
     flex-direction: column;
   }
 
-  .u-modal-foot > * {
+  .ec-drawer__foot > * {
     width: 100%;
   }
 }

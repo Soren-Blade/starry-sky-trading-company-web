@@ -9,6 +9,77 @@
 
 ---
 
+## [2.0.0] — 2026-10-25 · 视觉体系整体换成 EC Design System（破坏性）
+
+全站样式不再自建。视觉语言、组件、令牌、明暗主题全部改为 `ec-design-system`
+（面向数字商品电商的业务级设计系统），原样拷贝在 `src/assets/ec/`。
+
+**破坏性**在于：五套可切换风格 + 单项微调被**删除**，主题只剩一维（明 / 暗 / 跟随系统）；
+用户既有的 `SSTC_THEME_PREF` 偏好不再生效（初始化时会被清理）。
+这不是能力倒退 —— 旧实现把几百个令牌逐条写进 `<html>` 的行内样式，
+而行内样式会盖掉 EC 的暗色覆写，两套机制无法共存。
+
+### 变更
+
+| 类别 | 内容 |
+| --- | --- |
+| 令牌层 | `variables.css` 从「名册 + 取值」改写为**对照表**：200 余个旧令牌名全部指向 `--ec-*` 语义令牌，不持有任何色值。90 个页面与 6 个组件分片因此**零改动**完成换肤 |
+| 设计系统 | 新增 `src/assets/ec/`（tokens 四层 + `ec.css` + `ec-business.css`），`main.js` 按「EC → 对照表 → 项目组件层 → 分片」顺序引入 |
+| 组件层 | `global.css` 重写为 EC 组件的实现：主按钮改 **`--ec-grad-action` 承字面**（白字最低 5.53:1，旧版把品牌渐变当按钮底，cyan 端只有 1.81:1）、卡片改 12px 圆角 + 1px 描边 + `shadow-xs`、输入框 36px + 3px 焦点环、Toast 改顶部居中、模态框/下拉/标签/分页/进度全部对齐 EC |
+| 主题 | 删除 `src/theme/`（presets / compose / color，1732 行）与 `ThemeSwitcher.vue`；`stores/theme.js` 改为只写 `data-theme` + `data-theme-mode` 并持久化到 `ec-theme`；新增 `ThemeSwitch.vue`（EC 的 `.theme-switch` 三档分段控件） |
+| 导航栏 | 主题入口换成 `<ThemeSwitch />`；≤767px 顶栏隐藏、搬进移动端抽屉底部（390px 顶栏放不下 80px 的三档控件） |
+| 首屏 | `index.html` 新增同步脚本：在 JS 包下载前读同一个键、写同样两个属性，避免「先浅色再闪深色」 |
+| 字体 | 正文字体改用 EC 的系统字体栈，Google Fonts 只保留 JetBrains Mono（卡密/代码/数字对齐），少发 3 个字族请求 |
+| 图标 | `AppIcon` 显式 `display: inline-block`（EC 基线里的 `svg { display: block }` 会让行内图标错位）；`iconSet` 新增 `sun` / `moon` |
+| 色值纪律 | 除 `assets/ec/tokens/` 与工具页的取色器外，任何样式出现 `#hex` / `rgba()` 即失败；`variables.css` 不得覆写 `--ec-*` |
+| 测试 | `themeContract.test.js` 整体重写（状态机 / 控件契约 / 令牌唯一来源 / 暗色覆写完整 / **可复算的对比度**）；`designTokens.test.js` 与 `componentClasses.test.js` 把 EC 令牌层与组件库纳入定义源与共享样式清单 |
+| 冗余清理 | 删除 2 个 0 消费者的 hook（`useImageLoader` / `useRefreshToken`）、7 个恒为 none/0 的 vestigial 令牌及其声明、4 个 0 消费者的 global 类；**组件套件删掉 9 个整族**（第三批规范的单选/滑块/步骤条/手风琴/面包屑/文件上传/评分/气泡提示/抽屉）+ 表格排序与选择列两个部件 + 若干死修饰类，共 276 条规则、103 个令牌。判据是全站 0 引用（含模板字面量与动态拼接）
+
+### 业务组件落地（EC 组件在本站的接线）
+
+换肤完成后，把 EC 的业务组件真正接到页面上。**组件一律复制 EC 的标记与语义**，
+不自建同形异名的类；需要补业务态时只在组件内部追加 `.is-*` 或 `.ec-status--*`。
+
+| 位置 | 组件 | 说明 |
+| --- | --- | --- |
+| 商品卡 | `.ec-product`（ProductCard） | 封面 → 角标 → 标题 → `.ec-price--md` 三段式 → 元信息 → CTA 行；售罄 `.is-soldout` + CTA 降级为 outline「到货提醒」并禁用加购。**收藏键从封面右上角移到 CTA 行首**，与「加入购物车」图标、主按钮同一行；`add-to-cart` 在商品分类 / 收藏夹 / 搜索结果 / 商品详情四处接线 |
+| 工具行 | `.ec-tool`（ToolRow） | 由卡片改为行：图标 40×40 → 名称+描述 → 平台标签 → `.ec-status-*` → 操作。四种 `access_policy` × 会员/非会员共 8 种组合；`member_free` 非会员显示金色「会员免费」标签 + 「获取」跳卡密页，`member_only` 非会员只留「会员专属」标签、不渲染任何按钮 |
+| 会员卡 | `.ec-vip`（VipCard） | 新增 `VipCard.vue`：身份 → 权益网格 → 方案选择三层；v1–v3 silver、v4–v6 gold、v7–v8 black；未拥有权益 `opacity:.4` + 灰图标（不出现危险色）；卡上按钮 `slice(0, 3)` 硬上限 |
+| 卡密框 | `.ec-code`（CardCodeBox） | 个人中心的用户标识改为**默认脱敏**（四位分组，末段恒掩码），眼睛按钮切换明文、`aria-pressed` 同步，**30s 自动回掩码**（重复点击重置计时），复制的是明文、反馈 1.5s |
+| 兑换结果 | `.ec-redeem-result`（RedeemResult） | 卡密激活结果从「单行提示」改为四模板 success / used / expired / notFound；无法归类时退回原内联提示，**不再统一显示「失败」** |
+| 面包屑 | `.ec-breadcrumb` | 新增 `PageBreadcrumb.vue`，接入商品详情 / 商品分类 / 我的订单；商品详情页原有自建 `.product-crumb` 一并删除（scoped 特异性会盖掉 EC 配色） |
+| 弹窗 | `.ec-overlay` + `.ec-dialog` / `.ec-drawer` | 登录弹窗改 Dialog、帮助弹窗改 Drawer；`global.css` 不再保留 `.u-modal*` 别名（同名单类选择器并存时后注入者胜，会出现「改了没效果」）；关闭键改用图标集的 `x` |
+| 提示条 | `.ec-alert` | 新增 `AppAlert.vue`；订单页的支付提示从 `<p class="page-note">` 改为 info 提示条 |
+| Toast | `.ec-toast` | 结构性替换：成功 2s / 错误 3s、最多 3 条、**去掉关闭按钮**（EC：Toast 无操作按钮）、移动端贴底铺满 |
+
+配套删除的死令牌：`--z-modal`、`--z-toast`、`--modal-close-size`、`--modal-title-gap`。
+
+### 已知取舍
+
+- `.u-*` / `.ui-*` / `.page-*` 类名保留，作为 EC 组件的**别名**（视觉与 `.ec-*` 同源）。
+  全量改名是纯机械动作、零视觉收益，却把回归面从一处放大到九十处；新代码直接用 `ec-*`。
+- `.u-btn-secondary` 的字色取 `--ec-action-primary-hover` 而不是 EC 的
+  `--ec-button-secondary-fg`：后者在暗色下是 blue-300 压在 `#1E2340` 上实测 3.98:1，
+  14px 正文不达 AA。这是对设计系统的一处**有意偏离**，已在 `global.css` 就地注明。
+- 首屏默认改为**浅色**（EC 的默认）。旧站是暗色单一风格，习惯暗色的用户需在顶栏切一次。
+- 页头字号随 EC 字阶收敛（`--fs-display` 72→32、`--fs-h1` 48→24），Hero 的视觉重量比旧版轻。
+- 组件套件从 19 族减到 10 族。删掉的 9 族不是「暂时没人用」，而是**全站 0 引用**；
+  需要时按 `variables.css` C 段保留的规范节号（跳号即已删）从设计系统补回，
+  并先写页面再落样式 —— 不要再往 `test/kitAllowlist.js` 加豁免。
+- **商品卡的收藏键不在封面右上角**：EC 的 `.ec-product__fav` 定义在封面内，本站按需求
+  移到 CTA 行首，与加购图标、主按钮同一行。模板与样式里都写了「不要改回去」的注释。
+- 会员权益页（`MemberBenefits`）与等级阶梯（`MemberLevelLadder`）**没有**换成 VipCard：
+  前者是公共权益清单、没有个人卡槽位（换掉会破坏页内锚点），后者是语义化表格
+  （换掉会丢列语义）。VipCard 只用在会员中心身份区与会员方案页的当前等级。
+- 工具页**只在 UI 层**按 `access_policy` 分支：36 个工具页仍传 `requires-card`，
+  服务端 `tools.tool_slug` 与前端路由名/路径没有映射表，集中解析会靠猜，因此
+  页壳的 `accessPolicy` / `hasEntitlement` 目前是可选 props，最终鉴权仍以服务端为准。
+- 服务端暂无「维护中 / 已下架」字段，工具行按 `is_maintain` / `is_offline` / `status` 容错探测。
+- `.ec-code` 未加 `data-code` 属性（会把明文写进 DOM，与「默认脱敏」的初衷冲突）；
+  短于 12 位的标识原样显示（与既有断言兼容）。
+
+---
+
 ## [1.7.0] — 2026-10-16 · 顶栏账号下拉重排 + 工具页骨架（开发中）
 
 本阶段不加新端点，改的是前端自身的可用性债：顶栏账号下拉里塞了两个

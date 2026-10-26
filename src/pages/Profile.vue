@@ -139,7 +139,44 @@
         <dl class="profile-fields">
           <div v-for="row in readonlyRows" :key="row.key" class="profile-row">
             <dt>{{ row.label }}</dt>
-            <dd class="u-field-value">{{ row.value }}</dd>
+
+            <!--
+              用户标识用设计系统的 CardCodeBox 版式：默认只显示前三段，
+              点眼睛后显示明文，30 秒自动回到掩码；复制按钮放在 __act 里。
+              这里不是卡密详情页，因此不加水印。
+            -->
+            <dd v-if="row.key === 'uuid'" class="u-field-value">
+              <div class="ec-code profile-uuid-code">
+                <span class="ec-code__label">{{ uuidRevealed ? '明文' : '已脱敏' }}</span>
+                <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
+                  {{ uuidDisplay }}
+                </span>
+                <div class="ec-code__act">
+                  <button
+                    type="button"
+                    class="ec-icon-btn"
+                    :aria-pressed="uuidRevealed ? 'true' : 'false'"
+                    :aria-label="uuidRevealed ? '隐藏用户标识' : '显示用户标识'"
+                    :disabled="!uuidRaw"
+                    @click="toggleUuid"
+                  >
+                    <AppIcon :name="uuidRevealed ? 'eye-off' : 'eye'" />
+                  </button>
+                  <button
+                    type="button"
+                    class="ec-icon-btn"
+                    :class="{ 'is-ok': uuidCopied }"
+                    :aria-label="uuidCopied ? '已复制用户标识' : '复制用户标识'"
+                    :disabled="!uuidRaw"
+                    @click="copyUuid"
+                  >
+                    <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
+                    <span class="ec-sr">{{ uuidCopied ? '已复制' : '复制' }}</span>
+                  </button>
+                </div>
+              </div>
+            </dd>
+            <dd v-else class="u-field-value">{{ row.value }}</dd>
           </div>
         </dl>
 
@@ -201,7 +238,7 @@
                 </div>
               </div>
 
-              <!-- 原生 file input 藏起来、用 label 触发：原生控件在五套风格下无法主题化。
+              <!-- 原生 file input 藏起来、用 label 触发：原生控件在明暗两套下无法主题化。
                    label 里刻意放一段 .visually-hidden 文本 —— 图标本身 aria-hidden，
                    不给文字的话这个 input 就没有可访问名（label 的文本才算 input 的名字，
                    label 上的 aria-label 不算）。 -->
@@ -221,7 +258,7 @@
                 :title="uploadLabel"
               >
                 <span v-if="preparing || uploading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-                <!-- 线性图标：颜色走 currentColor，因此悬停变色与五套主题都生效
+                <!-- 线性图标：颜色走 currentColor，因此悬停变色与明暗两套主题都生效
                      （这正是原先用 ↑ 文本字形的原因，现在由 AppIcon 正式承担） -->
                 <AppIcon v-else class="avatar-upload-icon" name="arrow-up" />
                 <span class="visually-hidden">{{ uploadLabel }}</span>
@@ -247,9 +284,9 @@
             <div class="u-field">
               <label class="u-field-label" for="profile-gender">{{ TRADE.profileGender }}</label>
               <!--
-                原生 <select> 的弹出层由操作系统绘制，五套主题一套都管不到；
+                原生 <select> 的弹出层由操作系统绘制，明暗两套主题一套都管不到；
                 这里换成消费 ui-kit-form.css §1 的 SelectField，与上面几处
-                （卡密的工具/状态筛选、主题弹窗的字体选择）保持同一套外观。
+                （卡密的工具/状态筛选、资料表单的性别选择）保持同一套外观。
                 id 交给组件后会落在触发器的 <button> 上，而 <button> 是 labelable
                 元素，所以 <label for> 的关联照旧成立。
               -->
@@ -265,7 +302,7 @@
             <div class="u-field">
               <label class="u-field-label" for="profile-birthday">{{ TRADE.profileBirthday }}</label>
               <!--
-                原生 `<input type="date">` 的弹出日历由操作系统绘制，五套主题都管不到；
+                原生 `<input type="date">` 的弹出日历由操作系统绘制，明暗两套主题都管不到；
                 这里换成消费 ui-kit-data.css §11 的 DatePickerField。
                 值仍是 `YYYY-MM-DD` 或空串，与原生控件的 value 同构，
                 因此 toDateInput()、isDirty 与 `patch.birthday = … || null` 都不必改。
@@ -361,6 +398,104 @@
   </div>
 </template>
 
+<script>
+/**
+ * 用户标识（UUID）的展示规则。
+ *
+ * 放在普通 `<script>` 而不是 `<script setup>` 里，是为了让脱敏与倒计时逻辑
+ * 成为**可单独 import 的具名导出**：测试不必挂载组件、更不必真等 30 秒。
+ *
+ * 设计系统 CardCodeBox 的规则是「前三段可见、末段恒掩码」。个人中心的 UUID
+ * 不是卡密，因此这里保留原始大小写；只对第 13 位之后的字母数字打码。
+ * 短标识（如测试账号 `uuid-42`）会原样显示，不会因长度不足被整段涂掉。
+ */
+export const UUID_REVEAL_MS = 30000
+export const UUID_COPY_FEEDBACK_MS = 1500
+export const UUID_MASK_CHAR = '•'
+
+/** 取出用于分组/打码的字母数字，保留大小写 */
+function uuidAlnum(value) {
+  return String(value ?? '').replace(/[^A-Za-z0-9]/g, '')
+}
+
+/** 默认展示值：前三组（12 位）可见，其余每 4 位一组用 • 遮住 */
+export function maskUuid(value) {
+  const text = uuidAlnum(value)
+  if (!text) return '—'
+
+  const groups = []
+  for (let index = 0; index < text.length; index += 4) {
+    const segment = text.slice(index, index + 4)
+    groups.push(index < 12 ? segment : UUID_MASK_CHAR.repeat(segment.length))
+  }
+  return groups.join('-')
+}
+
+/** 明文展示值：每 4 位分组，但不遮任何字符 */
+export function plainUuid(value) {
+  const text = uuidAlnum(value)
+  if (!text) return '—'
+  return text.match(/.{1,4}/g).join('-')
+}
+
+/** 当前应展示的值：未点眼睛时掩码，点眼睛后明文 */
+export function formatUuid(value, revealed) {
+  return revealed ? plainUuid(value) : maskUuid(value)
+}
+
+/**
+ * 「显示 30 秒 → 自动回掩码」的控制器。
+ *
+ * 计时器可注入（timers.setTimeout / timers.clearTimeout），测试用假时钟
+ * 直接推进；组件卸载时调用 dispose()，未触发的回掩码计时器会被清掉。
+ */
+export function createUuidRevealController({ onChange, timers } = {}) {
+  const schedule = timers?.setTimeout || setTimeout
+  const cancel = timers?.clearTimeout || clearTimeout
+  let timer = null
+  let revealed = false
+
+  const notify = () => {
+    if (typeof onChange === 'function') onChange(revealed)
+  }
+
+  const clearTimer = () => {
+    if (timer === null) return
+    cancel(timer)
+    timer = null
+  }
+
+  const hide = () => {
+    clearTimer()
+    if (!revealed) return
+    revealed = false
+    notify()
+  }
+
+  const show = () => {
+    clearTimer()
+    if (!revealed) {
+      revealed = true
+      notify()
+    }
+    timer = schedule(hide, UUID_REVEAL_MS)
+  }
+
+  const toggle = () => {
+    if (revealed) hide()
+    else show()
+  }
+
+  return {
+    show,
+    hide,
+    toggle,
+    dispose: clearTimer,
+    isRevealed: () => revealed,
+  }
+}
+</script>
+
 <script setup>
 /**
  * 个人中心
@@ -375,7 +510,7 @@
  * 性别取值必须与数据库约束一致（male / female / unknown）——
  * 服务端会再校验一次，但界面上给出合法选项才不会让用户白填一遍。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useMemberStore } from '@/stores/member'
@@ -389,10 +524,11 @@ import { PAGES, TRADE } from '@/constants/index.js'
 import { formatPointsValue } from '@/constants/member.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
-// 性别用自绘下拉：原生 <select> 的弹出层同理，五套主题都管不到
+// 性别用自绘下拉：原生 <select> 的弹出层同理，明暗两套主题都管不到
 import SelectField from '@/components/SelectField.vue'
 // 操作日志导出：时间窗与 CSV 列都由服务端决定，这里只挑范围、接 blob
 import { LOG_RANGES, downloadMyLogs } from '@/api/ask/userLogs'
+import { copyText } from '@/utils/clipboard.js'
 
 const userStore = useUserStore()
 const memberStore = useMemberStore()
@@ -547,6 +683,55 @@ const readonlyRows = computed(() => {
   ]
 })
 
+/* ── 用户标识（UUID）的显示 / 复制 ──────────────────────────────
+ * 默认掩码；点眼睛显示明文并启动 30 秒倒计时；再次点眼睛立即回掩码。
+ * 复制用的是原始值（不是掩码值），反馈只持续 1.5 秒。
+ */
+const uuidRaw = computed(() => String(userInfo.value?.uuid || ''))
+const uuidRevealed = ref(false)
+const uuidCopied = ref(false)
+
+const uuidController = createUuidRevealController({
+  onChange: (value) => {
+    uuidRevealed.value = value
+  },
+  // 显式传入全局计时器，便于测试替换假时钟
+  timers: { setTimeout, clearTimeout },
+})
+
+const uuidDisplay = computed(() => formatUuid(uuidRaw.value, uuidRevealed.value))
+
+const toggleUuid = () => {
+  if (!uuidRaw.value) return
+  uuidController.toggle()
+}
+
+let uuidCopyTimer = null
+
+const copyUuid = async () => {
+  if (!uuidRaw.value) return
+
+  const result = await copyText(uuidRaw.value)
+  if (!result.ok) {
+    notify.error(result.message || '复制失败，请手动选择文本复制')
+    return
+  }
+
+  uuidCopied.value = true
+  if (uuidCopyTimer) clearTimeout(uuidCopyTimer)
+  uuidCopyTimer = setTimeout(() => {
+    uuidCopied.value = false
+    uuidCopyTimer = null
+  }, UUID_COPY_FEEDBACK_MS)
+}
+
+onBeforeUnmount(() => {
+  // 两个定时器都必须在卸载时清理：回掩码计时器与复制反馈计时器
+  uuidController.dispose()
+  if (uuidCopyTimer) clearTimeout(uuidCopyTimer)
+  uuidCopyTimer = null
+})
+
 const resetForm = () => {
   form.value = { ...baseline.value }
   resetAvatar()
@@ -675,7 +860,11 @@ const handleDownloadLogs = async () => {
  */
 watch(
   () => userInfo.value?.uuid,
-  () => fillForm(),
+  () => {
+    fillForm()
+    // 账号切换后不能继续显示上一个账号的明文
+    uuidController.hide()
+  },
   { immediate: true }
 )
 
@@ -864,6 +1053,16 @@ onMounted(() => {
 
 .profile-row dd {
   margin: 0;
+}
+
+/* UUID 用设计系统 CardCodeBox：占满字段值列，窄屏用省略号而不是撑破两栏 */
+.profile-uuid-code {
+  width: 100%;
+  min-width: 0;
+}
+
+.profile-uuid-code .ec-code__value {
+  min-width: 0;
 }
 
 .profile-note {

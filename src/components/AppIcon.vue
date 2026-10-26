@@ -77,6 +77,15 @@ const geometry = computed(() => {
   /* 1em：跟随所在位置的 font-size，因而跟随主题的字号缩放 */
   width: 1em;
   height: 1em;
+  /*
+   * 必须显式声明 inline-block。
+   *
+   * EC 的基线（assets/ec/ec.css）里有 `img, svg { display: block }` —— 那一条是给
+   * 内容图片用的（消除行内图片底部的基线间隙）。图标不是内容图片：它是**行内文字
+   * 的一部分**，被改成 block 后 vertical-align 直接失效，图标与相邻文字会错位，
+   * 且每个图标都会独占一行。
+   */
+  display: inline-block;
   /* 与相邻文字基线对齐（线性图标常见做法，纯 vertical-align: middle 会偏高） */
   vertical-align: -0.125em;
   flex-shrink: 0;

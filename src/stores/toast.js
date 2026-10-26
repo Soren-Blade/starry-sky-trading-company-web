@@ -1,14 +1,14 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 
 /**
  * 提示框（Toast）
  *
  * ## 为什么不用 ant-design-vue 的 `message`
  *
- * 规范对提示框的要求是「右上角固定、距顶 24px、距右 24px、堆叠间距 12px、
- * 3000ms 自动消失、悬停暂停」——antd 的 `message` 只能顶部居中，
- * 位置由它自己的样式表固定，且完全不消费本项目的设计令牌（五套风格下都长一个样）。
- * 因此这里自建一个只有几十行的提示框，样式全部走令牌。
+ * 提示框的形态由设计系统 EC 的 `.ec-toast` 决定：**顶部居中、无操作按钮、
+ * 成功 2s / 错误 3s 自动消失、最多同时 3 条**。antd 的 `message` 位置与节奏
+ * 由它自己的样式表固定，且完全不消费本项目的设计令牌（明暗两套下都长一个样），
+ * 因此这里自建一个只有几十行的提示框，样式全部走 `--ec-*` 令牌。
  *
  * ## 计时状态为什么不放进 state
  *
@@ -17,11 +17,24 @@ import { defineStore } from 'pinia'
  * 状态只保留渲染需要的字段，计时簿记放模块级 Map。
  */
 
-/** 规范值：3000ms */
+/** 通用兜底时长（EC 规范里错误类为 3s） */
 export const TOAST_DURATION = 3000
 
-/** 同时最多显示几条，超出时挤掉最早的一条，避免刷屏 */
-export const TOAST_MAX = 4
+/**
+ * 按类型区分时长（EC：成功 2s、错误 3s）。
+ *
+ * 成功提示读起来比错误快，2s 足够；错误要多留 1s 让人读完。
+ * 规范没为 warning / info 单独给值，沿用 3s 与错误对齐。
+ */
+export const TOAST_DURATION_BY_TYPE = {
+  success: 2000,
+  warning: TOAST_DURATION,
+  error: TOAST_DURATION,
+  info: TOAST_DURATION,
+}
+
+/** 同时最多显示几条（EC：最多 3 条），超出时挤掉最早的一条，避免刷屏 */
+export const TOAST_MAX = 3
 
 /** id → { timer, remaining, startedAt } */
 const timers = new Map()
@@ -31,7 +44,7 @@ let nextId = 1
  * 提示类型 → **AppIcon 的图标名**（不再是 emoji）。
  *
  * 界面统一成线性单色图标：颜色由 currentColor 跟随主题，
- * 语义色由 ToastHost 的 `.u-toast--{type}` 类决定。
+ * 语义色由 ToastHost 的 `.ec-toast` 修饰类决定（成功/危险走 EC，warning/info 用同一套语义色补齐）。
  */
 const ICONS = {
   success: 'check-circle',
@@ -50,10 +63,10 @@ export const useToastStore = defineStore('toast', {
     /**
      * @param {string} text 文案
      * @param {'success'|'warning'|'error'|'info'} [type]
-     * @param {number} [duration] 毫秒；<= 0 表示不自动消失
+     * @param {number} [duration] 毫秒；不传时按类型取 EC 规范值，<= 0 表示不自动消失
      * @returns {number|null} 提示框 id
      */
-    push(text, type = 'info', duration = TOAST_DURATION) {
+    push(text, type = 'info', duration = TOAST_DURATION_BY_TYPE[type] ?? TOAST_DURATION) {
       const message = String(text ?? '').trim()
       if (!message) return null
 

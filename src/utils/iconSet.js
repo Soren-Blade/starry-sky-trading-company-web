@@ -21,8 +21,8 @@ import { lookup } from './safeLookup.js'
  * 线宽：24 网格上的值。
  *
  * 取 2.5 而不是 Feather 默认的 2 —— 本站的图标大多落在 16–20px
- * （--icon-btn-icon-size 五套主题是 16/20/18/20/16），缩到这个尺寸后
- * 2 会显得纤细发虚；2.5 缩下来约 1.7–2px，与项目里 1–2px 的描边体系同量级。
+ * （--ec-button-icon-size 18px、--icon-btn-icon-size 18px），缩到这个尺寸后
+ * 2 会显得纤细发虚；2.5 缩下来约 1.7–2px，与项目里 1px 的描边体系同量级。
  *
  * 「圆滑」由 AppIcon 的 stroke-linecap / stroke-linejoin 都用 round 保证，
  * 不在这里体现。 */
@@ -327,6 +327,27 @@ export const ICONS = {
         rects: [[2, 3, 20, 14, 2]],
         paths: ['M8 21h8', 'M12 17v4'],
     },
+    /**
+     * 太阳 / 月亮：EC theme-switch 的两档图标。
+     * 几何与 ec-design-system/js/icons.js 的 i-sun / i-moon 一致 ——
+     * 两处图形相同，用户在设计系统文档站与本站看到的是同一套形状。
+     */
+    sun: {
+        circles: [[12, 12, 4]],
+        paths: [
+            'M12 2v2',
+            'M12 20v2',
+            'M2 12h2',
+            'M20 12h2',
+            'M4.9 4.9l1.4 1.4',
+            'M17.7 17.7l1.4 1.4',
+            'M19.1 4.9l-1.4 1.4',
+            'M6.3 17.7l-1.4 1.4',
+        ],
+    },
+    moon: {
+        paths: ['M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z'],
+    },
     music: {
         paths: ['M9 18V5l12-2v13'],
         circles: [
@@ -350,6 +371,11 @@ export const ICONS = {
     info: {
         circles: [[12, 12, 10]],
         paths: ['M12 16v-4', 'M12 8h.01'],
+    },
+    /** 关闭：两笔交叉线。设计系统的 `.ec-icon-btn` 需要图标而不是 ✕ 字形，
+     *  否则字号一变就会与按钮尺寸脱钩 */
+    x: {
+        paths: ['M18 6 6 18', 'm6 6 12 12'],
     },
     'chevron-right': {
         paths: ['m9 18 6-6-6-6'],

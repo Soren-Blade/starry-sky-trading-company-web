@@ -149,7 +149,7 @@
  * 日期选择器输入框（消费 ui-kit-data.css §11 的 .u-datepicker 样式契约）
  *
  * 为什么要有这个组件：原生 `<input type="date">` 的弹出日历由操作系统绘制，
- * 五套主题一个都管不到 —— 它是页面上唯一一块「换了主题也不变」的地方。
+ * 明暗两套主题一个都管不到 —— 它是页面上唯一一块「换了主题也不变」的地方。
  *
  * ## 为什么是「普通 script + script setup」两个块
  *
@@ -593,8 +593,8 @@ const shiftYear = (delta) => {
  * 决定面板朝上还是朝下。
  *
  * 必须在面板渲染**之后**量它的真实高度：360px 这个数是 6×7 网格 + 头部 + 底部
- * 加出来的结果，五套主题的 `--datepicker-cell-size` 不同（36/40/38/44/32），
- * 写死一个估算值就会在某些主题下判错。
+ * 加出来的结果，而 `--datepicker-cell-size` 会随移动端缩放系数变化，
+ * 写死一个估算值就会在窄屏上判错。
  */
 const adjustPlacement = () => {
   const trigger = triggerRef.value
@@ -856,7 +856,7 @@ watch(
   position: absolute;
   top: calc(100% + var(--dropdown-offset));
   left: 0;
-  /* 与 .u-select-panel 同一档：高于顶栏（100）与吸顶侧栏，低于模态框（2000） */
+  /* 与 .u-select-panel 同一档：高于顶栏（100）与吸顶侧栏，低于模态框（400） */
   z-index: var(--z-dropdown);
   /*
    * 上限取**视口**而不是字段：

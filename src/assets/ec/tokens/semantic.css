@@ -1,0 +1,154 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · Layer 2 — Semantic（语义角色层）
+   ----------------------------------------------------------------------------
+   唯一允许被业务与组件广泛引用的层级。
+   本层跨主题稳定：换肤/换明暗只改这里的值，组件层不写第二套样式。
+   只有「背景 / 文字 / 描边 / 行动 / 功能 / 渐变」六组允许被 theme-dark.css 覆写。
+   间距、圆角、控件高、动效、层级为锁定值，任何产品线不得覆写。
+   ========================================================================== */
+
+:root {
+  /* ═══ 背景（四阶 + 两态） ═══════════════════════════════════════════════ */
+  --ec-bg-base:      var(--ec-neutral-25);   /* 页面底色 */
+  --ec-bg-surface:   var(--ec-neutral-0);    /* 卡片 / 面板 */
+  --ec-bg-raised:    var(--ec-neutral-0);    /* 浮层 / 弹层 */
+  --ec-bg-muted:     var(--ec-neutral-50);   /* 内嵌区块 / 表头 */
+  --ec-bg-sunken:    var(--ec-neutral-100);  /* 输入槽 / 进度槽 */
+  --ec-bg-hover:     var(--ec-neutral-50);
+  --ec-bg-overlay:   rgba(11, 14, 20, .48);  /* 遮罩：中性黑，不带色偏 */
+  --ec-bg-wash:      rgba(31, 36, 48, .04);  /* 极低灰膜：骨架屏 / 关闭键 hover */
+  --ec-bg-inverse:   var(--ec-neutral-800);
+
+  /* ═══ 文字（四级 + 三专用） ═════════════════════════════════════════════ */
+  --ec-text-primary:   var(--ec-neutral-800);
+  --ec-text-secondary: var(--ec-neutral-500);
+  --ec-text-tertiary:  var(--ec-neutral-450);
+  --ec-text-disabled:  var(--ec-neutral-400);
+  --ec-text-inverse:   var(--ec-neutral-0);
+  --ec-text-link:      var(--ec-blue-600);
+  --ec-text-on-action: var(--ec-white);       /* 主行动面上的文字，恒为白 */
+  --ec-text-placeholder: var(--ec-neutral-400);
+
+  /* ═══ 描边（三级 + 焦点 + 反色） ═══════════════════════════════════════ */
+  --ec-border-subtle:  var(--ec-neutral-200);
+  --ec-border-default: var(--ec-neutral-300);
+  --ec-border-strong:  var(--ec-neutral-400);
+  --ec-border-focus:   var(--ec-blue-500);
+  --ec-border-inverse: rgba(255, 255, 255, .12);
+
+  /* ═══ 行动（唯一品牌行动点） ═══════════════════════════════════════════ */
+  --ec-action-primary:        var(--ec-blue-500);
+  --ec-action-primary-hover:  var(--ec-blue-600);
+  --ec-action-primary-active: var(--ec-blue-700);
+  --ec-action-primary-soft:   var(--ec-blue-50);
+  --ec-action-primary-border: rgba(91, 108, 255, .32);
+  --ec-action-primary-dim:    rgba(91, 108, 255, .12);
+
+  /* ═══ 功能色（面 / 浅底 / 文字 三件套，禁止只取其一） ═══════════════════ */
+  --ec-success:        var(--ec-green-500);
+  --ec-success-soft:   var(--ec-green-50);
+  --ec-success-text:   var(--ec-green-700);
+  --ec-success-border: rgba(16, 185, 129, .22);
+
+  --ec-warning:        var(--ec-amber-500);
+  --ec-warning-soft:   var(--ec-amber-50);
+  --ec-warning-text:   var(--ec-amber-700);
+  --ec-warning-border: rgba(245, 158, 11, .24);
+
+  --ec-danger:         var(--ec-red-500);
+  --ec-danger-soft:    var(--ec-red-50);
+  --ec-danger-text:    var(--ec-red-700);
+  --ec-danger-border:  rgba(239, 68, 68, .22);
+
+  --ec-info:           var(--ec-blue-500);
+  --ec-info-soft:      var(--ec-blue-50);
+  --ec-info-text:      var(--ec-blue-600);
+  --ec-info-border:    rgba(91, 108, 255, .22);
+
+  /* ═══ 渐变 ═════════════════════════════════════════════════════════════
+     brand / flame / gold / black 是「装饰面」，不得在其上压正文；
+     承载文字的行动面一律用 action（三段全部 ≥5.5:1 白字对比）。
+     这条区分是 v1.0 最大的隐性缺陷：原文把 brand 渐变直接当主按钮底，
+     最亮的 cyan 端白字仅 1.81:1 —— 详见 foundation §05。 */
+  --ec-grad-brand:  linear-gradient(135deg, var(--ec-blue-500) 0%, var(--ec-violet-500) 55%, var(--ec-cyan-400) 100%);
+  --ec-grad-action: linear-gradient(135deg, var(--ec-blue-700) 0%, var(--ec-violet-600) 55%, var(--ec-blue-600) 100%);
+  --ec-grad-flame:  linear-gradient(135deg, #FF7A45 0%, #FF4D6D 100%);
+  --ec-grad-gold:   linear-gradient(135deg, #FFF3D6 0%, var(--ec-gold-300) 45%, var(--ec-gold-500) 100%);
+  --ec-grad-black:  linear-gradient(135deg, #2B2F3D 0%, #171A23 60%, #0E1016 100%);
+  --ec-grad-sheen:  linear-gradient(135deg, rgba(255, 255, 255, .18) 0%, rgba(255, 255, 255, 0) 42%);
+
+  /* ═══ 焦点环（三件套，任何可聚焦元素复用同一组） ════════════════════════ */
+  --ec-ring-width: 3px;
+  --ec-ring-color: rgba(91, 108, 255, .24);
+  --ec-ring:       0 0 0 var(--ec-ring-width) var(--ec-ring-color);
+  --ec-ring-inset: inset 0 0 0 1px var(--ec-border-focus);
+
+  /* ═══ 阴影（浅色系统：层级靠阴影 + 描边双写） ═══════════════════════════ */
+  --ec-shadow-xs:    0 1px 2px rgba(16, 24, 40, .04);
+  --ec-shadow-sm:    0 1px 2px rgba(16, 24, 40, .06);
+  --ec-shadow-md:    0 4px 12px rgba(16, 24, 40, .08);
+  --ec-shadow-lg:    0 12px 32px rgba(16, 24, 40, .12);
+  --ec-shadow-xl:    0 24px 64px rgba(16, 24, 40, .16);
+  --ec-shadow-brand: 0 8px 24px rgba(91, 108, 255, .28);
+  --ec-shadow-gold:  0 8px 24px rgba(245, 185, 66, .28);
+  --ec-shadow-inset: inset 0 1px 2px rgba(16, 24, 40, .06);
+
+  /* ═══ 间距（4pt 基线，10 档，无 5 的倍数特例） ═══════════════════════════ */
+  --ec-space-1:  4px;
+  --ec-space-2:  8px;
+  --ec-space-3:  12px;
+  --ec-space-4:  16px;
+  --ec-space-5:  20px;
+  --ec-space-6:  24px;
+  --ec-space-8:  32px;
+  --ec-space-10: 40px;
+  --ec-space-12: 48px;
+  --ec-space-16: 64px;
+
+  /* ═══ 圆角 ═════════════════════════════════════════════════════════════ */
+  --ec-radius-xs:   4px;
+  --ec-radius-sm:   6px;
+  --ec-radius-md:   8px;
+  --ec-radius-lg:   12px;
+  --ec-radius-xl:   16px;
+  --ec-radius-2xl:  20px;
+  --ec-radius-full: 999px;
+
+  /* ═══ 控件高（全局唯一档位，按钮/输入/Select/分页/Tab 共用） ════════════ */
+  --ec-control-h-sm: 28px;
+  --ec-control-h-md: 36px;
+  --ec-control-h-lg: 44px;
+  --ec-control-h-xl: 52px;
+  --ec-control-px:   14px;   /* 控件左右内边距基准 */
+  --ec-control-gap:  8px;    /* 同排控件间距（≥8，移动端点击区 ≥44） */
+
+  /* ═══ 容器与栅格 ═══════════════════════════════════════════════════════ */
+  --ec-container-sm:  640px;
+  --ec-container-md:  960px;
+  --ec-container-lg: 1200px;
+  --ec-container-xl: 1440px;
+  --ec-gutter:       var(--ec-space-6);
+
+  /* ═══ 动效 ═════════════════════════════════════════════════════════════ */
+  --ec-dur-fast:  150ms;   /* hover / focus */
+  --ec-dur-base:  250ms;   /* 展开 / 弹层 */
+  --ec-dur-slow:  400ms;   /* 页面级转场 */
+  --ec-dur-sheen: 1200ms;  /* 一次性光泽，仅一次 */
+  --ec-ease-out:  cubic-bezier(.4, 0, .2, 1);
+  --ec-ease-in:   cubic-bezier(.4, 0, 1, 1);
+  --ec-ease-spring: cubic-bezier(.34, 1.3, .64, 1);
+
+  /* ═══ 层级（唯一真相，禁止在组件里写数字 z-index） ═════════════════════ */
+  --ec-z-base:     0;
+  --ec-z-sticky:   100;
+  --ec-z-dropdown: 200;
+  --ec-z-overlay:  300;
+  --ec-z-modal:    400;
+  --ec-z-toast:    500;
+  --ec-z-tooltip:  600;
+
+  /* ═══ 断点（供文档与 JS 读取；CSS 内仍写媒体查询字面量） ════════════════ */
+  --ec-bp-sm: 640px;
+  --ec-bp-md: 1024px;
+  --ec-bp-lg: 1280px;
+}

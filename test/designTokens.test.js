@@ -37,28 +37,64 @@ function stylePartsOf(file, text) {
 /**
  * 令牌定义层。
  *
- * `src/theme/**` 与 `variables.css` 一样，是**写出令牌名与取值**的地方，
- * 不是消费令牌的地方。若把它们计入「使用次数」，
- * 每个令牌都会因为「在预设里被定义过」而显得有人用 —— 死令牌检查会假通过。
+ * 现在有**两个**定义处：
+ *   1. `src/assets/ec/tokens/*.css` —— EC 设计系统的四层令牌（唯一取值来源）；
+ *   2. `src/assets/styles/variables.css` —— 旧令牌名 → `--ec-*` 的对照表。
+ *
+ * 两者都是「写出令牌名与取值」的地方，不是消费令牌的地方。若把它们计入
+ * 「使用次数」，每个令牌都会因为「在定义里出现过」而显得有人用 ——
+ * 死令牌检查会假通过。
  */
-const TOKEN_LAYER_DIR = `${path.sep}theme${path.sep}`
+const EC_TOKEN_DIR = path.join(SRC, 'assets', 'ec', 'tokens') + path.sep
 const isTokenDefinition = (file) =>
-  path.basename(file) === 'variables.css' || file.includes(TOKEN_LAYER_DIR)
+  path.basename(file) === 'variables.css' || file.startsWith(EC_TOKEN_DIR)
 
 /** 去掉 CSS 注释，避免注释里提到的示例/历史说明被当作真实声明 */
 function stripCssComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
-/** 从 variables.css 的 :root 里取出所有令牌名 */
-function definedTokens() {
-  const names = []
-  for (const line of read(VARS).split('\n')) {
-    const m = line.match(/^\s*(--[a-z0-9-]+)\s*:/)
-    if (m) names.push(m[1])
-  }
-  return [...new Set(names)]
+/**
+ * 从变量定义文件里取出所有令牌名。
+ *
+ * 必须用全局匹配而不是「按行取第一条」：EC 的 type.css 把同一族的
+ * 几个令牌写在一行（`--ec-price-sym-sm: 12px;  --ec-price-int-sm: 22px; …`），
+ * 按行只取第一条会让后面几条被误判成「未定义」。
+ */
+function tokensIn(file) {
+  return [...read(file).matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])
 }
+
+/** 桥接层（variables.css）登记的旧令牌名 */
+function definedTokens() {
+  return [...new Set(tokensIn(VARS))]
+}
+
+/**
+ * 全部已定义的令牌 = 桥接层 + EC 令牌层。
+ *
+ * 页面与组件可以直接引用 `--ec-*`（新代码就是这么写的），也可以引用桥接层
+ * 的旧名（存量页面），两者都必须是「已定义」的。
+ */
+function allDefinedTokens() {
+  const names = new Set(definedTokens())
+  for (const f of fs.readdirSync(path.join(SRC, 'assets', 'ec', 'tokens'))) {
+    if (!f.endsWith('.css')) continue
+    for (const name of tokensIn(path.join(SRC, 'assets', 'ec', 'tokens', f))) names.add(name)
+  }
+  return names
+}
+
+/**
+ * EC 设计系统的原样拷贝目录。
+ *
+ * 它有自己的断点体系（640 / 641–1024 / 768 / 900）与令牌命名，
+ * 与本站「575 / 767 / 991 / 1199」的四档断点是两件事 —— 强行统一等于改设计系统。
+ * 因此下面「断点纪律」两条规则把它排除在外：这份拷贝只在同步时整体替换，
+ * 不参与本站的局部改写。
+ */
+const EC_VENDOR_DIR = path.join(SRC, 'assets', 'ec') + path.sep
+const isEcVendor = (file) => file.startsWith(EC_VENDOR_DIR)
 
 /** 每个令牌在「除令牌定义层以外」的文件里被引用的次数 */
 function usageCounts(tokens, files) {
@@ -86,8 +122,6 @@ function usageCounts(tokens, files) {
 const RUNTIME_SCOPED_VARS = [
   // 列表/卡片序号，组件用 :style="{ '--i': index }" 注入，供 .u-enter 计算错峰延迟
   '--i',
-  // 滑块已选段宽度，ThemeSwitcher 按当前值算百分比注入（无值时有 0% 兜底）
-  '--range-fill',
   // 徽标描边色，.u-badge--ring 消费；默认 --bg-surface，
   // 顶栏/工具卡等「底色不是 --bg-surface」的位置就地覆盖
   '--badge-ring-color',
@@ -140,12 +174,12 @@ test('组件套件白名单：不得登记不存在的令牌', () => {
   assert.deepEqual(ghosts, [], `白名单里这些令牌在 variables.css 中不存在：\n  ${ghosts.join('\n  ')}`)
 })
 
-test('样式中引用的每个 --token 都必须在 variables.css 中定义（运行时注入的除外）', () => {
-  const tokens = new Set(definedTokens())
+test('样式中引用的每个 --token 都必须已定义（EC 令牌层或桥接层，运行时注入的除外）', () => {
+  const tokens = allDefinedTokens()
   const problems = []
 
   for (const file of styleFiles()) {
-    if (path.basename(file) === 'variables.css') continue
+    if (isTokenDefinition(file)) continue
     const text = read(file)
 
     for (const rawPart of stylePartsOf(file, text)) {
@@ -169,10 +203,11 @@ test('样式中引用的每个 --token 都必须在 variables.css 中定义（�
 
 // ── 断点纪律 ───────────────────────────────────────────────────
 
-test('@media 中的断点只用统一的 1199 / 991 / 767 / 575', () => {
+test('@media 中的断点只用统一的 1199 / 991 / 767 / 575（EC 原样拷贝除外）', () => {
   const problems = []
 
   for (const file of styleFiles()) {
+    if (isEcVendor(file)) continue
     const text = stripCssComments(read(file))
     for (const m of text.matchAll(/@media[^{]*?(?:max|min)-width:\s*(\d+)px/g)) {
       const px = Number(m[1])
@@ -192,6 +227,7 @@ test('@media 中的断点只用统一的 1199 / 991 / 767 / 575', () => {
 test('同一文件内不得重复声明完全相同的媒体查询（应合并为一个块）', () => {
   const problems = []
   for (const file of styleFiles()) {
+    if (isEcVendor(file)) continue
     const text = stripCssComments(read(file))
     const queries = [...text.matchAll(/@media\s*\(([^)]*)\)/g)].map((m) => m[1].trim())
     const seen = new Map()
@@ -218,15 +254,15 @@ test('CSS 自定义属性不得出现在 @media 条件里（无效写法）', ()
 // ── 字体与加载 ─────────────────────────────────────────────────
 
 test('字体令牌含中文字体栈（避免中文走系统默认字体）', () => {
-  // 字体栈随令牌一起从 global.css 迁到了 variables.css（global.css 只消费 var(--font-*)），
-  // 因此这里改为检查令牌定义处，语义不变：中文必须有显式的 CJK 字体兜底。
-  const vars = read(VARS)
+  // 字体栈属于 EC 的 Type 层：`--ec-font-sans` 必须显式列出 CJK 兜底，
+  // 否则中文会落到浏览器默认的宋体上，与拉丁字母的观感断裂。
+  const typeCss = read(path.join(SRC, 'assets', 'ec', 'tokens', 'type.css'))
   for (const family of ['PingFang SC', 'Microsoft YaHei']) {
-    assert.ok(vars.includes(family), `字体令牌应包含 ${family}`)
+    assert.ok(typeCss.includes(family), `字体令牌应包含 ${family}`)
   }
-  // 同时确认 global.css 真的消费了字体令牌，而不是各自另写一套字体族
+  // 同时确认项目组件层真的消费了字体令牌，而不是各自另写一套字体族
   const global = read(path.join(SRC, 'assets', 'styles', 'global.css'))
-  assert.match(global, /font-family:\s*var\(--font-body\)/, 'global.css 应消费 --font-body')
+  assert.match(global, /font-family:\s*var\(--ec-font-sans\)/, 'global.css 应消费 --ec-font-sans')
 })
 
 test('variables.css 只被 main.js 引入一次（避免 :root 重复输出）', () => {
@@ -251,11 +287,11 @@ test('令牌提取器能从 variables.css 取到令牌（防止检查器失效�
   assert.equal(tokens.some((t) => t === '--'), false, '不应提取出空令牌名')
 })
 
-test('令牌定义层被排除在「使用次数」之外（防止预设文件让死令牌假通过）', () => {
-  const themeFile = path.join(SRC, 'theme', 'presets.js')
+test('令牌定义层被排除在「使用次数」之外（防止定义文件让死令牌假通过）', () => {
+  const ecTokens = path.join(SRC, 'assets', 'ec', 'tokens', 'semantic.css')
   const varsFile = VARS
   const componentFile = path.join(SRC, 'components', 'ProductCard.vue')
-  assert.equal(isTokenDefinition(themeFile), true, 'theme/ 属于令牌定义层')
+  assert.equal(isTokenDefinition(ecTokens), true, 'EC 令牌层属于定义层')
   assert.equal(isTokenDefinition(varsFile), true, 'variables.css 属于令牌定义层')
   assert.equal(isTokenDefinition(componentFile), false, '组件不属于令牌定义层')
 })

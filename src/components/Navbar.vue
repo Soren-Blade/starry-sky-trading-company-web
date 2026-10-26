@@ -73,8 +73,8 @@
           </div>
         </div>
 
-        <!-- 样式主题切换（图标按钮 + 弹窗） -->
-        <ThemeSwitcher />
+        <!-- 明暗切换（EC theme-switch：浅色 / 深色 / 跟随系统 三档） -->
+        <ThemeSwitch />
 
         <!--
           购物车入口：只要有身份就显示（游客也能看自己的车）。
@@ -348,6 +348,19 @@
           </router-link>
         </li>
       </ul>
+
+      <!--
+        明暗切换在窄屏搬进抽屉。
+
+        为什么不在顶栏硬留：三档控件约 80px 宽，390px 的顶栏里已经挤着
+        搜索 / 购物车 / 会员 / 消息 / 头像 / 汉堡六个入口，再加一组必然溢出。
+        抽屉是移动端唯一有纵向余量的地方，且它是「设置类」控件，
+        放在导航列表末尾符合「导航 → 偏好」的阅读顺序。
+      -->
+      <div class="drawer-theme">
+        <span class="drawer-theme-label">{{ THEME_SWITCH.label }}</span>
+        <ThemeSwitch />
+      </div>
     </div>
   </header>
 </template>
@@ -356,16 +369,16 @@
 /**
  * 顶部导航（position: sticky）
  *
- * 组成：品牌 + 主导航 + 搜索栏 + 样式主题切换 + 账号入口 + 移动端抽屉。
+ * 组成：品牌 + 主导航 + 搜索栏 + 明暗切换 + 账号入口 + 移动端抽屉。
  *
  * 三个刻意的结构决定：
- *   1. **sticky 而不是 fixed**。规范要求 `position: sticky; top: 0`，
- *      层级取 `--z-nav`（20）—— 与下拉同层，靠 DOM 顺序压住页面内容，
- *      但仍低于吸顶浮层（500）与弹窗（2000）。
- *      切过来之后顶栏参与文档流，主内容不再需要 `padding-top` 占位。
- *   2. **毛玻璃写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
- *      `backdrop-filter` 会让元素成为 fixed 后代的包含块 —— 写在导航栏上时，
- *      登录弹窗与样式弹窗会被「钉」在导航栏内部（glass 主题下必然复现）。
+ *   1. **sticky 而不是 fixed**。层级取 `--z-nav`（100）——
+ *      靠 DOM 顺序压住页面内容，但仍低于下拉（200）与弹窗（400）。
+ *      顶栏因此参与文档流，主内容不再需要 `padding-top` 占位。
+ *   2. **背景与底边框写在 `.navbar::before` 上，而不是 `.navbar` 本身**。
+ *      任何会创建包含块的属性（transform / filter / backdrop-filter）写在
+ *      导航栏上时，登录弹窗这类 fixed 后代会被「钉」在导航栏内部。
+ *      EC 不用毛玻璃，但这条约束继续适用 —— 将来谁想加回来都会踩到。
  *   3. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
  *      关键词留在组件里就得层层透传事件；匹配规则也只应有一处定义。
  */
@@ -378,10 +391,10 @@ import { useCartStore } from '@/stores/cart'
 import { useMailStore } from '@/stores/mail'
 import { throttle } from '@/utils/index.js'
 import SearchBar from './SearchBar.vue'
-import ThemeSwitcher from './ThemeSwitcher.vue'
+import ThemeSwitch from './ThemeSwitch.vue'
 import AppIcon from './AppIcon.vue'
 import SmartImage from './SmartImage.vue'
-import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT } from '@/constants/index.js'
+import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT, THEME_SWITCH } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -733,12 +746,12 @@ onUnmounted(() => {
 .navbar {
   position: sticky;
   top: 0;
-  /* 规范：z-index 100。低于模态框（2000）与提示框（3000） */
+  /* 规范：z-index 100。低于模态框（400）与提示框（500） */
   z-index: var(--z-nav);
   transition: box-shadow var(--transition-surface);
 }
 
-/* 表面 + 毛玻璃 + 底部边框（三层都放在同一个伪元素上，保证铺满整高）
+/* 表面 + 底部边框（都放在同一个伪元素上，保证铺满整高）
  * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释） */
 .navbar::before {
   content: '';
@@ -747,19 +760,11 @@ onUnmounted(() => {
   z-index: -1;
   background: var(--bg-nav);
   border-bottom: var(--stroke-width) solid var(--nav-border-color);
-  backdrop-filter: var(--nav-backdrop);
-  -webkit-backdrop-filter: var(--nav-backdrop);
-  transition: backdrop-filter var(--transition-surface);
 }
 
-/* 滚动后：glass 加强模糊，其余风格用各自的一档阴影 */
+/* 滚动后：EC 的层级信号是「沉下去」的一档阴影（浅色阴影 / 暗色也统一走阴影） */
 .navbar-scrolled {
   box-shadow: var(--nav-scrolled-shadow);
-}
-
-.navbar-scrolled::before {
-  backdrop-filter: var(--nav-scrolled-backdrop);
-  -webkit-backdrop-filter: var(--nav-scrolled-backdrop);
 }
 
 .navbar-inner {
@@ -784,7 +789,6 @@ onUnmounted(() => {
 .logo-icon {
   font-size: var(--nav-logo-height);
   line-height: 1;
-  animation: var(--decor-animation);
 }
 
 .logo-text {
@@ -872,9 +876,8 @@ onUnmounted(() => {
  *
  * 这里踩过一次：收起态用 `--icon-btn-size` / `--icon-btn-radius` /
  * `--bg-surface`，展开态用 `--input-height` / `--radius-input` / `--bg-surface-2`。
- * 五套主题里这两组值并不相等 —— 高度在玻璃（44→48）、便当（40→44）、
- * 粗野（44→48）、单色（32→36）四套里都不一致，圆角在便当（10→24）与
- * 粗野（0→8）也不同。于是**一点击盒子就明显长大、变方**，四套主题全中。
+ * 这两组令牌的取值并不相等（底色一深一浅、描边一有一无、圆角不同档）。
+ * 于是**一点击盒子就明显变样**，明暗两套主题全中。
  *
  * 现在统一锚在图标按钮那一组上（它是顶栏里的一员，收起时就该和左右邻居
  * 一模一样），展开只加宽：
@@ -931,8 +934,7 @@ onUnmounted(() => {
 
 .navbar-search.search-open .search-field {
   /* **唯一**的几何变化：变宽。
-   * 宽度按图标格换算，五套主题各得其所（极简 320 / 玻璃 352 / 便当 320 /
-   * 粗野 352 / 单色 256），同时不超过视口。 */
+   * 宽度按图标格换算（36px × 8 = 288px），同时不超过视口。 */
   width: min(calc(var(--icon-btn-size) * 8), calc(100vw - var(--space-unit) * 6));
 }
 
@@ -1311,6 +1313,18 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
+/* ── 抽屉里的明暗切换（仅窄屏出现，宽屏隐藏） ──
+ * 默认 display:none —— 宽屏时顶栏已经有那组三档控件，
+ * 抽屉本身也只在 ≤991 才会被汉堡打开。 */
+.drawer-theme {
+  display: none;
+}
+
+.drawer-theme-label {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
 /* ── 响应式 ─────────────────────────────────────────────── */
 /* 992–1199：菜单项、间距、内边距各收一档，保证搜索栏仍放得下且不挤压菜单 */
 @media (max-width: 1199px) {
@@ -1375,6 +1389,23 @@ onUnmounted(() => {
   .user-dropdown .u-dropdown-item {
     height: auto;
     min-height: 44px;
+  }
+
+  /* 明暗切换：顶栏让位、抽屉接管。
+   * 390px 宽的顶栏要放下搜索 / 购物车 / 会员 / 消息 / 头像 / 汉堡六个入口，
+   * 再塞一组 80px 的三档控件必然溢出（会挤压 logo 或把汉堡顶出屏幕）。 */
+  .navbar-actions :deep(.theme-switch) {
+    display: none;
+  }
+
+  .drawer-theme {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--space-unit) * 2);
+    margin-top: calc(var(--space-unit) * 2);
+    padding-top: calc(var(--space-unit) * 2);
+    border-top: var(--stroke-width) solid var(--divider);
   }
 }
 

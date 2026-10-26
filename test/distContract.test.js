@@ -57,8 +57,13 @@ if (!BUILT) {
   })
 
   test('设计令牌完整进入 CSS', () => {
-    // 抽查各层级的代表令牌：基础层（颜色/字体/圆角）+ 组件层（尺寸表）。
+    // 抽查各层级的代表令牌。EC 迁移后有两类：
+    //   ① 桥接层（variables.css 的旧名 → --ec-*）
+    //   ② EC 语义层（assets/ec/tokens 原样拷贝进产物）
+    // 两类都必须在产物里出现，缺一类就说明 @import 链断了
+    // （断链的表现是「所有 var() 静默失效、页面完全没有样式且不报错」）。
     const tokens = [
+      // ① 桥接层
       '--bg-page',
       '--bg-surface',
       '--accent',
@@ -74,10 +79,8 @@ if (!BUILT) {
       '--card-width',
       '--card-image-height',
       '--fs-price',
-      '--toast-width',
-      '--modal-width',
+      '--toast-offset',
       '--dropdown-item-height',
-      '--tag-height',
       '--pager-size',
       '--progress-height',
       '--avatar-size',
@@ -85,8 +88,15 @@ if (!BUILT) {
       '--spinner-size-sm',
       '--skeleton-duration',
       '--mobile-control-scale',
-      '--effect-backdrop',
+      '--nav-scrolled-shadow',
       '--enter-shift',
+      // ② EC 语义层（抽几个代表性的，含暗色覆写）
+      '--ec-bg-base',
+      '--ec-action-primary',
+      '--ec-grad-action',
+      '--ec-button-primary-fg',
+      '--ec-topbar-h',
+      '--ec-table-row-h',
     ]
     const missing = tokens.filter((t) => !allCss.includes(t))
     assert.deepEqual(missing, [], `以下令牌未进入产物 CSS：\n  ${missing.join('\n  ')}`)
@@ -110,20 +120,33 @@ if (!BUILT) {
       '--shadow-elevated',
       '--panel-padding',
       '--card-gap',
+      // 2.0.0：弹窗改用 `.ec-overlay` / `.ec-icon-btn` 后失去消费者的令牌
+      '--modal-close-size',
+      '--modal-title-gap',
+      '--z-modal',
+      '--z-toast',
     ]
     const present = removed.filter((t) => allCss.includes(t))
     assert.deepEqual(present, [], `以下令牌已删除但仍出现在产物中：\n  ${present.join('\n  ')}`)
   })
 
-  test(':root 令牌块在产物中只输出一次（避免变量重复定义）', () => {
-    // 只匹配**定义令牌的** `:root {`。
-    //
-    // 不能用 `/:root/g`：组件里合法地存在 `:root[data-theme='bento-editorial']`
-    // 这类「按主题覆盖」的选择器（HotProductsSection 就有一条，媒体查询里还有一条
-    // 同样写法的反向覆盖）。它们不是令牌定义，被算进来会让本用例报出
-    // 「:root 出现 3 次」这种与真实缺陷无关的失败 —— 本次全量构建时就踩到了。
-    const count = (allCss.match(/:root\s*\{/g) || []).length
-    assert.equal(count, 1, `:root{ 令牌块出现 ${count} 次（应为 1：variables.css 只应被引入一次）`)
+  test('令牌定义块在产物中各出现一次（不重复、不缺失）', () => {
+    // EC 迁移后产物里有**多个** `:root {` 块，这是设计系统自己的分层：
+    // primitive / semantic / type / component / business 各一块，
+    // 外加 theme-dark 的 `:root[data-theme="dark"]` 覆写块。
+    // 所以这里不能再数 `:root {` 的总数（那样必然 >1），改为逐块断言：
+    //   · 本站的桥接块（variables.css）必须**只有一份**—— 它被引入两次
+    //     会让旧名与 --ec-* 的定义散在两处，日后改一处漏一处；
+    //   · EC 的暗色覆写块也必须只有一份；
+    //   · 桥接块里出现 `--bg-page` 的定义，证明变量.css 真的进了产物。
+    const bridgeCount = (allCss.match(/--bg-page:\s*var\(--ec-bg-base\)/g) || []).length
+    assert.equal(bridgeCount, 1, `variables.css 的令牌块出现 ${bridgeCount} 次（应为 1）`)
+
+    const darkCount = (allCss.match(/:root\[data-theme=["']?dark["']?\]/g) || []).length
+    assert.equal(darkCount, 1, `EC 暗色覆写块出现 ${darkCount} 次（应为 1）`)
+
+    const semanticCount = (allCss.match(/--ec-bg-base:\s*var\(--ec-neutral-25\)/g) || []).length
+    assert.equal(semanticCount, 1, `EC semantic 层出现 ${semanticCount} 次（应为 1）`)
   })
 
   test('index.html 引用的产物文件都存在', () => {

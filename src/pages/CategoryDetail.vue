@@ -1,5 +1,7 @@
 <template>
   <div class="page-shell category-page">
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <header class="page-shell-head page-shell-head--row">
       <div class="category-heading">
         <p class="page-shell-eyebrow">{{ PAGES.category.eyebrow }}</p>
@@ -60,7 +62,7 @@
 
       <ul v-if="products.length" class="category-grid">
         <li v-for="(product, index) in products" :key="product.id" class="category-cell">
-          <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" />
+          <ProductCard :product="product" :style="{ '--i': index }" @go-detail="goDetail" @add-to-cart="addToCart" />
         </li>
       </ul>
 
@@ -91,6 +93,7 @@ import { storeToRefs } from 'pinia'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import ProductCard from '@/components/ProductCard.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import { useShopStore } from '@/stores/shop'
 import { useProductActions } from '@/hooks/useProductActions'
 import { resolveCategoryProducts } from '@/utils/categoryProducts.js'
@@ -99,7 +102,7 @@ import { CATEGORY_PAGE, PAGES, PRODUCT_GRID } from '@/constants/index.js'
 
 const route = useRoute()
 const shopStore = useShopStore()
-const { goDetail } = useProductActions()
+const { goDetail, addToCart } = useProductActions()
 const { shopClass } = storeToRefs(shopStore)
 
 const products = ref([])
@@ -134,6 +137,13 @@ const flatCategories = computed(() => {
 const category = computed(
   () => flatCategories.value.find((item) => Number(item.id) === categoryId.value) || fallbackCategory.value
 )
+
+/** 面包屑：分类名可能还没加载出来，加载前先用兜底标题，避免末项空白 */
+const breadcrumbItems = computed(() => [
+  { label: '首页', to: '/home' },
+  { label: '商品分类', to: '/categories' },
+  { label: category.value ? category.value.category_name : PAGES.category.title },
+])
 
 /** 子分类：分类树里有 children 就用，否则从拍平结果里按 parent_id 找 */
 const children = computed(() => {

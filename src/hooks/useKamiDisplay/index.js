@@ -26,7 +26,7 @@ export const STATUS_TEXT = {
  *
  * 此前映射的是 ant-design-vue Tag 的颜色名（'blue' / 'green' / …），
  * 那是组件库私有的取值域；改用项目自己的语义变体后，
- * 配色由 `--success` / `--danger` 等令牌决定，五套主题各自成立。
+ * 配色由 `--success` / `--danger` 等令牌决定，明暗两套主题各自成立。
  */
 export const STATUS_VARIANT = {
   unused: 'accent',

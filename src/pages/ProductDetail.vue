@@ -18,16 +18,8 @@
     </div>
 
     <template v-else-if="product">
-      <!-- 面包屑：给深链进来的用户一条回退路径 -->
-      <nav class="product-crumb" aria-label="面包屑">
-        <router-link to="/home">首页</router-link>
-        <span aria-hidden="true">/</span>
-        <router-link to="/categories">商品分类</router-link>
-        <template v-if="category">
-          <span aria-hidden="true">/</span>
-          <router-link :to="`/category/${category.id}`">{{ category.category_name }}</router-link>
-        </template>
-      </nav>
+      <!-- 面包屑：给深链进来的用户一条回退路径（末项是当前页，不可点） -->
+      <PageBreadcrumb :items="breadcrumbItems" />
 
       <div class="product-layout">
         <!-- 媒体区 -->
@@ -168,7 +160,7 @@
         <h2 class="related-title">同类商品</h2>
         <ul class="related-grid">
           <li v-for="(item, index) in related" :key="item.id" class="related-cell">
-            <ProductCard :product="item" :style="{ '--i': index }" @go-detail="goDetail" />
+            <ProductCard :product="item" :style="{ '--i': index }" @go-detail="goDetail" @add-to-cart="addToCart" />
           </li>
         </ul>
       </section>
@@ -193,6 +185,7 @@ import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import ProductCard from '@/components/ProductCard.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import { useShopStore } from '@/stores/shop'
 import { useThemeStore } from '@/stores/theme'
 import { useFavoriteStore } from '@/stores/favorite'
@@ -263,6 +256,25 @@ const category = computed(() => {
   if (id === null || id === undefined) return null
   const found = (shopClass.value || []).find((item) => Number(item.id) === Number(id))
   return found || null
+})
+
+/**
+ * 面包屑分段：分类可能缺（分类树没加载 / 商品没挂分类），缺了就跳过这一段，
+ * 不要留一个指向 undefined 的空链接。末项固定是商品自身，由组件渲染成当前页。
+ */
+const breadcrumbItems = computed(() => {
+  const items = [
+    { label: '首页', to: '/home' },
+    { label: '商品分类', to: '/categories' },
+  ]
+  if (category.value) {
+    items.push({
+      label: category.value.category_name,
+      to: `/category/${category.value.id}`,
+    })
+  }
+  items.push({ label: title.value })
+  return items
 })
 
 const normalizeQuantity = () => {
@@ -372,25 +384,6 @@ watch(() => route.params.id, (id) => {
  * 外壳（容器宽度、标题带、面板、空态、动作行）来自 global.css 的 .page-shell /
  * .page-panel / .page-empty / .page-actions；这里只写详情页特有的两栏布局。
  */
-
-.product-crumb {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit));
-  margin-bottom: calc(var(--space-unit) * 2.5);
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
-
-.product-crumb a {
-  color: var(--text-secondary);
-  transition: color var(--transition-interactive);
-}
-
-.product-crumb a:hover {
-  color: var(--accent);
-}
 
 /* 左媒体 / 右信息：桌面两栏，991 以下单栏 */
 .product-layout {

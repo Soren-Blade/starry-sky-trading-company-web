@@ -81,6 +81,10 @@ test('throttle：窗口结束后可再次执行，且透传参数与 this', asyn
 
 test('domUtils.smoothScroll：选择器与元素两种入参都不抛错', () => {
   const scrolled = []
+  // `--test-isolation=none` 下所有测试文件共用一个进程，`test/setup.js` 安装的
+  // DOM 桩是全量共享的。这里必须保存并还原，不能直接 delete，否则后续文件顶层
+  // 的 beforeEach 会在没有 document 的情况下执行而抛 ReferenceError。
+  const savedDocument = globalThis.document
   globalThis.document = {
     querySelector: (selector) => ({
       scrollIntoView: (options) => scrolled.push({ selector, options }),
@@ -93,7 +97,8 @@ test('domUtils.smoothScroll：选择器与元素两种入参都不抛错', () =>
     globalThis.document.querySelector = () => null
     assert.doesNotThrow(() => domUtils.smoothScroll('.missing'))
   } finally {
-    delete globalThis.document
+    if (savedDocument === undefined) delete globalThis.document
+    else globalThis.document = savedDocument
   }
   assert.equal(scrolled.length, 2)
   assert.equal(scrolled[0].selector, '.target')

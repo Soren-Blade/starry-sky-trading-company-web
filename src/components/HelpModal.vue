@@ -1,17 +1,26 @@
 <template>
-  <div class="u-modal-overlay" @click.self="$emit('close')">
-    <div
+  <!--
+    按设计系统 §8.3 的弹层选择：这里不需要用户当场决策，但内容要能回看，
+    属于「留存」类；说明 + 步骤 + 联系方式是一段较长的文档，
+    所以用 Drawer（右侧 480，内容区可整段滚动）而不是 Dialog。
+  -->
+  <div class="ec-overlay" @click.self="$emit('close')">
+    <aside
       ref="modalRef"
-      class="u-modal help-modal"
+      class="ec-drawer help-drawer"
       role="dialog"
       aria-modal="true"
       aria-labelledby="help-modal-title"
     >
-      <h2 id="help-modal-title" class="u-modal-title">{{ title }}</h2>
+      <div class="ec-drawer__head">
+        <h2 id="help-modal-title" class="help-drawer-title">{{ title }}</h2>
 
-      <button class="u-modal-close" aria-label="关闭弹窗" @click="$emit('close')">✕</button>
+        <button type="button" class="ec-icon-btn" aria-label="关闭弹窗" @click="$emit('close')">
+          <AppIcon name="x" />
+        </button>
+      </div>
 
-      <div class="u-modal-body help-body">
+      <div class="ec-drawer__body help-body">
         <p v-if="intro" class="help-intro">{{ intro }}</p>
 
         <ol v-if="steps && steps.length" class="help-steps">
@@ -39,7 +48,7 @@
         </dl>
       </div>
 
-      <div class="u-modal-foot">
+      <div class="ec-drawer__foot">
         <!-- 客服中心对游客开放（`/support` 没有 requiresAuth），所以这个入口
              不需要先登录 —— 弹窗里说「请联系客服」，就得给一个真能到达的地方 -->
         <router-link v-if="feedback" to="/support" class="u-btn-secondary" @click="$emit('close')">
@@ -50,7 +59,7 @@
         </router-link>
         <button type="button" class="u-btn-primary" @click="$emit('close')">我知道了</button>
       </div>
-    </div>
+    </aside>
   </div>
 </template>
 
@@ -69,7 +78,7 @@
  * 可以立刻把问题写下来（`feedback` 属性默认开启，见 defineProps 的注释）。
  *
  * 无障碍：模态约定（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）走
- * `useModalA11y`，与 LoginModal、ThemeSwitcher 是同一份实现。
+ * `useModalA11y`，与 LoginModal 是同一份实现。
  */
 import AppIcon from '@/components/AppIcon.vue'
 import { useModalA11y } from '@/hooks/useModalA11y'
@@ -99,10 +108,17 @@ const { modalRef } = useModalA11y({ close: () => emit('close') })
 
 <style scoped>
 /*
- * 外壳（宽度、内边距、圆角、遮罩、关闭按钮）全部来自 global.css 的
- * .u-modal-overlay / .u-modal / .u-modal-close，与五套风格自动同步；
- * 这里只保留本弹窗特有的内部排布。
+ * 外壳（遮罩、抽屉定位、宽度、内边距、滚动、关闭按钮）全部来自设计系统的
+ * `.ec-overlay` / `.ec-drawer` / `.ec-drawer__head|body|foot` / `.ec-icon-btn`，
+ * 与明暗两套自动同步；这里只保留本抽屉特有的内部排布。
  */
+
+.help-drawer-title {
+  margin: 0;
+  font-size: var(--ec-h3-size);
+  font-weight: 600;
+  color: var(--ec-text-primary);
+}
 
 .help-body {
   display: flex;

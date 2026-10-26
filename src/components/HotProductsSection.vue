@@ -27,7 +27,7 @@
         </template>
 
         <template v-else>
-          <!-- 第一件商品放主推位：bento 的 400px 大卡 + 双列跨度 -->
+          <!-- 第一件商品放主推位：--card-width-lg 大卡 + 双列跨度 -->
           <li
             v-for="(product, index) in products"
             :key="product.id || index"
@@ -135,13 +135,13 @@ const isBoard = computed(() => props.variant === 'board')
 }
 
 /*
- * 主推位：**五套主题都只跨一列**。
+ * 主推位：**明暗两套主题都只跨一列**。
  *
  * 这里曾经有一条按主题分叉的规则 `:root[data-theme='bento-editorial']
  * .products-cell--featured { grid-column: span 2 }`，理由是「只有 bento 的规范
  * 定义了大卡片 400px」。那个 400px 已经随「尺寸统一」并入了 280px（见
- * presets.js 的尺寸统一组），理由消失、规则却留着 —— 后果是真机实测出来的：
- * 1199px 与 991px 下 bento 的九个商品从 3 行变 4 行，整页高比其余四套
+ * EC 的尺寸令牌（assets/ec/tokens/semantic.css）），理由消失、规则却留着 —— 后果是真机实测出来的：
+ * 1199px 与 991px 下九个商品从 3 行变 4 行，整页高比单一列时
  * 多 475px（4942 vs 4467），正是「切主题让窗口变大」。
  *
  * 现在跨两列反而会变成一张 620×200 的横幅：图片被拉成 3:1、正文留出大片空白。

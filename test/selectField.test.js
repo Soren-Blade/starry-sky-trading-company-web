@@ -222,17 +222,9 @@ test('接线：三个文件的模板契约（SSR 覆盖不到的两种分支用�
     'v-model 必须写在 @update:model-value 之前：编译器按书写顺序合并处理函数，反过来会拿旧状态去请求')
   assert.doesNotMatch(stripHtmlComments(kami), /<select/, 'KamiSection 不应再残留原生 select')
 
-  // ThemeSwitcher 的「字体族」在弹窗的第二个页签里，而弹窗是 Teleport 出来的 ——
-  // SSR 只渲染默认页签，因此这条分支只能靠源码契约把关
-  const theme = read('ThemeSwitcher.vue')
-  assert.match(theme, /import SelectField from '@\/components\/SelectField\.vue'/, 'ThemeSwitcher 必须显式导入')
-  assert.match(theme, /<label class="theme-field-label" :for="fieldId\(field\.key\)">/, 'for 关联必须保留')
-  assert.match(theme, /:id="fieldId\(field\.key\)"/, 'id 必须继续传给字段')
-  assert.match(theme, /:model-value="themeStore\.custom\[field\.key\]"/, '值仍来自主题 store')
-  assert.match(theme, /:options="field\.options"/, '选项仍由 CUSTOM_FIELDS 驱动')
-  assert.match(theme, /@update:model-value="themeStore\.setCustom\(field\.key, \$event\)"/,
-    '$event 现在是值本身，setCustom 的入参不变')
-  assert.doesNotMatch(stripHtmlComments(theme), /<select/, 'ThemeSwitcher 不应再残留原生 select')
+  // 注：原先这里还校验 ThemeSwitcher 弹窗里的「字体族」下拉。
+  // 五套主题系统已被 EC 设计系统取代（只有明暗一维，没有字体族/强调色等单项微调），
+  // ThemeSwitcher.vue 与 theme/presets.js 一并删除，因此这条分支不再存在。
 })
 
 // ── 3. 客户端：面板结构 / ARIA / 键盘 ──────────────────────────

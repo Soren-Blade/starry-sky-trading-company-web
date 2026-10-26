@@ -39,13 +39,19 @@
       </div>
 
       <template v-else>
-        <section v-if="currentLevelName" class="ui-card plans-current">
-          <AppIcon name="star" />
-          <span>
-            你当前是 <strong>{{ currentLevelName }}</strong> 会员，
-            同档位套餐可以继续购买，时长叠加不覆盖
-          </span>
-        </section>
+        <!-- 当前身份卡：等级来自 get_member_plans 的 is_current，成长/到期取已有概览（若有） -->
+        <VipCard
+          v-if="currentLevelName"
+          :level="currentLevel"
+          :name="currentLevelName"
+          :expire-at="identityExpireAt"
+          :expire-hint="identityExpireHint"
+          :growth="overview.growth ?? 0"
+          :growth-max="identityGrowthMax"
+          :growth-hint="identityGrowthHint"
+          :actions="identityActions"
+          note="同档位套餐可以继续购买，时长叠加不覆盖"
+        />
 
         <section v-for="group in groups" :key="group.level" class="plans-group">
           <h2 class="plans-group-title">{{ group.name }}</h2>
@@ -140,6 +146,7 @@ import { useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
+import VipCard from '@/components/VipCard.vue'
 import { discountLabel } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
@@ -158,6 +165,34 @@ const levels = computed(() => memberStore.levels || [])
 const currentLevel = computed(() => planList.value.find((plan) => plan.is_current)?.level || '')
 const currentLevelName = computed(
   () => planList.value.find((plan) => plan.is_current)?.level_name || ''
+)
+
+/** 身份卡展示数据：本页只保证套餐数据，概览缺失时成长/到期两段自动不渲染 */
+const overview = computed(() => memberStore.overview || {})
+
+const identityExpireAt = computed(() => overview.value.expires_at || '')
+
+const identityExpireHint = computed(() =>
+  overview.value.days_left == null ? '' : `剩余 ${overview.value.days_left} 天`
+)
+
+const identityGrowthMax = computed(() => {
+  const growth = Number(overview.value.growth) || 0
+  if (overview.value.next_level == null) return growth
+  return growth + (Number(overview.value.growth_to_next) || 0)
+})
+
+const identityGrowthHint = computed(() => {
+  const o = overview.value
+  if (!memberStore.overview) return ''
+  if (o.next_level == null || o.growth_to_next == null) return '已达最高等级'
+  return `距 ${o.next_level_name || o.next_level}还差 ${o.growth_to_next}`
+})
+
+const identityActions = computed(() =>
+  router.hasRoute('MemberBenefits')
+    ? [{ label: '权益详解', to: { name: 'MemberBenefits' }, variant: 'secondary' }]
+    : []
 )
 
 /** 按等级分组；组内保持服务端顺序（`sort_order, duration_days`） */
@@ -248,14 +283,7 @@ onMounted(() => {
 
 /* 出错 / 无套餐 —— 走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
 
-/* 当前等级提示 */
-.plans-current {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
-  color: var(--accent);
-}
+/* 当前身份卡改用 VipCard（外观见 ec-business.css 的 .ec-vip） */
 
 /* 套餐分组：组的标题属于页面；卡片网格与卡内四段见分片 §12 */
 .plans-group-title {

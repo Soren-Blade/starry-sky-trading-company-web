@@ -43,7 +43,7 @@ export const useUserStore = defineStore('user', {
          *
          * 放在 store 而不是 Navbar 的局部 ref：触发登录的场景**不止顶栏一个** ——
          * 商品详情页的「立即购买」、购物车结算、工具收藏、路由守卫都要能拉起它。
-         * 弹窗本体因此也移到 App.vue（全站唯一实例），与 ThemeSwitcher 的
+         * 弹窗本体因此也移到 App.vue（全站唯一实例），与登录弹窗的
          * `themeStore.panelOpen` 是同一套做法。
          */
         loginModalOpen: false,

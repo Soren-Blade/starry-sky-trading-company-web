@@ -13,7 +13,7 @@ const SRC = join(WEB_ROOT, 'src')
  *
  * 背景：登录弹窗的 ✕ 曾经**完全失效** —— 点它实际点到的是「注册」页签。
  *
- * 成因是 CSS 层叠顺序而不是事件绑定：`.u-modal-close` 与 `.tab-btn` 都是定位元素
+ * 成因是 CSS 层叠顺序而不是事件绑定：关闭按钮与 `.tab-btn` 都是定位元素
  * 且 `z-index: auto`，此时**谁在 DOM 里靠后谁画在上面**。关闭按钮是弹窗的第一个
  * 元素，而页签行（`position: relative` + `flex: 1`，铺满整行）紧跟其后、
  * 起始位置与它完全重叠。
@@ -24,46 +24,20 @@ const SRC = join(WEB_ROOT, 'src')
  *   - 单元测试更不可能覆盖（需要真实布局）。
  *
  * 因此这里退一步，把**导致它的那几条不变量**用静态检查钉住。
+ *
+ * 2.0.0 起弹窗改用设计系统的 `.ec-overlay` / `.ec-dialog` / `.ec-drawer`，
+ * 本文件同步改为按 EC 类名断言；不变量本身没有放松。
  */
 
 /** 读取全局样式表 */
 const globalCss = readFileSync(join(SRC, 'assets', 'styles', 'global.css'), 'utf8')
 
-/** 取出某个选择器的规则体（取第一个匹配的顶层规则） */
-function cssRuleBody(css, selector) {
-  const start = css.indexOf(`${selector} {`)
-  if (start === -1) return null
-  const open = css.indexOf('{', start)
-  const close = css.indexOf('}', open)
-  if (open === -1 || close === -1) return null
-  return css.slice(open + 1, close)
+/** 读取某个源文件的文本 */
+function read(relPath) {
+  return readFileSync(join(SRC, ...relPath.split('/')), 'utf8')
 }
 
-// ── 关闭按钮必须建立自己的层叠层级 ─────────────────────────
-
-test('回归：.u-modal-close 必须声明 z-index（否则会被后面的定位元素盖住）', () => {
-  const body = cssRuleBody(globalCss, '.u-modal-close')
-  assert.ok(body, 'global.css 里应存在 .u-modal-close 规则')
-
-  const match = body.match(/z-index:\s*(-?\d+)/)
-  assert.ok(
-    match,
-    '关闭按钮缺少 z-index。它在模板里是弹窗的第一个元素，' +
-      '任何紧跟其后、起始位置重叠的定位元素（页签行、标题）都会画在它上面，' +
-      '点击会落到那个元素上 —— 表现为「✕ 点了没反应」。'
-  )
-  assert.ok(Number(match[1]) > 0, `z-index 应为正数，实际 ${match[1]}`)
-})
-
-test('回归：关闭按钮是绝对定位的（z-index 只在定位元素上生效）', () => {
-  const body = cssRuleBody(globalCss, '.u-modal-close')
-  assert.ok(
-    /position:\s*absolute/.test(body),
-    '关闭按钮必须保持 position: absolute —— 否则 z-index 不生效，上面那条守卫会失去意义'
-  )
-})
-
-// ── 所有用到关闭按钮的弹窗都要给内容让位 ───────────────────
+/** 取出某个选择器的规则体（取第一个匹配的顶层规则） */
 
 /** 收集 src 下所有 .vue 文件 */
 function collectVueFiles(dir) {
@@ -76,83 +50,125 @@ function collectVueFiles(dir) {
   return out
 }
 
-test('回归：用了 .u-modal-close 的弹窗，重叠内容必须给按钮留出横向空间', () => {
+// ── 不再保留旧类名，避免「同名单类选择器互相盖掉」 ─────────
+
+test('回归：global.css 不得再定义 .u-modal* 规则', () => {
   const offenders = []
-
-  for (const file of collectVueFiles(SRC)) {
-    const source = readFileSync(file, 'utf8')
-    if (!source.includes('u-modal-close')) continue
-
-    // 两种既有做法都算「让位」：
-    //   1. 渲染带 .u-modal-title 的可见标题（该共享类自带 padding-right）；
-    //   2. 自己声明右侧留白（登录弹窗的 .modal-tabs 就是这么做的）。
-    const usesSharedTitle = /class="[^"]*\bu-modal-title\b/.test(source)
-    const declaresOwnGutter = /padding-right:\s*calc\(\s*var\(--modal-close-size\)/.test(source)
-
-    if (!usesSharedTitle && !declaresOwnGutter) {
-      offenders.push(relative(WEB_ROOT, file).replace(/\\/g, '/'))
-    }
+  for (const m of globalCss.matchAll(/^\s*(\.u-modal[\w-]*)[^{]*\{/gm)) {
+    offenders.push(m[1])
   }
-
   assert.deepEqual(
     offenders,
     [],
-    '以下弹窗用了 .u-modal-close，但重叠的内容既没走 .u-modal-title、' +
-      `也没自己留出右侧空隙，文字或控件会钻到按钮底下：\n  ${offenders.join('\n  ')}`
+    '弹窗已改用 `.ec-overlay` / `.ec-dialog` / `.ec-drawer`，global.css 里不应再有 `.u-modal*` 规则：\n  ' +
+      offenders.join('\n  ') +
+      '\n两个同名单类选择器并存时，后注入者胜 —— 会表现为「改了没效果」。'
   )
 })
 
-test('主题弹窗与登录弹窗都通过 padding-right 为关闭按钮让位', () => {
-  // 主题弹窗与帮助弹窗用共享的 .u-modal-title（它自己带 padding-right）
-  const titleBody = cssRuleBody(globalCss, '.u-modal-title')
-  assert.ok(
-    /padding-right:\s*calc\(\s*var\(--modal-close-size\)/.test(titleBody),
-    '.u-modal-title 必须给关闭按钮让位（主题弹窗的标题走的就是这条规则）'
-  )
+// ── 两个弹窗各自用对了 EC 组件 ─────────────────────────────
 
-  // 登录弹窗没有可见标题，第一个内容块是页签行，因此由它自己让位
-  const loginModal = readFileSync(join(SRC, 'components', 'LoginModal.vue'), 'utf8')
+test('登录弹窗用 Dialog，帮助弹窗用 Drawer（§8.3 决策树）', () => {
+  const login = read('components/LoginModal.vue')
+  assert.match(login, /class="ec-overlay"/, '登录弹窗根节点应为 `.ec-overlay`')
+  assert.match(login, /class="ec-dialog[^"]*"/, '登录弹窗面板应为 `.ec-dialog`')
+
+  const help = read('components/HelpModal.vue')
+  assert.match(help, /class="ec-overlay"/, '帮助弹窗根节点应为 `.ec-overlay`')
+  assert.match(help, /class="ec-drawer[^"]*"/, '帮助弹窗（长内容、可回看）应为 `.ec-drawer`')
   assert.match(
-    loginModal,
-    /\.modal-tabs\s*\{[^}]*padding-right:\s*calc\(\s*var\(--modal-close-size\)/s,
-    '登录弹窗的 .modal-tabs 必须给关闭按钮让位 —— 页签行与 ✕ 处在同一条垂直带上'
+    help,
+    /class="ec-drawer__head"/,
+    'Drawer 的标题与关闭键必须放进 `.ec-drawer__head` —— 这是它不压住正文的结构保证'
   )
 })
 
-// ── 关闭按钮的可访问名 ─────────────────────────────────────
+// ── 关闭按钮必须建立自己的层叠层级 ─────────────────────────
 
-test('回归：每个 .u-modal-close 都必须有 aria-label', () => {
-  const missing = []
+test('回归：登录弹窗关闭键必须绝对定位且声明 z-index', () => {
+  const login = read('components/LoginModal.vue')
 
-  for (const file of collectVueFiles(SRC)) {
-    const source = readFileSync(file, 'utf8')
-    if (!source.includes('u-modal-close')) continue
+  const panel = login.match(/\.login-dialog\s*\{([^}]*)\}/s)
+  assert.ok(panel, 'LoginModal 应有 `.login-dialog` 规则（承载 EC Dialog 的自有内边距）')
+  assert.match(
+    panel[1],
+    /position:\s*relative/,
+    '`.login-dialog` 必须 position: relative —— 否则内部绝对定位的关闭键会跑到整个视口去'
+  )
 
-    // 找到带该 class 的标签，检查同一标签内是否有 aria-label
-    for (const m of source.matchAll(/<button[^>]*class="[^"]*u-modal-close[^"]*"[^>]*>/g)) {
-      if (!/aria-label=/.test(m[0])) {
-        missing.push(`${relative(WEB_ROOT, file).replace(/\\/g, '/')}: ${m[0].slice(0, 80)}`)
-      }
-    }
-  }
+  const close = login.match(/\.login-dialog-close\s*\{([^}]*)\}/s)
+  assert.ok(close, 'LoginModal 应有 `.login-dialog-close` 规则')
 
-  assert.deepEqual(missing, [], `以下关闭按钮缺少 aria-label（图标型按钮必须有无障碍名）：\n  ${missing.join('\n  ')}`)
+  const zIndex = close[1].match(/z-index:\s*(-?\d+)/)
+  assert.ok(
+    zIndex,
+    '关闭按钮缺少 z-index。它在模板里是弹窗的第一个元素，' +
+      '任何紧跟其后、起始位置重叠的定位元素（页签行、标题）都会画在它上面，' +
+      '点击会落到那个元素上 —— 表现为「✕ 点了没反应」。'
+  )
+  assert.ok(Number(zIndex[1]) > 0, `z-index 应为正数，实际 ${zIndex[1]}`)
+  assert.match(
+    close[1],
+    /position:\s*absolute/,
+    '关闭按钮必须保持 position: absolute —— 否则 z-index 不生效，上面那条守卫会失去意义'
+  )
 })
 
-test('回归：每个 .u-modal-close 都绑定了关闭动作', () => {
-  const missing = []
+test('回归：登录弹窗的页签行必须给关闭按钮让出横向空间', () => {
+  const login = read('components/LoginModal.vue')
+  assert.match(
+    login,
+    /\.modal-tabs\s*\{[^}]*padding-right:\s*calc\(/s,
+    '登录弹窗没有可见标题，第一个内容块就是页签行，必须由它自己留出右侧空隙 —— ' +
+      '否则页签会铺到 ✕ 底下（这正是一开始「点 ✕ 点到注册页签」的成因）'
+  )
+})
 
+// ── 图标型按钮的无障碍名与点击动作 ─────────────────────────
+
+/** 收集所有带 `.ec-icon-btn` 的 button 开标签 */
+function collectIconButtons() {
+  const hits = []
   for (const file of collectVueFiles(SRC)) {
     const source = readFileSync(file, 'utf8')
-    if (!source.includes('u-modal-close')) continue
-
-    for (const m of source.matchAll(/<button[^>]*class="[^"]*u-modal-close[^"]*"[^>]*>/g)) {
-      // @click="$emit('close')" 或 @click="close" 都算
-      if (!/@click=/.test(m[0])) {
-        missing.push(`${relative(WEB_ROOT, file).replace(/\\/g, '/')}: ${m[0].slice(0, 80)}`)
-      }
+    if (!source.includes('ec-icon-btn')) continue
+    for (const m of source.matchAll(/<button[^>]*class="[^"]*\bec-icon-btn\b[^"]*"[^>]*>/g)) {
+      hits.push({ file: relative(WEB_ROOT, file).replace(/\\/g, '/'), tag: m[0] })
     }
   }
+  return hits
+}
 
-  assert.deepEqual(missing, [], `以下关闭按钮没有绑定点击动作：\n  ${missing.join('\n  ')}`)
+test('回归：每个 .ec-icon-btn 都必须有无障碍名', () => {
+  const missing = collectIconButtons()
+    .filter(({ tag }) => !/(?::|v-bind:)?aria-label=/.test(tag))
+    .map(({ file, tag }) => `${file}: ${tag.slice(0, 90)}`)
+
+  assert.deepEqual(missing, [], `以下图标按钮缺少 aria-label（图标型按钮必须有无障碍名）：\n  ${missing.join('\n  ')}`)
+})
+
+test('回归：每个可用的 .ec-icon-btn 都绑定了点击动作', () => {
+  const missing = collectIconButtons()
+    // 修饰符（@click.stop 等）也算绑定；静态 disabled 的按钮本来就不该有动作
+    .filter(({ tag }) => !/(?:@|v-on:)click(?:\.\w+)*=/.test(tag))
+    .filter(({ tag }) => !/(?:^|\s)disabled(?:\s|$|>)/.test(tag) && !/aria-disabled="true"/.test(tag))
+    .map(({ file, tag }) => `${file}: ${tag.slice(0, 90)}`)
+
+  assert.deepEqual(missing, [], `以下图标按钮没有绑定点击动作：\n  ${missing.join('\n  ')}`)
+})
+
+// ── 关闭键的图标来自图标集 ─────────────────────────────────
+
+test('两个弹窗的关闭键都用图标集里的 x，而不是 ✕ 字形', () => {
+  // 注释里用 ✕ 说明历史缺陷是允许的，这里只看渲染出来的模板
+  const stripComments = (src) => src.replace(/<!--[\s\S]*?-->/g, '')
+
+  for (const [label, relPath] of [
+    ['登录弹窗', 'components/LoginModal.vue'],
+    ['帮助弹窗', 'components/HelpModal.vue']
+  ]) {
+    const source = stripComments(read(relPath))
+    assert.match(source, /<AppIcon\s+name="x"\s*\/>/, `${label}的关闭键应渲染 <AppIcon name="x" />`)
+    assert.doesNotMatch(source, /[✕×]/, `${label}不应再用 ✕/× 字形充当图标（字号一变就与按钮尺寸脱钩）`)
+  }
 })

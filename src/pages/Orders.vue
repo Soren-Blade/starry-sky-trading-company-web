@@ -1,5 +1,7 @@
 <template>
   <div class="page-shell orders-page">
+    <PageBreadcrumb :items="breadcrumbItems" />
+
     <header class="page-shell-head page-shell-head--row">
       <div>
         <p class="page-shell-eyebrow">{{ PAGES.orders.eyebrow }}</p>
@@ -41,7 +43,7 @@
     </div>
 
     <template v-else>
-      <p class="page-note orders-notice">{{ paymentNotice }}</p>
+      <AppAlert variant="info" class="orders-notice" :body="paymentNotice" />
 
       <ul class="orders-list">
         <li v-for="order in orders" :key="order.order_no" class="page-panel order-card">
@@ -162,6 +164,8 @@ import { computed, onMounted, ref } from 'vue'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
+import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
+import AppAlert from '@/components/AppAlert.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
@@ -169,6 +173,12 @@ import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
 
 const themeStore = useThemeStore()
+
+/** 面包屑：订单一览属于账户中心下的二级页，给一条回首页/回个人中心的路 */
+const breadcrumbItems = [
+  { label: '首页', to: '/home' },
+  { label: '我的订单' },
+]
 
 const orders = ref([])
 const loading = ref(true)

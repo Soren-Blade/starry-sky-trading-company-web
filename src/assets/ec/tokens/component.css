@@ -1,0 +1,87 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · Layer 3 — Component（组件旋钮层）
+   ----------------------------------------------------------------------------
+   这一层存在的意义：业务方要调「按钮圆角」时改这里，不要去改 semantic。
+   规则：只允许被 css/ec.css 与业务样式引用，不得反向覆写 semantic。
+   命名：--ec-{组件}-{部件}-{属性}
+   ========================================================================== */
+
+:root {
+  /* ── Button ───────────────────────────────────────────────────────────── */
+  --ec-button-radius:        var(--ec-radius-md);
+  --ec-button-radius-pill:   var(--ec-radius-full);
+  --ec-button-font-weight:   500;
+  --ec-button-gap:           var(--ec-space-2);
+  --ec-button-primary-bg:    var(--ec-grad-action);
+  /* 主按钮前景色必须独立于 --ec-text-on-action：
+     暗色下主按钮是「亮面 + 深字」，而 badge / danger 仍是「实色 + 白字」。 */
+  --ec-button-primary-fg:    var(--ec-white);
+  --ec-button-primary-shadow: var(--ec-shadow-brand);
+  --ec-button-primary-hover-shadow: 0 10px 28px rgba(74, 87, 230, .34);
+  --ec-button-secondary-bg:  var(--ec-action-primary-soft);
+  --ec-button-secondary-fg:  var(--ec-action-primary-hover);
+  --ec-button-outline-bg:    var(--ec-bg-surface);
+  --ec-button-outline-border: var(--ec-border-default);
+  --ec-button-ghost-hover:   var(--ec-bg-hover);
+  --ec-button-disabled-op:   .5;
+  --ec-button-icon-size:     16px;
+
+  /* ── Input / Select ───────────────────────────────────────────────────── */
+  --ec-input-bg:        var(--ec-bg-surface);
+  --ec-input-bg-filled: var(--ec-bg-muted);
+  --ec-input-border:    var(--ec-border-default);
+  --ec-input-radius:    var(--ec-radius-md);
+  --ec-input-px:        var(--ec-space-3);
+  --ec-input-placeholder: var(--ec-text-placeholder);
+  --ec-select-menu-radius: var(--ec-radius-lg);
+  --ec-select-option-h: 32px;
+
+  /* ── Card ─────────────────────────────────────────────────────────────── */
+  --ec-card-bg:      var(--ec-bg-surface);
+  --ec-card-border:  var(--ec-border-subtle);
+  --ec-card-radius:  var(--ec-radius-lg);
+  --ec-card-pad-sm:  var(--ec-space-3);
+  --ec-card-pad-md:  var(--ec-space-4);
+  --ec-card-pad-lg:  var(--ec-space-5);
+  --ec-card-pad-xl:  var(--ec-space-6);
+
+  /* ── Table ────────────────────────────────────────────────────────────── */
+  --ec-table-row-h:      48px;
+  --ec-table-row-h-compact: 40px;
+  --ec-table-head-bg:    var(--ec-bg-muted);
+  --ec-table-stripe:     var(--ec-neutral-50);
+  --ec-table-border:     var(--ec-border-subtle);
+  --ec-table-cell-px:    var(--ec-space-4);
+
+  /* ── 反馈 ─────────────────────────────────────────────────────────────── */
+  --ec-dialog-radius: var(--ec-radius-xl);
+  --ec-dialog-w-sm:  400px;
+  --ec-dialog-w-md:  520px;
+  --ec-dialog-w-lg:  720px;
+  --ec-drawer-w-sm:  360px;
+  --ec-drawer-w-md:  480px;
+  --ec-drawer-w-lg:  640px;
+  --ec-toast-radius: var(--ec-radius-lg);
+  --ec-toast-w:      320px;
+  --ec-toast-gap:    var(--ec-space-2);
+
+  /* ── 导航 ─────────────────────────────────────────────────────────────── */
+  --ec-tabs-h:        var(--ec-control-h-md);
+  --ec-tab-indicator: 2px;
+  --ec-steps-dot:     28px;
+  --ec-pager-h:       var(--ec-control-h-md);
+  --ec-topbar-h:      56px;
+
+  /* ── 数据展示 ─────────────────────────────────────────────────────────── */
+  --ec-tag-h-sm:      20px;
+  --ec-tag-h-md:      24px;
+  --ec-badge-size:    18px;
+  --ec-avatar-sm:     28px;
+  --ec-avatar-md:     36px;
+  --ec-avatar-lg:     48px;
+  --ec-progress-h:    6px;
+
+  /* ── 骨架屏 ───────────────────────────────────────────────────────────── */
+  --ec-skeleton-bg:    var(--ec-bg-sunken);
+  --ec-skeleton-radius: var(--ec-radius-sm);
+}

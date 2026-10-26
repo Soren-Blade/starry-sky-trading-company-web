@@ -106,7 +106,7 @@ import { PAGES, CONTACT } from '@/constants/index.js'
  * 页面头组件（PageHeader / .page-header）已删除，本页的开场是**左栏的眉标 +
  * 大标题**，标题字号取 --fs-h1；顶栏是 position: sticky 且参与文档流，
  * 因此主内容不需要顶部占位，只有左栏的 sticky 偏移要留出它的高度。
- * 全部尺寸来自令牌，颜色来自语义令牌，五套风格下都成立。
+ * 全部尺寸来自令牌，颜色来自语义令牌，明暗两套下都成立。
  */
 .about-page {
   width: 100%;

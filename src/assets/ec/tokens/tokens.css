@@ -1,0 +1,24 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · Token 唯一入口
+   ----------------------------------------------------------------------------
+   业务方只需要引这一个文件。加载顺序有意义，不可调换：
+
+     Primitive  →  定义色值
+     Semantic   →  赋予角色
+     Type       →  字阶
+     Component  →  组件旋钮
+     Business   →  业务语义
+     Theme      →  最后覆写（暗色必须在最后，否则会被 semantic 覆盖）
+
+   然后引 css/ec.css 拿到组件。两行接入：
+     <link rel="stylesheet" href="tokens/tokens.css">
+     <link rel="stylesheet" href="css/ec.css">
+   明暗由 <html data-theme="light|dark"> 控制。
+   ========================================================================== */
+
+@import url("./primitive.css");
+@import url("./semantic.css");
+@import url("./type.css");
+@import url("./component.css");
+@import url("./business.css");
+@import url("./theme-dark.css");

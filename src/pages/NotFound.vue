@@ -63,7 +63,7 @@ import { PAGES } from '@/constants/index.js'
  * 因此只减去它的高度即可（同 HeroSection）。
  *
  * 这里**不用** -webkit-text-stroke 做描边：实测（headless Chrome 截图）在该字号下
- * 会在字形上叠出多余的横竖线段。改为强调色实色填充，五套主题下都稳定。
+ * 会在字形上叠出多余的横竖线段。改为强调色实色填充，明暗两套主题下都稳定。
  */
 .nf-page {
   display: flex;

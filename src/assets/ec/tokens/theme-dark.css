@@ -1,0 +1,140 @@
+/* ============================================================================
+   EC DESIGN SYSTEM · theme-dark（暗色主题覆写）
+   ----------------------------------------------------------------------------
+   实现方式：只改 :root[data-theme="dark"] 下的 token 值，组件层零改动。
+   允许覆写的组：背景 / 文字 / 描边 / 行动 / 功能 / 渐变 / 阴影 / 业务语义。
+   禁止覆写：间距、圆角、控件高、动效、z-index（这些与明暗无关）。
+   本文件是除 primitive.css 之外唯一允许写色值字面量的地方。
+   ========================================================================== */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ═══ 背景（五阶，逐级提亮 3%–5%） ══════════════════════════════════════ */
+  --ec-bg-base:    var(--ec-ink-900);
+  --ec-bg-surface: var(--ec-ink-850);
+  --ec-bg-raised:  var(--ec-ink-800);
+  --ec-bg-muted:   var(--ec-ink-800);
+  --ec-bg-sunken:  var(--ec-ink-950);
+  --ec-bg-hover:   var(--ec-ink-800);
+  --ec-bg-overlay: rgba(3, 5, 9, .72);
+  --ec-bg-wash:    rgba(255, 255, 255, .06);
+  --ec-bg-inverse: var(--ec-ink-100);
+
+  /* ═══ 文字 ══════════════════════════════════════════════════════════════ */
+  --ec-text-primary:     var(--ec-ink-100);
+  --ec-text-secondary:   var(--ec-ink-300);
+  --ec-text-tertiary:    var(--ec-ink-400);  /* ⚑ 原文 #5F6878 在 raised 上仅 2.93:1 */
+  --ec-text-disabled:    var(--ec-ink-500);
+  --ec-text-inverse:     var(--ec-ink-900);
+  --ec-text-link:        var(--ec-blue-300);
+  /* 暗色下所有实色面都被提亮，压在上面的文字必须反相为深字，
+     否则白字在 #FF7A6B / #34D399 这类亮面上只有 2:1 左右。 */
+  --ec-text-on-action:   var(--ec-ink-900);
+  --ec-text-placeholder: var(--ec-ink-500);
+
+  /* ═══ 描边 ══════════════════════════════════════════════════════════════ */
+  --ec-border-subtle:  var(--ec-ink-700);
+  --ec-border-default: var(--ec-ink-600);
+  --ec-border-strong:  var(--ec-ink-500);
+  --ec-border-focus:   var(--ec-blue-300);
+  --ec-border-inverse: rgba(0, 0, 0, .32);
+
+  /* ═══ 行动 ══════════════════════════════════════════════════════════════ */
+  --ec-action-primary:        var(--ec-blue-300);
+  --ec-action-primary-hover:  var(--ec-blue-100);
+  --ec-action-primary-active: var(--ec-blue-50);
+  --ec-action-primary-soft:   #1E2340;
+  --ec-action-primary-border: rgba(165, 174, 255, .38);
+  --ec-action-primary-dim:    rgba(165, 174, 255, .14);
+
+  /* 暗色下主按钮改用「亮面 + 深字」，而不是深面 + 白字：
+     深色画布上白字按钮会和背景抢层级，亮蓝面 + 深字才是正确的层级信号。 */
+  --ec-button-primary-bg: linear-gradient(135deg, var(--ec-blue-300) 0%, #C3B4FF 55%, #8FE6F5 100%);
+  --ec-button-primary-fg: var(--ec-ink-900);   /* 亮面上必须用深字（白字 2.08:1） */
+  --ec-button-primary-shadow: 0 8px 24px rgba(91, 108, 255, .32);
+  --ec-button-primary-hover-shadow: 0 10px 28px rgba(91, 108, 255, .42);
+  --ec-button-secondary-bg:  #1E2340;
+  --ec-button-secondary-fg:  var(--ec-blue-300);
+  --ec-button-outline-bg:    transparent;
+  --ec-button-outline-border: var(--ec-ink-600);
+  --ec-button-ghost-hover:   var(--ec-ink-800);
+
+  /* ═══ 功能色（暗色统一提亮一档） ════════════════════════════════════════ */
+  --ec-success:        #34D399;
+  --ec-success-soft:   rgba(52, 211, 153, .12);
+  --ec-success-text:   #34D399;
+  --ec-success-border: rgba(52, 211, 153, .26);
+
+  --ec-warning:        #FBBF24;
+  --ec-warning-soft:   rgba(251, 191, 36, .12);
+  --ec-warning-text:   #FBBF24;
+  --ec-warning-border: rgba(251, 191, 36, .26);
+
+  --ec-danger:         #FF7A6B;
+  --ec-danger-soft:    rgba(255, 122, 107, .12);
+  --ec-danger-text:    #FF7A6B;
+  --ec-danger-border:  rgba(255, 122, 107, .26);
+
+  --ec-info:           var(--ec-blue-300);
+  --ec-info-soft:      rgba(165, 174, 255, .12);
+  --ec-info-text:      var(--ec-blue-300);
+  --ec-info-border:    rgba(165, 174, 255, .26);
+
+  /* ═══ 渐变（装饰面统一压到 .85 不透明度，避免在暗底上过曝） ════════════ */
+  --ec-grad-brand: linear-gradient(135deg,
+      rgba(91, 108, 255, .85) 0%, rgba(168, 85, 247, .85) 55%, rgba(34, 211, 238, .85) 100%);
+  --ec-grad-action: linear-gradient(135deg, var(--ec-blue-300) 0%, #C3B4FF 55%, #8FE6F5 100%);
+  --ec-grad-gold: linear-gradient(135deg, #4A3A12 0%, var(--ec-gold-500) 45%, var(--ec-gold-300) 100%);
+  --ec-grad-sheen: linear-gradient(135deg, rgba(255, 255, 255, .10) 0%, rgba(255, 255, 255, 0) 42%);
+
+  /* ═══ 焦点环（暗底需要更亮的一圈才看得见） ══════════════════════════════ */
+  --ec-ring-color: rgba(165, 174, 255, .32);
+
+  /* ═══ 阴影（深色下层级靠表面提亮 + 1px 描边，阴影只做「沉下去」） ═══════ */
+  --ec-shadow-xs:    0 1px 2px rgba(0, 0, 0, .32);
+  --ec-shadow-sm:    0 1px 2px rgba(0, 0, 0, .40);
+  --ec-shadow-md:    0 4px 12px rgba(0, 0, 0, .50);
+  --ec-shadow-lg:    0 12px 32px rgba(0, 0, 0, .60);
+  --ec-shadow-xl:    0 24px 64px rgba(0, 0, 0, .72);
+  --ec-shadow-brand: 0 8px 24px rgba(0, 0, 0, .48);
+  --ec-shadow-gold:  0 8px 24px rgba(0, 0, 0, .48);
+  --ec-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, .04);
+
+  /* ═══ 业务语义 ══════════════════════════════════════════════════════════ */
+  --ec-price-current:  #FF7A6B;
+  --ec-price-original: var(--ec-ink-500);
+  --ec-price-save:     #34D399;
+
+  --ec-code-surface: var(--ec-ink-950);
+  --ec-code-text:    var(--ec-ink-100);
+  --ec-code-border:  rgba(165, 174, 255, .35);
+  --ec-code-glow:    0 0 28px -6px rgba(165, 174, 255, .45);
+  --ec-code-mask:    var(--ec-ink-500);
+
+  --ec-vip-gold:      #F5D48C;
+  --ec-vip-gold-ink:  #F5D48C;
+  --ec-vip-gold-text: #2A1F06;
+  --ec-vip-black:     var(--ec-ink-900);
+  --ec-vip-silver:    linear-gradient(135deg, var(--ec-ink-800) 0%, var(--ec-ink-700) 100%);
+
+  --ec-status-online:   #34D399;
+  --ec-status-maintain: #FBBF24;
+  --ec-status-offline:  var(--ec-ink-500);
+  --ec-status-expired:  #FF7A6B;
+  --ec-status-vip:      #F5D48C;
+  --ec-status-owned:    var(--ec-blue-300);
+
+  --ec-order-step-done: #34D399;
+
+  /* ═══ 组件旋钮中与明暗相关的部分 ════════════════════════════════════════ */
+  --ec-input-bg:        var(--ec-ink-900);
+  --ec-input-bg-filled: var(--ec-ink-800);
+  --ec-input-border:    var(--ec-ink-600);
+  --ec-card-bg:         var(--ec-ink-850);
+  --ec-card-border:     var(--ec-ink-700);
+  --ec-table-head-bg:   var(--ec-ink-800);
+  --ec-table-stripe:    var(--ec-ink-750);   /* 原文指定 #171B24：默认斑马纹在暗底过亮 */
+  --ec-table-border:    var(--ec-ink-700);
+  --ec-skeleton-bg:     var(--ec-ink-800);
+}

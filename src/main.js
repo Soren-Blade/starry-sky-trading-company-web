@@ -1,12 +1,28 @@
+/*
+ * EC Design System v1.0 —— 本站唯一的视觉来源
+ * ============================================================================
+ * `assets/ec/` 是 ec-design-system 的**原样拷贝**（tokens 四层 + 组件库），
+ * 不要在这里改样式：要改就去改设计系统，再整体同步过来。
+ *
+ * 加载顺序有意义，不可调换：
+ *   1. ec.css      —— 带进 tokens（Primitive→Semantic→Type→Component→Business→Dark）
+ *                     与 EC 组件库；同时给出 body / a / img 的基线重置。
+ *   2. variables   —— 旧令牌名 → EC 语义令牌的对照表（90 个页面的样式都在消费它）。
+ *   3. global.css  —— 项目组件层（.u-* / .ui-* / .page-*），实现逐条对齐 EC。
+ *   4. ui-kit-*    —— 分片组件套件，必须排在 global.css 之后：
+ *                     骨架屏动画名、滚动条令牌化版本都在这里覆盖基础层。
+ */
+import './assets/ec/ec.css'
 import './assets/styles/variables.css'
 import './assets/styles/global.css'
 /*
  * 组件套件（第三批规范 §1–§21）分四个分片，按族划分而不是按页面。
- * 必须排在 global.css 之后：骨架屏的动画名、滚动条的令牌化版本都在这里覆盖基础层的旧实现。
- *   form     §1 下拉/选择器 §2 复选框 §3 单选框 §4 开关 §5 滑块
- *   nav      §6 步骤条 §7 手风琴 §8 选项卡 §9 面包屑
- *   data     §10 表格 §11 日期选择器 §12 文件上传 §13 评分
- *   feedback §14 气泡提示 §15 抽屉 §16 骨架屏 §17 空状态 §18 通知徽标 §19 滚动条 §21 通用状态
+ * 2026-10-25 删掉了 9 个 0 引用的族（单选/滑块/步骤/手风琴/面包屑/上传/评分/气泡/抽屉），
+ * 节号保留原编号，跳号即已删：
+ *   form     §1 下拉/选择器 §2 复选框 §4 开关
+ *   nav      §8 选项卡 + EC theme-switch
+ *   data     §10 表格 §11 日期选择器
+ *   feedback §16 骨架屏 §17 空状态 §18 通知徽标 §19 滚动条 §21 通用状态
  */
 import './assets/styles/ui-kit-form.css'
 import './assets/styles/ui-kit-nav.css'

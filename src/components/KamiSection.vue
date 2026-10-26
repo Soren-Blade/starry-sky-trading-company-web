@@ -51,8 +51,48 @@
               </button>
             </div>
 
+            <!--
+              兑换结果按语义套用设计系统 .ec-redeem-result 的四模板：
+              成功 / 已使用 / 已过期 / 未找到。四者标题、描述与下一步操作都不同；
+              「请选择要激活的工具」「网络异常」这类**流程性错误**不是兑换结果，
+              不硬套模板，仍用原来的内联提示。
+            -->
+            <div v-if="activationView" class="activation-result" role="status">
+              <div
+                class="ec-redeem-result"
+                :class="`ec-redeem-result--${activationView.variant}`"
+              >
+                <div class="ec-redeem-result__icon">
+                  <AppIcon :name="activationView.icon" />
+                </div>
+                <div class="ec-redeem-result__title">{{ activationView.title }}</div>
+                <p class="ec-redeem-result__desc">{{ activationView.desc }}</p>
+                <div class="ec-redeem-result__actions">
+                  <template v-for="action in activationView.actions" :key="action.label">
+                    <router-link
+                      v-if="action.href"
+                      :to="action.href"
+                      class="ec-btn ec-btn--sm"
+                      :class="`ec-btn--${action.kind}`"
+                    >
+                      {{ action.label }}
+                    </router-link>
+                    <button
+                      v-else
+                      type="button"
+                      class="ec-btn ec-btn--sm"
+                      :class="`ec-btn--${action.kind}`"
+                      @click="handleActivationAction(action.action)"
+                    >
+                      {{ action.label }}
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
             <p
-              v-if="activationResult"
+              v-else-if="activationResult"
               :class="activationResult.success ? 'success-msg' : 'error-msg'"
               role="status"
             >
@@ -66,7 +106,7 @@
         </div>
 
         <!-- ── 右栏：列表 ─────────────────────────────────── -->
-        <div class="panel list-panel">
+        <div ref="listPanel" class="panel list-panel">
           <div class="list-toolbar">
             <div class="toolbar-left">
               <span class="card-count">共 {{ pagination.total }} 张卡密</span>
@@ -262,6 +302,107 @@
   </section>
 </template>
 
+<script>
+/**
+ * 兑换结果 → 设计系统 RedeemResult 四模板。
+ *
+ * 为什么不放在 `<script setup>` 里：这段映射是纯函数，测试可以直接 import
+ * 断言「四个语义各自得到不同的标题/描述/操作」，不需要挂载组件或触发请求。
+ *
+ * 判定依据只用**现有接口已经给出的字段**，不新增后端契约：
+ *   - success === true                → success
+ *   - code 为 CARD_NOT_FOUND / CARD_EXPIRED / CARD_USED（测试桩与部分接口会带）
+ *   - 否则退回服务端 message 子串（use_card 的真实文案：
+ *     「卡密不存在」「卡密已过期」「卡密已被使用或已失效」）
+ * 其它失败（缺少工具、网络异常、未知错误）返回 null —— 由调用处显示普通错误提示，
+ * 不能把它们统统塞进「兑换失败」。
+ */
+export const REDEEM_RESULT_VARIANTS = {
+  SUCCESS: 'success',
+  USED: 'used',
+  EXPIRED: 'expired',
+  NOTFOUND: 'notfound',
+}
+
+/**
+ * @param {object|null} result activationResult：服务端报文或 { success, message }
+ * @param {{ rewards?: string, formatDate?: (value: *) => string }} [options]
+ * @returns {null | { variant: string, icon: string, title: string, desc: string, actions: Array }}
+ */
+export function buildActivationResultView(result, { rewards = '', formatDate } = {}) {
+  if (!result || typeof result !== 'object') return null
+
+  const data = result.data && typeof result.data === 'object' ? result.data : {}
+  const message = String(result.message || '')
+  const format = typeof formatDate === 'function' ? formatDate : (value) => String(value || '—')
+
+  if (result.success === true) {
+    const parts = []
+    const name = data.card_name ? `「${data.card_name}」` : '卡密'
+    parts.push(`${name}已到账`)
+    if (data.entitlement_expires_at) {
+      parts.push(`有效期至 ${format(data.entitlement_expires_at)}`)
+    } else if (data.duration_days) {
+      parts.push(`有效期 ${data.duration_days} 天`)
+    }
+    if (rewards) parts.push(`已发放 ${rewards}`)
+    parts.push('可在「我的卡密」查看详情，也可以继续兑换下一张。')
+
+    return {
+      variant: REDEEM_RESULT_VARIANTS.SUCCESS,
+      icon: 'check-circle',
+      title: '兑换成功',
+      desc: parts.join('，'),
+      actions: [
+        { label: '查看我的卡密', kind: 'primary', action: 'show-cards' },
+        { label: '继续兑换', kind: 'outline', action: 'continue' },
+      ],
+    }
+  }
+
+  const code = String(result.code || '')
+  const notFound = code === 'CARD_NOT_FOUND' || /不存在|未找到|找不到/.test(message)
+  const expired = code === 'CARD_EXPIRED' || /已过期|过期/.test(message)
+  const used =
+    code === 'CARD_USED' || code === 'CARD_ALREADY_USED' || /已被使用|已使用|已失效/.test(message)
+
+  if (notFound) {
+    return {
+      variant: REDEEM_RESULT_VARIANTS.NOTFOUND,
+      icon: 'search',
+      title: '没有找到这张卡密',
+      desc: '请检查是否输错了字母（如 O 与 0、I 与 1）。若确认无误，可能是购买渠道尚未同步，请稍后重试。',
+      actions: [{ label: '重新输入', kind: 'outline', action: 'restart' }],
+    }
+  }
+
+  if (expired) {
+    return {
+      variant: REDEEM_RESULT_VARIANTS.EXPIRED,
+      icon: 'alert-triangle',
+      title: '卡密已过期',
+      desc: '这张卡密已超过有效期，无法继续兑换。若为近期购买，可凭订单号联系客服核实延期。',
+      actions: [
+        { label: '联系客服', kind: 'primary', href: '/support' },
+        { label: '重新输入', kind: 'outline', action: 'restart' },
+      ],
+    }
+  }
+
+  if (used) {
+    return {
+      variant: REDEEM_RESULT_VARIANTS.USED,
+      icon: 'clock',
+      title: '这张卡密已被使用',
+      desc: '卡密已兑换过，不能重复使用。可在「我的卡密」中查看兑换记录；如果是本人操作，无需处理。',
+      actions: [{ label: '查看我的卡密', kind: 'outline', action: 'show-cards' }],
+    }
+  }
+
+  return null
+}
+</script>
+
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
@@ -381,7 +522,7 @@ const activation = useKamiActivation({
   onActivated: () => reload(1),
 })
 
-const { activateCode, selectedToolId, activationResult, activating } = activation
+const { activateCode, selectedToolId, activationResult, activating, clearResult } = activation
 
 /**
  * 本次激活发放的积分 / 成长值，用于在成功提示后补一句「已发放 …」。
@@ -400,6 +541,29 @@ const activationRewards = computed(() => {
   if (info.growth_granted !== undefined) parts.push(`${info.growth_granted} 成长值`)
   return parts.join('、')
 })
+
+/** 四模板视图；null 表示这是流程性错误（缺工具 / 网络异常），走普通错误提示 */
+const activationView = computed(() =>
+  buildActivationResultView(activationResult.value, {
+    rewards: activationRewards.value,
+    formatDate: formatCardDate,
+  })
+)
+
+/** 右栏列表：成功/已使用模板的「查看我的卡密」滚动到这里 */
+const listPanel = ref(null)
+
+const handleActivationAction = (action) => {
+  if (action === 'show-cards') {
+    listPanel.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    return
+  }
+  if (action === 'continue' || action === 'restart') {
+    // 结束本次结果展示，光标回到输入框；输入内容留在原处便于修正
+    clearResult()
+    focusActivate()
+  }
+}
 
 const handleActivate = () => activation.activate()
 
@@ -582,6 +746,18 @@ watch(
   background: var(--danger-bg);
 }
 
+/* ── 兑换结果（设计系统 RedeemResult 四模板） ───────────────── */
+/* 组件自带的 32px 纵向内边距在左栏窄面板里过大，收紧到与面板节奏一致；
+   颜色、圆角、描边、图标底色全部来自 --ec-*，这里只调间距。 */
+.activation-result .ec-redeem-result {
+  padding: var(--ec-space-6) var(--ec-space-4);
+}
+
+.activation-result .ec-redeem-result__icon :deep(.app-icon) {
+  width: var(--ec-space-6);
+  height: var(--ec-space-6);
+}
+
 .activate-tips {
   margin: 0;
   font-size: var(--fs-sm);
@@ -679,7 +855,7 @@ watch(
 
 /* ── 分页 ─────────────────────────────────────────────────────
  * 尺寸 / 圆角 / 间距 / 字号四项全部来自 `--pager-*` 令牌，
- * 与项目里其它分页（如订单页）同源，因此五套主题下自动成立。
+ * 与项目里其它分页（如订单页）同源，因此明暗两套主题下自动成立。
  * 页码按钮复用 `.u-icon-btn` 的盒子（正方形、居中），
  * 当前页用一组 `--pager-active-*` 令牌（neo 是黑底硬阴影、mono 是描边绿字）。
  */
