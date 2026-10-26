@@ -27,6 +27,34 @@ const LEGACY_STORAGE_KEY = 'SSTC_THEME_PREF'
 /** 三档：浅色 / 深色 / 跟随系统（顺序即 EC theme-switch 的按钮顺序） */
 export const THEME_MODES = ['light', 'dark', 'auto']
 
+/**
+ * 切换瞬间挂在 `<html>` 上的瞬时类。
+ *
+ * global.css 用它给常用容器开一组「只过渡颜色」的 transition：
+ * 类在的时候颜色是插值过去的，类一摘就恢复平时的硬切 —— 常驻过渡会把
+ * hover、展开、滚动时的一切颜色变化都拖成动画 —— 也就是「所有属性一起过渡」
+ * 的老问题，也是主题切换「有的地方快、有的地方慢」的来源。
+ */
+export const THEME_SWITCH_CLASS = 'is-theme-switching'
+
+/**
+ * 瞬时类的存活时长。
+ *
+ * 必须略长于 CSS 里的过渡时长（global.css 用 200ms）：类先撤、过渡还没跑完，
+ * 最后一段会由元素自己的 transition 接管，观感就是「快到头了又慢半拍」。
+ * 260ms 留 60ms 余量，人眼察觉不到多出来的这一小段。
+ */
+export const THEME_SWITCH_MS = 260
+
+/**
+ * 上一次切换的收尾定时器。
+ *
+ * 放模块作用域而不是 state：state 里的值会被 Vue 变成响应式代理，
+ * Node 环境下 `setTimeout` 返回的是 Timeout 对象，包成 Proxy 之后再
+ * `clearTimeout` 就不一定认得它了。定时器本来也不需要参与渲染。
+ */
+let themeSwitchTimer = null
+
 const isMode = (value) => THEME_MODES.includes(value)
 
 /** 读本地偏好：隐私模式 / 脏数据都不应让首屏崩掉 */
@@ -109,6 +137,9 @@ export const useThemeStore = defineStore('theme', {
     /** 切换三档（theme-switch 的唯一入口） */
     setMode(mode) {
       this.mode = isMode(mode) ? mode : 'light'
+      // 先开过渡、再写属性：两条在同一帧内完成，浏览器会用上一帧的
+      // 旧颜色作为起点插值，于是切换是「渐变」而不是「啪」。
+      this.startColorTransition()
       this.apply()
       writeMode(this.mode)
     },
@@ -126,6 +157,38 @@ export const useThemeStore = defineStore('theme', {
     },
 
     /**
+     * 主题切换的颜色过渡：给 `<html>` 加瞬时类，约 260ms 后摘掉。
+     *
+     * 为什么不是常驻 transition：颜色过渡本该只发生在「换主题」这一瞬间。
+     * 常驻的话，每次 hover、每次滚动收缩、每个展开动画都会被顺手拖慢，
+     * 用户看到的反而是「有的元素慢半拍」。
+     *
+     * 快速连点：先清掉上一个定时器再重挂。否则上一次的收尾会在新一次
+     * 切换进行到一半时把类摘走，后半程又变回硬切。
+     */
+    startColorTransition() {
+      if (themeSwitchTimer) {
+        clearTimeout(themeSwitchTimer)
+        themeSwitchTimer = null
+      }
+
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      if (!root || !root.classList) return
+
+      // 系统开了「减弱动态效果」就干脆不插值：颜色一步到位，别制造晕眩
+      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      }
+
+      root.classList.add(THEME_SWITCH_CLASS)
+      themeSwitchTimer = setTimeout(() => {
+        root.classList.remove(THEME_SWITCH_CLASS)
+        themeSwitchTimer = null
+      }, THEME_SWITCH_MS)
+    },
+
+    /**
      * auto 档跟随系统：只监听一次，且只在 auto 时生效。
      * 监听器挂在 window 上而不是 store 里存句柄 —— 这个 store 是单例，
      * 重复 init() 的代价只是多一个监听，比维护句柄的生命周期更简单。
@@ -135,7 +198,10 @@ export const useThemeStore = defineStore('theme', {
       if (this._systemWatcher) return
       this._systemWatcher = true
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if (this.mode === 'auto') this.apply()
+        if (this.mode !== 'auto') return
+        // 系统换色也是一次主题切换，同样走渐变（否则 auto 档是唯一硬切的路径）
+        this.startColorTransition()
+        this.apply()
       })
     },
   },

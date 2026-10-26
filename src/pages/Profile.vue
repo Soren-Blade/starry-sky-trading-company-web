@@ -141,42 +141,46 @@
             <dt>{{ row.label }}</dt>
 
             <!--
-              用户标识用设计系统的 CardCodeBox 版式：默认只显示前三段，
-              点眼睛后显示明文，30 秒自动回到掩码；复制按钮放在 __act 里。
+              用户标识：dd 元素本身就是设计系统的 CardCodeBox —— label / value / act
+              三段都是它的直接子元素，外面不再套只读字段底板，也不再多包一层 div；
+              行高、左基线、上下留白由 .profile-field-value 统一提供给所有字段行
+              （只读字段值的样式见文件末尾那一节样式表）。
+              默认只显示前三段，点眼睛后显示明文，30 秒自动回到掩码；复制按钮在 __act 里。
               这里不是卡密详情页，因此不加水印。
             -->
-            <dd v-if="row.key === 'uuid'" class="u-field-value">
-              <div class="ec-code profile-uuid-code">
-                <span class="ec-code__label">{{ uuidRevealed ? '明文' : '已脱敏' }}</span>
-                <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
-                  {{ uuidDisplay }}
-                </span>
-                <div class="ec-code__act">
-                  <button
-                    type="button"
-                    class="ec-icon-btn"
-                    :aria-pressed="uuidRevealed ? 'true' : 'false'"
-                    :aria-label="uuidRevealed ? '隐藏用户标识' : '显示用户标识'"
-                    :disabled="!uuidRaw"
-                    @click="toggleUuid"
-                  >
-                    <AppIcon :name="uuidRevealed ? 'eye-off' : 'eye'" />
-                  </button>
-                  <button
-                    type="button"
-                    class="ec-icon-btn"
-                    :class="{ 'is-ok': uuidCopied }"
-                    :aria-label="uuidCopied ? '已复制用户标识' : '复制用户标识'"
-                    :disabled="!uuidRaw"
-                    @click="copyUuid"
-                  >
-                    <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
-                    <span class="ec-sr">{{ uuidCopied ? '已复制' : '复制' }}</span>
-                  </button>
-                </div>
+            <dd
+              v-if="row.key === 'uuid'"
+              class="profile-field-value profile-field-value--code ec-code ec-code--sm"
+            >
+              <span class="ec-code__label">{{ uuidRevealed ? '明文' : '已脱敏' }}</span>
+              <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
+                {{ uuidDisplay }}
+              </span>
+              <div class="ec-code__act">
+                <button
+                  type="button"
+                  class="ec-icon-btn"
+                  :aria-pressed="uuidRevealed ? 'true' : 'false'"
+                  :aria-label="uuidRevealed ? '隐藏用户标识' : '显示用户标识'"
+                  :disabled="!uuidRaw"
+                  @click="toggleUuid"
+                >
+                  <AppIcon :name="uuidRevealed ? 'eye-off' : 'eye'" />
+                </button>
+                <button
+                  type="button"
+                  class="ec-icon-btn"
+                  :class="{ 'is-ok': uuidCopied }"
+                  :aria-label="uuidCopied ? '已复制用户标识' : '复制用户标识'"
+                  :disabled="!uuidRaw"
+                  @click="copyUuid"
+                >
+                  <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
+                  <span class="ec-sr">{{ uuidCopied ? '已复制' : '复制' }}</span>
+                </button>
               </div>
             </dd>
-            <dd v-else class="u-field-value">{{ row.value }}</dd>
+            <dd v-else class="profile-field-value u-field-value">{{ row.value }}</dd>
           </div>
         </dl>
 
@@ -349,9 +353,11 @@
       </section>
     </div>
     <!--
-      操作日志（可导出）：数据来源是服务端 `sstc.tool_usage` 里 `user_id` 等于本人
-      的记录，由 `GET /userLogsApi/` 读取。刻意**只放导出、不放页面内列表**：
-      日志是「需要留证时才翻」的东西，常驻一张几百行的表只会把资料表单推下去。
+      操作日志（可导出）：数据来源是服务端合并后的「本人全部重要操作」——`sstc.user_events`
+      （登录/注册等没有主表可查的动作）与各业务主表（工具使用、下单、兑换卡密、收藏、加购、
+      积分与成长值变动、签到、领券、开通会员），由 `GET /userLogsApi/` 读取。
+      刻意**只放导出、不放页面内列表**：日志是「需要留证时才翻」的东西，常驻一张几百行的表
+      只会把资料表单推下去。
       时间窗三档（一个月 / 半年 / 一年）与导出的 CSV 列由服务端决定，
       前端只负责把 blob 接成下载 —— 口径放在服务端，换接口时不会两边各写一套。
     -->
@@ -360,7 +366,8 @@
         <div class="profile-logs-text">
           <p class="profile-logs-title">操作日志</p>
           <p class="profile-logs-desc">
-            你在各工具页的操作记录（时间、工具、动作、耗时、结果）。可导出为 CSV，最多近一年、5000 条。
+            你的账号与商城操作记录（登录、下单、兑换卡密、收藏、加购、签到、积分与成长值变动等）。
+            可导出为 CSV，最多近一年、5000 条。
           </p>
         </div>
         <button
@@ -392,7 +399,7 @@
       </div>
 
       <p class="page-note profile-logs-note">
-        日志只记录「你用了哪个工具、做了什么、成功与否」，不包含你在输入框里填写的内容；游客身份没有账号历史。
+        日志记录「你做了什么、对象是什么、成功与否」，不包含你在输入框里填写的内容，卡密卡号在服务端就已脱敏；游客身份没有账号历史。
       </p>
     </section>
   </div>
@@ -1055,14 +1062,44 @@ onMounted(() => {
   margin: 0;
 }
 
-/* UUID 用设计系统 CardCodeBox：占满字段值列，窄屏用省略号而不是撑破两栏 */
-.profile-uuid-code {
-  width: 100%;
+/* ── 只读字段值：.profile-fields 下所有 <dd> 的唯一节奏来源 ────────────────
+ * 字号 / 行高 / 颜色 / 内边距 / 断词规则只写在这里一次：普通字段的只读底板
+ * （.u-field-value）与用户标识的 CardCodeBox（.ec-code）都从这套节奏取值，
+ * 所以两条行的高度、左基线、上下留白天然对齐。新增字段行请勿另写 padding。 */
+.profile-field-value {
+  min-width: 0;
+  padding-block: 0;
+  padding-inline: var(--ec-input-px);
+  min-height: var(--ec-control-h-md);
+  font-size: var(--ec-body-size);
+  line-height: var(--ec-body-lh);
+  color: var(--ec-text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* 普通只读字段的底板：整份样式里 .u-field-value 只在这里出现一次。
+ * 字号 / 行高 / 颜色 / padding / 断词由上面的 .profile-field-value 提供，
+ * 这里只补「只读框」自身的外观，令牌与设计系统的 .u-field-value 完全一致。 */
+.profile-fields .u-field-value {
+  display: flex;
+  align-items: center;
+  font-family: var(--ec-font-mono);
+  background: var(--ec-bg-muted);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: var(--ec-radius-lg);
+}
+
+/* 用户标识：<dd> 本体就是 CardCodeBox（三段是直接子元素）。
+ * 1) 卡片自带的块级 padding 让位给上面统一的 min-height，与其它行等高；
+ * 2) 值区可收缩 → 放不下时走省略号，__act 永远留在卡片可视区内；
+ * 3) 图标按钮降到 sm 档，避免 36px 的按钮把 36px 高的卡片上下边撑满。 */
+.profile-field-value--code .ec-code__value {
   min-width: 0;
 }
 
-.profile-uuid-code .ec-code__value {
-  min-width: 0;
+.profile-field-value--code .ec-icon-btn {
+  width: var(--ec-control-h-sm);
+  height: var(--ec-control-h-sm);
 }
 
 .profile-note {
@@ -1246,6 +1283,27 @@ onMounted(() => {
 @media (max-width: 991px) {
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 移动端：字段行跟着设计系统的全局缩放收一档。
+ * .profile-field-value 的选择器比 .u-field-value 更具体，必须在这里显式同步，
+ * 否则普通字段行与小屏基线会出现两种 min-height / padding。 */
+@media (max-width: 767px) {
+  .profile-field-value {
+    min-height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
+    padding-inline: calc(var(--ec-input-px) * var(--mobile-padding-scale));
+  }
+
+  /* 窄屏兜底：标识行必须留在栏宽以内 —— 卡片宽度上限钉在 100%，
+   * 值区沿用基线的 min-width: 0（可收缩 → 省略号），再叠一层任意断词，
+   * 这样任何长度的标识都不会把 __act 或整张卡片挤出可视区。 */
+  .profile-field-value--code {
+    max-width: 100%;
+  }
+
+  .profile-field-value--code .ec-code__value {
+    overflow-wrap: anywhere;
   }
 }
 

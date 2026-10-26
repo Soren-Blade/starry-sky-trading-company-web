@@ -184,6 +184,17 @@
               />
               <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
             </span>
+            <!-- 在线状态圆点：有身份就常驻头像右下角，呼吸光晕表达「在线」。
+                 条件用 hasIdentity 而不是 userStore.isLoggedIn —— 后者是
+                 `user_type === 'registered'`，会把游客判成未登录而让圆点消失，
+                 而游客同样是已解析出来的身份（有 userId），也该显示在线点。
+                 纯装饰：语义由头像按钮的 aria-label 承担，读屏不必多读一遍。 -->
+            <span
+              v-if="hasIdentity"
+              class="navbar-avatar-status"
+              :class="{ 'navbar-avatar-status--guest': isGuest }"
+              aria-hidden="true"
+            ></span>
             <!-- 游客标记直接压在头像上：不展开菜单也能一眼看出当前不是正式账号 -->
             <span v-if="isGuest" class="guest-mark" aria-hidden="true">游</span>
           </button>
@@ -246,10 +257,13 @@
               图标是纯装饰（整块 aria-hidden）：条目的无障碍名由文本本身承担，
               读屏时不该多读一遍「用户图标」这种噪声。
             -->
-            <p class="dropdown-group-label">账号资产</p>
+            <!-- 分组标题按设计去掉了可见形态：菜单里不再出现「账号资产」这行小字。
+                 组名保留为 visually-hidden —— role="menu" 的条目仍需要一个分组上下文，
+                 读屏用户听到的是「账号资产，个人中心」，而不是一串没有归属的跳转。 -->
+            <p class="visually-hidden">账号资产</p>
             <router-link
               role="menuitem"
-              class="u-dropdown-item"
+              class="u-dropdown-item user-menu-first-item"
               to="/user/profile"
               @click="handleMenuClick"
             >
@@ -1105,6 +1119,65 @@ onUnmounted(() => {
   border-radius: var(--radius-pill);
 }
 
+/* 在线状态圆点：头像右下角的 9px 绿点。
+ *
+ * 为什么挂在 .user-avatar-btn 而不是 .u-avatar 里面：
+ *   `.u-avatar` 是 `overflow: hidden` + 圆形，挂在里面会被裁成半个月牙。
+ *   按钮本身就是头像盒子的相对定位容器，圆点贴它的右下角，天然落在头像边缘。
+ *
+ * 为什么只动 box-shadow / opacity：
+ *   顶栏是 flex 行，`transform: scale` 会把圆点算进布局或触发相邻图标的
+ *   重排/裁剪，切换呼吸时整条导航会跟着抖；阴影不参与布局。
+ */
+.navbar-avatar-status {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-success);
+  /* 2px 顶栏表面色描边：把圆点从头像图上切下来，再亮也不会糊成一团 */
+  box-shadow: 0 0 0 2px var(--ec-bg-surface);
+  pointer-events: none;
+}
+
+/* 呼吸圈：从描边处向外扩散、同时淡出，2s 一圈。 */
+.navbar-avatar-status::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--ec-success);
+  opacity: 0;
+  animation: navbar-avatar-pulse 2s var(--ec-ease-out) infinite;
+}
+
+@keyframes navbar-avatar-pulse {
+  0% {
+    box-shadow: 0 0 0 2px var(--ec-success);
+    opacity: 0.45;
+  }
+
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px var(--ec-success);
+    opacity: 0;
+  }
+}
+
+/* 游客身份的「游」徽标也占右下角：圆点向左让开一格，两者互不压盖 */
+.navbar-avatar-status--guest {
+  right: calc(var(--space-unit) * 2);
+}
+
+/* 前庭系统敏感 / 低电量模式：保留静息绿点，关掉呼吸 */
+@media (prefers-reduced-motion: reduce) {
+  .navbar-avatar-status::after {
+    animation: none;
+  }
+}
+
 /*
  * 头像下拉：定位 + 三处刻意的局部覆盖。
  *  1. 动画：全局 `.u-dropdown` 用的是 `--enter-duration`(0.5s)，那是**页面进入**的节奏；
@@ -1187,17 +1260,14 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* 下拉里的小组标题：与 .legal-toc-title 同族（等宽、小号、静音色），
-   只负责分隔语义，不参与点击 */
-.dropdown-group-label {
-  margin: 0;
-  padding: calc(var(--space-unit) * 1.5) var(--dropdown-item-padding-x) calc(var(--space-unit) * 0.5);
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-muted);
+/* 分组标题的可见形态已删（组名只留给读屏，见模板里的 visually-hidden）。
+ *
+ * 原来那行标题自带 12px 上内边距 + 4px 下内边距，删掉后首项会直接贴上分隔线，
+ * 面板顶部会突然「变紧」。这里把那段呼吸折算成首项的上外边距：
+ * 分隔线到「个人中心」的视觉间距从 ~40px 收到 ~25px —— 标题没了，空白不该
+ * 还按有标题时的量留着，但也不能贴着线，取两者之间的一档。 */
+.user-menu-first-item {
+  margin-top: calc(var(--space-unit) * 2);
 }
 
 .u-dropdown-item.logout {

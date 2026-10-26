@@ -38,6 +38,8 @@
                 class="u-input"
                 placeholder="请粘贴卡密号..."
                 aria-label="卡密号"
+                @paste="queueToolLookup"
+                @blur="queueToolLookup"
                 @keyup.enter="handleActivate"
               />
               <button
@@ -102,6 +104,102 @@
             <p class="activate-tips">
               <AppIcon name="zap" /> 激活后可在"我的卡密"中查看详情
             </p>
+
+            <!--
+              会员免卡密激活（需求 8）。
+              额度、身份全部来自 /kamiApi/memberQuota；非会员也保留这张卡 ——
+              它回答的是「除了买卡密，还有一条会员通道」，隐藏起来用户就永远
+              不知道有这条路，只是提交按钮禁用。
+            -->
+            <section class="member-card" aria-labelledby="member-activate-title">
+              <div class="member-head">
+                <h4 id="member-activate-title" class="member-title">
+                  <AppIcon name="crown" /> 会员免卡密激活
+                </h4>
+                <p v-if="memberQuotaLoading && !memberQuota" class="member-identity">
+                  正在读取会员权益…
+                </p>
+                <p
+                  v-else-if="memberQuota && !memberQuota.is_member"
+                  class="member-identity member-identity--guest"
+                >
+                  还不是会员 · 开通会员可免卡密使用工具
+                </p>
+                <p v-else-if="memberQuota" class="member-identity">{{ memberQuotaText }}</p>
+                <p
+                  v-else-if="memberQuotaError"
+                  class="member-identity"
+                  :class="{ 'member-identity--error': !memberQuotaUnavailable }"
+                >
+                  {{ memberQuotaError }}
+                </p>
+                <p v-if="memberQuota?.is_member && memberQuota.expires_at" class="member-expire">
+                  权益有效期至 {{ formatDate(memberQuota.expires_at) }}
+                </p>
+              </div>
+
+              <form class="member-form" @submit.prevent="handleMemberActivate">
+                <SelectField
+                  v-model="memberToolId"
+                  :options="toolOptions"
+                  placeholder="选择要激活的工具"
+                  searchable
+                  aria-label="选择免卡密激活的工具"
+                  :disabled="memberFormDisabled"
+                />
+                <input
+                  v-model="memberUuid"
+                  type="text"
+                  class="u-input"
+                  placeholder="粘贴你的用户标识以确认身份"
+                  aria-label="用户标识（选填）"
+                  autocomplete="off"
+                  spellcheck="false"
+                  :disabled="memberFormDisabled"
+                />
+                <button
+                  type="submit"
+                  class="member-submit u-btn-primary"
+                  :disabled="memberSubmitDisabled"
+                  :aria-busy="memberActivating"
+                >
+                  {{ memberActivating ? '激活中...' : '免卡密激活' }}
+                </button>
+                <p v-if="!memberUuid.trim()" class="member-hint">
+                  用户标识可留空，留空时按当前登录账号校验身份
+                </p>
+              </form>
+
+              <div v-if="memberQuota && !memberQuota.is_member" class="member-cta">
+                <router-link to="/member/plans" class="ec-btn ec-btn--sm ec-btn--primary">
+                  开通会员
+                </router-link>
+              </div>
+
+              <div v-if="memberQuotaError && !memberQuota" class="member-cta">
+                <button
+                  type="button"
+                  class="ec-btn ec-btn--sm ec-btn--secondary"
+                  @click="loadMemberQuota"
+                >
+                  重试
+                </button>
+              </div>
+
+              <div v-if="memberError" class="member-error" role="alert">
+                <p class="member-error-text">{{ memberError.message }}</p>
+                <div v-if="memberErrorLinks.length" class="member-error-actions">
+                  <router-link
+                    v-for="link in memberErrorLinks"
+                    :key="link.to"
+                    :to="link.to"
+                    class="ec-btn ec-btn--sm ec-btn--secondary"
+                  >
+                    {{ link.label }}
+                  </router-link>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 
@@ -404,7 +502,7 @@ export function buildActivationResultView(result, { rewards = '', formatDate } =
 </script>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { notify } from '@/hooks/useToast/index.js'
@@ -524,6 +622,77 @@ const activation = useKamiActivation({
 
 const { activateCode, selectedToolId, activationResult, activating, clearResult } = activation
 
+/* ── 粘贴/失焦 → 自动识别卡密绑定的工具（需求 5.1） ────────────── */
+
+/** 防抖窗口：粘贴后等用户停手再查，连续粘贴只发一次请求 */
+const AUTO_LOOKUP_DEBOUNCE_MS = 400
+/** 不足 8 位不可能是完整卡密，查了也只会 404 */
+const AUTO_LOOKUP_MIN_LENGTH = 8
+
+let lookupTimer = null
+let lastLookupCardNo = ''
+let lookupSeq = 0
+let lookupDisposed = false
+
+const clearLookupTimer = () => {
+  if (!lookupTimer) return
+  clearTimeout(lookupTimer)
+  lookupTimer = null
+}
+
+/**
+ * 安排一次静默查询（blur / paste 共用）。
+ *
+ * 刻意延迟 400ms 再读 `activateCode`：paste 事件先于 v-model 更新触发，
+ * 此刻模型里还是旧值；等一拍之后读到的才是用户真正粘贴的内容。期间再次
+ * 触发（例如粘贴后马上失焦）会重置计时，同一张卡只查一次。
+ */
+const queueToolLookup = () => {
+  clearLookupTimer()
+  lookupTimer = setTimeout(runToolLookup, AUTO_LOOKUP_DEBOUNCE_MS)
+}
+
+async function runToolLookup() {
+  lookupTimer = null
+  const cardNo = activateCode.value.trim()
+  if (cardNo.length < AUTO_LOOKUP_MIN_LENGTH) return
+  // 已经有工具就不打扰用户；同一张卡不重复查询
+  if (selectedToolId.value || cardNo === lastLookupCardNo) return
+
+  lastLookupCardNo = cardNo
+  const seq = ++lookupSeq
+  try {
+    const response = await api.lookupCard(cardNo)
+    // 期间用户改了卡密、手选了工具或组件已卸载：丢弃这次结果
+    if (lookupDisposed || seq !== lookupSeq) return
+    if (response?.success !== true || !response.data) return
+    if (selectedToolId.value || activateCode.value.trim() !== cardNo) return
+
+    const toolId = response.data.tool_id
+    if (toolId == null) return
+
+    const option = toolOptions.value.find((item) => String(item.value) === String(toolId))
+    if (!option) {
+      // 卡密有效但工具已下架：明确告知，不自动选中一个不存在的项
+      notify.error('该卡密绑定的工具已下架')
+      return
+    }
+    selectedToolId.value = option.value
+    notify.success('已自动选择该卡密对应的工具')
+  } catch (error) {
+    // 静默失败：识别只是锦上添花，用户可能还在输入完整卡密，
+    // 任何 toast 都会打断。只在开发环境留一条 debug。
+    if (import.meta.env?.DEV) {
+      console.debug('[kami] lookupCard failed:', error?.code || error?.status || error?.message)
+    }
+  }
+}
+
+onBeforeUnmount(() => {
+  lookupDisposed = true
+  clearLookupTimer()
+})
+
 /**
  * 本次激活发放的积分 / 成长值，用于在成功提示后补一句「已发放 …」。
  *
@@ -565,6 +734,153 @@ const handleActivationAction = (action) => {
   }
 }
 
+/* ── 会员免卡密激活（需求 8） ─────────────────────────────────── */
+
+const memberQuota = ref(null)
+const memberQuotaLoading = ref(false)
+const memberQuotaError = ref('')
+/**
+ * 404 表示后端还没部署这个能力（契约先行）。这不是用户操作失败，
+ * 文案保持中性色；只有真实读取错误才用告警色。
+ */
+const memberQuotaUnavailable = ref(false)
+const memberToolId = ref('')
+const memberUuid = ref('')
+const memberActivating = ref(false)
+const memberError = ref(null)
+
+const memberIsMember = computed(() => memberQuota.value?.is_member === true)
+
+/**
+ * 额度文案。档位优先用 `level`（V4 这类短标识，正合设计稿的
+ * 「V4 · 本等级可免卡密激活 …」），缺失时退回 level_name。
+ */
+const memberQuotaText = computed(() => {
+  const quota = memberQuota.value
+  if (!quota?.is_member) return ''
+  const level = quota.level || quota.level_name || '会员'
+  if (quota.unlimited) {
+    return `${level} · 本等级免卡密激活不限数量，已用 ${quota.used} 个`
+  }
+  return `${level} · 本等级可免卡密激活 ${quota.quota} 个工具，已用 ${quota.used} 个，剩余 ${quota.remaining} 个`
+})
+
+const memberFormDisabled = computed(() => !memberIsMember.value || memberActivating.value)
+
+const memberSubmitDisabled = computed(() => memberFormDisabled.value || !memberToolId.value)
+
+/** 后端 code → 可执行文案。未知 code 保留服务端 message，绝不吞掉 */
+const MEMBER_ERROR_MESSAGES = {
+  NOT_MEMBER: '当前账号还不是会员，开通会员后可免卡密激活工具。',
+  QUOTA_EXCEEDED: '本等级额度已用满，升级会员或购买卡密。',
+  TOOL_NOT_ELIGIBLE: '该工具不支持会员免卡密激活，请购买卡密。',
+  USER_UUID_MISMATCH: '用户标识与当前登录账号不一致。',
+  TOOL_NOT_FOUND: '该工具不存在或已下架。',
+  TOOL_ID_REQUIRED: '请先选择要激活的工具。',
+}
+
+const memberErrorLinks = computed(() => {
+  const code = memberError.value?.code
+  if (code === 'NOT_MEMBER') return [{ to: '/member/plans', label: '开通会员' }]
+  if (code === 'QUOTA_EXCEEDED') {
+    return [
+      { to: '/member/plans', label: '升级会员' },
+      { to: '/tool', label: '购买卡密' },
+    ]
+  }
+  if (code === 'TOOL_NOT_ELIGIBLE' || code === 'TOOL_NOT_FOUND') {
+    return [{ to: '/tool', label: '购买卡密' }]
+  }
+  return []
+})
+
+const resolveMemberError = (error) => {
+  const code = String(error?.code || '')
+  return {
+    code,
+    message: MEMBER_ERROR_MESSAGES[code] || error?.message || '激活失败，请稍后再试。',
+  }
+}
+
+/** 额度独立取数：不复用会员中心 store，避免把权益页的缓存牵连进来 */
+async function loadMemberQuota() {
+  if (!canUseKami.value || memberQuotaLoading.value) return false
+  memberQuotaLoading.value = true
+  try {
+    const response = await api.getMemberQuota()
+    if (response?.success === true && response.data) {
+      memberQuota.value = response.data
+      memberQuotaError.value = ''
+      memberQuotaUnavailable.value = false
+      return true
+    }
+    memberQuota.value = null
+    memberQuotaError.value = '会员权益信息暂时不可用，请稍后重试。'
+    memberQuotaUnavailable.value = false
+    return false
+  } catch (error) {
+    memberQuota.value = null
+    // 404 = 后端还没部署这个能力（契约先行），不弹错、只把卡片置为不可提交
+    memberQuotaUnavailable.value = error?.status === 404
+    memberQuotaError.value = memberQuotaUnavailable.value
+      ? '会员免卡密激活暂未开放，请稍后再试。'
+      : '会员权益信息读取失败，请稍后重试。'
+    return false
+  } finally {
+    memberQuotaLoading.value = false
+  }
+}
+
+async function handleMemberActivate() {
+  if (!memberIsMember.value || memberActivating.value) return
+  memberError.value = null
+
+  const toolId = Number(memberToolId.value)
+  if (!Number.isInteger(toolId) || toolId <= 0) {
+    memberError.value = {
+      code: 'TOOL_ID_REQUIRED',
+      message: MEMBER_ERROR_MESSAGES.TOOL_ID_REQUIRED,
+    }
+    return
+  }
+
+  memberActivating.value = true
+  try {
+    const payload = { tool_id: toolId }
+    const userUuid = memberUuid.value.trim()
+    if (userUuid) payload.user_uuid = userUuid
+
+    const response = await api.activateByMember(payload)
+    if (response?.success !== true) {
+      memberError.value = resolveMemberError(response)
+      return
+    }
+
+    notify.success(response.message || '免卡密激活成功')
+    memberToolId.value = ''
+    memberUuid.value = ''
+    // 额度与卡密列表都会变：刷新额度，并复用页面既有的 reload 拉列表
+    await Promise.all([loadMemberQuota(), reload(1)])
+  } catch (error) {
+    memberError.value = resolveMemberError(error)
+    // 额度类失败说明本地额度已过期，顺手对一次；其余失败保留当前展示
+    if (error?.code === 'QUOTA_EXCEEDED' || error?.code === 'NOT_MEMBER') {
+      loadMemberQuota()
+    }
+  } finally {
+    memberActivating.value = false
+  }
+}
+
+const resetMemberPanel = () => {
+  memberQuota.value = null
+  memberQuotaError.value = ''
+  memberQuotaUnavailable.value = false
+  memberToolId.value = ''
+  memberUuid.value = ''
+  memberError.value = null
+}
+
 const handleActivate = () => activation.activate()
 
 const copyCardNo = async (card) => {
@@ -591,6 +907,7 @@ onMounted(async () => {
   // 身份可能仍在初始化，交给 watch 触发首次加载
   if (userStore.userId && canUseKami.value) {
     reload(1)
+    loadMemberQuota()
   }
 })
 
@@ -609,7 +926,13 @@ watch(
 watch(
   () => userStore.userId,
   (id) => {
-    if (id && canUseKami.value) reload(1)
+    if (id && canUseKami.value) {
+      reload(1)
+      loadMemberQuota()
+    } else if (!id) {
+      // 退出登录：别把上一个账号的额度留在界面上
+      resetMemberPanel()
+    }
   }
 )
 </script>
@@ -675,13 +998,16 @@ watch(
   top: calc(var(--navbar-height) + var(--space-unit) * 2);
 }
 
-/* 两块面板共用同一套外壳（只有圆角/描边/阴影走令牌，内边距各自声明） */
+/* 两块面板共用同一套外壳（只有圆角/描边/阴影走令牌，内边距各自声明）。
+   这里**不能**写 overflow: hidden —— 工具/状态筛选的 `.u-select-panel` 是
+   绝对定位浮层，会被面板边界裁掉（实测展开后只剩前两项、底部描边消失）。
+   面板内部也没有依赖裁切的贴边子元素（表格横滚由 `.u-table-wrap` 自己负责），
+   圆角交给 border-radius 即可。 */
 .panel {
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
 }
 
 /* 左栏面板是表单容器，用面板档内边距 */
@@ -762,6 +1088,96 @@ watch(
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* ── 会员免卡密激活 ─────────────────────────────────────────── */
+
+/* 内嵌二级卡片：浅一层底色 + 细描边，与激活表单区分但不抢面板主次 */
+.member-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.5);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+.member-head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+.member-title {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.member-identity {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* 非会员是「引导」而非「错误」：用强调色，别用危险色吓退用户 */
+.member-identity--guest {
+  color: var(--accent);
+}
+
+.member-identity--error {
+  color: var(--danger);
+}
+
+.member-expire {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.member-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.25);
+}
+
+/* 提交是这张卡的主操作：占满一行，与激活按钮的视觉权重一致 */
+.member-submit {
+  width: 100%;
+}
+
+/* 用户标识留空时的说明：浅色小字，不抢主按钮 */
+.member-hint {
+  margin: 0;
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.member-cta,
+.member-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.member-error {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.member-error-text {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--danger);
 }
 
 /* ── 卡密列表 ───────────────────────────────────────────────── */
@@ -1042,11 +1458,19 @@ watch(
   .notice-desc,
   .panel-sub,
   .activate-tips,
+  .member-identity,
+  .member-hint,
+  .member-expire,
+  .member-error-text,
   .success-msg,
   .error-msg,
   .error-banner,
   .empty-small {
     font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+  }
+
+  .member-card {
+    padding: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
   }
 
   .list-toolbar {

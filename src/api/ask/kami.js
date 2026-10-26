@@ -32,6 +32,45 @@ function activateCard(data) {
 }
 
 /**
+ * 按卡密号查询它绑定的工具（粘贴卡密后自动识别用）
+ *
+ * 只读取卡密的元信息，**不消耗**卡密、不改变激活状态。
+ * 服务端返回 `{ success: true, data: { tool_id, card_type, status, valid_until, masked_no } }`；
+ * `tool_id` 可能为 null（积分卡等不绑定工具的卡密）。
+ *
+ * 调用方负责静默：查询失败（400/404/网络）不应打断用户正在进行的输入。
+ *
+ * @param {string} cardNo 完整卡密号
+ */
+function lookupCard(cardNo) {
+    return request.post(`${baseURL}/lookupCard`, { card_no: cardNo })
+}
+
+/**
+ * 当前登录会员的免卡密激活额度（身份取自 JWT，不接受传 user_id）
+ *
+ * 返回 data: { is_member, level, level_name, quota, used, remaining, unlimited, expires_at }。
+ * 非会员也会正常返回（is_member = false），前端据此显示开通引导而不是隐藏入口。
+ */
+function getMemberQuota() {
+    return request.get(`${baseURL}/memberQuota`)
+}
+
+/**
+ * 会员免卡密激活工具
+ *
+ * `user_uuid` 可选：留空时服务端按 JWT 身份校验；填了则同时校验标识与
+ * 当前账号一致（不一致返回 403 USER_UUID_MISMATCH）。
+ *
+ * 成功时 data: { tool_id, remaining, unlimited, expires_at }。
+ *
+ * @param {{tool_id: number, user_uuid?: string}} data
+ */
+function activateByMember(data) {
+    return request.post(`${baseURL}/activateByMember`, data)
+}
+
+/**
  * 验证单个卡密
  * @param {{card_no: string, user_id: number, tool_id: number}} data
  */
@@ -64,6 +103,9 @@ export default {
     getUserCards,
     getMyEntitlements,
     activateCard,
+    lookupCard,
+    getMemberQuota,
+    activateByMember,
     verifyCard,
     verifyCards,
 }

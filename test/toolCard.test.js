@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import './setup.js'
 import { renderComponent, createPiniaWithState, createRenderEnv } from './render.mjs'
 import { TOOL_PAGE } from '../src/constants/index.js'
+import { MAX_TOOL_TAGS, toolTagsOf } from '../src/constants/toolTags.js'
 
 /**
  * ToolCard 的访问策略契约（ToolRow + 会员策略）
@@ -73,6 +74,20 @@ function tagsOf(html) {
   const match = html.match(/<div class="ec-tool__tags"[^>]*>([\s\S]*?)<\/div>/)
   assert.ok(match, '应渲染 .ec-tool__tags 标签区')
   return match[1]
+}
+
+/** 把标签区里的 span 按 DOM 顺序拆出来，附带 class 列表与文本 */
+function tagSpansOf(html) {
+  const tags = tagsOf(html)
+  return [...tags.matchAll(/<span\b([^>]*)>([\s\S]*?)<\/span>/g)]
+    .map((match) => {
+      const classMatch = match[1].match(/\bclass="([^"]*)"/)
+      return {
+        classes: classMatch ? classMatch[1].split(/\s+/).filter(Boolean) : [],
+        text: match[2].trim(),
+      }
+    })
+    .filter((tag) => tag.classes.includes('ec-tag') && tag.text)
 }
 
 function assertNoVueWarnings(warnings) {
@@ -277,4 +292,124 @@ test('ToolRow 使用设计系统标记，不再沿用旧卡片的媒体区', asy
   assert.match(html, /class="ec-tool__main"/)
   assert.ok(!html.includes('ui-card-media'), '应移除旧卡片封面区')
   assert.ok(!html.includes('tool-access'), '应移除旧的 requires_card 标注块')
+})
+
+// ── 派生标签（需求 7 后半）────────────────────────────────────────
+
+/** 用真实目录里的名称 / 描述 / 分类造一条工具，避免测试数据脱离线上文案 */
+const realTool = (tool_name, description, class_name) => ({
+  ...TOOL_BASE,
+  tool_name,
+  description,
+  class_name,
+  access_policy: 'free',
+  requires_card: false,
+})
+
+test('toolTagsOf：按真实工具描述派生 1–3 个短标签', () => {
+  assert.deepEqual(
+    toolTagsOf(realTool('视频下载工具', '粘贴短视频分享链接即可解析下载（功能开发中，敬请期待）。', '视频工具')),
+    ['解析下载', '视频处理']
+  )
+  assert.deepEqual(
+    toolTagsOf(realTool('加解密工具箱', 'Base64、URL、Hex 编解码，AES 加解密。', '开发工具')),
+    ['加解密', '编码解码']
+  )
+  assert.deepEqual(
+    toolTagsOf(realTool('单位换算工具', '长度、重量、面积、体积、温度等单位换算。', '转换工具')),
+    ['单位换算']
+  )
+  assert.deepEqual(
+    toolTagsOf(realTool('时间日期工具箱', '时间戳转换、日期计算、倒计时等。', '转换工具')),
+    ['时间戳', '日期计算', '倒计时']
+  )
+})
+
+test('toolTagsOf：无描述不产生空标签，所有标签均为 2–4 个汉字', () => {
+  assert.deepEqual(toolTagsOf({ tool_name: '无描述工具', class_name: '其他工具' }), [])
+  assert.deepEqual(toolTagsOf({ tool_name: '', description: '   ' }), [])
+  assert.deepEqual(toolTagsOf(null), [])
+  assert.deepEqual(toolTagsOf(undefined), [])
+
+  const samples = [
+    ['图片工具箱', '图片压缩、格式转换、Base64 编码等。'],
+    ['音视频工具箱', '音视频格式转换、信息查看等。'],
+    ['二维码工具箱', '生成和识别二维码。'],
+    ['日常生活工具箱', 'BMI、倒计时、星座生肖等生活小工具。'],
+    ['文档转换工具', 'Word、Excel、PDF 等文档格式互转。'],
+    ['短链与分享工具', 'URL 净化、短链生成、OG 预览。'],
+    ['2FA密钥验证', '校验 TOTP 动态口令，或按密钥生成当前验证码。'],
+    ['哈希与校验工具', 'MD5、SHA-1、SHA-256 等哈希计算。'],
+  ]
+  const all = samples.flatMap(([tool_name, description]) => toolTagsOf({ tool_name, description }))
+  assert.ok(all.length > 0, '样例应至少命中一个标签')
+  for (const tag of all) {
+    assert.match(tag, /^[\u4e00-\u9fa5]{2,4}$/, `标签「${tag}」应为 2–4 个汉字`)
+  }
+})
+
+test('toolTagsOf：最多 3 个、不重复，且不与 class_name 重复', () => {
+  assert.equal(MAX_TOOL_TAGS, 3)
+
+  const imageTags = toolTagsOf(realTool('图片工具箱', '图片压缩、格式转换、Base64 编码等。', '媒体工具'))
+  assert.equal(imageTags.length, MAX_TOOL_TAGS)
+  assert.deepEqual(imageTags, ['图像处理', '编码解码', '格式转换'])
+
+  const longTags = toolTagsOf({
+    tool_name: '全命中工具',
+    description:
+      '解析下载 图片 视频 音频 加解密 编码 单位换算 进制 时间戳 日期 倒计时 二维码 颜色 格式转换 生成 文档 表格 数据 正则 代码 哈希 JWT Cron SQL 2FA 网络 短链 阴影 布局 苹果ID 骰子 文本 计算 生活',
+  })
+  assert.equal(longTags.length, MAX_TOOL_TAGS, '命中再多的关键词也只能保留 3 个')
+  assert.equal(new Set(longTags).size, longTags.length, '标签不能重复')
+
+  const dailyTags = toolTagsOf(
+    realTool('日常生活工具箱', 'BMI、倒计时、星座生肖等生活小工具。', '生活工具')
+  )
+  assert.deepEqual(dailyTags, ['倒计时', '计算器'])
+  assert.ok(!dailyTags.includes('生活工具'), '派生标签不能与分类标签重复')
+})
+
+test('ToolCard：分类标签在首位，派生标签排其后且总数不超过 3 个', async () => {
+  const { html, warnings } = await renderCard(
+    realTool('图片工具箱', '图片压缩、格式转换、Base64 编码等。', '媒体工具')
+  )
+  assertNoVueWarnings(warnings)
+
+  const spans = tagSpansOf(html)
+  assert.equal(spans[0].text, '媒体工具', '分类标签必须第一个')
+  assert.ok(spans[0].classes.includes('ec-tag--outline'), '分类标签样式保持不变')
+  assert.deepEqual(
+    spans.filter((tag) => tag.classes.includes('tool-row__tag')).map((tag) => tag.text),
+    ['图像处理', '编码解码'],
+    '分类标签占一个名额，派生标签最多补满 3 个'
+  )
+  assert.equal(spans.length, MAX_TOOL_TAGS, '标签区最多 3 个分类 / 派生标签')
+  assert.doesNotMatch(tagsOf(html), /\+\d/, '不得出现「+N」半成品')
+})
+
+test('ToolCard：无描述时不渲染任何派生空标签', async () => {
+  const { html } = await renderCard(realTool('无描述工具', '', '其他工具'))
+  const spans = tagSpansOf(html)
+  assert.deepEqual(spans.map((tag) => tag.text), ['其他工具'])
+  assert.equal(
+    spans.filter((tag) => tag.classes.includes('tool-row__tag')).length,
+    0,
+    '没有描述时不应出现派生标签'
+  )
+})
+
+test('ToolCard：派生标签不与分类标签重复（同一行文案不重复）', async () => {
+  const { html, warnings } = await renderCard(
+    realTool('日常生活工具箱', 'BMI、倒计时、星座生肖等生活小工具。', '生活工具')
+  )
+  assertNoVueWarnings(warnings)
+
+  const spans = tagSpansOf(html)
+  const texts = spans.map((tag) => tag.text)
+  assert.equal(new Set(texts).size, texts.length, '标签区不应出现重复文案')
+  assert.deepEqual(
+    spans.filter((tag) => tag.classes.includes('tool-row__tag')).map((tag) => tag.text),
+    ['倒计时', '计算器']
+  )
 })

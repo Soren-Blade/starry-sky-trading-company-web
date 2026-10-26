@@ -15,7 +15,11 @@
     </div>
 
     <div class="ec-tool__tags">
+      <!-- 分类标签永远是第一个，样式保持不变；派生标签只排在它后面 -->
       <span v-if="tool.class_name" class="ec-tag ec-tag--sm ec-tag--outline">{{ tool.class_name }}</span>
+      <span v-for="tag in derivedTags" :key="tag" class="ec-tag ec-tag--sm tool-row__tag">
+        {{ tag }}
+      </span>
       <span v-if="showMemberFreeTag" class="ec-tag ec-tag--sm ec-tag--gold">{{ ACCESS_TEXT.memberFree }}</span>
       <span v-if="showMemberOnlyTag" class="ec-tag ec-tag--sm ec-tag--gold">{{ ACCESS_TEXT.memberOnly }}</span>
       <span v-if="showActivatedTag" class="ec-tag ec-tag--sm ec-tag--success">{{ TOOL_PAGE.activatedTag }}</span>
@@ -89,6 +93,7 @@ import { useMemberStore } from '@/stores/member.js'
 import { emojiToIconName } from '@/utils/iconSet.js'
 // 文案集中在 constants，改文案只碰一个文件
 import { TOOL_PAGE } from '@/constants/index.js'
+import { MAX_TOOL_TAGS, toolTagsOf } from '@/constants/toolTags.js'
 
 /**
  * 访问策略文案（服务端新契约）
@@ -221,6 +226,17 @@ const showActivatedTag = computed(
   () => accessPolicy.value === 'card' && props.hasEntitlement
 )
 
+/**
+ * 描述关键词派生的补充标签（见 constants/toolTags.js）。
+ *
+ * 分类标签会占掉三个展示名额里的一个，所以这里只取剩余名额；多出来的直接
+ * 丢弃，不渲染「+N」这种半成品。
+ */
+const derivedTags = computed(() => {
+  const remaining = MAX_TOOL_TAGS - (props.tool?.class_name ? 1 : 0)
+  return toolTagsOf(props.tool).slice(0, Math.max(0, remaining))
+})
+
 /** 没有可执行操作（会员专属的访客 / 已下架）时，收藏按钮也一并收起 */
 const showFavorite = computed(() => action.value !== null)
 
@@ -259,6 +275,22 @@ const toggleFavorite = () => emit('toggle-favorite', props.tool);
 .tool-row {
   width: 100%;
   cursor: default;
+}
+
+/*
+ * 标签区与右侧收藏按钮 / 状态点 / 操作按钮的中线对齐。
+ *
+ * .ec-tool__tags 默认 align-items: stretch，但 .ec-tag 有固定高度
+ * （--ec-tag-h-sm = 20px），stretch 对它不生效，标签会被顶到 28px 高
+ * 收藏按钮的 cross-start：实测两者 top 同为 413.42px，标签中线
+ * 423.42px、收藏按钮中线 427.42px，差 (28 - 20) / 2 = 4px。
+ *
+ * 用 flex 对齐解决，不加 margin-top 之类的魔法补偿值；flex-wrap 换行后
+ * 每条 flex line 仍各自居中，所以窄屏（≤767px）也不会再歪。
+ */
+.ec-tool__tags {
+  align-items: center;
+  align-content: center;
 }
 
 /* AppIcon 用 1em 控制尺寸，图标瓦片按设计系统 20px 档给字号 */

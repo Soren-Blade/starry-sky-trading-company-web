@@ -9,6 +9,33 @@
 
 ---
 
+## [2.1.0] — 2026-10-26 · 全量操作日志、会员免卡密额度与交互细节
+
+八项体验升级。没有删改既有路由，但**导出的日志文件列全变了**（属对外可见的可感知变更），
+因此按 `2.1.0` 而不是补丁号发。
+
+### 变更
+
+| 类别 | 内容 |
+| --- | --- |
+| 操作日志 | `userLogsApi` 从「工具使用记录」升级为**本人全部重要操作**：`user_events`（登录 / 访客登录 / 注册）+ 10 个业务主表 `UNION ALL`（工具使用、下单、卡密兑换、收藏、加购、签到、积分变动、成长值变动、优惠券、会员开通）。CSV 列改为 `时间, 类别, 动作, 对象类型, 对象标识, 说明, 结果`，文件名 `user-activity-<range>-<YYYY-MM-DD>.csv`；卡号在服务端 SQL 里就脱敏，CSV 注入防护与三档时间窗不变 |
+| 用户标识 | 个人中心的用户标识把 `<dd class="u-field-value">` **直接换成** `.ec-code`（不是在新结构里再嵌一层），`__label` / `__value` / `__act` 是 `<dd>` 的直接子元素；`.profile-field-value` 成为该列唯一行高与内边距来源，兄弟行仍然统一；眼睛按钮 30s 回掩码、复制明文、`aria-pressed` 全部保留 |
+| 在线状态 | 导航栏头像右下角加 9px 呼吸灯：`--ec-success` 圆点 + 2px 表面色描边，`::after` 阴影 2px→6px、2s 循环、**不用 transform**（避免与头像的 hover 位移打架），`prefers-reduced-motion` 下静止。判定用 `hasIdentity`（游客也算在线），不用 `isLoggedIn`（它等于 `user_type === 'registered'`） |
+| 用户菜单 | 删除「账号资产」分组标题的可见文字，改为视觉隐藏（`:99-121` 的无障碍断言仍成立），首项补 16px 上间距补回落差 |
+| 卡密控制台 | 修 `.panel` 的 `overflow: hidden` 裁掉绝对定位下拉面板（20 个工具全部可见，覆盖到下方会员卡之上）；粘贴卡密后 400ms 防抖请求 `lookupCard`，命中则**自动选中对应工具**并 Toast 提示，过期/已用/无绑定静默；会员免卡密激活卡片常驻，非会员显示开通引导，额度用尽给「升级会员 / 购买卡密」双出口 |
+| 主题切换 | 切换瞬间给 `<html>` 挂 `is-theme-switching` 260ms，只过渡 `background-color / border-color / color / fill / stroke` 200ms `--ec-ease-out`；连点先 `clearTimeout` 复位。`ThemeSwitch` 滑块改容器 `::before` + `transform` 180ms，位置读 `<html data-theme-mode>` |
+| 工具标签 | 修 `.ec-tool__tags` 的 `align-items: stretch`（标签高 20px 被拉到 28px 按钮上沿，中心差 4px）→ `center`；新增 `src/constants/toolTags.js`，按「工具名 + 描述」关键词派生 2–4 汉字标签、最多 3 个、跳过与平台标签重复者 |
+| 会员免卡密额度 | 服务端新增 `get_member_tool_quota()` / `grant_member_tool_entitlement()` 两个库函数与三个端点（`lookupCard` / `memberQuota` / `activateByMember`）；`tool_entitlements.grant_source` 区分卡密与会员来源；额度取 `member_levels.free_tool_quota`（v1–v8 = 1/1/2/3/5/8/不限/不限），会员权益有效期跟随会员到期时间自动收回；发放走 `SELECT … FOR UPDATE` 串行化，避免并发超发 |
+
+### 已知取舍
+
+- **日志用 UNION 而不是双写**：业务动作只在各自主表留有事实，导出时拼起来。好处是历史数据自动覆盖、不会出现两份真值；代价是业务表里的记录被物理删除后，日志里也看不到了。
+- **会员额度只在卡密控制台生效**：`/user/kami` 提供「免卡密激活」，工具页仍按 `access_policy` 判断，两者不互相消费。工具页自动识别会员额度需要服务端在 `getTools` 里合并权益视图，本轮未做（已在 server `docs/API.md` §4.35 标注）。
+- **游客没有账号历史**：日志按 `user_id` 聚合，游客身份在转注册前产生的操作不会挂到新账号上。
+- **`JWT_SECRET` 不随仓库分发**：本地 `.env` 里填的是开发值（原先留空会导致每次重启生成临时密钥、所有会话失效）。部署时必须换成真实密钥。
+
+---
+
 ## [2.0.0] — 2026-10-25 · 视觉体系整体换成 EC Design System（破坏性）
 
 全站样式不再自建。视觉语言、组件、令牌、明暗主题全部改为 `ec-design-system`

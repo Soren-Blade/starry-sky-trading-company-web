@@ -52,6 +52,40 @@ body {
     color var(--ec-dur-base) var(--ec-ease-out);
 }
 
+/* ────────────────────────────────────────────────────────────
+ * 主题切换：瞬时过渡（`<html class="is-theme-switching">`）
+ *
+ * 只在换肤的那 260ms 内生效 —— 类由 theme store 挂上、定时摘掉（见
+ * src/stores/theme.js 的 startColorTransition）。过渡属性刻意只列颜色相关的
+ * 五项，两个反面教材都在本项目里真实出现过：
+ *   · 不写「全部属性」的过渡（all）：那会把 hover、展开、滚动收缩一起拖成
+ *     动画，看上去像是「点了没反应」，实际是 250ms 的错峰动画在排队；
+ *   · 不给 box-shadow / transform 加长过渡：顶栏阴影、抽屉位移本来就有自己
+ *     的节奏，塞进换肤过渡里就是用户说的「有的地方慢半拍」。
+ * 平时没有这个类，也就不会为换肤多付任何样式计算。
+ * ──────────────────────────────────────────────────────────── */
+html.is-theme-switching,
+html.is-theme-switching body,
+html.is-theme-switching body *,
+html.is-theme-switching body *::before,
+html.is-theme-switching body *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ec-ease-out);
+  transition-delay: 0s;
+}
+
+/* 系统开了「减弱动态效果」：颜色一步到位，不留插值 */
+@media (prefers-reduced-motion: reduce) {
+  html.is-theme-switching,
+  html.is-theme-switching body,
+  html.is-theme-switching body *,
+  html.is-theme-switching body *::before,
+  html.is-theme-switching body *::after {
+    transition: none;
+  }
+}
+
 /* 背景层已删除。EC 不使用渐变网格，也没有「用户自定义背景图」这一档 ——
  * 装饰面会压掉正文对比度，页面底色只有一阶（--ec-bg-base）。
  * body 的底色由 EC 基线（ec.css）与本文件第 1 节共同提供，不需要伪元素垫层。 */

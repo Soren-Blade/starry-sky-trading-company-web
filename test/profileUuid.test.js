@@ -47,6 +47,33 @@ async function renderProfile() {
   })
 }
 
+/** 从 SSR 输出里取出「用户标识」那一行：<dd> 开标签 + 内部 HTML */
+function uuidField(html) {
+  const at = html.indexOf('<dd class="profile-field-value profile-field-value--code')
+  assert.ok(at > 0, '用户标识行应渲染成 CardCodeBox 形态的 <dd>')
+
+  const openEnd = html.indexOf('>', at)
+  const closeAt = html.indexOf('</dd>', openEnd)
+  assert.ok(closeAt > openEnd, '用户标识行的 <dd> 应正常闭合')
+
+  return { tag: html.slice(at, openEnd + 1), inner: html.slice(openEnd + 1, closeAt) }
+}
+
+/** 取 <style> 段并去掉 CSS 注释：注释里会提到类名，不参与「定义几处」的计数 */
+function styleBlock() {
+  const source = readFileSync(new URL('../src/pages/Profile.vue', import.meta.url), 'utf8')
+  const open = source.indexOf('<style')
+  assert.ok(open > 0, 'Profile.vue 应有 <style> 段')
+  return source.slice(open, source.lastIndexOf('</style>')).replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
+/** 取一条规则的规则体（本文件没有嵌套规则，取到下一个 } 即可） */
+function ruleBody(css, selector) {
+  const at = css.indexOf(selector)
+  assert.ok(at >= 0, `样式中应存在 ${selector.trim()} 规则`)
+  return css.slice(at, css.indexOf('}', at))
+}
+
 /** 可控假时钟：setTimeout 只登记，advance() 时按到期顺序触发 */
 function createFakeClock() {
   let now = 0
@@ -203,4 +230,102 @@ test('模板契约：aria-pressed / aria-label 跟随 uuidRevealed 切换，卸�
   assert.ok(source.includes('onBeforeUnmount('), '组件卸载时必须有清理钩子')
   assert.ok(source.includes('uuidController.dispose()'), '卸载时清理回掩码计时器')
   assert.ok(source.includes('clearTimeout(uuidCopyTimer)'), '卸载时清理复制反馈计时器')
+})
+
+/* ── 结构：<dd> 自己就是 CardCodeBox（不是底板里再套一张卡片） ───────────── */
+
+test('结构：用户标识的 <dd> 自己就是 CardCodeBox，不再套只读底板', async () => {
+  const html = await renderProfile()
+  const { tag, inner } = uuidField(html)
+
+  assert.match(tag, /class="[^"]*\bec-code\b[^"]*"/, '<dd> 必须自己带 ec-code，而不是在内部再开一层')
+  assert.match(tag, /ec-code--sm/, '字段值列偏窄，卡片走 sm 档')
+  assert.match(tag, /profile-field-value--code/, '标识行要有自己的样式钩子')
+  assert.doesNotMatch(tag, /u-field-value/, '标识行的 <dd> 不能再挂只读底板类')
+
+  assert.ok(!inner.includes('u-field-value'), '标识行内部也不应出现只读底板类')
+  assert.ok(!inner.includes('profile-uuid-code'), '旧的包裹层类应已删除')
+})
+
+test('结构：__label / __value / __act 是标识行 <dd> 的直接子元素', async () => {
+  const html = await renderProfile()
+  const { inner } = uuidField(html)
+
+  // 三段必须紧挨着出现 —— 中间只要多包一层 div，这个断言就挂
+  assert.match(
+    inner,
+    /^<span class="ec-code__label"[^>]*>[^<]*<\/span>\s*<span class="ec-code__value[^"]*"[^>]*>[\s\S]*?<\/span>\s*<div class="ec-code__act"[^>]*>/,
+    '__label / __value / __act 必须是 <dd> 的直接子元素，顺序也不能变'
+  )
+
+  const act = inner.slice(inner.indexOf('<div class="ec-code__act"'))
+  assert.match(act, /aria-label="显示用户标识"/, '操作区仍挂着眼睛按钮')
+  assert.match(act, /aria-label="复制用户标识"/, '操作区仍挂着复制按钮')
+  assert.doesNotMatch(act, /class="ec-code\b/, '__act 里不能再出现第二层卡片')
+})
+
+test('统一性：profile-fields 下每一行共用一套字段值类名', async () => {
+  const html = await renderProfile()
+  const from = html.indexOf('<dl class="profile-fields">')
+  const to = html.indexOf('</dl>', from)
+  const rows = html.slice(from, to).match(/<dd [^>]*>/g) || []
+
+  assert.ok(rows.length >= 8, `只读字段应有 8 行，实际 ${rows.length}`)
+  for (const tag of rows) {
+    assert.match(tag, /profile-field-value/, `<dd> 必须统一带字段值节奏类：${tag}`)
+  }
+
+  assert.equal(rows.filter((t) => /\bec-code\b/.test(t)).length, 1, '只有用户标识这一行是卡片形态')
+  assert.equal(
+    rows.filter((t) => /\bu-field-value\b/.test(t)).length,
+    rows.length - 1,
+    '其余字段行继续用只读底板（标识行除外）'
+  )
+})
+
+/* ── 样式：只读字段行的节奏只定义一处 ─────────────────────────────────── */
+
+test('样式：.u-field-value 只有一个定义，节奏统一由 .profile-field-value 提供', () => {
+  const css = styleBlock()
+
+  const hits = css.match(/\.u-field-value\b/g) || []
+  assert.equal(hits.length, 1, `.u-field-value 只允许有一处规则，实际 ${hits.length} 处`)
+
+  const base = ruleBody(css, '\n.profile-field-value {')
+  for (const prop of ['padding-inline', 'min-height', 'font-size', 'line-height', 'color', 'overflow-wrap']) {
+    assert.match(base, new RegExp(`(^|\\s)${prop}:`), `统一节奏 .profile-field-value 应声明 ${prop}`)
+  }
+  assert.match(base, /padding-block: 0/, '卡片自带的块级 padding 要让位给统一 min-height')
+
+  const plate = ruleBody(css, '.profile-fields .u-field-value {')
+  assert.doesNotMatch(
+    plate,
+    /\b(padding|min-height|font-size|line-height)\b/,
+    '只读底板不得再声明一套 padding / 字号，否则会出现两套节奏'
+  )
+})
+
+test('样式：窄屏（≤767px）有防横向溢出的兜底', () => {
+  const css = styleBlock()
+
+  const mobile = css.match(/@media \(max-width: 767px\) \{[\s\S]*?\n\}/)
+  assert.ok(mobile, '应有 ≤767px 的媒体查询')
+  const block = mobile[0]
+
+  // 移动端跟着设计系统的全局缩放收一档（选择器更具体，必须显式同步）
+  assert.match(block, /\.profile-field-value \{[^}]*min-height: calc\(var\(--ec-control-h-md\) \* var\(--mobile-control-scale\)\)/)
+  assert.match(block, /padding-inline: calc\(var\(--ec-input-px\) \* var\(--mobile-padding-scale\)\)/)
+
+  // 标识行必须留在栏宽以内，值区可收缩、可断词
+  assert.match(block, /\.profile-field-value--code \{[^}]*max-width: 100%/, '卡片宽度不得超过栏宽')
+  assert.match(
+    block,
+    /\.profile-field-value--code \.ec-code__value \{[^}]*overflow-wrap: anywhere/,
+    '值区要有任意断词兜底'
+  )
+  assert.match(
+    css,
+    /\.profile-field-value--code \.ec-code__value \{\s*min-width: 0;/,
+    '值区必须允许收缩（省略号），否则 __act 会被挤出卡片'
+  )
 })
