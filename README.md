@@ -936,6 +936,7 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | `AppAlert.vue` | EC `.ec-alert` 的薄封装：`variant`（info / success / warning / danger）、`title`、`body`、`icon`（`null` 用默认、`''` 不显示） |
 | `ToastHost.vue` | EC `.ec-toast-layer` + `.ec-toast`，**没有关闭按钮**（EC：Toast 无操作按钮）；成功 2s、错误与警告 3s、最多 3 条；悬停与聚焦暂停；移动端贴底、从下往上堆 |
 | 分区页签 | 直接用 `.ec-tabs` + `.ec-tabs__item`（消息中心 / 积分中心 / 支持中心）：选中态只由 `aria-selected="true"` 驱动，不另加 `--active` 类名，指示条由设计系统的 `::after` 提供。个人中心的导出时间范围是胶囊分段选择器，EC 无该变体，保留自研 `.u-tabs--pill` |
+| 交易结果（订单详情） | 直接写 `.ec-redeem-result` 的 `__icon` / `__title` / `__desc` / `__actions` 四件套：下单成功用 `--success`（购物车跳转带 `?created=1`，落地消费一次后即从地址栏抹掉），订单不存在用 `--notfound`（图标走 `--ec-bg-muted`，不给危险色）。页面里只留 `.order-result` 一处间距，配色与排版全部来自设计系统 |
 
 | 组件 | 说明 |
 | --- | --- |

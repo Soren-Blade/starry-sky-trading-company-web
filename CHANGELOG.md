@@ -47,6 +47,7 @@
 | 会员卡 | `.ec-vip`（VipCard） | 新增 `VipCard.vue`：身份 → 权益网格 → 方案选择三层；v1–v3 silver、v4–v6 gold、v7–v8 black；未拥有权益 `opacity:.4` + 灰图标（不出现危险色）；卡上按钮 `slice(0, 3)` 硬上限 |
 | 卡密框 | `.ec-code`（CardCodeBox） | 个人中心的用户标识改为**默认脱敏**（四位分组，末段恒掩码），眼睛按钮切换明文、`aria-pressed` 同步，**30s 自动回掩码**（重复点击重置计时），复制的是明文、反馈 1.5s |
 | 兑换结果 | `.ec-redeem-result`（RedeemResult） | 卡密激活结果从「单行提示」改为四模板 success / used / expired / notFound；无法归类时退回原内联提示，**不再统一显示「失败」** |
+| 交易结果 | `.ec-redeem-result`（复用） | 订单详情页补上「购买商品」一侧：下单成功跳转带 `?created=1`，落地后用 success 模板给一次回执（订单号 + 回订单列表），**只消费一次**（挂载后立刻把参数从地址栏抹掉，刷新不重复弹）；订单不存在改用 notFound 模板（图标灰、不用危险色），并补一个「看看热门商品」出口，原来的 `page-empty` + `u-btn-primary` 写法已删除 |
 | 面包屑 | `.ec-breadcrumb` | 新增 `PageBreadcrumb.vue`，接入商品详情 / 商品分类 / 我的订单 / 订单详情 / 会员套餐 / 会员权益 / 成长值**共 7 处**；商品详情页原有自建 `.product-crumb` 一并删除（scoped 特异性会盖掉 EC 配色），成长值页头里的「会员中心」回链也由面包屑取代 |
 | 页签 | `.ec-tabs` | 消息中心 / 积分中心 / 支持中心的分区页签改用 `.ec-tabs` + `.ec-tabs__item`：选中态只留 `aria-selected` 一条来源，删掉 `u-tab--active` 类名分支与页面里多余的下划线。个人中心的导出时间范围是胶囊分段选择器（EC 无该变体），继续留在自研套件 |
 | 弹窗 | `.ec-overlay` + `.ec-dialog` / `.ec-drawer` | 登录弹窗改 Dialog、帮助弹窗改 Drawer；`global.css` 不再保留 `.u-modal*` 别名（同名单类选择器并存时后注入者胜，会出现「改了没效果」）；关闭键改用图标集的 `x` |

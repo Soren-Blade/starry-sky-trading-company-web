@@ -557,7 +557,8 @@ const handleCheckout = async () => {
 
     const orderNo = result.data?.order?.order_no
     notify.success(TRADE.checkoutSuccess)
-    if (orderNo) router.push({ name: 'OrderDetail', params: { orderNo } })
+    // created=1 让订单详情页用 .ec-redeem-result 画出「下单成功」结果块
+    if (orderNo) router.push({ name: 'OrderDetail', params: { orderNo }, query: { created: '1' } })
     else router.push({ name: 'Orders' })
   } catch (error) {
     notify.error(error?.response?.data?.message || error?.message || '下单失败，请稍后重试')

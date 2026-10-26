@@ -256,6 +256,8 @@ export const TRADE = {
   orderCompleteConfirm: '确认已收到商品？完成后订单不可取消。',
   orderDetail: '订单详情',
   orderBackToList: '返回订单列表',
+  orderViewAll: '查看我的订单',
+  orderGoShopping: '看看热门商品',
   orderItems: '商品明细',
   orderAmount: '订单金额',
   orderCreatedAt: '下单时间',

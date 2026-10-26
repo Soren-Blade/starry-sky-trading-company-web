@@ -8,16 +8,40 @@
       <span>正在加载订单…</span>
     </div>
 
-    <div v-else-if="error" class="page-empty">
-      <p class="page-empty-title">{{ error }}</p>
-      <div class="page-actions order-fallback">
-        <router-link to="/user/orders" class="u-btn-primary">
+    <!-- 订单不存在 / 拉取失败：按设计系统的败态模板呈现，而不是一句「失败」 -->
+    <div v-else-if="error" class="ec-redeem-result ec-redeem-result--notfound order-result">
+      <span class="ec-redeem-result__icon" aria-hidden="true">
+        <AppIcon name="alert-triangle" />
+      </span>
+      <p class="ec-redeem-result__title">{{ error }}</p>
+      <p class="ec-redeem-result__desc">
+        订单可能已被删除，或链接里的订单号有误。可以回到订单列表再找一次。
+      </p>
+      <div class="ec-redeem-result__actions">
+        <router-link to="/user/orders" class="ec-btn ec-btn--primary">
           {{ TRADE.orderBackToList }}
         </router-link>
+        <router-link to="/hot" class="ec-btn ec-btn--outline">{{ TRADE.orderGoShopping }}</router-link>
       </div>
     </div>
 
     <template v-else-if="order">
+      <!-- 下单成功后跳过来：用设计系统 Result 的 success 模板给一次明确回执 -->
+      <div v-if="showCreated" class="ec-redeem-result ec-redeem-result--success order-result">
+        <span class="ec-redeem-result__icon" aria-hidden="true">
+          <AppIcon name="check-circle" />
+        </span>
+        <p class="ec-redeem-result__title">{{ TRADE.checkoutSuccess }}</p>
+        <p class="ec-redeem-result__desc">
+          订单号 {{ order.order_no }}，可在「我的订单」查看进度与卡密。
+        </p>
+        <div class="ec-redeem-result__actions">
+          <router-link to="/user/orders" class="ec-btn ec-btn--outline">
+            {{ TRADE.orderViewAll }}
+          </router-link>
+        </div>
+      </div>
+
       <header class="page-shell-head page-shell-head--row">
         <div>
           <p class="page-shell-eyebrow">{{ PAGES.orderDetail.eyebrow }}</p>
@@ -202,7 +226,7 @@
  * 商品后来改名或调价都不会改变这里显示的内容，这也是订单页能作为凭证的原因。
  */
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
@@ -216,6 +240,7 @@ import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
 
 const route = useRoute()
+const router = useRouter()
 const themeStore = useThemeStore()
 
 /** 面包屑：订单详情是「首页 → 我的订单」下的三级页，两段父级都可点回去 */
@@ -230,6 +255,14 @@ const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
 const paymentNotice = ref(PRODUCT_GRID.paymentNotice)
+
+/**
+ * 是否展示「下单成功」结果块。
+ *
+ * 用入口 query 的 created=1 判断，但**只认一次**：挂载后立刻把 query 抹掉，
+ * 刷新页面不会再弹一遍成功回执（结果块本身由这个 ref 控制，抹 query 不会让它消失）。
+ */
+const showCreated = ref(route.query.created === '1')
 
 const currency = computed(() => ({
   prefix: themeStore.pricePrefix,
@@ -328,7 +361,13 @@ const handleComplete = async () => {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  // 成功回执只消费一次：把 created 从地址栏去掉，刷新不会重复弹出
+  if (showCreated.value) {
+    router.replace({ path: route.path, query: { ...route.query, created: undefined } })
+  }
+  load()
+})
 
 // 订单列表里点开另一笔订单时组件被复用，必须重新拉取
 watch(orderNo, (value) => {
@@ -567,9 +606,9 @@ a.detail-title:hover {
   margin-top: var(--section-gap);
 }
 
-.order-fallback {
-  justify-content: center;
-  margin-top: calc(var(--space-unit) * 2.5);
+/* 结果块（下单成功 / 订单不存在）：模板样式来自 .ec-redeem-result，这里只补页面间距 */
+.order-result {
+  margin-block: var(--ec-space-6);
 }
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
