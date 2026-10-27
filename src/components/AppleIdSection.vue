@@ -621,17 +621,18 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-/* 卡片尺寸固定：列宽恒为 --card-width，容器变宽时只增加列数，不再拉宽卡片。
- * 之前是 minmax(--card-width, 1fr)：数据只有两三张时每列各占半栏，卡片被拉宽、
- * 内部留白显得空。固定列宽 + auto-fill 后：1440/1199 每排两张、768 两张、390 一张，
- * 多余宽度留在右侧（justify-content: start），卡片本身不伸缩。
- * 代价：992–1099px 之间右区面板内宽不足两张卡（992 实测约 487px，两张 280 卡 +
- * 24 间距需 584px），只排得下一张；该区间不在本次验收的四档内，且卡片若改为
- * 1fr 伸缩就又回到「卡片被拉宽、行内留白」的老问题。 */
+/* 卡片宽度自适应 + 两端对齐（2.3.1 按需求调整）。
+ * 2.2.0 之前是 minmax(--card-width, 1fr)：只有两三张数据时每列各占半栏，卡片被拉宽、
+ * 内部留白显得空；2.3.0 改成固定列宽 repeat(auto-fill, --card-width) + justify-content: start，
+ * 卡片不再伸缩，但容器右侧会留一条空白（数据少于一行时尤其明显）。
+ * 现在折中：列宽在 --card-width 与「容器可用宽 / 列数」之间自适应（minmax），
+ * 并用 justify-content: space-between 让行内剩余空间均摊到列间；
+ * auto-fit 会先折叠空轨道，所以数据少时不会凭空撑出空列。
+ * 卡片内部是「标签 + 值 + 按钮」的定宽内容，变宽只是左右留白增加，不破坏排版。 */
 .ids-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, var(--card-width));
-  justify-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-width)), 1fr));
+  justify-content: space-between;
   gap: var(--grid-gap);
 }
 

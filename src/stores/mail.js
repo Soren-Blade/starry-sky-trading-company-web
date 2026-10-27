@@ -8,6 +8,7 @@ import {
   markRead as markReadRequest,
   updatePreferences,
 } from '@/api/ask/mail.js'
+import { shortCache } from '@/utils/shortCache.js'
 
 /**
  * 消息中心
@@ -77,7 +78,9 @@ export const useMailStore = defineStore('mail', {
      */
     async fetchUnreadCount({ silent = true } = {}) {
       try {
-        const { data } = await getUnreadCount()
+        // 顶栏在每次路由变化时都会问一次；shortCache 让 8 秒内的重复调用不再发请求
+        const body = await shortCache.run('mail:unread', () => getUnreadCount())
+        const data = body?.data ?? body
         this.unreadCount = Number(data?.unread ?? 0)
       } catch (error) {
         if (!silent) this.messagesError = error?.message || '获取未读数失败'
@@ -123,6 +126,8 @@ export const useMailStore = defineStore('mail', {
         const { data } = await markReadRequest(ids)
         const updated = Number(data?.updated ?? 0)
         this.unreadCount = Number(data?.unread ?? 0)
+        // 未读数已服务端确认，短缓存作废，避免下一次导航读回旧数字
+        shortCache.invalidate('mail:unread')
 
         // 本地同步已读样式：不重新拉列表，避免刚读完的一屏闪一下
         if (updated > 0) {

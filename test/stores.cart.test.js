@@ -9,6 +9,7 @@ installDomStub()
 const { createPinia, setActivePinia } = await import('pinia')
 const { useCartStore } = await loadAppModule('/stores/cart.js')
 const api = (await loadAppModule('/api/index.js')).default
+const { shortCache } = await loadAppModule('/utils/shortCache.js')
 
 function stubApi(methods) {
   const originals = {}
@@ -22,6 +23,9 @@ function stubApi(methods) {
 }
 
 function freshStore() {
+  // 读路径走 shortCache（8 秒 TTL）。同一个测试进程里缓存是模块级的，
+  // 不清就会把上一条用例的响应喂给下一条 —— 表现为「桩没生效」。
+  shortCache.clear()
   setActivePinia(createPinia())
   return useCartStore()
 }

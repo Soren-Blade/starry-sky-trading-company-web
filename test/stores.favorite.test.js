@@ -10,6 +10,7 @@ const { createPinia, setActivePinia } = await import('pinia')
 const { useFavoriteStore } = await loadAppModule('/stores/favorite.js')
 const { useUserStore } = await loadAppModule('/stores/user.js')
 const api = (await loadAppModule('/api/index.js')).default
+const { shortCache } = await loadAppModule('/utils/shortCache.js')
 
 const TOOL_FAVORITES_KEY = 'SSTC_TOOL_FAVORITES'
 
@@ -38,6 +39,9 @@ function signOutAsGuest(id = 7) {
 }
 
 function freshStores() {
+  // 收藏列表走 shortCache（8 秒 TTL），同一进程内是模块级状态，
+  // 不清会把上一条用例的收藏列表串到下一条。
+  shortCache.clear()
   setActivePinia(createPinia())
   return { favorite: useFavoriteStore(), user: useUserStore() }
 }
@@ -275,6 +279,9 @@ test('登录：工具收藏改走服务端，不再写 localStorage', async () =
     addFavorite: async () => ({ success: true, data: { favorited: true } }),
   })
   try {
+    // 前面的游客用例会往这个 key 里写过东西；这里要验证的是
+    // 「**本次登录态调用**没有写」，先把 key 清空，才不会受用例顺序影响。
+    localStorage.removeItem(TOOL_FAVORITES_KEY)
     await favorite.toggleTool(5)
     assert.equal(favorite.isToolFavorited(5), true)
     assert.equal(localStorage.getItem(TOOL_FAVORITES_KEY), null, '登录态不应再写本机 key')

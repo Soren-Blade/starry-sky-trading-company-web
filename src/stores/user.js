@@ -7,6 +7,7 @@ import {
     applyRememberMe,
 } from '@/hooks/useToken'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
+import { shortCache } from '@/utils/shortCache.js'
 import api from '@/api/index'
 
 /**
@@ -158,6 +159,9 @@ export const useUserStore = defineStore('user', {
             try {
                 const result = await api.login(credentials)
                 if (result?.success) {
+                    // 换人登录了：读缓存里可能还留着上一个人（或游客）的会员总览/
+                    // 收藏/购物车/未读数，必须整体作废，否则首屏会闪一下旧数据。
+                    shortCache.clear()
                     // **必须在 getUserInfo 之前**：token 由响应拦截器写入，
                     // 而 getUserInfo 一旦 401 就会触发一次静默续期；
                     // 那次续期会依据「localStorage 里有没有 refresh token」
@@ -215,6 +219,8 @@ export const useUserStore = defineStore('user', {
             const wasGuest = this.isGuest
 
             clearTokens()
+            // 退出后这些读接口的短缓存全是别人（或已失效会话）的数据
+            shortCache.clear()
             this.userInfo = {}
             this.loginModalOpen = false
             this.initPromise = null

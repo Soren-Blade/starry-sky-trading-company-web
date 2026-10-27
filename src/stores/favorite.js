@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import api from '@/api/index'
 import { useUserStore } from '@/stores/user'
 import { guardAsync } from '@/utils/rateLimit.js'
+import { shortCache } from '@/utils/shortCache.js'
 
 /**
  * 收藏（商品 / 工具）
@@ -107,6 +108,18 @@ export const useFavoriteStore = defineStore('favorite', {
 
             if (!force && this.loadedForUserId === key) return { success: true }
 
+            // 缓存键必须按账号区分：换了账号还去读上一个人的列表，会把别人的
+            // 收藏显示给新账号（真实缺陷，不只是测试问题）。
+            const productKey = `favorite:product:${key}`
+            const toolKey = `favorite:tool:${key}`
+
+            // force 的语义是「去服务端拿最新的」，必须穿透短缓存；
+            // 否则拒绝收藏后再刷新会看到 8 秒前的旧列表。
+            if (force) {
+                shortCache.invalidate(productKey)
+                shortCache.invalidate(toolKey)
+            }
+
             this.loading = true
             this.error = null
 
@@ -121,9 +134,11 @@ export const useFavoriteStore = defineStore('favorite', {
                     return { success: true }
                 }
 
+                // 导航栏角标与多个页面会在同一瞬间各问一次；shortCache 把这一批
+                // 合并成两次请求（product / tool 各一次，8 秒内不再重复）。
                 const [products, tools] = await Promise.all([
-                    api.getFavorites({ target_type: 'product' }),
-                    api.getFavorites({ target_type: 'tool' }),
+                    shortCache.run(productKey, () => api.getFavorites({ target_type: 'product' })),
+                    shortCache.run(toolKey, () => api.getFavorites({ target_type: 'tool' })),
                 ])
 
                 const productItems = products?.data?.items || []
@@ -169,6 +184,13 @@ export const useFavoriteStore = defineStore('favorite', {
 
             const result = await guard()
             if (result === null) return { success: false, skipped: true, message: '' }
+            // 收藏状态已变，短缓存里的列表立刻作废（否则 8 秒内换页面会看到旧列表）。
+            // 键必须带账号作用域，与 load() 里的一致。
+            if (result?.success) {
+                const userStore = useUserStore()
+                const scope = userStore.isLoggedIn ? `user:${userStore.userId}` : 'guest'
+                shortCache.invalidate(`favorite:${targetType}:${scope}`)
+            }
             return result
         },
 

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/api/index'
+import { shortCache } from '@/utils/shortCache.js'
 
 /**
  * 购物车
@@ -86,7 +87,9 @@ export const useCartStore = defineStore('cart', {
             if (!options.silent) this.loading = true
             this.error = null
             try {
-                const result = await api.getCart()
+                // 顶栏角标 + 购物车页 + 结算页会同时问一次；8 秒内合并成一次请求。
+                // 写入类操作（add/update/remove）成功后主动 invalidate。
+                const result = await shortCache.run('cart:list', () => api.getCart())
                 if (result?.success) {
                     this.applyPayload(result.data)
                     this.loaded = true
@@ -117,6 +120,7 @@ export const useCartStore = defineStore('cart', {
             try {
                 const result = await api.addItem({ product_id: productId, quantity })
                 if (result?.success) {
+                    shortCache.invalidate('cart:list')
                     this.applyPayload(result.data)
                     this.loaded = true
                     return { success: true, message: result.message || '已加入购物车' }
@@ -137,6 +141,7 @@ export const useCartStore = defineStore('cart', {
             try {
                 const result = await api.updateItem({ id: itemId, quantity })
                 if (result?.success) {
+                    shortCache.invalidate('cart:list')
                     this.applyPayload(result.data)
                     return { success: true, message: result.message || '购物车已更新' }
                 }
@@ -151,6 +156,7 @@ export const useCartStore = defineStore('cart', {
             try {
                 const result = await api.removeItem(itemId)
                 if (result?.success) {
+                    shortCache.invalidate('cart:list')
                     this.applyPayload(result.data)
                     return { success: true, message: result.message || '已移除' }
                 }
@@ -165,6 +171,7 @@ export const useCartStore = defineStore('cart', {
             try {
                 const result = await api.clearCart()
                 if (result?.success) {
+                    shortCache.invalidate('cart:list')
                     this.applyPayload(result.data)
                     return { success: true, message: result.message || '购物车已清空' }
                 }

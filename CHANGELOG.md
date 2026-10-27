@@ -9,6 +9,33 @@
 
 ---
 
+## [2.4.0] — 2026-10-28 · 请求合并与短缓存（性能）
+
+只改性能与共享 Apple ID 页布局，无新页面、无破坏性变更；按 `2.4.0` 发。
+
+| 位置 | 变更 |
+| --- | --- |
+| `src/utils/shortCache.js` | **新增**。8 秒 TTL + 同 key 单飞（并发只发一次），失败不写缓存；供 store / api 层复用 |
+| `src/stores/member.js` | `fetchOverview()` 走 `shortCache('member:overview')` |
+| `src/stores/favorite.js` | 收藏走 `shortCache('favorite:product|tool:<scope>')`，**key 带账号作用域**；`load(true)` 强制穿透缓存；`toggle()` 成功按类型失效 |
+| `src/stores/mail.js` | 未读数走 `shortCache('mail:unread')`，`markRead` 成功后失效 |
+| `src/stores/cart.js` | 购物车走 `shortCache('cart:list')`，增删改清空后失效（**不在 `applyPayload` 里失效**，否则读路径自己废掉缓存） |
+| `src/stores/user.js` | 登录成功、退出登录各清一次 `shortCache`（换人不能看到上一个人的会员/收藏/购物车/未读） |
+| `src/api/ask/shop.js` | 分类与商品列表走 `shortCache`，**key 按键名排序 + 原语归一**（不同调用方传参顺序不同、`true` 与 `'true'` 混用，否则算出两个 key，缓存白做） |
+| `src/components/AppleIdSection.vue` | `.ids-grid` 改 `repeat(auto-fit, minmax(min(100%, var(--card-width)), 1fr))` + `justify-content: space-between`：卡片宽度自适应、剩余空间均摊（原固定列宽 + `start` 会在右侧留白） |
+
+**修复**
+
+- 收藏缓存的 key 原先不带账号：同一浏览器切换账号后会读到上一个账号的收藏，`load(true)` 也会被 8 秒缓存挡住。现在 key 带 `user:<id>`/`guest` 作用域、强制刷新穿透缓存。
+
+**取舍**
+
+- 短缓存 TTL 8 秒：写操作一律主动失效，所以正常操作看不到陈旧数据；只有「别人改了、我这边没操作」才会最多延迟 8 秒。
+- `shop.js` 的缓存挂在 api 层而不是组件里：首页/分类页/导航会同时挂载并各请求一次，只有共享一层才能真正合并。
+- 缓存实例是模块级单例（不是 Pinia state）：store 之间要共享同一份，放进 state 反而会因为是不同实例而各存一份。
+
+---
+
 ## [2.3.0] — 2026-10-27 · 我的资产、签到位与页面细节收口
 
 六项体验升级。新增一个受保护路由 `/user/assets`（我的资产），因此按 `2.3.0` 发；

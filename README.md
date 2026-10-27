@@ -150,6 +150,8 @@ starry-sky-trading-company-web/
         ├── checkout.js           # 结算口径纯函数：积分校验、上限换算、明细行、券选项文案
         ├── taskDisplay.js        # 任务与商城的展示纯函数：周期文案、进度百分比、按钮四态
         ├── checkinDisplay.js     # 签到与补签的展示纯函数：可补签判定、格子标题、失败文案
+        ├── rateLimit.js          # debounce / throttle / createClickGuard / guardAsync（防连点，2.2.0）
+        ├── shortCache.js         # 8 秒短缓存 + 单飞，合并「同一接口被多个组件各请求一次」（2.4.0）
         └── clipboard.js          # 剪贴板写入（两级策略 + 失败提示）
 ```
 

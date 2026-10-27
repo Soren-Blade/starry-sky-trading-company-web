@@ -17,6 +17,7 @@ installDomStub()
 const { createPinia, setActivePinia } = await import('pinia')
 const { useMailStore } = await loadAppModule('/stores/mail.js')
 const request = (await loadAppModule('/api/request.js')).default
+const { shortCache } = await loadAppModule('/utils/shortCache.js')
 
 /** 用一层薄桩替换 request.get / request.post，返回还原函数 */
 function stubRequest({ get, post }) {
@@ -48,6 +49,9 @@ function recorder(routes) {
 }
 
 function freshStore() {
+  // 未读数走 shortCache（8 秒 TTL），模块级状态会跨用例存活 ——
+  // 不清的话「静默失败不清零」这类用例会读到上一条的缓存值。
+  shortCache.clear()
   setActivePinia(createPinia())
   return useMailStore()
 }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { getOverview, getPlans, getGrowthHistory, getBenefits } from '@/api/ask/member.js'
+import { shortCache } from '@/utils/shortCache.js'
 
 /**
  * 会员状态（阶段 P0）
@@ -99,7 +100,10 @@ export const useMemberStore = defineStore('member', {
       this.loadingOverview = true
       if (!silent) this.error = ''
       try {
-        const { data } = await getOverview()
+        // 导航栏与页面组件几乎同时调它；走 shortCache 后同一批只发一次请求。
+        // 签到/激活等写操作完成后由调用方 invalidate('member:overview')。
+        const body = await shortCache.run('member:overview', () => getOverview())
+        const data = body?.data ?? body
         this.overview = data
         return data
       } catch (error) {
