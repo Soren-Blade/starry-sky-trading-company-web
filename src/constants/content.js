@@ -189,6 +189,11 @@ export const PAGES = {
     title: '订单详情',
     description: '订单商品明细与状态',
   },
+  assets: {
+    eyebrow: 'ASSETS',
+    title: '我的资产',
+    description: '购买的数字商品、卡密与已激活工具；实物商品的订单仍在「订单管理」查看',
+  },
 }
 
 /** 商品网格 */

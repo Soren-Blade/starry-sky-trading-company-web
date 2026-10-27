@@ -23,6 +23,9 @@ import { defineStore } from 'pinia'
  *     交叉淡出。渐变底、阴影、描边、outline 全在快照里，所以不会出现「颜色渐变
  *     了，主按钮的渐变底和顶栏阴影却跳了」的半截效果 —— 逐属性 transition 做不
  *     到这点，它根本插值不了 `background-image`。
+ *     时长与曲线不在这里定：快照的动画属于 `::view-transition-*` 伪元素，写在
+ *     `src/assets/styles/global.css` 的「主题切换」一节（320ms + `--ec-ease-out`）。
+ *     这个 store 只负责「什么时候拍」，不负责「拍多久」。
  *   回落 · `is-theme-switching` + 颜色 transition：给不支持该 API 的浏览器
  *     （Safari 18 之前、部分内嵌 WebView）保底。它盖不住渐变与阴影，但底色、文字
  *     色覆盖了页面绝大部分面积，比干脆硬切好得多。两条路径同一时刻只跑一条 ——
@@ -66,6 +69,16 @@ export const THEME_SWITCH_MS = 260
  * `clearTimeout` 就不一定认得它了。定时器本来也不需要参与渲染。
  */
 let themeSwitchTimer = null
+
+/**
+ * 正在进行的 View Transition。
+ *
+ * 只为一件事存在：**快速连点不能叠加**。浏览器自己也会把上一次过渡 abort 掉，但
+ * 那是「隐式」行为 —— 取决于两次调用之间是否已经拍完快照。显式 `skipTransition()`
+ * 让上一次直接落定（它的伪元素立刻被摘掉），新的那次再从干净的旧帧开始拍，
+ * 观感永远是「一次 320ms 的淡出」而不是「两次叠出半截灰」。
+ */
+let activeViewTransition = null
 
 const isMode = (value) => THEME_MODES.includes(value)
 
@@ -125,6 +138,25 @@ function dropThemeSwitchClass() {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   if (root && root.classList) root.classList.remove(THEME_SWITCH_CLASS)
+}
+
+/**
+ * 结束上一次还在跑的 View Transition。
+ *
+ * 不能「直接 return 忽略新点击」：连点是在追主题，最后一次点击必须生效。
+ * 也不能放任两条过渡叠着跑：`::view-transition-*` 是全屏合成层，两层各以
+ * 50% 不透明度叠在一起，看到的就是一片灰 —— 比硬切更像故障。
+ * 所以先让上一次 skip 到终态（伪元素立刻摘掉），再从头拍新的一次。
+ */
+function abortActiveTransition() {
+  if (!activeViewTransition) return
+  const previous = activeViewTransition
+  activeViewTransition = null
+  try {
+    if (typeof previous.skipTransition === 'function') previous.skipTransition()
+  } catch {
+    /* 已结束或半实现：忽略 */
+  }
 }
 
 export const useThemeStore = defineStore('theme', {
@@ -190,7 +222,8 @@ export const useThemeStore = defineStore('theme', {
      * 换肤的唯一执行口：决定这一帧用哪条路径，然后写属性。
      *
      * 顺序（三条分支互斥，后两条都不挂瞬时类）：
-     *   0. 先摘掉上一次的收尾定时器 —— 快速连点时旧定时器会把新一次的类提前撤走；
+     *   0. 先摘掉上一次的收尾定时器、并让上一次还在跑的 View Transition 落定
+     *      —— 快速连点时旧定时器会把新一次的类提前撤走，两条快照叠着淡会叠出灰；
      *   1. `prefers-reduced-motion: reduce` → 不做任何过渡，直接写属性；
      *   2. 支持 View Transitions → 清掉残留瞬时类，`startViewTransition(() => apply())`；
      *   3. 都不满足 → 回落 `startColorTransition()` + `apply()`。
@@ -201,6 +234,9 @@ export const useThemeStore = defineStore('theme', {
      */
     applyWithTransition() {
       clearThemeSwitchTimer()
+      // 三条分支都先在「上一次还热着」的状态上落地：连点时若让两条快照叠着淡，
+      // 中段会叠出一片灰，比硬切更难看。
+      abortActiveTransition()
 
       if (prefersReducedMotion()) {
         // 系统要求减弱动效：快照淡入淡出同样是全屏闪烁，一并省掉
@@ -213,17 +249,24 @@ export const useThemeStore = defineStore('theme', {
         dropThemeSwitchClass()
         try {
           const transition = document.startViewTransition(() => this.apply())
-          // 连点时浏览器会 skip 掉上一个过渡，ready / finished 以 AbortError 拒绝。
-          // 不接住就是一条与主题无关的控制台报错，会污染错误监控。
+          activeViewTransition = transition || null
+          // 连点时上一次过渡会以 AbortError 拒绝 ready / finished。不接住就是一条
+          // 与主题无关的控制台报错，会污染错误监控。
           if (transition && typeof transition.ready?.then === 'function') {
             transition.ready.catch(() => {})
           }
           if (transition && typeof transition.finished?.then === 'function') {
-            transition.finished.catch(() => {})
+            transition.finished
+              .catch(() => {})
+              .then(() => {
+                // 只清理自己这一条：连点时新过渡已经把这个槽位换成新句柄了
+                if (activeViewTransition === transition) activeViewTransition = null
+              })
           }
           return
         } catch {
           // 后台标签页、半实现的 WebView 会在调用瞬间抛错：落到下面的瞬时类路径
+          activeViewTransition = null
         }
       }
 

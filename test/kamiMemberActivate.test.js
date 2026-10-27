@@ -323,8 +323,8 @@ test('提交：tool_id 必传、user_uuid 来自同一个输入框且不传空�
   assert.match(kamiSection, /notify\.success\(response\.message \|\| '免卡密激活成功'\)/)
   assert.match(
     kamiSection,
-    /await Promise\.all\(\[loadMemberQuota\(\), reload\(1\), loadEntitlements\(\)\]\)/,
-    '成功后要同时刷新额度、卡密列表与已激活工具'
+    /await Promise\.all\(\[loadMemberQuota\(\), reload\(1\)\]\)/,
+    '成功后要刷新额度与卡密列表（授权表在「我的资产」，不在这里刷新）'
   )
 })
 
@@ -381,62 +381,42 @@ test('两个激活动作都过 guardAsync，连点不会发第二次请求', () 
   assert.match(kamiSection, /memberActivating/, '会员通道的进行中标记必须保留')
 })
 
-// ── 八、已激活工具（需求 8） ─────────────────────────────────
+// ── 八、已激活工具（需求 8）→ 2.3.0 起挪到「我的资产」 ────────
 
-test('已激活工具：右栏表格四列、来源与状态有标签', () => {
-  const sectionStart = kamiSection.indexOf('class="entitlements-section"')
-  assert.ok(sectionStart > 0, '找不到「已激活工具」小节')
-  assert.ok(
-    sectionStart > kamiSection.indexOf('class="kami-pager"'),
-    '必须排在「我的卡密」列表之后'
+test('已激活工具：卡密页只留出口，表格整体搬去「我的资产」', () => {
+  // 表格、来源标签、滚动锚点全部下线（同一份数据不在两个页面各画一遍）
+  assert.equal(kamiSection.includes('class="entitlements-section"'), false, '小节已删除')
+  assert.equal(kamiSection.includes('entitlements-table'), false, '表格已删除')
+  assert.equal(kamiSection.includes('getEntitlementSource'), false, '来源映射随表一起走')
+  assert.equal(kamiSection.includes('entitlementsBlock'), false, '滚动锚点已删除')
+
+  // 取而代之是一个明确的出口
+  assert.match(kamiSection, /class="entitlements-link-row"/)
+  assert.match(
+    kamiSection,
+    /<router-link class="u-btn-secondary" to="\/user\/assets">/,
+    '出口指向 /user/assets'
   )
-  const section = kamiSection.slice(sectionStart, kamiSection.indexOf('</section>', sectionStart))
+  assert.match(kamiSection, /已激活的工具在「我的资产」查看/)
 
-  assert.match(section, /已激活工具/)
-  const headers = [...section.matchAll(/<th scope="col">([^<]+)<\/th>/g)].map((m) => m[1])
-  assert.deepEqual(headers, ['工具名', '来源', '有效期', '状态'])
-  assert.match(section, /class="u-table-wrap"/, '复用卡密列表的表格视觉')
-  assert.match(section, /table class="u-table entitlements-table"/)
-
-  assert.match(section, /getEntitlementToolName\(item\)/)
-  assert.match(section, /item\.is_permanent[\s\S]{0,60}永久有效/)
-  assert.match(section, /item\.days_left/)
-  assert.match(section, /item\.is_valid \? '有效' : '已过期'/)
-  assert.match(section, /暂无已激活工具/, '空态不能只剩一个空表格')
+  // 成功模板的主动作也要跳过去，而不是滚动
+  assert.match(kamiSection, /label: '查看我的资产'/)
+  assert.match(
+    kamiSection,
+    /if \(action === 'show-entitlements'\) \{\s*\/\/[^\n]*\n\s*router\.push\('\/user\/assets'\)/,
+    'show-entitlements 改为跳转'
+  )
 })
 
-test('已激活工具：来源映射 member → 会员额度，其余 → 卡密', () => {
+test('已激活工具：卡密通道成功后只刷卡密列表，不再重复拉授权', () => {
+  assert.match(kamiSection, /onActivated: \(\) => reload\(1\)/, '卡密通道只刷列表')
   assert.match(
     kamiSection,
-    /item\?\.grant_source === 'member' \? '会员额度' : '卡密'/,
-    'grant_source 只有 member/card 两种语义'
+    /await Promise\.all\(\[loadMemberQuota\(\), reload\(1\)\]\)/,
+    '会员通道刷额度与列表'
   )
-  assert.match(kamiSection, /api\.getMyEntitlements\(\)/)
-  assert.match(
-    kamiSection,
-    /Array\.isArray\(response\.data\?\.entitlements\)/,
-    'api 层返回整包 data，前端取 data.entitlements'
-  )
-  assert.match(kamiSection, /已激活工具读取失败，请稍后重试。/)
-  assert.match(kamiSection, /entitlementsBlock/, '会员结果卡的「查看已激活工具」要能滚到这里')
-})
-
-test('已激活工具：两条激活通道成功后都刷新', () => {
-  assert.match(
-    kamiSection,
-    /onActivated: \(\) => Promise\.all\(\[reload\(1\), loadEntitlements\(\)\]\)/,
-    '卡密通道走 useKamiActivation 的 onActivated'
-  )
-  assert.match(
-    kamiSection,
-    /await Promise\.all\(\[loadMemberQuota\(\), reload\(1\), loadEntitlements\(\)\]\)/,
-    '会员通道成功后直接重拉'
-  )
-  assert.match(
-    kamiSection,
-    /watch\(\s*\(\) => userStore\.userId[\s\S]{0,160}loadEntitlements\(\)/,
-    '身份就绪后要拉一次'
-  )
+  assert.equal(kamiSection.includes('loadEntitlements'), false, '授权取数函数已移出本组件')
+  assert.equal(kamiSection.includes('api.getMyEntitlements'), false, '本组件不再请求 /myEntitlements')
 })
 
 // ── 九、Toast 着色（需求 7） ─────────────────────────────────

@@ -136,9 +136,31 @@ test('被委派的结果区（Apple ID 列表）同样使用共享的加载与�
 })
 
 test('每个工具页都带辅助信息（使用说明 / 注意事项）', () => {
+  // 辅助信息有两种合法载体：
+  //   1. 页面自己的 #aside 插槽（外壳在宽屏把它排成右栏）；
+  //   2. 被委派的结果区自带说明区 —— 共享 Apple ID 页属于这种：
+  //      说明与风险提示移到了 AppleIdSection 的左轨（sticky 在账号列表旁，
+  //      长列表滚动时仍可见；≤991px 折到列表上方），页面本身不再挂 #aside，
+  //      因此不能再用 `#aside` 作为标签页的判据。
+  // 2FA 继续用它已有的教程区（fp-tutorial）充当辅助信息。
+  const delegatedGuide = read('src/components/AppleIdSection.vue')
+
   for (const [toolPath, file] of Object.entries(TOOL_ROUTES)) {
+    if (toolPath === '/other/appleId') {
+      assert.match(
+        delegatedGuide,
+        /guide-toggle/,
+        'Apple ID 的使用说明折叠块应由 AppleIdSection 左轨承载',
+      )
+      assert.match(
+        delegatedGuide,
+        /risk-warning/,
+        'Apple ID 的风险提示应由 AppleIdSection 左轨顶部承载',
+      )
+      continue
+    }
+
     const source = read(file)
-    // 2FA 用自己已有的教程区充当辅助信息（含演示密钥），其余四页走侧栏插槽。
     const hasAside = /#aside/.test(source)
     const hasTutorial = /fp-tutorial/.test(source)
     assert.ok(

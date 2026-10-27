@@ -20,7 +20,9 @@
     </div>
 
     <template v-else>
-      <!-- 邀请码与链接：链接由服务端拼（它知道站点基址），前端只负责展示与复制 -->
+      <!-- 邀请码与链接：链接由服务端拼（它知道站点基址），前端只负责展示与复制。
+           两块各带自己的复制按钮 —— 原先两个按钮都堆在链接下方，按钮尺寸与
+           链接块的 flex-basis 一起把卡片撑高，码与链接反而各占一半横向空间。 -->
       <section v-if="inviteStore.loadingSummary && !inviteStore.hasSummary" class="ui-card invite-skeleton">
         <span class="u-skeleton invite-skeleton-line"></span>
         <span class="u-skeleton invite-skeleton-line"></span>
@@ -29,23 +31,27 @@
       <section v-else class="ui-card invite-code-card">
         <div class="invite-code-block">
           <p class="invite-code-label">我的邀请码</p>
-          <p class="invite-code-value">{{ inviteStore.inviteCode || '——' }}</p>
-          <p class="invite-code-hint">
-            邀请码由账号自动生成，注册时填在「邀请码」一栏；也可以直接把链接发给好友
-          </p>
-        </div>
-        <div class="invite-link-block">
-          <p class="invite-code-label">邀请链接</p>
-          <p class="invite-link-value">{{ inviteStore.inviteLink || '——' }}</p>
-          <div class="invite-link-actions">
-            <button type="button" class="u-btn-primary" :disabled="!inviteStore.inviteLink" @click="copyLink">
-              复制链接
-            </button>
+          <div class="invite-code-row">
+            <p class="invite-code-value">{{ inviteStore.inviteCode || '——' }}</p>
             <button type="button" class="u-btn-secondary" :disabled="!inviteStore.inviteCode" @click="copyCode">
               复制邀请码
             </button>
           </div>
         </div>
+        <div class="invite-link-block">
+          <p class="invite-code-label">邀请链接</p>
+          <div class="invite-link-row">
+            <p class="invite-link-value">{{ inviteStore.inviteLink || '——' }}</p>
+            <button type="button" class="u-btn-primary" :disabled="!inviteStore.inviteLink" @click="copyLink">
+              复制链接
+            </button>
+          </div>
+        </div>
+        <!-- 说明横跨两栏放在卡片收尾：它同时讲码与链接，留在任一栏都会让另一栏
+             多出一截空白，卡片高度也由它统一收口 -->
+        <p class="invite-code-hint">
+          邀请码由账号自动生成，注册时填在「邀请码」一栏；也可以直接把链接发给好友
+        </p>
       </section>
 
       <!-- 三态计数 + 奖励口径：数值全部来自服务端 -->
@@ -261,19 +267,62 @@ onMounted(() => {
   border-radius: var(--radius-media);
 }
 
-/* 邀请码 / 链接 */
+/* 邀请码 / 链接
+ * 死白的根因：.ui-card 自带 flex-direction: column，这里原先只覆盖了 display: flex，
+ * 于是 .invite-link-block 的 flex-basis（30 个间距单位 = 240px）被当成「高度基准」，
+ * 按钮下方多出约 240px 空白（1440 实测卡片 435px 高、内容只占 280px）。
+ * 改为两栏 grid：列定义只约束宽度，行高完全由内容决定；
+ * ≤991px 收成一列，用横线代替竖线。 */
 .invite-code-card {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 4);
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  /* 行距小于列距：说明行是卡片收尾，不该和两栏正文一样疏 */
+  row-gap: calc(var(--space-unit) * 3);
+  column-gap: calc(var(--space-unit) * 5);
   padding: calc(var(--space-unit) * 4);
 }
-.invite-code-block {
-  min-width: calc(var(--space-unit) * 22);
-}
+.invite-code-block,
 .invite-link-block {
-  flex: 1 1 calc(var(--space-unit) * 30);
   min-width: 0;
+}
+/* 竖线把「码 / 链接」分成两块，避免两栏文字连成一段 */
+.invite-link-block {
+  padding-left: calc(var(--space-unit) * 5);
+  border-left: var(--stroke-width) solid var(--border);
+}
+/* 每栏内部：值占满剩余宽度、复制按钮固定贴右；挤不下时按钮换行后仍贴右，
+ * 不会出现「按钮被链接文字推到中间」的错位 */
+.invite-code-row,
+.invite-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 0.5);
+}
+.invite-code-value,
+.invite-link-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+.invite-code-value {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-heading);
+  /* 邀请码是「照着敲」的字符串，字距略放宽才不至于把 0/O 认混；
+   * 现有令牌没有这一档（display 是 -.02em、label 是 .02em），就地写死并说明。 */
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.invite-code-row > button,
+.invite-link-row > button {
+  flex: none;
+  margin-left: auto;
 }
 .invite-code-label {
   margin: 0;
@@ -281,32 +330,12 @@ onMounted(() => {
   letter-spacing: var(--tracking-label);
   color: var(--text-muted);
 }
-.invite-code-value {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  font-weight: var(--fw-heading);
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
 .invite-code-hint {
-  max-width: 40ch;
-  margin: calc(var(--space-unit) * 1.5) 0 0;
+  grid-column: 1 / -1;
+  max-width: 60ch;
+  margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-muted);
-}
-.invite-link-value {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  word-break: break-all;
-  color: var(--text-secondary);
-}
-.invite-link-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-top: calc(var(--space-unit) * 2);
 }
 
 /* 三态计数 */
@@ -458,19 +487,32 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* 两栏在 991px 以下收成一列：768px 时并排会把链接压到按钮单独换行 */
+@media (max-width: 991px) {
+  .invite-code-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 3);
+  }
+  .invite-link-block {
+    padding-top: calc(var(--space-unit) * 3);
+    padding-left: 0;
+    border-top: var(--stroke-width) solid var(--border);
+    border-left: none;
+  }
+}
+
 @media (max-width: 575px) {
   .invite-stats {
     grid-template-columns: 1fr;
   }
-  .invite-code-card {
-    flex-direction: column;
-    gap: calc(var(--space-unit) * 3);
+  /* 复制按钮独占一行并撑满：窄屏与长链接挤同一行时按钮会被压成两行 */
+  .invite-code-row > button,
+  .invite-link-row > button {
+    width: 100%;
+    margin-left: 0;
   }
   .invite-record {
     flex-wrap: wrap;
-  }
-  .invite-link-actions button {
-    width: 100%;
   }
 }
 </style>

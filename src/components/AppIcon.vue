@@ -33,9 +33,12 @@
  *   1. **颜色完全由 currentColor 决定** —— 组件里不写任何颜色，
  *      因此它跟随所在位置的文字色，也就跟随主题令牌变化。
  *      需要强调色的地方由父级设 color（如 `.rail-item--active { color: var(--accent) }`）。
- *   2. **尺寸用 1em** —— 跟着所在位置的 font-size 走。项目里字号本身是
+ *   2. **尺寸默认 1em** —— 跟着所在位置的 font-size 走。项目里字号本身是
  *      按主题缩放的（--fs-* / --mobile-*-scale），所以图标自动跟着缩放，
- *      不必为每个位置单独指定像素。
+ *      不必为每个位置单独指定像素。**结果类图标例外**（空状态 / 四态 / 兑换结果 /
+ *      结果页）：它们被画到 40–64px，2.5 的描边会跟着放大到 5–6.7px，又粗又笨。
+ *      这一批统一由 global.css 的「结果类图标」一节收到 24–32px、描边降到 1.5；
+ *      页头、按钮、导航里的小图标不受影响。
  *   3. **默认 aria-hidden** —— 图标在这些位置都是装饰，语义由相邻文字或
  *      父级按钮的 aria-label 承担。真正的图标按钮请把 aria-label 给 button。
  *
@@ -48,7 +51,7 @@ import { ICONS, ICON_STROKE_WIDTH } from '@/utils/iconSet.js'
 const props = defineProps({
     /** utils/iconSet.js 里 ICONS 的键 */
     name: { type: String, required: true },
-    /** 覆盖线宽（默认 2，24 网格上的常规值） */
+    /** 覆盖线宽（默认取 ICON_STROKE_WIDTH = 2.5，24 网格上 16–20px 的取值） */
     strokeWidth: { type: [Number, String], default: ICON_STROKE_WIDTH },
     /**
      * 实心填充。
@@ -74,7 +77,11 @@ const geometry = computed(() => {
 
 <style scoped>
 .app-icon {
-  /* 1em：跟随所在位置的 font-size，因而跟随主题的字号缩放 */
+  /* 1em：跟随所在位置的 font-size，因而跟随主题的字号缩放。
+   * 结果类图标（空状态 / 四态 / 兑换结果）不走这条：它们由 global.css 的
+   * 「结果类图标」一节用 `svg.app-icon`（0,2,1）直接改 width/height —— 比这里的
+   * scoped `.app-icon[data-v-*]`（0,2,0）高一位，不需要 !important，也不需要
+   * 再引一个自定义属性（令牌表会拒绝未定义的 `--*`）。 */
   width: 1em;
   height: 1em;
   /*

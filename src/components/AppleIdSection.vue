@@ -3,11 +3,32 @@
     <div class="section-container">
       <div class="directory">
         <!--
-          ── 左轨：目录导航 ──────────────────────────────────────────────
+          ── 左轨：风险提示 + 目录导航 ──────────────────────────────────
           桌面端 sticky 在顶栏之下（顶栏是 sticky，必须让出它的高度）；
           ≤991px 变单栏时回到文档流最上方并取消 sticky。
+          风险提示放在这里而不是右区列表上方：列表很长时右区顶部的提示会被
+          滚出视口，而左轨 sticky 能一直看到。它与「使用说明」同属操作前提，
+          因此放在折叠块之前。
         -->
-        <aside class="rail" aria-label="目录导航">
+        <aside class="rail" aria-label="使用提示与线路目录">
+          <!-- 风险提示：语义色各取一份（--danger / --warning），标签走 .u-tag 语义变体 -->
+          <div class="risk-warning">
+            <div class="warning-item critical u-enter" :style="{ '--i': 0 }">
+              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />高风险</span>
+              <div class="warning-content">
+                <p class="warning-title">只登 App Store</p>
+                <p class="warning-text">切勿登录 iCloud，否则可能锁机或泄露隐私。</p>
+              </div>
+            </div>
+            <div class="warning-item scam u-enter" :style="{ '--i': 1 }">
+              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />防诈骗</span>
+              <div class="warning-content">
+                <p class="warning-title">本站不收解锁费</p>
+                <p class="warning-text">遇到收费解锁或索要个人信息，一律是诈骗。</p>
+              </div>
+            </div>
+          </div>
+
           <div class="rail-block">
             <!-- 折叠开关：aria-expanded 让屏幕阅读器知道展开状态 -->
             <button
@@ -26,36 +47,30 @@
               <div class="guide-item tutorial">
                 <h4 class="guide-subtitle">使用教程</h4>
                 <ol class="guide-list">
-                  <li>打开应用商店（App Store）</li>
-                  <li>左上角退出当前ID，复制账户、密码登陆共享ID</li>
-                  <li>登陆提示选择 - 其他选项 - 不升级 - 以后</li>
-                  <li>下载成功后退出共享ID，登陆自己ID</li>
+                  <li>打开 App Store，退出当前 Apple ID。</li>
+                  <li>用下方账号密码登录，弹窗选「其他选项 → 不升级 → 以后」。</li>
+                  <li>下载完成后立即退出共享 ID，换回自己的账号。</li>
+                  <li>若提示安装失败，先卸载旧版本再重装。</li>
                 </ol>
               </div>
 
               <div class="guide-item tips">
-                <h4 class="guide-subtitle">友情提示</h4>
+                <h4 class="guide-subtitle">注意事项</h4>
                 <ul class="guide-tips-list">
                   <li>
-                    <strong>密码更新：</strong
-                    >密码30分钟更新一次，过期后请自行来官网获取最新密码，请勿使用旧密码登入
+                    <strong>密码更新：</strong>约 30 分钟一换，旧密码已失效，回本站重取。
                   </li>
                   <li>
-                    <strong>下载软件：</strong
-                    >下载软件后必须退出共享AppID，重新登陆自己的AppID
+                    <strong>账号锁定：</strong>提示锁定后等约 40 分钟，再取新号。
                   </li>
                   <li>
-                    <strong>安装说明：</strong
-                    >如果已经安装过需要先卸载旧版本重新安装，否则账号会提示锁定
+                    <strong>双重验证：</strong>弹出双重认证说明号已被他人用过，换一个。
                   </li>
                   <li>
-                    <strong>账号锁定：</strong>如果账号锁定等待40分钟然后来获取
+                    <strong>账号用途：</strong>只下载已购应用，勿改密码或绑支付。
                   </li>
                   <li>
-                    <strong>重要警告：</strong>请勿登入iCloud，开双重认证会锁机器
-                  </li>
-                  <li>
-                    <strong>责任声明：</strong>不按教程操作出现问题概不负责！！
+                    <strong>责任声明：</strong>未按步骤操作导致的问题，本站不负责。
                   </li>
                 </ul>
               </div>
@@ -82,31 +97,8 @@
           </nav>
         </aside>
 
-        <!-- ── 右区：风险提示 + 账号目录 ─────────────────────────────── -->
+        <!-- ── 右区：账号目录（风险提示已上移到左轨顶部） ─────────────── -->
         <div class="directory-main">
-          <!-- 风险提示：语义色各取一份（--danger / --warning），标签走 .u-tag 语义变体 -->
-          <div class="risk-warning">
-            <div class="warning-item critical u-enter" :style="{ '--i': 0 }">
-              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />高风险</span>
-              <div class="warning-content">
-                <p class="warning-title">使用APP Store登录</p>
-                <p class="warning-text">
-                  使用苹果ID必须从App
-                  Store登录，千万不要登录「iCloud」，否则可能导致锁机或者隐私泄漏！
-                </p>
-              </div>
-            </div>
-            <div class="warning-item scam u-enter" :style="{ '--i': 1 }">
-              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />防诈骗</span>
-              <div class="warning-content">
-                <p class="warning-title">防范诈骗行为</p>
-                <p class="warning-text">
-                  本站不提供任何付费解锁服务，也不会索取任何个人信息。任何收费解锁或信息索取行为，均为诈骗，请提高警惕。
-                </p>
-              </div>
-            </div>
-          </div>
-
           <!-- 无身份：Apple ID 列表走 JWT 保护的 /toolApi/getAppleIds，
                照常请求只会拿到 401 并显示「加载失败」，不如直接给出登录引导。
                刻意**不复用** .error-container —— 那是危险色面板，
@@ -229,8 +221,8 @@ onMounted(() => {
 <style scoped>
 /*
  * 版式：「目录 / Directory」—— 左轨 + 右区两栏。
- *   左轨：使用说明（折叠）+ 线路锚点，桌面端 sticky，窄栏可读；
- *   右区：风险提示 + 两条数据源目录（小标题行 + 计数 + 卡片网格）。
+ *   左轨：风险提示 + 使用说明（折叠）+ 线路锚点，桌面端 sticky，窄栏可读；
+ *   右区：两条数据源目录（小标题行 + 计数 + 卡片网格）。
  *
  * 三条前提不变：
  *   1. 区块底色由 body 的 --bg-page 承担，组件不自绘背景；
@@ -271,6 +263,11 @@ onMounted(() => {
 .rail {
   position: sticky;
   top: calc(var(--navbar-height) + var(--space-unit) * 2);
+  /* 左轨现在同时装风险提示与折叠说明：展开后总高会超过视口，而比视口高的
+   * sticky 面板会让底部的线路锚点永远滚不到。因此让左轨自己成为滚动容器，
+   * 说明区不再单独限制高度（两个嵌套滚动条更难用）。 */
+  max-height: calc(100vh - var(--navbar-height) - var(--space-unit) * 4);
+  overflow-y: auto;
   padding: var(--card-padding);
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
@@ -332,13 +329,11 @@ onMounted(() => {
   flex: 1;
 }
 
-/* 展开区：窄栏里内容偏长，超过视口高度时在栏内滚动，
- * 避免 sticky 面板被顶出屏幕、底部内容够不到。 */
+/* 展开区：高度交给 .rail 的滚动容器，这里只负责排版。
+ * （此前单独给 max-height + 内部滚动，加上风险提示后两个滚动条会打架。） */
 .guide-content {
-  max-height: calc(100vh - var(--navbar-height) - var(--space-unit) * 16);
   margin-top: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 1.75);
-  overflow-y: auto;
   background: var(--bg-surface-2);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-card);
@@ -481,22 +476,25 @@ onMounted(() => {
   gap: calc(var(--section-gap) * 0.5);
 }
 
-/* ── 风险提示 ─────────────────────────────────────────────────
+/* ── 风险提示（左轨顶部）──────────────────────────────────────
  * 两条提示分别取 .u-tag--danger / .u-tag--warning 的语义色方案：
  * 底色用语义柔和底（--danger-bg / --warning-bg），左侧色条与标签用语义色本身。
- * 语义色只有一份来源，明暗两套主题都成立。 */
+ * 语义色只有一份来源，明暗两套主题都成立。
+ * 栏宽只有一张卡片，内边距与间距比原先（右区通栏）各收一档，
+ * 保证每条提示在 1–2 行内读完。 */
 
 .risk-warning {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 2);
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 2.5);
 }
 
 .warning-item {
   display: flex;
   align-items: flex-start;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 1.75);
   color: var(--danger);
   background: var(--danger-bg);
   /* 色条宽度取半个间距单位：既保持醒目，又随主题密度一起缩放 */
@@ -521,8 +519,8 @@ onMounted(() => {
 }
 
 .warning-title {
-  margin: 0 0 calc(var(--space-unit) * 0.75);
-  font-size: var(--fs-body);
+  margin: 0 0 calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-heading);
   /* 标题跟随所属提示的语义色 */
   color: inherit;
@@ -623,11 +621,17 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-/* 列数交给卡片最小宽度（--card-width）：容器变窄时自动减列，
-   不需要为每一档断点各写一次列数 */
+/* 卡片尺寸固定：列宽恒为 --card-width，容器变宽时只增加列数，不再拉宽卡片。
+ * 之前是 minmax(--card-width, 1fr)：数据只有两三张时每列各占半栏，卡片被拉宽、
+ * 内部留白显得空。固定列宽 + auto-fill 后：1440/1199 每排两张、768 两张、390 一张，
+ * 多余宽度留在右侧（justify-content: start），卡片本身不伸缩。
+ * 代价：992–1099px 之间右区面板内宽不足两张卡（992 实测约 487px，两张 280 卡 +
+ * 24 间距需 584px），只排得下一张；该区间不在本次验收的四档内，且卡片若改为
+ * 1fr 伸缩就又回到「卡片被拉宽、行内留白」的老问题。 */
 .ids-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--card-width));
+  justify-content: start;
   gap: var(--grid-gap);
 }
 
@@ -653,12 +657,11 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* 单栏后左轨回到文档流最上方，不再受视口高度约束：撤掉 sticky 与栏内滚动。
+     风险提示与说明都在文档流里，锚点跳转由 scroll-margin-top 让开顶栏，
+     提示不会遮住 #nano-cloud / #fang-qiang-nan 的标题。 */
   .rail {
     position: static;
-  }
-
-  /* 单栏后左轨不再受视口高度约束，撤掉栏内滚动 */
-  .guide-content {
     max-height: none;
     overflow-y: visible;
   }
@@ -710,13 +713,13 @@ onMounted(() => {
   }
 
   .risk-warning {
-    gap: calc(var(--space-unit) * 2 * var(--mobile-section-scale));
+    gap: calc(var(--space-unit) * 1.5 * var(--mobile-section-scale));
   }
 
   .warning-item {
     gap: calc(var(--space-unit) * 1.5);
-    padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
+    padding: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale))
+      calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale));
   }
 
   .data-source-section {

@@ -97,9 +97,21 @@
           {{ checkinAvailable ? '今天还没签到，连签 7 天以上每天得 20 积分' : '今天已签到，明天再来' }}
         </p>
       </div>
-      <router-link class="u-btn-secondary" to="/user/checkin">
-        {{ checkinAvailable ? '去签到' : '查看签到日历' }}
-      </router-link>
+      <!--
+        今天还没签到就直接在这里签到（少一跳），已签到才退回「看日历」。
+        两个动作互斥渲染：同一位置不该同时出现「立即签到」和「查看日历」，
+        否则用户会以为两者都能补今天。
+      -->
+      <button
+        v-if="checkinAvailable"
+        type="button"
+        class="u-btn-primary profile-checkin-btn"
+        :disabled="checkinPending"
+        @click="handleProfileCheckin"
+      >
+        {{ checkinPending ? '签到中…' : '立即签到' }}
+      </button>
+      <router-link v-else class="u-btn-secondary" to="/user/checkin">查看签到日历</router-link>
     </section>
 
     <!--
@@ -521,6 +533,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useMemberStore } from '@/stores/member'
+import { usePointsStore } from '@/stores/points'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
@@ -536,9 +549,11 @@ import SelectField from '@/components/SelectField.vue'
 // 操作日志导出：时间窗与 CSV 列都由服务端决定，这里只挑范围、接 blob
 import { LOG_RANGES, downloadMyLogs } from '@/api/ask/userLogs'
 import { copyText } from '@/utils/clipboard.js'
+import { createClickGuard } from '@/utils/rateLimit.js'
 
 const userStore = useUserStore()
 const memberStore = useMemberStore()
+const pointsStore = usePointsStore()
 const { userInfo, nickname } = storeToRefs(userStore)
 
 /**
@@ -558,6 +573,45 @@ const memberSummaryVisible = computed(
  * 为的是**不再多发一次日历请求** —— 这一栏只是个入口，点进去才有完整日历。
  */
 const checkinAvailable = computed(() => memberStore.overview?.checkin_available === true)
+
+/**
+ * 签到按钮的进行中状态。
+ *
+ * store 里也有 `checkingIn` 互斥，但那个要等 action 真正跑起来才置位，
+ * 本地 ref 让按钮在「按下→请求发出」这一帧就已经是「签到中…」，
+ * 顺带把 `disabled` 交给它，双击不会打进第二次。
+ */
+const checkinPending = ref(false)
+
+/** 连点闸门：重复请求只会拿到服务端的「已签到」分支，白跑一趟 */
+const checkinGuard = createClickGuard(1000)
+
+/**
+ * 在个人中心就地签到。
+ *
+ * 与 `/user/checkin` 页共用同一个 store action，文案保持一致。
+ * 签完必须刷新会员摘要：`checkin_available` 由它带来，
+ * 只有它变 false，按钮才会换成「查看签到日历」——
+ * 这是用户能看到的「已经生效」的唯一证据。
+ */
+async function handleProfileCheckin() {
+  if (checkinPending.value || !checkinGuard()) return
+  checkinPending.value = true
+  try {
+    const result = await pointsStore.doCheckin()
+    if (!result) return
+    if (result.already) {
+      notify.info('今天已经签过到了')
+    } else {
+      notify.success(`签到成功，获得 ${result.awarded} 积分（连签 ${result.streak} 天）`)
+    }
+    await memberStore.fetchOverview({ silent: true })
+  } catch (error) {
+    notify.error(error?.response?.data?.message || '签到失败，请稍后重试')
+  } finally {
+    checkinPending.value = false
+  }
+}
 
 const saving = ref(false)
 const errorMessage = ref('')
@@ -1220,6 +1274,13 @@ onMounted(() => {
   margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
+}
+
+/* 「立即签到」比「查看签到日历」更重，但要和右侧那块 36px 的按钮位对齐，
+   所以只约束不换行与最小宽度，不写死高度（主按钮自带 --btn-height）。 */
+.profile-checkin-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ── 邀请有礼入口（1.6.0，`/invite`） ─────────────────────────

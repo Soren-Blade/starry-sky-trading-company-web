@@ -354,17 +354,48 @@ test('瞬时类只过渡颜色相关属性，且四个文件都不写 transition
   assert.match(reduced, /html\.is-theme-switching body \*::after\s*\{\s*transition: none;/)
 
   // View Transitions：整页快照能连渐变与阴影一起淡，这是「不再生硬」的主路径。
-  // 伪元素时长必须与 ThemeSwitch 的滑块同拍（180ms）。
+  //
+  // 时长从 180ms 提到 320ms —— 180ms 在一屏之内读完，观感是「闪一下」而不是
+  // 「过渡」，这是前两版「生硬」的直接原因。但下面守的不是那个数字，而是三件事：
+  //   ①组 / 旧帧 / 新帧**同拍**（几何层与透明度不同拍，会看成两层动作）；
+  //   ②时长落在组件级 250ms（--ec-dur-base）与 400ms（--ec-dur-slow）之间；
+  //   ③混合模式是 normal（Chrome 的 UA 会给快照 plus-lighter，明暗互换必过曝）。
+  const VT_DURATION = 320
   assert.match(GLOBAL_CSS, /::view-transition-old\(root\)/)
   assert.match(GLOBAL_CSS, /::view-transition-new\(root\)/)
-  assert.match(GLOBAL_CSS, /animation-duration: 180ms;/)
+  assert.match(GLOBAL_CSS, /::view-transition-group\(root\)/, '几何层必须显式同拍')
   assert.match(GLOBAL_CSS, /mix-blend-mode: normal/)
+  const vtDurations = [...GLOBAL_CSS.matchAll(/animation-duration: (\d+)ms;/g)].map((m) =>
+    Number(m[1]),
+  )
+  assert.deepEqual(
+    vtDurations,
+    [VT_DURATION, VT_DURATION],
+    '旧帧/新帧一组 + 几何层一组，两处时长必须一致',
+  )
+  assert.ok(
+    VT_DURATION > 250 && VT_DURATION < 400,
+    '换肤时长要长于组件级 250ms、短于 400ms：短了像闪，长了像卡',
+  )
+
+  // 快照期间必须连**后代**的常驻过渡一起压住。
+  // 只关 body 自己（上一版就是这样）时，`.ec-input` / `.ec-tool` / `.u-table tbody tr`
+  // / `a` 这些还挂着 250ms 颜色过渡的元素，会把「过渡的起始值」（旧颜色）拍进新帧，
+  // 于是新帧半旧半新、淡完之后再局部跳一次 —— 这才是「一会儿快一会儿慢」的来源。
+  assert.match(
+    GLOBAL_CSS,
+    /html:active-view-transition body \*,\s*html:active-view-transition body \*::before,\s*html:active-view-transition body \*::after \{\s*transition: none !important;/,
+    '后代元素的常驻过渡要一起关掉，否则新快照是半旧半新',
+  )
+
   assert.match(THEME_STORE, /startViewTransition/, 'store 主路径应走 View Transitions')
   assert.match(
     THEME_STORE,
     /prefers-reduced-motion/,
     '开了减弱动态效果时不能拍快照做动画',
   )
+  // 连点不叠加：上一次过渡要显式 skip 掉，而不是让两条快照各 50% 叠成一片灰
+  assert.match(THEME_STORE, /skipTransition\(\)/, '快速连点应结束上一次过渡而不是叠加')
 
   // 挂/摘类只能来自 store 这一处，否则两个地方抢着摘会互相打架
   assert.match(THEME_STORE, /classList\.add\(THEME_SWITCH_CLASS\)/)

@@ -285,6 +285,20 @@
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="heart" /></span>
               我的收藏
             </router-link>
+            <!--
+              我的资产（2.3.0）：数字商品、卡密、已激活工具的统一入口。
+              它是「我买了什么」的聚合，与「我的订单」（交易过程）分工不同，
+              所以两者都保留，资产排在订单之后、收藏之前。
+            -->
+            <router-link
+              role="menuitem"
+              class="u-dropdown-item"
+              to="/user/assets"
+              @click="handleMenuClick"
+            >
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="credit-card" /></span>
+              我的资产
+            </router-link>
             <router-link
               role="menuitem"
               class="u-dropdown-item"

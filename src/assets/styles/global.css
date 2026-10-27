@@ -72,22 +72,52 @@ body {
  * 正常叠合即可。不要用 `overflow: hidden` 之类手段去「裁掉」滚动条，那会在过渡
  * 瞬间改变布局、把页面顶得一跳。
  *
- * 时长取 180ms（与 ThemeSwitch 滑块的 180ms 对齐，视觉上是一次动作），缓动走
- * `--ec-ease-out`；只覆盖 UA 自带的 fade-out / fade-in 关键帧的时长与曲线，
- * 不重写 @keyframes。
+ * 时长 320ms，不是 180ms。180ms 落在「人眼确认这是一次动作」的下限之下：整页
+ * 的明暗互换在 180ms 内走完，读起来就是闪了一下 —— 这正是前两版被说「生硬」的
+ * 直接原因，而不是缓动写错了。320ms 取在 --ec-dur-base（250ms）之上、
+ * --ec-dur-slow（400ms）之下：全页动作要比组件内的 250ms 长一档，尾段才留得住
+ * 「渐变」的体感；再往 400ms 走，页面会像卡住了半秒。
+ * **为什么不新增令牌**：换肤是全站唯一一次「整页动效」，为它单开第四档时长，
+ * 后来人面对 250 / 320 / 400 三个数不知道该挑哪个。三处字面量写在一起、依据写在
+ * 注释里，比多一个令牌更好查（真要改，改这一节即可）。
+ *
+ * 缓动仍然走 --ec-ease-out，但不重写 UA 的 fade-out / fade-in 关键帧。
+ * 快照是两张互补的画面（明与暗互为反相），交叉淡出的中段必然过灰：把动画暂停在
+ * 50% 处截过图，整页确实是一片灰、正文对比度掉到几乎看不清 —— 这是交叉淡出的
+ * 物理结果，不是 bug。ease-out 让「过半混合」出现在总时长的前 30%（约 96ms），
+ * 剩下 220ms 逐步逼近新主题，整体读作「快速过渡 + 长尾落定」；换成对称的
+ * ease-in-out 会把那片灰挪到 160ms 处并多停留一倍时间，更像灰屏。
  * ──────────────────────────────────────────────────────────── */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 180ms;
+  animation-duration: 320ms;
   animation-timing-function: var(--ec-ease-out);
   mix-blend-mode: normal;
 }
 
-/* 快照是在回调后的下一帧拍的。若此刻 body 还跑着自己那条常驻 250ms 颜色过渡，
- * 「新帧」拍到的是中间色，淡完再补一段 —— 又变回两截。:active-view-transition
- * 只在过渡进行中匹配根元素，结束后自动失效，不用 JS 挂类。 */
-html:active-view-transition body {
-  transition: none;
+/* 几何层与两张快照同拍。UA 默认给 ::view-transition-group(root) 一条 250ms 的
+ * 几何动画（尺寸/位置插值）；若某次换肤刚好改了根元素的几何（滚动条出现或消失、
+ * 字体度量变化），两条时长不同拍就会「先缩放到位、再淡完」，看成两层动作。 */
+::view-transition-group(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ec-ease-out);
+}
+
+/* 快照是在回调后的下一帧拍的：凡是此刻还挂着常驻 transition 的元素，都会被拍到
+ * **过渡的起始值**（也就是旧颜色）上，新帧因此「一半新、一半旧」；淡出结束后那些
+ * 元素再自己补完剩下的插值，于是整页「先淡一次、再局部跳一次」。
+ * 原来只关了 body 自己（body 有常驻的背景色/文字色过渡），后代一个没关：`.ec-input`、
+ * `.ec-tool`、`.u-table tbody tr`、`a`、`.ec-icon-btn` …… 全在名单里。
+ * `:active-view-transition` 只在过渡进行中匹配根元素，结束即失效，不用 JS 挂类，
+ * 平时也不会为 hover 多付一分钱。
+ * 这里的 `!important` 是唯一正当的用法：要压制的过渡来自 ec.css / ui-kit-*.css 里
+ * 几十条选择器，`.u-table tbody tr` 的特异性 (0,1,2) 与本节持平、胜负靠源码顺序，
+ * 不能指望；而它只在「全屏快照已经盖住页面」的那 320ms 内生效，范围明确。 */
+html:active-view-transition body,
+html:active-view-transition body *,
+html:active-view-transition body *::before,
+html:active-view-transition body *::after {
+  transition: none !important;
 }
 
 /* ── 回落 · 瞬时类（`<html class="is-theme-switching">`）─────────
@@ -129,6 +159,55 @@ html.is-theme-switching body *::after {
   ::view-transition-new(root) {
     animation: none;
   }
+}
+
+/* ────────────────────────────────────────────────────────────
+ * 结果类图标（空状态 / 四态 / 兑换结果 / 结果页）
+ *
+ * 症状与机制是同一件事：AppIcon 的尺寸单位是 `1em`（随继承字号缩放），描边宽度
+ * 取自 `ICON_STROKE_WIDTH = 2.5`（viewBox 是 24 网格）。2.5 在 16–20px 的页头、
+ * 按钮、导航里刚好是「够粗但不糊」；可结果区把图标画到了 48–64px，描边被同倍率
+ * 放大到 5–6.7px —— 于是「太大」和「线条太粗」同时成立，改其中一个没用。
+ *
+ * 口径（对齐 EC 的 `.ic`：24 网格 + 1.5 描边，见 assets/ec/ec.css:56-64）：
+ *   1. 尺寸**只在下面这一节写**，一律带 `svg.app-icon`（0,2,1）压过 AppIcon 里
+ *      scoped 的 `.app-icon[data-v-*]`（0,2,0）。反例是以前踩过的坑：
+ *      ui-kit-member.css 里 `.u-mm-state-icon` 的 48px 落在 svg 上、特异性打平，
+ *      从来没生效过，图标一直在按继承字号画；
+ *   2. 视觉尺寸按上下文对齐 EC 自己的取值（不是拍一个数全局套）：
+ *      兑换结果 24px = EC 的 `.ec-redeem-result__icon .ic`（ec-business.css:525）、
+ *      结果页 26px = EC 的 `.ec-result__icon .ic`（ec.css:994）、
+ *      空状态 / 四态 32px = EC 空状态艺术 28px 再上一档 —— 因为我们的空状态没有
+ *      EC 那层 56px 软底圆，图标本身要承担视觉重量；
+ *   3. 描边 1.5。CSS 的 `stroke-width` 天然压过 SVG 的 presentation attribute，
+ *      并且会继承给内部 circle / rect / path，一处声明即可。
+ *
+ * 明确**不动**的地方：页头、按钮、导航、Toast、Alert 里的图标（14–20px）。2.5 在
+ * 那个尺寸上才是对的，跟着改成 1.5 只会让小图标发虚 —— 那是另一套语境。
+ * ──────────────────────────────────────────────────────────── */
+.ec-redeem-result__icon svg.app-icon {
+  width: var(--ec-space-6); /* 24px */
+  height: var(--ec-space-6);
+  stroke-width: 1.5;
+}
+
+.ec-result__icon svg.app-icon {
+  width: calc(var(--ec-space-6) + 2px); /* 26px */
+  height: calc(var(--ec-space-6) + 2px);
+  stroke-width: 1.5;
+}
+
+.u-empty-icon svg.app-icon {
+  /* 盒子的 --empty-icon-size 已在 ui-kit-feedback.css §17 收到 40px，这里取 0.8 倍 */
+  width: calc(var(--empty-icon-size) * 0.8); /* 32px */
+  height: calc(var(--empty-icon-size) * 0.8);
+  stroke-width: 1.5;
+}
+
+svg.app-icon.u-mm-state-icon {
+  width: calc(var(--space-unit) * 4); /* 32px */
+  height: calc(var(--space-unit) * 4);
+  stroke-width: 1.5;
 }
 
 /* 背景层已删除。EC 不使用渐变网格，也没有「用户自定义背景图」这一档 ——

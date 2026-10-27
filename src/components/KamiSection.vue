@@ -156,7 +156,7 @@
             </div>
 
             <p class="activate-tips">
-              <AppIcon name="zap" /> 激活后可在「我的卡密」与「已激活工具」中查看详情
+              <AppIcon name="zap" /> 激活后可在「我的卡密」与「我的资产」中查看详情
             </p>
           </div>
 
@@ -407,83 +407,15 @@
           </nav>
 
           <!--
-            已激活工具（需求 8）：卡密列表回答「我兑换过哪些卡」，
-            这里回答「我现在能用哪些工具」—— 两者不是一回事：
-            同一件工具可能续费叠加成一条授权，而卡兑换过但授权已过期时，
-            卡列表里仍有那张卡、工具却已经不能用了。
-            数据来自 /kamiApi/myEntitlements（含 tool_name / tool_slug），
-            两次激活成功都会刷新它，否则刚激活的工具要等下次进页面才出现。
+            已激活工具挪到「我的资产」（2.3.0）：卡密页只负责「激活 / 查卡」，
+            授权属于「我买了什么」，与数字商品、卡密同属资产视图。
+            这里只留一个出口，不再重复渲染同一张表。
           -->
-          <section
-            ref="entitlementsBlock"
-            class="entitlements-section"
-            aria-labelledby="entitlements-title"
-          >
-            <div class="entitlements-head">
-              <h4 id="entitlements-title" class="entitlements-title">
-                <AppIcon name="wrench" /> 已激活工具
-              </h4>
-              <button
-                type="button"
-                class="refresh-btn u-btn-secondary"
-                :disabled="entitlementsLoading"
-                :aria-label="entitlementsLoading ? '正在刷新已激活工具' : '刷新已激活工具'"
-                @click="loadEntitlements"
-              >
-                <span
-                  v-if="entitlementsLoading"
-                  class="u-spinner u-spinner--sm"
-                  role="status"
-                  aria-label="加载中"
-                ></span>
-                <AppIcon v-else name="refresh-cw" />
-                {{ entitlementsLoading ? '刷新中...' : '刷新' }}
-              </button>
-            </div>
-
-            <p v-if="entitlementsError" class="error-banner" role="alert">{{ entitlementsError }}</p>
-
-            <div class="u-table-wrap">
-              <table class="u-table entitlements-table">
-                <thead>
-                  <tr>
-                    <th scope="col">工具名</th>
-                    <th scope="col">来源</th>
-                    <th scope="col">有效期</th>
-                    <th scope="col">状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="item in entitlements" :key="item.tool_id">
-                    <td>
-                      <span class="card-name">{{ getEntitlementToolName(item) }}</span>
-                    </td>
-                    <td>
-                      <span class="u-tag">{{ getEntitlementSource(item) }}</span>
-                    </td>
-                    <td>
-                      <span v-if="item.is_permanent" class="permanent">永久有效</span>
-                      <span v-else-if="item.expires_at" class="muted">
-                        {{ formatDate(item.expires_at)
-                        }}<template v-if="item.is_valid && item.days_left !== null">
-                          · 剩 {{ item.days_left }} 天</template>
-                      </span>
-                      <span v-else class="empty">—</span>
-                    </td>
-                    <td>
-                      <span class="u-tag" :class="item.is_valid ? 'u-tag--success' : 'u-tag--muted'">
-                        {{ item.is_valid ? '有效' : '已过期' }}
-                      </span>
-                    </td>
-                  </tr>
-
-                  <tr v-if="!entitlementsLoading && !entitlements.length" class="kami-empty-row">
-                    <td colspan="4">暂无已激活工具</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <p class="entitlements-link-row">
+            <router-link class="u-btn-secondary" to="/user/assets">
+              <AppIcon name="wrench" /> 已激活的工具在「我的资产」查看
+            </router-link>
+          </p>
         </div>
       </div>
     </div>
@@ -609,7 +541,7 @@ export function buildMemberResultView(info) {
   if (info.remaining !== undefined && info.remaining !== null && Number.isFinite(remaining)) {
     parts.push(`当前剩余 ${remaining} 个额度`)
   }
-  parts.push('可在下方「已激活工具」查看。')
+  parts.push('可在「我的资产」查看。')
 
   return {
     variant: REDEEM_RESULT_VARIANTS.SUCCESS,
@@ -617,7 +549,7 @@ export function buildMemberResultView(info) {
     title: '免卡密激活成功',
     desc: parts.join('，'),
     actions: [
-      { label: '查看已激活工具', kind: 'primary', action: 'show-entitlements' },
+      { label: '查看我的资产', kind: 'primary', action: 'show-entitlements' },
       { label: '继续激活', kind: 'outline', action: 'continue' },
     ],
   }
@@ -627,7 +559,7 @@ export function buildMemberResultView(info) {
 <script setup>
 import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { notify } from '@/hooks/useToast/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
@@ -652,6 +584,7 @@ const userStore = useUserStore()
 const kamiStore = useKamiStore()
 const toolStore = useToolStore()
 const route = useRoute()
+const router = useRouter()
 
 const { userKamis, pagination, loading, error } = storeToRefs(kamiStore)
 const { toolData } = storeToRefs(toolStore)
@@ -742,8 +675,9 @@ const focusActivate = () => {
 const activation = useKamiActivation({
   activateCard: (payload) => api.activateCard(payload),
   getUserId: () => userStore.userId,
-  // 激活成功后两张表都可能变：卡密状态 + 已激活工具
-  onActivated: () => Promise.all([reload(1), loadEntitlements()]),
+  // 激活成功后卡密列表要刷新（状态从「未使用」变「已使用」）；
+  // 已激活工具表 2.3.0 起挪到「我的资产」，这里不再重复拉取
+  onActivated: () => reload(1),
 })
 
 const { activateCode, selectedToolId, activationResult, activating, resetForm, clearResult } = activation
@@ -923,7 +857,8 @@ const handleActivationAction = (action) => {
     return
   }
   if (action === 'show-entitlements') {
-    entitlementsBlock.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    // 已激活工具在「我的资产」，这里只负责把用户送过去
+    router.push('/user/assets')
     return
   }
   if (action === 'continue' || action === 'restart') {
@@ -1069,8 +1004,8 @@ async function runMemberActivate() {
     resetForm()
     autoSelectedToolId = ''
     credentialType.value = CREDENTIAL_TYPES.UNKNOWN
-    // 额度、卡密列表、已激活工具三处都会变
-    await Promise.all([loadMemberQuota(), reload(1), loadEntitlements()])
+    // 额度与卡密列表都会变；已激活工具表在「我的资产」，不在这里刷新
+    await Promise.all([loadMemberQuota(), reload(1)])
   } catch (error) {
     memberError.value = resolveMemberError(error)
     // 额度类失败说明本地额度已过期，顺手对一次；其余失败保留当前展示
@@ -1082,58 +1017,12 @@ async function runMemberActivate() {
   }
 }
 
-/* ── 已激活工具（需求 8） ─────────────────────────────────────── */
-
-const entitlements = ref([])
-const entitlementsLoading = ref(false)
-const entitlementsError = ref('')
-/** 会员成功模板的「查看已激活工具」滚动目标 */
-const entitlementsBlock = ref(null)
-
-const getEntitlementToolName = (item) =>
-  item?.tool_name || getToolName(item?.tool_id) || `工具 ${item?.tool_id ?? ''}`
-
-/** 来源：member = 会员额度；其余（card / 历史缺省）都按卡密展示 */
-const getEntitlementSource = (item) => (item?.grant_source === 'member' ? '会员额度' : '卡密')
-
-/**
- * 已激活工具独立取数。
- *
- * 激活成功后必须重拉（卡密通道走 useKamiActivation 的 onActivated，
- * 会员通道直接 await）：否则新授权要等用户手动刷新才出现。
- */
-async function loadEntitlements() {
-  if (!canUseKami.value || entitlementsLoading.value) return false
-  entitlementsLoading.value = true
-  try {
-    const response = await api.getMyEntitlements()
-    if (response?.success === true && Array.isArray(response.data?.entitlements)) {
-      entitlements.value = response.data.entitlements
-      entitlementsError.value = ''
-      return true
-    }
-    entitlements.value = []
-    entitlementsError.value = '已激活工具读取失败，请稍后重试。'
-    return false
-  } catch (error) {
-    entitlements.value = []
-    // 404 = 后端还没部署这个能力（契约先行），文案保持中性
-    entitlementsError.value =
-      error?.status === 404 ? '已激活工具暂未开放，请稍后再试。' : '已激活工具读取失败，请稍后重试。'
-    return false
-  } finally {
-    entitlementsLoading.value = false
-  }
-}
-
 const resetMemberPanel = () => {
   memberQuota.value = null
   memberQuotaError.value = ''
   memberQuotaUnavailable.value = false
   memberError.value = null
   memberView.value = null
-  entitlements.value = []
-  entitlementsError.value = ''
 }
 
 /**
@@ -1168,7 +1057,6 @@ onMounted(async () => {
   if (userStore.userId && canUseKami.value) {
     reload(1)
     loadMemberQuota()
-    loadEntitlements()
   }
 })
 
@@ -1190,7 +1078,6 @@ watch(
     if (id && canUseKami.value) {
       reload(1)
       loadMemberQuota()
-      loadEntitlements()
     } else if (!id) {
       // 退出登录：别把上一个账号的额度留在界面上
       resetMemberPanel()
@@ -1545,37 +1432,12 @@ watch(
   text-align: center;
 }
 
-/* ── 已激活工具（需求 8） ───────────────────────────────────── */
+/* ── 已激活工具出口（2.3.0 挪到「我的资产」） ───────────────── */
 
-/* 与「我的卡密」同处右栏，用一条分隔线切成第二小节：同一张卡片里的两层数据 */
-.entitlements-section {
-  margin-top: calc(var(--space-unit) * 2);
-  border-top: var(--stroke-width) solid var(--divider);
-}
-
-/* 标题行与工具条左右内边距对齐（表格自身的 padding 来自 .list-panel .u-table-wrap） */
-.entitlements-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-  margin: calc(var(--space-unit) * 2) 0 calc(var(--space-unit) * 1.5);
+/* 只留一个跳转入口：授权表整体搬走，卡密页不再重复渲染同一份数据 */
+.entitlements-link-row {
+  margin: calc(var(--space-unit) * 2) 0 0;
   padding: 0 calc(var(--space-unit) * 2);
-}
-
-.entitlements-title {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-/* 四列比卡密表窄得多，但仍给一个下限：窄屏靠 .u-table-wrap 横滚，不压扁列 */
-.entitlements-table {
-  min-width: calc(var(--table-action-col-width) + 260px);
 }
 
 /* 加载块叠在表格上方：高度不占位，只在没数据时给一块至少两行高的浅底 */
@@ -1788,7 +1650,7 @@ watch(
     padding: calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
   }
 
-  .entitlements-head {
+  .entitlements-link-row {
     padding: 0 calc(var(--space-unit) * 2 * var(--mobile-padding-scale));
   }
 

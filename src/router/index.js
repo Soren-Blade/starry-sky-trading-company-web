@@ -74,6 +74,14 @@ const routes = [
     meta: { title: '个人中心 - 星辰商行', requiresAuth: true }
   },
   {
+    // 我的资产（2.3.0）：数字商品 + 卡密 + 已激活工具收在一处，
+    // 卡密管理页只留「激活」入口，不再重复列授权
+    path: '/user/assets',
+    name: 'Assets',
+    component: () => import('@/pages/Assets.vue'),
+    meta: { title: '我的资产 - 星辰商行', requiresAuth: true }
+  },
+  {
     path: '/user/favorites',
     name: 'Favorites',
     component: () => import('@/pages/Favorites.vue'),

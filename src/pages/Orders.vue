@@ -45,6 +45,14 @@
     <template v-else>
       <AppAlert variant="info" class="orders-notice" :body="paymentNotice" />
 
+      <!-- 订单管「交易过程」，资产管「买到了什么」；两者分工不同所以都在，
+           这里只做一次指路，避免用户以为数字商品丢了。 -->
+      <p class="orders-assets-link">
+        数字商品与卡密已汇总到
+        <router-link to="/user/assets">我的资产</router-link>
+        ，实物商品的物流信息仍在本页订单里。
+      </p>
+
       <ul class="orders-list">
         <li v-for="order in orders" :key="order.order_no" class="page-panel order-card">
           <header class="order-head">
@@ -353,6 +361,18 @@ onMounted(() => {
 
 .orders-notice {
   margin-bottom: calc(var(--space-unit) * 2);
+}
+
+/* 指路条：与提示条同宽、同左对齐，字号比正文小一档 */
+.orders-assets-link {
+  margin: 0 0 calc(var(--space-unit) * 2);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.orders-assets-link a {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .orders-list {

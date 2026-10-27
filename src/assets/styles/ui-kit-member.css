@@ -111,12 +111,12 @@
   text-align: center;
 }
 
+/* 尺寸不在这一层定：这类图标是「结果类图标」，统一由 global.css「结果类图标」
+ * 一节用 `svg.app-icon.u-mm-state-icon`（0,2,1）下发 32px + stroke-width: 1.5。
+ * 这里原来写的 width/height: calc(var(--space-unit) * 6)（48px）其实从 AppIcon
+ * 组件化那天起就从未生效 —— 它落在 svg 上，而组件 scoped 的 `.app-icon[data-v-*]`
+ * （0,2,0）带着 width: 1em 压过了这条（0,1,0）。留着只会让下一个人以为图标是 48px。 */
 .u-mm-state-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--space-unit) * 6);
-  height: calc(var(--space-unit) * 6);
   margin-bottom: calc(var(--space-unit) * 1.5);
   color: var(--empty-icon-color);
 }

@@ -76,6 +76,9 @@
 /* 图标同时给 width/height（SVG/图片）与 font-size（emoji/图标字体）：
  * 套件里没有图标组件，两种写法都要能用 */
 .u-empty-icon {
+  /* 结果类图标口径（见 global.css「结果类图标」一节）：盒子 64px → 40px，
+   * 里面的 AppIcon 取 0.8 倍 = 32px。64px 的盒子配 32px 的图标会留出一圈空洞，
+   * 盒子跟着收一档，图标与标题之间的呼吸感反而更稳。 */  --empty-icon-size: 40px;
   display: flex;
   align-items: center;
   justify-content: center;

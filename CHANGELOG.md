@@ -9,6 +9,39 @@
 
 ---
 
+## [2.3.0] — 2026-10-27 · 我的资产、签到位与页面细节收口
+
+六项体验升级。新增一个受保护路由 `/user/assets`（我的资产），因此按 `2.3.0` 发；
+另修掉一个跨端缺陷：**个人中心的 `checkin_available` 一直恒为 false**，导致「立即签到」按钮从未出现过。
+
+### 变更
+
+| 类别 | 内容 |
+| --- | --- |
+| 主题切换（继续） | 上一版把 VT 时长设成 180ms，观感仍是「闪一下」。子代理用冻结帧取证：把 `::view-transition-old/new(root)` 暂停在 50% 时，暗→亮是**整页一片中灰、正文读不出** —— 交叉淡出的中段必然混色，单纯拉长时长只会让灰更久。因此改为 **320ms + `var(--ec-ease-out)`**（该曲线约 30%≈96ms 已完成过半混合，余下时间收敛到新主题），并给 UA 默认 250ms 的 `::view-transition-group(root)` 显式同拍；`html:active-view-transition body, body *, *::before, *::after { transition: none !important }` 把 descend 上的常驻颜色过渡全部静音（否则新帧被拍成半旧色）；连点改用 `activeViewTransition.skipTransition()` 中止上一次，不再叠加 |
+| 我的资产（新增） | 新增 `/user/assets` 页面：①数字商品（订单项里 `goods_type ∈ digital/account/service` 的拍平列表，含形态标签、数量、金额、下单时间、订单号回链）②我的卡密 ③已激活工具（工具名 / 来源 / 有效期 / 状态）。三块独立 loading / error / 刷新。服务端 `listOrderItems` 补 `LEFT JOIN products` 取 `goods_type`（商品已删除时为 null，前端按「形态未知」不下判） |
+| 卡密页减法 | 卡密控制台**删掉「已激活工具」整张表**（含 `loadEntitlements`、`getEntitlementToolName`、`getEntitlementSource`），改为一条指路链接「已激活的工具在「我的资产」查看」；成功模板的次级动作从「查看已激活工具」改为「查看我的资产」 |
+| 订单页分工 | 订单页顶部加一句「数字商品与卡密已汇总到 我的资产，实物商品的物流信息仍在本页订单里」。**没有**把数字商品从订单列表剔除——订单详情仍需完整订单 |
+| 用户菜单 | 用户下拉在「我的收藏」之后新增「我的资产」（`credit-card` 图标），顺序：个人中心 → 我的订单 → 我的收藏 → 我的资产 → 卡密管理 → 每日签到 → 退出 |
+| 每日签到 | 个人中心签到卡最右按钮按状态切换：今天没签到 → 主色「立即签到」（就地签到，`pointsStore.doCheckin()` + 刷新会员总览，1000ms 闸门防连点，成功 Toast 带「获得 X 积分（连签 N 天）」）；已签到 → 次级「查看签到日历」跳日历页 |
+| 邀请中心 | `.invite-code-card` 改两栏 grid（`minmax(0,.85fr) minmax(0,1.15fr)`、栏距 40px、内距 32px），邀请码与邀请链接各带一个复制按钮，说明行横跨两栏。根因是 `.ui-card` 自带 `flex-direction: column`，旧代码只覆盖了 `display: flex`，于是链接块的 `flex: 1 1 30×space-unit` 被当成**高度**基准 → 1440 下卡片 435px、按钮下方约 150px 死白；改后 198px |
+| 共享 Apple ID | 删掉右侧两段 `ui-card tool-aside-card`（使用说明 / 注意事项），页面落单列；`risk-warning` 上移到左轨顶部并压短文案；文案去重为「使用教程 4 条 + 注意事项 5 条」（删「下载软件 / 安装说明 / 重要警告」三条与教程重复的，独有信息折进「账号用途」「双重验证」）；`.ids-grid` 由 `minmax(var(--card-width), 1fr)`（会把卡片拉宽）改为固定 `var(--card-width)` + `justify-content: start`，1440/1199/768 每排 2 张、390 一张；左轨改单滚动容器，锚点跳转仍落在顶栏下方 |
+| 结果类图标 | 结果反馈里的 `app-icon` 偏大偏粗，统一按 EC 的 `.ic` 口径收口：`.ec-redeem-result__icon` 24px、`.ec-result__icon` 26px、空态 `.u-empty-icon` 32px（`--empty-icon-size` 64→40、图标取其 0.8）、会员四态图标 32px，**描边统一 1.5**（覆盖 scoped 的 `width: 1em` 与组件默认 `stroke-width: 2.5`）。页头 / 按钮 / 导航的小图标不动——那里的 2.5 是为 16–20px 视觉重量做的补偿 |
+
+### 修复
+
+- **`checkin_available` 恒为 false（跨端）**：`buildMemberOverview` 从 `sstc.get_points_account()` 的返回里读 `checkin_available`，而这个库函数**从来没下发过该键**（`docs/API.md` 一直在按「有」写）。新增迁移 `2026-10-27-checkin-available-fix.sql` 提供 `sstc.has_checked_in_today(user_id)`，`/memberApi/getOverview` 把它作为 `buildMemberOverview` 的第 5 个参数传入；不传时仍退回旧字段，历史调用方行为不变。修好后新账号才第一次看到「立即签到」。
+
+### 已知取舍
+
+- **主题过渡时长仍是字面量**（VT 320ms、回落 240ms）。令牌层没有「主题过渡」这一档，加令牌意味着为一个只有两处使用的时间值扩公共契约，判断为不值得。
+- **`goods_type` 目前只驱动「数字商品」这块**：库里 9 个商品的 `goods_type` 全是 `digital`（迁移的默认值），所以牛仔裤、T 恤这类实物也会出现在「数字商品」里。**需要运营在管理后台把实物商品改成 `physical`**，前端不做名称猜测。
+- **`.u-mm-state-icon` 的 32px 没有真实页面可验**：会员各页都有数据，四态图标不显示；靠 CSS 断言与构建产物守护。
+- **共享 Apple ID 的左侧 rail 在 992–1099px 只容得下一张卡**：右区减去 rail 后宽度不足两张 280px 卡 + 栅距，属几何必然，不是回归。
+- **邀请链接文案仍由后端拼**（`/?invite=XXXX`），本轮只改布局没动生成逻辑。
+
+---
+
 ## [2.2.0] — 2026-10-27 · 主题过渡、工具访问鉴权与卡密控制台合并
 
 八项体验与正确性升级。**主题切换的实现方式变了**（改用 View Transitions API，旧浏览器回落旧方案），
