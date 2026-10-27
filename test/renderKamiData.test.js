@@ -66,15 +66,29 @@ async function renderKami(overrides = {}) {
   })
 }
 
+/**
+ * 只取「我的卡密」那张表。
+ *
+ * 右栏在卡密表之后还有「已激活工具」小节，同样是 .u-table —— 不限定作用域
+ * 会把两张表的 th/td 混在一起，行列出错位。
+ */
+function kamiTable(html) {
+  const start = html.indexOf('class="u-table kami-table"')
+  assert.ok(start > 0, '找不到「我的卡密」表格')
+  const end = html.indexOf('</table>', start)
+  assert.ok(end > start, '卡密表格没有闭合')
+  return html.slice(start, end)
+}
+
 /** 按行/列解析出所有单元格的纯文本 */
 function cells(html) {
-  return [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) =>
+  return [...kamiTable(html).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) =>
     m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
   )
 }
 
 function headers(html) {
-  return [...html.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) =>
+  return [...kamiTable(html).matchAll(/<th[^>]*>([\s\S]*?)<\/th>/g)].map((m) =>
     m[1].replace(/<[^>]+>/g, '').trim()
   )
 }
@@ -167,7 +181,7 @@ test('工具名按 tool_id 解析出来（数字与字符串 id 都能匹配）'
   assert.equal(tds[14], '图片压缩')
 
   // … 图标则以 AppIcon 的 SVG 形式出现在工具名旁边（不再是 emoji 字符）
-  const toolCells = [...html.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1])
+  const toolCells = [...kamiTable(html).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1])
   assert.match(toolCells[6], /class="app-icon"/, `工具名前应有线性图标，实际 ${toolCells[6]}`)
   assert.match(toolCells[14], /class="app-icon"/, `实际 ${toolCells[14]}`)
 })

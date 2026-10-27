@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { renderComponent, createPiniaWithState, createRenderEnv } from './render.mjs'
 
 /**
- * 个人中心用户标识（UUID）的 CardCodeBox 化：
+ * 个人中心用户 UID（UUID）的 CardCodeBox 化：
  *   默认掩码（前三段可见、末段恒掩码）→ 点眼睛明文 → 30 秒自动回掩码。
  *
  * 组件逻辑放在 Profile.vue 的普通 <script> 里并以具名导出暴露，
@@ -47,14 +47,14 @@ async function renderProfile() {
   })
 }
 
-/** 从 SSR 输出里取出「用户标识」那一行：<dd> 开标签 + 内部 HTML */
+/** 从 SSR 输出里取出「用户 UID」那一行：<dd> 开标签 + 内部 HTML */
 function uuidField(html) {
   const at = html.indexOf('<dd class="profile-field-value profile-field-value--code')
-  assert.ok(at > 0, '用户标识行应渲染成 CardCodeBox 形态的 <dd>')
+  assert.ok(at > 0, '用户 UID 行应渲染成 CardCodeBox 形态的 <dd>')
 
   const openEnd = html.indexOf('>', at)
   const closeAt = html.indexOf('</dd>', openEnd)
-  assert.ok(closeAt > openEnd, '用户标识行的 <dd> 应正常闭合')
+  assert.ok(closeAt > openEnd, '用户 UID 行的 <dd> 应正常闭合')
 
   return { tag: html.slice(at, openEnd + 1), inner: html.slice(openEnd + 1, closeAt) }
 }
@@ -105,7 +105,7 @@ function createFakeClock() {
   }
 }
 
-test('用户标识默认掩码：前三段可见，其余按四位一组遮住', () => {
+test('用户 UID 默认掩码：前三段可见，其余按四位一组遮住', () => {
   assert.equal(UUID_REVEAL_MS, 30000, '倒计时必须是 30 秒')
   assert.equal(UUID_MASK_CHAR, '•')
   assert.equal(maskUuid(LONG_UUID), MASKED_UUID)
@@ -115,7 +115,7 @@ test('用户标识默认掩码：前三段可见，其余按四位一组遮住',
   assert.equal(maskUuid(''), '—')
 })
 
-test('用户标识明文：仍按四位分组，不做大小写变换', () => {
+test('用户 UID 明文：仍按四位分组，不做大小写变换', () => {
   assert.equal(plainUuid(LONG_UUID), '550e-8400-e29b-41d4-a716-4466-5544-0000')
   assert.equal(plainUuid('uuid-42'), 'uuid-42')
   assert.equal(plainUuid(null), '—')
@@ -137,8 +137,8 @@ test('个人中心 SSR：默认渲染掩码，DOM 中不出现完整明文', asy
   // 眼睛按钮初始 aria-pressed=false，文案为「显示」；点击后由控制器的
   // onChange 推动 uuidRevealed，模板再把 aria-pressed 同步为 true。
   assert.match(html, /aria-pressed="false"/)
-  assert.match(html, /aria-label="显示用户标识"/)
-  assert.match(html, /aria-label="复制用户标识"/)
+  assert.match(html, /aria-label="显示用户 UID"/)
+  assert.match(html, /aria-label="复制用户 UID"/)
   assert.ok(html.includes('ec-code'), '应使用设计系统 CardCodeBox 版式')
 })
 
@@ -224,7 +224,7 @@ test('模板契约：aria-pressed / aria-label 跟随 uuidRevealed 切换，卸�
     'aria-pressed 必须与明文状态同步'
   )
   assert.ok(
-    source.includes(':aria-label="uuidRevealed ? \'隐藏用户标识\' : \'显示用户标识\'"'),
+    source.includes(':aria-label="uuidRevealed ? \'隐藏用户 UID\' : \'显示用户 UID\'"'),
     'aria-label 必须在「显示/隐藏」之间切换'
   )
   assert.ok(source.includes('onBeforeUnmount('), '组件卸载时必须有清理钩子')
@@ -234,7 +234,7 @@ test('模板契约：aria-pressed / aria-label 跟随 uuidRevealed 切换，卸�
 
 /* ── 结构：<dd> 自己就是 CardCodeBox（不是底板里再套一张卡片） ───────────── */
 
-test('结构：用户标识的 <dd> 自己就是 CardCodeBox，不再套只读底板', async () => {
+test('结构：用户 UID 的 <dd> 自己就是 CardCodeBox，不再套只读底板', async () => {
   const html = await renderProfile()
   const { tag, inner } = uuidField(html)
 
@@ -259,8 +259,8 @@ test('结构：__label / __value / __act 是标识行 <dd> 的直接子元素', 
   )
 
   const act = inner.slice(inner.indexOf('<div class="ec-code__act"'))
-  assert.match(act, /aria-label="显示用户标识"/, '操作区仍挂着眼睛按钮')
-  assert.match(act, /aria-label="复制用户标识"/, '操作区仍挂着复制按钮')
+  assert.match(act, /aria-label="显示用户 UID"/, '操作区仍挂着眼睛按钮')
+  assert.match(act, /aria-label="复制用户 UID"/, '操作区仍挂着复制按钮')
   assert.doesNotMatch(act, /class="ec-code\b/, '__act 里不能再出现第二层卡片')
 })
 
@@ -275,7 +275,7 @@ test('统一性：profile-fields 下每一行共用一套字段值类名', async
     assert.match(tag, /profile-field-value/, `<dd> 必须统一带字段值节奏类：${tag}`)
   }
 
-  assert.equal(rows.filter((t) => /\bec-code\b/.test(t)).length, 1, '只有用户标识这一行是卡片形态')
+  assert.equal(rows.filter((t) => /\bec-code\b/.test(t)).length, 1, '只有用户 UID 这一行是卡片形态')
   assert.equal(
     rows.filter((t) => /\bu-field-value\b/.test(t)).length,
     rows.length - 1,

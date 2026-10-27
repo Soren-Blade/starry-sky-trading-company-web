@@ -29,9 +29,11 @@
                    的目标冲突。分类辨识度现在由图标本身承担。 -->
               <span class="category-tint"></span>
               <!-- 数据库里的 icon_url 存的是 emoji：映射成线性图标，
-                   映射不到才原样显示（运营随时可能录一个表里没有的） -->
+                   映射不到才原样显示（运营随时可能录一个表里没有的）；
+                   icon_url 为空（历史数据）时给一个中性占位，不留空白 -->
               <span class="category-icon">
                 <AppIcon v-if="categoryIconName(category)" :name="categoryIconName(category)" />
+                <AppIcon v-else-if="!category.icon_url" name="layout-grid" />
                 <template v-else>{{ category.icon_url }}</template>
               </span>
             </span>

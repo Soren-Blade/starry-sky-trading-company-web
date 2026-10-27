@@ -102,7 +102,8 @@ test('游客：顶栏渲染头像，而不是把游客当成未登录', async ()
 
   assert.match(html, /<img[^>]*src="https:\/\/cdn\.example\.com\/guest\.png"/, '应显示游客的头像')
   assert.match(html, /class="user-avatar-btn"/, '应渲染头像按钮（可展开用户菜单）')
-  assert.match(html, /class="guest-mark"/, '头像上应有游客标记')
+  // 头像上的「游」徽标已按用户要求移除：游客身份改由下拉菜单里的用户类型说明承担
+  assert.equal(html.includes('guest-mark'), false, '头像上不再挂游客徽标')
   assert.equal(hasTopLoginButton(html), false, '已识别为游客时不再显示顶栏登录按钮')
 })
 

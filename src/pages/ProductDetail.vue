@@ -72,6 +72,15 @@
             </div>
           </dl>
 
+          <!--
+            交付说明：按 `goods_type` 告诉用户这件商品怎么交付（卡密 / 物流 /
+            客服 / 账号），不是装饰。文案在 constants/content.js 的 GOODS_TYPE，
+            拼接规则在 utils/goodsType.js；形态缺失或非法时整段不渲染。
+          -->
+          <p v-if="deliveryNote" class="ec-alert ec-alert--info product-delivery" role="note">
+            <span class="ec-alert__body">{{ deliveryNote }}</span>
+          </p>
+
           <!-- 数量：控件是真 <input type="number">，桌面可键盘输入、移动端唤起数字键盘 -->
           <div class="u-field product-quantity">
             <label class="u-field-label" for="product-quantity">数量</label>
@@ -193,6 +202,7 @@ import { useUserStore } from '@/stores/user'
 import { useProductActions } from '@/hooks/useProductActions'
 import { notify } from '@/hooks/useToast/index.js'
 import { formatUtils } from '@/utils/index.js'
+import { buildDeliveryNote } from '@/utils/goodsType.js'
 import { PAGES, PRODUCT_GRID } from '@/constants/index.js'
 
 const route = useRoute()
@@ -231,6 +241,9 @@ const originalPrice = computed(() =>
 )
 
 const showOriginal = computed(() => Boolean(product.value?.has_discount))
+
+/** 形态交付说明：形态缺失/非法时为空串，模板据此不显示这一段 */
+const deliveryNote = computed(() => buildDeliveryNote(product.value))
 
 const isOut = computed(() => {
   const item = product.value
@@ -316,6 +329,7 @@ const handleBuyNow = async () => {
 const handleToggleFavorite = async () => {
   if (!product.value) return
   const result = await favoriteStore.toggle('product', product.value.id)
+  if (result.skipped) return
   if (result.needLogin) {
     userStore.openLoginModal(PRODUCT_GRID.favoriteNeedLogin)
     return
@@ -484,6 +498,12 @@ watch(() => route.params.id, (id) => {
 
 .product-stat dd.out {
   color: var(--danger);
+}
+
+/* 交付说明：沿用 EC 告警条；信息区是 flex 列，需要显式撑满宽度 */
+.product-delivery {
+  align-self: stretch;
+  margin: 0;
 }
 
 .product-quantity {

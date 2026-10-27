@@ -61,14 +61,30 @@ const typeClass = (type) => TYPE_CLASS[type] || 'toast-info'
 }
 
 /*
- * EC 的 Toast 只给了成功/危险两色。warning 与 info 用同一套语义色补齐，
- * 保证「橙=注意、蓝=信息」在明暗两套主题下都成立。
+ * 四态图标着色（需求 7）。
+ *
+ * EC 的选择器写的是 `.ec-toast--success .ic` / `.ec-toast--danger .ic`，而
+ * AppIcon 渲染出的根元素类名是 `app-icon` —— 那两条规则从来没匹配上，
+ * 于是成功/失败提示的图标一直是默认灰。这里按四种类型各写一条，作用在
+ * 本组件自己的 `.toast-icon` 上：
+ *   ① 不去给 AppIcon 全局加 `ic` 类（那会把全站图标描边从 2px 改成 1.5px）；
+ *   ② 不改 TYPE_CLASS 映射与 warning/info 的既有类名（后两者是本站扩展）。
  * 文字与图标形状本身也携带语义，不靠颜色单独表达状态（AP-10）。
  */
+.ec-toast--success .toast-icon {
+  color: var(--ec-success);
+}
+
+.ec-toast--danger .toast-icon {
+  color: var(--ec-danger);
+}
+
+.ec-toast--warning .toast-icon,
 .toast-warning .toast-icon {
   color: var(--ec-warning);
 }
 
+.ec-toast--info .toast-icon,
 .toast-info .toast-icon {
   color: var(--ec-info);
 }

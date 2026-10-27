@@ -131,6 +131,7 @@ import { computed, onMounted } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
+import { createClickGuard } from '@/utils/rateLimit.js'
 import { usePointsStore } from '@/stores/points.js'
 import { useUserStore } from '@/stores/user.js'
 import { formatPointsValue, REPLENISH_COST, REPLENISH_MONTHLY_LIMIT } from '@/constants/member.js'
@@ -186,7 +187,17 @@ function cellTitle(day) {
   return checkinCellTitle(day, replenishOptions())
 }
 
+/**
+ * 补签的点击闸门。
+ *
+ * 补签是「消耗积分 + 占用当月名额」的写操作，连点两次就会重复扣分。
+ * 这里用 800ms 的同步闸门（而不是等 store 的忙碌标记），因为补签按钮是
+ * 日历格里的图标，没有 disabled 态可依赖。
+ */
+const replenishGuard = createClickGuard(800)
+
 async function handleReplenish(day) {
+  if (!replenishGuard()) return
   try {
     const result = await pointsStore.doReplenish(day.date)
     if (!result) return

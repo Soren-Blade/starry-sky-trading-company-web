@@ -16,6 +16,17 @@ import { defineStore } from 'pinia'
  *   旧实现把几百个令牌逐条写进 `<html>` 的行内样式，`theme/presets.js` 有 1732 行。
  *   EC 用属性选择器覆写，行内样式反而会盖掉暗色覆写 —— 所以这里**必须**写属性，
  *   不能写行内样式。
+ *
+ * 换肤动画有两条互斥的路径（见 `applyWithTransition`）：
+ *
+ *   主路径 · View Transitions API：换肤时浏览器把旧帧、新帧各拍一张快照，在合成层
+ *     交叉淡出。渐变底、阴影、描边、outline 全在快照里，所以不会出现「颜色渐变
+ *     了，主按钮的渐变底和顶栏阴影却跳了」的半截效果 —— 逐属性 transition 做不
+ *     到这点，它根本插值不了 `background-image`。
+ *   回落 · `is-theme-switching` + 颜色 transition：给不支持该 API 的浏览器
+ *     （Safari 18 之前、部分内嵌 WebView）保底。它盖不住渐变与阴影，但底色、文字
+ *     色覆盖了页面绝大部分面积，比干脆硬切好得多。两条路径同一时刻只跑一条 ——
+ *     快照淡出和属性插值叠在一起，观感就是「快到头了又慢半拍」。
  */
 
 /** 主题偏好的存储键。与 EC 文档站一致，方便两处共用同一份偏好。 */
@@ -30,19 +41,20 @@ export const THEME_MODES = ['light', 'dark', 'auto']
 /**
  * 切换瞬间挂在 `<html>` 上的瞬时类。
  *
- * global.css 用它给常用容器开一组「只过渡颜色」的 transition：
+ * 只在**回落路径**用：global.css 用它给常用容器开一组「只过渡颜色」的 transition，
  * 类在的时候颜色是插值过去的，类一摘就恢复平时的硬切 —— 常驻过渡会把
  * hover、展开、滚动时的一切颜色变化都拖成动画 —— 也就是「所有属性一起过渡」
  * 的老问题，也是主题切换「有的地方快、有的地方慢」的来源。
+ * 走 View Transition 时不挂这个类：两套动画同时跑只会互相拖慢。
  */
 export const THEME_SWITCH_CLASS = 'is-theme-switching'
 
 /**
  * 瞬时类的存活时长。
  *
- * 必须略长于 CSS 里的过渡时长（global.css 用 200ms）：类先撤、过渡还没跑完，
+ * 必须略长于 CSS 里的过渡时长（global.css 用 240ms）：类先撤、过渡还没跑完，
  * 最后一段会由元素自己的 transition 接管，观感就是「快到头了又慢半拍」。
- * 260ms 留 60ms 余量，人眼察觉不到多出来的这一小段。
+ * 260ms 留 20ms 余量，人眼察觉不到多出来的这一小段。
  */
 export const THEME_SWITCH_MS = 260
 
@@ -82,6 +94,37 @@ function writeMode(mode) {
 function systemPrefersDark() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
   return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+/** 系统是否要求「减弱动态效果」（同样做能力检测：单测的假 window 没有 matchMedia） */
+function prefersReducedMotion() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * View Transitions 能力检测。
+ *
+ * 只用特性检测，不嗅探 UA：Safari 18 之前没有这组 API，个别 WebView 会把它挂在
+ * prototype 上却调用即抛 —— 后一种由 `applyWithTransition` 里的 try/catch 兜底，
+ * 所以这里不必（也无法）判断得更细。
+ */
+function supportsViewTransition() {
+  return typeof document !== 'undefined' && typeof document.startViewTransition === 'function'
+}
+
+/** 摘掉上一次切换留下的收尾定时器：快速连点时不叠加，类也不会被提前撤走 */
+function clearThemeSwitchTimer() {
+  if (!themeSwitchTimer) return
+  clearTimeout(themeSwitchTimer)
+  themeSwitchTimer = null
+}
+
+/** 摘掉瞬时类（换肤入口共用：切到 View Transition 之前清掉上一次的残留） */
+function dropThemeSwitchClass() {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  if (root && root.classList) root.classList.remove(THEME_SWITCH_CLASS)
 }
 
 export const useThemeStore = defineStore('theme', {
@@ -137,11 +180,55 @@ export const useThemeStore = defineStore('theme', {
     /** 切换三档（theme-switch 的唯一入口） */
     setMode(mode) {
       this.mode = isMode(mode) ? mode : 'light'
-      // 先开过渡、再写属性：两条在同一帧内完成，浏览器会用上一帧的
-      // 旧颜色作为起点插值，于是切换是「渐变」而不是「啪」。
+      // 换肤的执行顺序在这里收口：先定路径（快照 or 瞬时类），再写属性，
+      // 最后才落盘 —— 顺序反过来会让 localStorage 先于视觉生效，出错时更难查。
+      this.applyWithTransition()
+      writeMode(this.mode)
+    },
+
+    /**
+     * 换肤的唯一执行口：决定这一帧用哪条路径，然后写属性。
+     *
+     * 顺序（三条分支互斥，后两条都不挂瞬时类）：
+     *   0. 先摘掉上一次的收尾定时器 —— 快速连点时旧定时器会把新一次的类提前撤走；
+     *   1. `prefers-reduced-motion: reduce` → 不做任何过渡，直接写属性；
+     *   2. 支持 View Transitions → 清掉残留瞬时类，`startViewTransition(() => apply())`；
+     *   3. 都不满足 → 回落 `startColorTransition()` + `apply()`。
+     *
+     * 为什么回落路径放在最后而不是先挂类再进快照：`is-theme-switching` 会把
+     * 每个元素的颜色属性都变成 240ms 插值，快照拍到的「新帧」因此是过渡中间态，
+     * 淡出结束后还得再补完剩下的一段 —— 比纯回落更难看。
+     */
+    applyWithTransition() {
+      clearThemeSwitchTimer()
+
+      if (prefersReducedMotion()) {
+        // 系统要求减弱动效：快照淡入淡出同样是全屏闪烁，一并省掉
+        dropThemeSwitchClass()
+        this.apply()
+        return
+      }
+
+      if (supportsViewTransition()) {
+        dropThemeSwitchClass()
+        try {
+          const transition = document.startViewTransition(() => this.apply())
+          // 连点时浏览器会 skip 掉上一个过渡，ready / finished 以 AbortError 拒绝。
+          // 不接住就是一条与主题无关的控制台报错，会污染错误监控。
+          if (transition && typeof transition.ready?.then === 'function') {
+            transition.ready.catch(() => {})
+          }
+          if (transition && typeof transition.finished?.then === 'function') {
+            transition.finished.catch(() => {})
+          }
+          return
+        } catch {
+          // 后台标签页、半实现的 WebView 会在调用瞬间抛错：落到下面的瞬时类路径
+        }
+      }
+
       this.startColorTransition()
       this.apply()
-      writeMode(this.mode)
     },
 
     /** 把属性写到 <html>：EC 的暗色覆写靠属性选择器，不能用行内样式 */
@@ -157,7 +244,7 @@ export const useThemeStore = defineStore('theme', {
     },
 
     /**
-     * 主题切换的颜色过渡：给 `<html>` 加瞬时类，约 260ms 后摘掉。
+     * 回落路径：给 `<html>` 加瞬时类，约 260ms 后摘掉。
      *
      * 为什么不是常驻 transition：颜色过渡本该只发生在「换主题」这一瞬间。
      * 常驻的话，每次 hover、每次滚动收缩、每个展开动画都会被顺手拖慢，
@@ -167,19 +254,14 @@ export const useThemeStore = defineStore('theme', {
      * 切换进行到一半时把类摘走，后半程又变回硬切。
      */
     startColorTransition() {
-      if (themeSwitchTimer) {
-        clearTimeout(themeSwitchTimer)
-        themeSwitchTimer = null
-      }
+      clearThemeSwitchTimer()
 
       if (typeof document === 'undefined') return
       const root = document.documentElement
       if (!root || !root.classList) return
 
       // 系统开了「减弱动态效果」就干脆不插值：颜色一步到位，别制造晕眩
-      if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-      }
+      if (prefersReducedMotion()) return
 
       root.classList.add(THEME_SWITCH_CLASS)
       themeSwitchTimer = setTimeout(() => {
@@ -199,9 +281,8 @@ export const useThemeStore = defineStore('theme', {
       this._systemWatcher = true
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (this.mode !== 'auto') return
-        // 系统换色也是一次主题切换，同样走渐变（否则 auto 档是唯一硬切的路径）
-        this.startColorTransition()
-        this.apply()
+        // 系统换色也是一次主题切换，同样走快照（否则 auto 档是唯一硬切的路径）
+        this.applyWithTransition()
       })
     },
   },

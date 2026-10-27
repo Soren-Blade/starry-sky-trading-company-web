@@ -8,7 +8,8 @@
  *      下拉 / 进度 / 加载圈 / 头像。这些类的实现**逐条对齐 `assets/ec/ec.css`
  *      的 EC 组件**（同样的渐变承字面、同样的焦点环、同样的七态）；
  *   3. 共享结构类 —— 区块容器、区块头、事务页外壳、表单字段；
- *   4. 共享动效 —— 入场、错峰、滚动渐显。
+ *   4. 共享动效 —— 入场、错峰、滚动渐显；以及换肤过渡本身（快照交叉淡出为主、
+ *      瞬时类颜色插值为回落，见文件前部的「主题切换」一节）。
  *
  * 为什么这里仍然叫 `.u-*` 而不是直接改成 `.ec-*`：
  *   这 20 余个类被 90 个页面、6 个组件分片引用。改名是纯机械动作、零视觉收益，
@@ -53,15 +54,54 @@ body {
 }
 
 /* ────────────────────────────────────────────────────────────
- * 主题切换：瞬时过渡（`<html class="is-theme-switching">`）
+ * 主题切换：两条互斥的路径（由 src/stores/theme.js 的 applyWithTransition 选路）
  *
+ * ── 主路径 · View Transitions API ──────────────────────────────
+ * 换肤时浏览器把旧帧、新帧各拍一张快照，在合成层交叉淡出。快照是「画面」不是
+ * 「属性」，所以渐变底（`--ec-grad-action`）、顶栏/卡片的 box-shadow、outline
+ * 全部跟着淡，不会出现「颜色渐变过去了，主按钮的渐变底和顶栏阴影却跳了一下」
+ * 的半截效果 —— 这正是用户说的「切换生硬」。逐属性 transition 永远做不到这点：
+ * CSS 无法在两条 `background-image` 之间插值，属性列表写多少项都补不上。
+ *
+ * 为什么还要回落：View Transitions 只有 Safari 18+ 才有，内嵌 WebView 更晚。
+ * 不支持就退回「颜色类属性插值」，盖不住渐变与阴影，但底色、文字色占了页面绝大
+ * 部分面积，比干脆硬切好得多。两条路同一时刻只跑一条 —— 快照淡出叠上属性插值，
+ * 观感就是「快到头了又慢半拍」。
+ *
+ * 快照是整页的，滚动条也会被拍进去：给伪元素写 `mix-blend-mode: normal` 让两层
+ * 正常叠合即可。不要用 `overflow: hidden` 之类手段去「裁掉」滚动条，那会在过渡
+ * 瞬间改变布局、把页面顶得一跳。
+ *
+ * 时长取 180ms（与 ThemeSwitch 滑块的 180ms 对齐，视觉上是一次动作），缓动走
+ * `--ec-ease-out`；只覆盖 UA 自带的 fade-out / fade-in 关键帧的时长与曲线，
+ * 不重写 @keyframes。
+ * ──────────────────────────────────────────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ec-ease-out);
+  mix-blend-mode: normal;
+}
+
+/* 快照是在回调后的下一帧拍的。若此刻 body 还跑着自己那条常驻 250ms 颜色过渡，
+ * 「新帧」拍到的是中间色，淡完再补一段 —— 又变回两截。:active-view-transition
+ * 只在过渡进行中匹配根元素，结束后自动失效，不用 JS 挂类。 */
+html:active-view-transition body {
+  transition: none;
+}
+
+/* ── 回落 · 瞬时类（`<html class="is-theme-switching">`）─────────
  * 只在换肤的那 260ms 内生效 —— 类由 theme store 挂上、定时摘掉（见
- * src/stores/theme.js 的 startColorTransition）。过渡属性刻意只列颜色相关的
- * 五项，两个反面教材都在本项目里真实出现过：
+ * src/stores/theme.js 的 startColorTransition）。过渡属性只列「换肤会变、
+ * 且插值有效」的项，三个反面教材都在本项目里真实出现过：
  *   · 不写「全部属性」的过渡（all）：那会把 hover、展开、滚动收缩一起拖成
  *     动画，看上去像是「点了没反应」，实际是 250ms 的错峰动画在排队；
- *   · 不给 box-shadow / transform 加长过渡：顶栏阴影、抽屉位移本来就有自己
- *     的节奏，塞进换肤过渡里就是用户说的「有的地方慢半拍」。
+ *   · 不给 transform 加过渡：滑块、抽屉位移本来就有自己的节奏，塞进换肤过渡
+ *     里就是用户说的「有的地方慢半拍」；
+ *   · 不写 background-image：两条渐变之间无法插值，写了也是硬切，只会让
+ *     作者误以为已经处理过（真正的解法是上面的快照）。
+ * box-shadow / outline-color 是这次补的：暗色下卡片阴影从淡灰换成近黑、
+ * 焦点环描边也会换色，漏掉它们就是「一块渐变、一块跳变」。
  * 平时没有这个类，也就不会为换肤多付任何样式计算。
  * ──────────────────────────────────────────────────────────── */
 html.is-theme-switching,
@@ -69,13 +109,13 @@ html.is-theme-switching body,
 html.is-theme-switching body *,
 html.is-theme-switching body *::before,
 html.is-theme-switching body *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 200ms;
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow, outline-color;
+  transition-duration: 240ms;
   transition-timing-function: var(--ec-ease-out);
   transition-delay: 0s;
 }
 
-/* 系统开了「减弱动态效果」：颜色一步到位，不留插值 */
+/* 系统开了「减弱动态效果」：两条路径都不留插值 —— 颜色一步到位，快照也不淡 */
 @media (prefers-reduced-motion: reduce) {
   html.is-theme-switching,
   html.is-theme-switching body,
@@ -83,6 +123,11 @@ html.is-theme-switching body *::after {
   html.is-theme-switching body *::before,
   html.is-theme-switching body *::after {
     transition: none;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
 }
 

@@ -192,11 +192,8 @@
             <span
               v-if="hasIdentity"
               class="navbar-avatar-status"
-              :class="{ 'navbar-avatar-status--guest': isGuest }"
               aria-hidden="true"
             ></span>
-            <!-- 游客标记直接压在头像上：不展开菜单也能一眼看出当前不是正式账号 -->
-            <span v-if="isGuest" class="guest-mark" aria-hidden="true">游</span>
           </button>
 
           <div
@@ -404,6 +401,7 @@ import { useMemberStore } from '@/stores/member'
 import { useCartStore } from '@/stores/cart'
 import { useMailStore } from '@/stores/mail'
 import { throttle } from '@/utils/index.js'
+import { createClickGuard } from '@/utils/rateLimit.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
 import AppIcon from './AppIcon.vue'
@@ -699,7 +697,11 @@ const openLoginModal = () => {
   menuOpen.value = false
 }
 
+/** 退出登录的点击闸门：连着点两下会发两次 logout 请求（第二次必然 401，还会污染日志）。 */
+const logoutGuard = createClickGuard(1000)
+
 const handleLogout = async () => {
+  if (!logoutGuard()) return
   await userStore.logout()
   userMenuOpen.value = false
   menuOpen.value = false
@@ -1098,28 +1100,7 @@ onUnmounted(() => {
   background: var(--bg-soft);
 }
 
-/* 游客标记：压在头像右下角的小圆片。
- * 用警告色（而不是强调色）—— 它表达的是「这不是正式账号」，
- * 与状态徽标同族的语义，不该抢走强调色在导航里的唯一地位。 */.guest-mark {
-  position: absolute;
-  right: calc(var(--space-unit) * -0.5);
-  bottom: calc(var(--space-unit) * -0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--space-unit) * 2);
-  height: calc(var(--space-unit) * 2);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  line-height: 1;
-  color: var(--text-on-accent);
-  background: var(--warning);
-  /* 描边取顶栏表面色，让圆片与底下的头像分开 */
-  border: var(--stroke-width) solid var(--bg-nav);
-  border-radius: var(--radius-pill);
-}
-
-/* 在线状态圆点：头像右下角的 9px 绿点。
+/* 在线状态圆点：头像右下角的 6px 绿点。
  *
  * 为什么挂在 .user-avatar-btn 而不是 .u-avatar 里面：
  *   `.u-avatar` 是 `overflow: hidden` + 圆形，挂在里面会被裁成半个月牙。
@@ -1133,12 +1114,12 @@ onUnmounted(() => {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 9px;
-  height: 9px;
+  width: 6px;
+  height: 6px;
   border-radius: var(--ec-radius-full);
   background: var(--ec-success);
-  /* 2px 顶栏表面色描边：把圆点从头像图上切下来，再亮也不会糊成一团 */
-  box-shadow: 0 0 0 2px var(--ec-bg-surface);
+  /* 1.5px 顶栏表面色描边：把圆点从头像图上切下来，再亮也不会糊成一团 */
+  box-shadow: 0 0 0 1.5px var(--ec-bg-surface);
   pointer-events: none;
 }
 
@@ -1161,14 +1142,9 @@ onUnmounted(() => {
 
   70%,
   100% {
-    box-shadow: 0 0 0 6px var(--ec-success);
+    box-shadow: 0 0 0 4px var(--ec-success);
     opacity: 0;
   }
-}
-
-/* 游客身份的「游」徽标也占右下角：圆点向左让开一格，两者互不压盖 */
-.navbar-avatar-status--guest {
-  right: calc(var(--space-unit) * 2);
 }
 
 /* 前庭系统敏感 / 低电量模式：保留静息绿点，关掉呼吸 */

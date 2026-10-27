@@ -9,6 +9,36 @@
 
 ---
 
+## [2.2.0] — 2026-10-27 · 主题过渡、工具访问鉴权与卡密控制台合并
+
+八项体验与正确性升级。**主题切换的实现方式变了**（改用 View Transitions API，旧浏览器回落旧方案），
+另外服务端新增 `POST /toolApi/openTool` 作为工具访问的唯一判定点，因此按 `2.2.0` 发。
+
+### 变更
+
+| 类别 | 内容 |
+| --- | --- |
+| 主题切换 | 换肤主路径改为 `document.startViewTransition(() => apply())`：整页一次性交叉淡出，**渐变（`background-image`）、阴影、描边、图片一起过渡**——旧方案只插值 `background/border/color/fill/stroke`，渐变与阴影是跳变的，这正是「一半渐变、一半跳变」的生硬来源。`::view-transition-old/new(root)` 用 180ms `--ec-ease-out`、`mix-blend-mode: normal`；`html:active-view-transition body { transition: none }` 避免双份动画。不支持 VT 时回落原 `is-theme-switching` 方案并把过渡属性补到 7 项、时长 200ms→240ms；`prefers-reduced-motion` 两条路径都直切。对外 API 与 `ec-theme` 存储键未变 |
+| 用户 UID | 个人中心该行的 `.ec-code` **去掉设计系统自带的阴影**（本地 `box-shadow: none`，靠 scoped 特异性覆盖，不用 `!important`）；文案「用户标识」统一改「用户 UID」（`TRADE.profileFields.uuid` 是唯一来源，`aria-label` 同步）；掩码/明文、30s 回掩码、复制逻辑未动 |
+| 在线状态 | 删掉头像右下角的游客徽标「游」（身份改由下拉菜单表达）；呼吸灯 9px→**6px**、描边 2px→**1.5px**、扩散终值 6px→**4px**，仍然只动 box-shadow 与 opacity、reduced-motion 下静止 |
+| 卡密控制台 | 「激活新卡密」与「会员免卡密激活」**合并成一套表单**：工具下拉 + 一个输入框（占位「粘贴卡密 / 用户 UID」）+ 主按钮。输入 400ms 防抖后按**结构**识别：标准 UUID（5 段）→ 会员通道、`XXXX-XXXX-XXXX`（3 段十六进制）或 12 位紧凑写法 → 卡密通道（自动选中该卡密绑定的工具）；五段形状但 UUID 不合法 → 不认（避免打错一位被兜底成卡密后静默 404）；认不出就不发请求、按钮置灰。提交前再同步判一次，防止防抖窗口内点按钮走错通道。`.console-side` 左下新增**说明框**（四条「怎么用」，把原 `panel-sub` 与会员身份/有效期文案并进去） |
+| 防连点 | 新增 `src/utils/rateLimit.js`（`debounce` / `throttle` leading+trailing / `createClickGuard` / `guardAsync`）。接入：加购（600ms 冷却）、下单（1500ms）、收藏开关（只挡「上一次没结束」，冷却 0，避免吞掉取消后立刻再收藏）、打卡补签（800ms）、退出登录（1000ms）、两条卡密激活路径。其中加购/下单/收藏原先**没有**忙碌标记，连点会真的发出两次写请求 |
+| 工具标签与形态 | 商品卡在标题前加形态角标（虚拟商品 / 实物 / 服务 / 账号，无值不渲染、不猜成 digital）；商品详情按形态给交付说明，实物商品在有 `weight_kg` / `dimensions` 时带出「约 X kg」「长 × 宽 × 高 cm」 |
+| Toast 着色 | 提示条图标按类型着色。根因：EC 的图标约定是 `class="ic"`，而 `AppIcon` 渲染的是 `app-icon`，所以 `.ec-toast--success .ic` 这类规则**从未命中**，成功/失败图标一直是默认灰。改为在 `ToastHost` 里按四型给 `.toast-icon` 上 `--ec-success` / `--ec-danger` / `--ec-warning` / `--ec-info`（不给 `AppIcon` 全局加 `ic`，那会把全站描边 2px→1.5px 一起改掉） |
+| 已激活工具 | 卡密控制台右栏新增「已激活工具」表（工具名 / 来源 / 有效期 / 状态），数据来自 `/kamiApi/myEntitlements`——服务端每条授权补了 `tool_name` / `tool_slug`（LEFT JOIN `tools`）。此前用会员额度激活后，`/kamiApi/getUserCards` 只返回卡，列表上完全看不到刚激活的工具 |
+| 工具访问鉴权 | 服务端新增 `POST /toolApi/openTool`：按 `access_policy` 四档 + 维护中/已下架判定放行，**只有放行才返回 `url`**，拒绝分支不带 `tool_path` / `tool_slug`（否则「被拒」只是换个姿势读地址）。`/getTools`、`/getTool/:idOrSlug` 对无权限的工具同样脱敏并给 `locked` / `gate`。前端 `useOpenTool` 改为先同步开占位窗口再请求，失败关窗并按错误码提示 |
+
+### 已知取舍
+
+- **View Transitions 只在支持它的浏览器生效**（本机 Chrome 155 实测）。不支持的浏览器走回落路径：颜色与阴影会过渡，但渐变仍是淡入淡出后的跳变，这是能力差距不是缺陷。
+- **主题过渡时长用的是字面量**（VT 180ms、回落 240ms）：令牌层只有 `--ec-dur-fast=150` / `--ec-dur-base=250`，180ms 与 `ThemeSwitch` 滑块同拍，240ms 与回落方案的观感对齐。
+- **合并后的卡密输入框不再按身份禁用会员通道**：同一个输入框还要服务卡密，无法预判；非会员提交后由服务端 403 `NOT_MEMBER` 接住，错误区给「升级会员」出口。说明框里「UID 可留空」这条在界面上不可达（空输入时按钮已置灰），代码路径保留。
+- **`goods_type` 只在详情链路补了 `weight_kg` / `dimensions`**：列表接口 `/getProducts` 的字段集合本就与详情不同（连 `category_id` 都不返回），卡片也不展示重量体积，因此没在列表里复制一份归一化逻辑。
+- **形态筛选未加**：分类页本来没有任何排序/筛选控件，加它要新造一套控件与样式，超出本轮范围。
+- **`/userBackend` 订单管理确认不再补**：运营查询已在管理后台，见根 README。
+
+---
+
 ## [2.1.0] — 2026-10-26 · 全量操作日志、会员免卡密额度与交互细节
 
 八项体验升级。没有删改既有路由，但**导出的日志文件列全变了**（属对外可见的可感知变更），

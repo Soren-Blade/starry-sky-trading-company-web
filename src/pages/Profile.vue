@@ -141,7 +141,7 @@
             <dt>{{ row.label }}</dt>
 
             <!--
-              用户标识：dd 元素本身就是设计系统的 CardCodeBox —— label / value / act
+              用户 UID：dd 元素本身就是设计系统的 CardCodeBox —— label / value / act
               三段都是它的直接子元素，外面不再套只读字段底板，也不再多包一层 div；
               行高、左基线、上下留白由 .profile-field-value 统一提供给所有字段行
               （只读字段值的样式见文件末尾那一节样式表）。
@@ -161,7 +161,7 @@
                   type="button"
                   class="ec-icon-btn"
                   :aria-pressed="uuidRevealed ? 'true' : 'false'"
-                  :aria-label="uuidRevealed ? '隐藏用户标识' : '显示用户标识'"
+                  :aria-label="uuidRevealed ? '隐藏用户 UID' : '显示用户 UID'"
                   :disabled="!uuidRaw"
                   @click="toggleUuid"
                 >
@@ -171,7 +171,7 @@
                   type="button"
                   class="ec-icon-btn"
                   :class="{ 'is-ok': uuidCopied }"
-                  :aria-label="uuidCopied ? '已复制用户标识' : '复制用户标识'"
+                  :aria-label="uuidCopied ? '已复制用户 UID' : '复制用户 UID'"
                   :disabled="!uuidRaw"
                   @click="copyUuid"
                 >
@@ -407,7 +407,7 @@
 
 <script>
 /**
- * 用户标识（UUID）的展示规则。
+ * 用户 UID（即 users.uuid）的展示规则。
  *
  * 放在普通 `<script>` 而不是 `<script setup>` 里，是为了让脱敏与倒计时逻辑
  * 成为**可单独 import 的具名导出**：测试不必挂载组件、更不必真等 30 秒。
@@ -675,6 +675,8 @@ const readonlyRows = computed(() => {
   const data = userInfo.value || {}
   const fields = TRADE.profileFields
   return [
+    // 字段名「用户 UID」由 TRADE.profileFields.uuid 统一提供（值仍是 users.uuid，
+    // 展示 / 复制逻辑都不变），这里不再就地覆盖，避免同一文案有两个来源。
     { key: 'uuid', label: fields.uuid, value: data.uuid || '—' },
     { key: 'username', label: fields.username, value: data.username || '未设置' },
     { key: 'email', label: fields.email, value: data.email || '未绑定' },
@@ -690,7 +692,7 @@ const readonlyRows = computed(() => {
   ]
 })
 
-/* ── 用户标识（UUID）的显示 / 复制 ──────────────────────────────
+/* ── 用户 UID（UUID）的显示 / 复制 ──────────────────────────────
  * 默认掩码；点眼睛显示明文并启动 30 秒倒计时；再次点眼睛立即回掩码。
  * 复制用的是原始值（不是掩码值），反馈只持续 1.5 秒。
  */
@@ -1064,7 +1066,7 @@ onMounted(() => {
 
 /* ── 只读字段值：.profile-fields 下所有 <dd> 的唯一节奏来源 ────────────────
  * 字号 / 行高 / 颜色 / 内边距 / 断词规则只写在这里一次：普通字段的只读底板
- * （.u-field-value）与用户标识的 CardCodeBox（.ec-code）都从这套节奏取值，
+ * （.u-field-value）与用户 UID 的 CardCodeBox（.ec-code）都从这套节奏取值，
  * 所以两条行的高度、左基线、上下留白天然对齐。新增字段行请勿另写 padding。 */
 .profile-field-value {
   min-width: 0;
@@ -1089,7 +1091,15 @@ onMounted(() => {
   border-radius: var(--ec-radius-lg);
 }
 
-/* 用户标识：<dd> 本体就是 CardCodeBox（三段是直接子元素）。
+.profile-field-value--code {
+  /* 设计系统的 .ec-code 自带 --ec-code-glow 阴影，而这一列其它 .u-field-value 行
+   * 都是平的；卡密卡片的「浮起」在这里会让整列多出一层纵深，所以抹平它。
+   * scoped 样式会编译成 .profile-field-value--code[data-v-xxx]（0,2,0），
+   * 单类 .ec-code 只有 0,1,0 —— 特异性天然更高，不需要 !important。 */
+  box-shadow: none;
+}
+
+/* 用户 UID：<dd> 本体就是 CardCodeBox（三段是直接子元素）。
  * 1) 卡片自带的块级 padding 让位给上面统一的 min-height，与其它行等高；
  * 2) 值区可收缩 → 放不下时走省略号，__act 永远留在卡片可视区内；
  * 3) 图标按钮降到 sm 档，避免 36px 的按钮把 36px 高的卡片上下边撑满。 */

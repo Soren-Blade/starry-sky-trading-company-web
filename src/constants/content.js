@@ -225,6 +225,36 @@ export const PRODUCT_GRID = {
 }
 
 /**
+ * 商品形态文案（`products.goods_type`）
+ *
+ * 取值由后端迁移 `products_goods_type_check` 固定为 digital / physical /
+ * service / account。前端**不做兜底推断**：拿不到合法值就不渲染角标与交付说明，
+ * 免得把还没分类的商品猜成「虚拟商品」误导用户下单（见 utils/goodsType.js）。
+ */
+export const GOODS_TYPE = {
+  /** 合法枚举；顺序即展示顺序，判断合法性也只认这份名单 */
+  values: ['digital', 'physical', 'service', 'account'],
+  /** 商品卡角标用的短标签 */
+  labels: {
+    digital: '虚拟商品',
+    physical: '实物',
+    service: '服务',
+    account: '账号',
+  },
+  /** 详情页的交付说明；实物商品的重量/体积由 buildDeliveryNote 追加 */
+  delivery: {
+    digital: '虚拟商品 · 下单后立即可用，卡密在订单详情查看',
+    physical: '实物商品 · 需物流配送',
+    service: '服务类商品 · 下单后联系客服安排',
+    account: '账号类商品 · 发货后请及时修改密码并绑定自己的信息',
+  },
+  /** 实物商品的重量补充说明；只在 weight_kg 是正数时使用 */
+  weight: (value) => `约 ${value} kg`,
+  /** 交付说明里拼接各段的分隔符，与正文里已有的「 · 」保持一致 */
+  separator: ' · ',
+}
+
+/**
  * 交易页文案（购物车 / 订单 / 下单）
  *
  * 与 PRODUCT_GRID 分开：那里是商品卡片的文案，这里是交易流程的文案，
@@ -308,7 +338,8 @@ export const TRADE = {
   profileGuestNote: '当前是游客身份，登录后即可保存个人资料。',
   /** 各字段的展示标签（账号信息只读区用） */
   profileFields: {
-    uuid: '用户标识',
+    // 用户要求把「用户标识」改称「用户 UID」：值仍是 users.uuid
+    uuid: '用户 UID',
     username: '用户名',
     email: '邮箱',
     phone: '手机号',
@@ -402,6 +433,11 @@ export const TOOL_PAGE = {
   missingPath: '该工具暂未配置跳转地址',
   invalidPath: '工具地址无效',
   popupBlocked: '浏览器拦截了新窗口，请允许本站弹出窗口',
+  // 受控打开被服务端拒绝时的文案（按错误码一一对应，见 POST /toolApi/openTool）
+  accessCardRequired: '该工具需要卡密激活，请先到卡密控制台激活',
+  accessCardOrMember: '该工具需要卡密激活或开通会员',
+  accessMemberOnly: '该工具仅限会员使用，可先开通会员',
+  accessUnavailable: '该工具当前不可用',
   // ── 使用方式两个分类（与「分类」是两根轴：这里说的是要不要卡密）──
   accessCard: '卡密激活',
   accessFree: '免费工具',

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import api from '@/api/index'
 import { useUserStore } from '@/stores/user'
+import { guardAsync } from '@/utils/rateLimit.js'
 
 /**
  * 收藏（商品 / 工具）
@@ -21,6 +22,19 @@ import { useUserStore } from '@/stores/user'
  * 存的是 id 数组 —— 换成别的形状会让老用户的收藏凭空消失。
  */
 const TOOL_FAVORITES_KEY = 'SSTC_TOOL_FAVORITES'
+
+/**
+ * 收藏切换的并发闸门（按 `类型:id` 分别记）。
+ *
+ * 一个 `toggle` 是「读当前状态 → 写服务端 → 改本地」，同一目标连点两下会变成
+ * 「收藏 + 取消收藏」两次写请求，净效果为零却白打两次接口。这里按目标加锁：
+ * 上一次没结束就不发第二次，被挡下的调用返回 `{ skipped: true }`，
+ * 调用方据此**静默返回**（不弹「操作太快」——连点本来就是用户手抖）。
+ */
+const toggleGuards = new Map()
+/** 冷却取 0：只在「上一次还没结束」时挡人。收藏本身是幂等语义的开关，
+ *  拦太久会让「取消收藏后立刻再收藏」这种正常操作被吞掉。 */
+const TOGGLE_COOLDOWN = 0
 
 /** 读本地工具收藏（容错：隐私模式、脏数据都退回空数组） */
 function readLocalToolIds() {
@@ -139,9 +153,23 @@ export const useFavoriteStore = defineStore('favorite', {
             const id = Number(targetId)
             if (!Number.isFinite(id)) return { success: false, message: '目标不合法' }
 
-            if (targetType === 'product') return this.toggleProduct(id)
-            if (targetType === 'tool') return this.toggleTool(id)
-            return { success: false, message: '收藏类型不合法' }
+            if (targetType !== 'product' && targetType !== 'tool') {
+                return { success: false, message: '收藏类型不合法' }
+            }
+
+            const key = `${targetType}:${id}`
+            let guard = toggleGuards.get(key)
+            if (!guard) {
+                guard = guardAsync(
+                    () => (targetType === 'product' ? this.toggleProduct(id) : this.toggleTool(id)),
+                    { cooldown: TOGGLE_COOLDOWN }
+                )
+                toggleGuards.set(key, guard)
+            }
+
+            const result = await guard()
+            if (result === null) return { success: false, skipped: true, message: '' }
+            return result
         },
 
         async toggleProduct(id) {

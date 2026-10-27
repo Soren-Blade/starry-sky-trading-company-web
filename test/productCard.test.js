@@ -138,6 +138,47 @@ test('价格：.ec-price--md 三段式 + 原价 <s class="ec-price__origin">', a
   assert.doesNotMatch(html, /u-price/, '不应残留旧的 u-price 标记')
 })
 
+test('形态角标：合法 goods_type 渲染 EC outline 小标签，位于标题前而非封面', async () => {
+  const cases = [
+    ['digital', '虚拟商品'],
+    ['physical', '实物'],
+    ['service', '服务'],
+    ['account', '账号'],
+  ]
+
+  for (const [goodsType, label] of cases) {
+    const { html, warnings } = await renderCard({ goods_type: goodsType })
+    assertNoVueWarnings(warnings)
+
+    const tag = html.match(
+      /<span[^>]*class="ec-tag ec-tag--sm ec-tag--outline product-card__type"[^>]*>([\s\S]*?)<\/span>/
+    )
+    assert.ok(tag, `${goodsType} 应渲染形态角标（沿用 EC 标签体系）`)
+    assert.equal(tag[1].trim(), label, `${goodsType} 的角标文案`)
+
+    const bodyAt = html.indexOf('class="ec-product__body"')
+    const tagAt = html.indexOf('product-card__type')
+    const titleAt = html.indexOf('class="ec-product__title"')
+    assert.ok(bodyAt >= 0 && tagAt > bodyAt, '角标应放在 ec-product__body 元信息行内')
+    assert.ok(tagAt < titleAt, '角标应在标题之前，与标题左对齐')
+
+    const cover = html.match(/<div class="ec-product__cover"[^>]*>([\s\S]*?)<\/div>/)?.[1] || ''
+    assert.doesNotMatch(cover, /product-card__type/, '角标不得占用封面的缺货/折扣角标位')
+  }
+})
+
+test('形态角标：goods_type 缺失或非法时整块不渲染（不猜成虚拟商品）', async () => {
+  // undefined / 空串 / 大小写不符 / 未知枚举 / 原型键名都不应被当成 digital
+  for (const goodsType of [undefined, '', 'DIGITAL', 'unknown', 'constructor']) {
+    const { html, warnings } = await renderCard({ goods_type: goodsType })
+    assertNoVueWarnings(warnings)
+    assert.doesNotMatch(html, /product-card__type/, `${String(goodsType)} 不应渲染形态角标`)
+    // 注释里会解释四个形态，比对可见文本前先剥掉注释
+    const visible = html.replace(/<!--[\s\S]*?-->/g, '')
+    assert.doesNotMatch(visible, /虚拟商品|实物|服务|账号/, '无形态时不应编造任何形态文案')
+  }
+})
+
 test('收藏态：aria-pressed=true、图标实心，且仍在 CTA 行首', async () => {
   const { html, warnings } = await renderCard({}, { favorite: { productIds: [PRODUCT.id] } })
   assertNoVueWarnings(warnings)
@@ -157,6 +198,7 @@ test('源码契约：CTA 行组件内 flex、主按钮 flex:1，并写明收藏�
 
   assert.match(source, /\.ec-product__cta\s*\{[^}]*display:\s*flex/s, 'CTA 行应在组件内声明 flex')
   assert.match(source, /\.product-card__buy\s*\{[^}]*flex:\s*1/s, '主按钮应 flex:1')
+  assert.match(source, /\.product-card__type\s*\{/, '形态角标需在组件内声明（flex 列中靠左对齐）')
   assert.match(source, /刻意偏离/, '必须就地注释说明收藏位偏离设计系统')
   assert.doesNotMatch(source, /#[0-9a-fA-F]{3,8}\b/, '组件样式不得出现 hex 色值')
   assert.doesNotMatch(source, /rgba?\(/, '组件样式不得出现 rgb/rgba 色值')

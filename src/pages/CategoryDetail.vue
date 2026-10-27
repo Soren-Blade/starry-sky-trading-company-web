@@ -31,9 +31,10 @@
           <router-link :to="`/category/${child.id}`" class="children-item">
             <!-- 分类图标来自数据库（icon_url 里存的是 emoji）：先映射成线性图标，
                  映射不到才原样显示 —— 运营随时可能录一个表里没有的 emoji，
-                 不能因为不认识就渲染成空白 -->
+                 不能因为不认识就渲染成空白；icon_url 为空时用中性占位兜底 -->
             <span class="children-icon" aria-hidden="true">
               <AppIcon v-if="childIconName(child)" :name="childIconName(child)" />
+              <AppIcon v-else-if="!child.icon_url" name="layout-grid" />
               <template v-else>{{ child.icon_url }}</template>
             </span>
             <span class="children-name">{{ child.category_name }}</span>

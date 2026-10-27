@@ -659,26 +659,22 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 ### `theme.js` — `useThemeStore`
 
-明暗主题的运行时状态。**这里不写任何设计数值**（取值在 EC 令牌层，见 §9.3）。
+明暗主题的运行时状态。**这里不写任何设计数值**（取值在 EC 令牌层，见 §9.3）；
+它只负责「记住用户选的三档、把属性写到 `<html>` 上」。
 
 | 成员 | 说明 |
 | --- | --- |
-| `themeId` | 当前风格 id，默认 `tech-minimal` |
-| `custom` | 单项自定义值（字号缩放、间距密度、圆角缩放、强调色、字体族、背景图与其不透明度） |
-| `theme` / `themeList` | 当前主题元数据 / 可选主题列表（供弹窗渲染） |
-| `pricePrefix` / `priceDecimals` | 当前主题的货币描述（technical-monochrome 是 `$`），供 `formatUtils.formatPrice` 使用 |
-| `tokens` | getter：`composeTokens(themeId, custom)` 的合成结果 |
-| `customizedKeys` / `isCustomized` | 哪几项被改过 |
-| `panelOpen` | 主题弹窗开关（导航栏按钮与弹窗共享同一状态） |
-| `init()` | 从 `localStorage` 恢复并写入 `:root`；由 `main.js` 在 mount 前调用 |
-| `setTheme(id)` | 整体切换风格 |
-| `setCustom(key, v)` / `resetCustomField(key)` / `resetCustom()` / `resetAll()` | 单项修改与三种粒度的还原 |
-| `apply()` | 把合成后的令牌写成 `<html>` 的行内自定义属性 + `data-theme` + `color-scheme` |
-| `openPanel` / `closePanel` / `togglePanel` | 弹窗开关 |
+| `mode` | 三档之一：`light` / `dark` / `auto`（顺序即 EC theme-switch 的按钮顺序） |
+| `THEME_MODES` / `THEME_STORAGE_KEY` | 三档常量与存储键 `ec-theme`（`SSTC_THEME_PREF` 是旧五套风格的遗留键，初始化时清掉） |
+| `apply()` | 只写三个属性：`<html data-theme>`（解析后的 `light`/`dark`）、`data-theme-mode`（用户选择）、`style.colorScheme` |
+| `applyWithTransition()` | 换肤的两条互斥路径：支持 `document.startViewTransition` 时整页交叉淡出（渐变/阴影/描边一起过渡）；否则挂 `is-theme-switching` 260ms 让 7 个颜色属性过渡 240ms |
+| `setMode(mode)` | 定 mode → 换肤 → `writeMode()` 落盘；连点先 `clearTimeout` 复位 |
+| `init()` | 从 `localStorage` 恢复并应用；由 `main.js` 在 mount 前调用 |
+| `watchSystem()` | 跟随系统时监听 `prefers-color-scheme`，同样走 `applyWithTransition()` |
 
-> 走行内样式而不是切 class 的原因：单项自定义的取值来自用户输入（任意强调色、
-> 任意字号），无法预先穷举成 CSS 类；行内自定义属性也天然优先于 `variables.css`
-> 的 `:root` 兜底值。`apply()` 用能力检测（`style.setProperty` 是否存在）
+> 为什么写属性而不是行内样式：EC 的暗色是 `tokens/theme-dark.css` 用 `[data-theme="dark"]`
+> 覆写同一批令牌，行内自定义属性会**盖掉**这层覆写（旧实现逐条写几百个行内令牌，
+> 正是它无法适配 EC 的原因）。`apply()` 用能力检测（`style.setProperty` 是否存在）
 > 而不是 `typeof document` 来兼容 SSR 与测试桩。
 
 ### `kami.js` — `useKamiStore`
@@ -934,7 +930,7 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | `DatePickerField.vue` | 日期选择面板：恒 6×7 = 42 格、周一起始、跨月留白可见但不可点；`min` / `max` 越界禁用，带「今天 / 清除」与四键翻页（上一年 / 上一月 / 下一月 / 下一年）。面板宽度取 `--datepicker-width`，渲染后实测高度、下方放不下且上方更宽裕时翻到触发器上方（`.datepicker-panel--up`） |
 | `PageBreadcrumb.vue` | EC `.ec-breadcrumb` 的薄封装：`items` 从外到内、末项 `aria-current="page"` 不可点。商品详情 / 商品分类 / 我的订单 / 订单详情 / 会员套餐 / 会员权益 / 成长值七处在用；详情页把它放在加载与错误分支**之外**，失败态也有回列表的路 |
 | `AppAlert.vue` | EC `.ec-alert` 的薄封装：`variant`（info / success / warning / danger）、`title`、`body`、`icon`（`null` 用默认、`''` 不显示） |
-| `ToastHost.vue` | EC `.ec-toast-layer` + `.ec-toast`，**没有关闭按钮**（EC：Toast 无操作按钮）；成功 2s、错误与警告 3s、最多 3 条；悬停与聚焦暂停；移动端贴底、从下往上堆 |
+| `ToastHost.vue` | EC `.ec-toast-layer` + `.ec-toast`，**没有关闭按钮**（EC：Toast 无操作按钮）；成功 2s、错误与警告 3s、最多 3 条；悬停与聚焦暂停；移动端贴底、从下往上堆。图标按类型着色（`.toast-icon` → `--ec-success` / `--ec-danger` / `--ec-warning` / `--ec-info`）——EC 的 `.ec-toast--success .ic` 规则对 `AppIcon` 的 `app-icon` 类**从来命中不了**，这是成功图标一直是默认灰的原因 |
 | 分区页签 | 直接用 `.ec-tabs` + `.ec-tabs__item`（消息中心 / 积分中心 / 支持中心）：选中态只由 `aria-selected="true"` 驱动，不另加 `--active` 类名，指示条由设计系统的 `::after` 提供。个人中心的导出时间范围是胶囊分段选择器，EC 无该变体，保留自研 `.u-tabs--pill` |
 | 交易结果（订单详情） | 直接写 `.ec-redeem-result` 的 `__icon` / `__title` / `__desc` / `__actions` 四件套：下单成功用 `--success`（购物车跳转带 `?created=1`，落地消费一次后即从地址栏抹掉），订单不存在用 `--notfound`（图标走 `--ec-bg-muted`，不给危险色）。页面里只留 `.order-result` 一处间距，配色与排版全部来自设计系统 |
 
@@ -1088,8 +1084,8 @@ api.getUserCards(userId, { page: 1, limit: 20 })        // ✅ 签名直通 axio
 | `useBodyScroll` | `disableScroll` / `enableScroll` / `toggle` | 弹窗打开时锁 `body` 滚动，并在 `onUnmounted` 自动恢复 |
 | `useModalA11y` | `modalRef` / `activate` / `deactivate` / `handleKeydown` | 模态无障碍的**唯一实现**（Escape / 焦点陷阱 / 焦点归还 / 滚动锁定）。`auto: false` 用于常驻组件，`initialFocus` 支持选择器/元素/函数 |
 | `useAvatarUpload` | `preview` / `previewSize` / `sourceName` / `preparing` / `prepare(file)` / `reset()` | 头像上传的前端流程：校验 → 解码 → **canvas 缩到 256px** → 编码 data URL。纯逻辑部分在 `utils/avatarFile.js`，因此可单测 |
-| `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message? }` |
-| `useOpenTool` | `openTool(tool)` | 打开外部工具：地址校验、弹窗被拦截的提示、复用已开窗口（同一工具点两次不会开出两个标签页） |
+| `useProductActions` | `goDetail` / `addToCart` / `buyNow` / `requireLogin` | 商品的三个动作。未登录时拉起登录弹窗；下单成功后跳到订单详情。**不抛异常**，返回 `{ success, needLogin?, message?, skipped? }`。`addToCart` / `buyNow` 外面套了模块级 `guardAsync`（同一商品 600ms / 1500ms 冷却），连点被挡时返回 `{ skipped: true }` 且**不弹提示** |
+| `useOpenTool` | `openTool(tool)`（`async`） | 打开外部工具。**先同步开空白占位窗口**（否则 `await` 之后再 `window.open` 会被浏览器拦截），再调 `POST /toolApi/openTool` 拿真实地址：放行则导航占位窗口、按错误码关窗并提示、接口不可用则回落 `tool.tool_path`。地址校验、复用已开窗口、被拦截提示三条行为保留 |
 | `useClass` | `classifyToolsByClass(tools, options)` | 按 `class` 字段把工具数组分组，返回 `{ classified, classes }`。`classes` 内含一个合成的 `all` 分类 |
 | `useBootScreen` | `visible` / `start()` / `finish()` | 首屏遮罩的三个时间闸（延迟出现 / 最短停留 / 最长等待），计时器可注入以便用假时钟测 |
 | `useRouteLoading` | `loading`（只读） / `markRouteLoading()` / `markRouteLoaded()` | 路由是否在切换（顶部进度条）。用开关而不是计数器：重定向会再触发一次 `beforeEach`，计数器会漂移 |

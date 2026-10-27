@@ -32,6 +32,19 @@ function getAppleIds() {
 }
 
 /**
+ * 受控打开工具：由服务端判定访问策略并返回真实地址。
+ *
+ * 工具地址不再由前端直接使用（服务端的列表/详情接口会对无权限者脱敏），
+ * 打开前必须先问这里；被拒绝时响应里没有 url，只有错误码：
+ * TOOL_CARD_REQUIRED / TOOL_CARD_OR_MEMBER_REQUIRED / TOOL_MEMBER_REQUIRED / TOOL_UNAVAILABLE。
+ *
+ * @param {{ tool_id?: number|string, tool_slug?: string }} payload
+ */
+export function openToolUrl(payload) {
+    return request.post(`${baseURL}/openTool`, payload)
+}
+
+/**
  * 上报一次工具操作，用于留痕（谁、何时、用了哪个工具、成没成）。
  *
  * 端点是**公开**的（`/toolApi/usage` 挂在鉴权链之前，见 server 的
@@ -85,6 +98,7 @@ export default {
     getToolClasses,
     getTool,
     getAppleIds,
+    openToolUrl,
     reportToolUsage,
     getNetIp,
     getNetDns,

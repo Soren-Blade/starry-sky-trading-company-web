@@ -24,6 +24,18 @@
     </div>
 
     <div class="ec-product__body">
+      <!--
+        形态角标（虚拟商品 / 实物 / 服务 / 账号）：放在标题前的元信息行，
+        不去封面左上角与「缺货 / 折扣」角标抢位置。`goods_type` 缺失或非法时
+        这里整块不渲染 —— 不猜成 digital，见 utils/goodsType.js。
+      -->
+      <span
+        v-if="goodsTypeTag"
+        class="ec-tag ec-tag--sm ec-tag--outline product-card__type"
+      >
+        {{ goodsTypeTag }}
+      </span>
+
       <h3 class="ec-product__title" :title="title">{{ title }}</h3>
       <p v-if="subtitle" class="product-card__sub" :title="subtitle">{{ subtitle }}</p>
 
@@ -140,6 +152,7 @@ import { useUserStore } from '@/stores/user'
 import { notify } from '@/hooks/useToast/index.js'
 import { PRODUCT_GRID } from '@/constants/index.js'
 import { formatUtils } from '@/utils/index.js'
+import { goodsTypeLabel } from '@/utils/goodsType.js'
 
 const props = defineProps({
   /** 商品对象；字段与后端 `products` 下发保持一致 */
@@ -183,6 +196,9 @@ const subtitle = computed(
     props.product.seller ||
     PRODUCT_GRID.defaultSeller
 )
+
+/** 形态角标：合法值才有文案；缺失/非法返回空串，模板整块不渲染 */
+const goodsTypeTag = computed(() => goodsTypeLabel(props.product.goods_type))
 
 const price = computed(() => formatUtils.splitPrice(props.product.price, currency.value))
 
@@ -281,6 +297,12 @@ async function onToggleFavorite() {
   color: var(--ec-text-tertiary);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 形态角标：`.ec-product__body` 是 flex 列，默认会把子项横向拉伸，
+ * 短标签因此需要显式靠左，与标题左对齐 */
+.product-card__type {
+  align-self: flex-start;
 }
 
 /* 榜单序号：封面右上角，与左上角角标对称 */

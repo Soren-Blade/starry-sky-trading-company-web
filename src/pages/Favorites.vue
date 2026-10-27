@@ -149,6 +149,7 @@ const tabs = computed(() => [
 
 const removeEntry = async (entry, targetType) => {
   const result = await favoriteStore.toggle(targetType, entry.target_id)
+  if (result.skipped) return
   if (result.success) notify.success(TRADE.favoritesRemoved)
   else notify.error(result.message)
 }

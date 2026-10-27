@@ -99,10 +99,11 @@ test('在线圆点挂在头像按钮上，条件来自身份而不是「已登�
   const dotTag = NAVBAR.slice(dotTagStart, NAVBAR.indexOf('></span>', dotAt))
   assert.match(dotTag, /v-if="hasIdentity"/, '渲染条件应是 hasIdentity（游客也算有身份）')
   assert.match(dotTag, /aria-hidden="true"/, '圆点是纯装饰，必须对读屏隐藏')
-  assert.match(
-    dotTag,
-    /'navbar-avatar-status--guest': isGuest/,
-    '游客的「游」徽标占着右下角，圆点要带让位修饰',
+  // 游客的「游」徽标已按用户要求删除，圆点不再需要让位修饰（见 Navbar.vue 注释）
+  assert.equal(
+    NAVBAR.includes('navbar-avatar-status--guest'),
+    false,
+    '游客徽标已移除，不该再有让位修饰类',
   )
 
   // 为什么不能用 userStore.isLoggedIn：它判的是 user_type === 'registered'，
@@ -118,17 +119,18 @@ test('在线圆点挂在头像按钮上，条件来自身份而不是「已登�
 })
 
 // ── ① 在线状态圆点：样式与呼吸动效 ──────────────────────────
-test('在线圆点：9px 绿点 + 表面色描边，呼吸只动阴影与透明度', () => {
+test('在线圆点：6px 绿点 + 表面色描边，呼吸只动阴影与透明度', () => {
   const dotCss = between(NAVBAR, '.navbar-avatar-status {', '\n@keyframes')
   assert.ok(dotCss.length > 0, '找不到 .navbar-avatar-status 的样式规则')
 
-  assert.match(dotCss, /width: 9px;/)
-  assert.match(dotCss, /height: 9px;/)
+  // 用户要求「呼吸灯再小一点」：9px → 6px，描边 2px → 1.5px
+  assert.match(dotCss, /width: 6px;/)
+  assert.match(dotCss, /height: 6px;/)
   assert.match(dotCss, /background: var\(--ec-success\);/)
   assert.match(
     dotCss,
-    /box-shadow: 0 0 0 2px var\(--ec-bg-surface\);/,
-    '2px 表面色描边负责把圆点从头像上分离出来',
+    /box-shadow: 0 0 0 1\.5px var\(--ec-bg-surface\);/,
+    '1.5px 表面色描边负责把圆点从头像上分离出来',
   )
   assert.match(dotCss, /position: absolute;/)
   assert.match(dotCss, /pointer-events: none;/, '圆点不能挡住头像的点击')
@@ -187,7 +189,8 @@ async function renderNavbar(userInfo) {
 
 test('游客也显示在线圆点（isLoggedIn 会把游客判成未登录）', async () => {
   const html = await renderNavbar(GUEST)
-  assert.match(html, /class="navbar-avatar-status navbar-avatar-status--guest"/)
+  assert.match(html, /class="navbar-avatar-status"/, '游客也算有身份，应显示在线圆点')
+  assert.equal(html.includes('navbar-avatar-status--guest'), false, '游客徽标已移除，不该有让位修饰')
   assert.ok(
     html.indexOf('class="navbar-avatar-status') > html.indexOf('class="user-avatar-btn"'),
     '渲染顺序上圆点应在头像按钮之后（参与绝对定位的基准是按钮）',
@@ -324,12 +327,22 @@ test('瞬时类只过渡颜色相关属性，且四个文件都不写 transition
   const properties = block.match(/transition-property:\s*([^;]+);/)
   assert.ok(properties, '瞬时类必须显式声明 transition-property')
   const list = properties[1].split(',').map((item) => item.trim())
-  assert.deepEqual(list, ['background-color', 'border-color', 'color', 'fill', 'stroke'])
+  // box-shadow / outline-color 是这次补进回落路径的：暗色下卡片阴影与焦点环也会换色，
+  // 漏掉它们就是「一块渐变、一块跳变」。仍然不写 all、不写 transform。
+  assert.deepEqual(list, [
+    'background-color',
+    'border-color',
+    'color',
+    'fill',
+    'stroke',
+    'box-shadow',
+    'outline-color',
+  ])
   assert.equal(list.includes('all'), false, 'transition-property 不能是 all')
-  assert.equal(list.includes('box-shadow'), false, 'box-shadow 过渡正是「切换慢半拍」的来源')
   assert.equal(list.includes('transform'), false, 'transform 过渡会让滑块/抽屉抢跑')
+  assert.equal(list.includes('background-image'), false, '渐变之间无法插值，写了也是硬切')
 
-  assert.match(block, /transition-duration: 200ms;/)
+  assert.match(block, /transition-duration: 240ms;/)
   assert.match(block, /transition-timing-function: var\(--ec-ease-out\);/)
 
   for (const [name, text] of Object.entries(POLISHED_FILES)) {
@@ -339,6 +352,19 @@ test('瞬时类只过渡颜色相关属性，且四个文件都不写 transition
   // 系统开了「减弱动态效果」：颜色一步到位
   const reduced = between(GLOBAL_CSS, '@media (prefers-reduced-motion: reduce)', '\n}\n')
   assert.match(reduced, /html\.is-theme-switching body \*::after\s*\{\s*transition: none;/)
+
+  // View Transitions：整页快照能连渐变与阴影一起淡，这是「不再生硬」的主路径。
+  // 伪元素时长必须与 ThemeSwitch 的滑块同拍（180ms）。
+  assert.match(GLOBAL_CSS, /::view-transition-old\(root\)/)
+  assert.match(GLOBAL_CSS, /::view-transition-new\(root\)/)
+  assert.match(GLOBAL_CSS, /animation-duration: 180ms;/)
+  assert.match(GLOBAL_CSS, /mix-blend-mode: normal/)
+  assert.match(THEME_STORE, /startViewTransition/, 'store 主路径应走 View Transitions')
+  assert.match(
+    THEME_STORE,
+    /prefers-reduced-motion/,
+    '开了减弱动态效果时不能拍快照做动画',
+  )
 
   // 挂/摘类只能来自 store 这一处，否则两个地方抢着摘会互相打架
   assert.match(THEME_STORE, /classList\.add\(THEME_SWITCH_CLASS\)/)

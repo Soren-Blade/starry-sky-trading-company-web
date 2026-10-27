@@ -4,6 +4,34 @@ import { useCartStore } from '@/stores/cart'
 import { useUserStore } from '@/stores/user'
 import { notify } from '@/hooks/useToast/index.js'
 import { PRODUCT_GRID } from '@/constants/index.js'
+import { guardAsync } from '@/utils/rateLimit.js'
+
+/**
+ * 同一件商品的加购 / 下单，在冷却窗口内只放行一次。
+ *
+ * 放在模块级而不是组件里：商品卡在首页、榜单、分类详情、搜索结果里各有一份
+ * 实例，用户完全可能「点一下卡片的加购，再点一下底部快捷加购」——
+ * 按实例拦是拦不住的，按商品 id 拦才拦得住。
+ *
+ * 被拦住时返回 `{ success: false, skipped: true }` 且**不弹提示**：
+ * 连点的第二下不该再弹一句「操作太快」，那只会让用户以为出错。
+ */
+const CART_GUARD_COOLDOWN = 600
+const ORDER_GUARD_COOLDOWN = 1500
+const cartGuards = new Map()
+const orderGuards = new Map()
+
+const SKIPPED = { success: false, skipped: true, message: '' }
+
+function guardOnce(map, key, task, cooldown) {
+  if (!Number.isFinite(key)) return task()
+  let guard = map.get(key)
+  if (!guard) {
+    guard = guardAsync(task, { cooldown })
+    map.set(key, guard)
+  }
+  return guard().then((result) => result ?? SKIPPED)
+}
 
 /**
  * 商品的三个动作：看详情 / 加购 / 立即下单
@@ -43,7 +71,7 @@ export function useProductActions() {
    * @param {object} product
    * @param {number} [quantity]
    */
-  const addToCart = async (product, quantity = 1) => {
+  const addToCartNow = async (product, quantity = 1) => {
     const id = Number(product?.id)
     if (!Number.isFinite(id)) return { success: false, message: '商品不合法' }
 
@@ -67,12 +95,20 @@ export function useProductActions() {
   }
 
   /**
+   * 加入购物车（带节流：同一商品的连点只发一次请求）
+   * @param {object} product
+   * @param {number} [quantity]
+   */
+  const addToCart = (product, quantity = 1) =>
+    guardOnce(cartGuards, Number(product?.id), () => addToCartNow(product, quantity), CART_GUARD_COOLDOWN)
+
+  /**
    * 立即下单（单件商品直接生成订单）
    * @param {object} product
    * @param {number} [quantity]
    * @param {{contact?: string, remark?: string}} [extra]
    */
-  const buyNow = async (product, quantity = 1, extra = {}) => {
+  const buyNowNow = async (product, quantity = 1, extra = {}) => {
     const id = Number(product?.id)
     if (!Number.isFinite(id)) return { success: false, message: '商品不合法' }
 
@@ -111,6 +147,10 @@ export function useProductActions() {
       return { success: false, message: error?.message }
     }
   }
+
+  /** 立即下单（带节流：同一商品的连点只下出一单） */
+  const buyNow = (product, quantity = 1, extra = {}) =>
+    guardOnce(orderGuards, Number(product?.id), () => buyNowNow(product, quantity, extra), ORDER_GUARD_COOLDOWN)
 
   return { goDetail, addToCart, buyNow, requireLogin }
 }

@@ -176,6 +176,7 @@ const handleOpenTool = (tool) => {
 
 const handleToggleFavorite = async (tool) => {
   const result = await favoriteStore.toggle('tool', tool?.id)
+  if (result.skipped) return
   if (result.success) notify.success(result.favorited ? TOOL_PAGE.addedFavorite : TOOL_PAGE.removedFavorite)
   else notify.error(result.message)
 }
