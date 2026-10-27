@@ -144,6 +144,7 @@ import { useOpenTool } from '@/hooks/useOpenTool'
 import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
 import { AUTH, PAGES, TOOL_PAGE } from '@/constants/index.js'
+import { toolTagsOf } from '@/constants/toolTags.js'
 
 const toolStore = useToolStore()
 const favoriteStore = useFavoriteStore()
@@ -246,11 +247,17 @@ const filteredTools = computed(() => {
   // 搜索过滤
   const query = searchQuery.value.trim().toLowerCase()
   if (query) {
-    list = list.filter((tool) =>
-      lower(tool.class_name).includes(query) ||
-      lower(tool.tool_name).includes(query) ||
-      lower(tool.display_name).includes(query) ||
-      lower(tool.description).includes(query)
+    list = list.filter(
+      (tool) =>
+        lower(tool.class_name).includes(query) ||
+        lower(tool.tool_name).includes(query) ||
+        lower(tool.display_name).includes(query) ||
+        lower(tool.description).includes(query) ||
+        // 派生标签也是用户会输入的词（「加解密」「解析下载」…）：
+        // 只匹配名称与描述，会让卡片上看得见的标签「看得见、搜不到」
+        toolTagsOf(tool).some((tag) => tag.toLowerCase().includes(query)) ||
+        // slug 是工具在 URL 里的名字，从外部链接回来时用户可能直接搜它
+        lower(tool.tool_slug).includes(query)
     )
   }
 

@@ -80,7 +80,7 @@
               :to="{ name: 'MemberPlans' }"
               class="member-asset-link"
             >
-              {{ memberStore.isMember ? '去续费' : '去开通' }}
+              {{ memberStore.isMember ? '查看会员卡' : '去开通' }}
             </router-link>
           </div>
         </section>
@@ -184,7 +184,7 @@
               :to="{ name: 'MemberPlans' }"
               class="u-btn-secondary"
             >
-              查看套餐
+              开通会员
             </router-link>
           </template>
         </section>
@@ -260,7 +260,8 @@ const memberPlansAvailable = computed(() => router.hasRoute('MemberPlans'))
 
 /** 待办提醒来自概览的 `todos`，按类型取文案，不额外请求任何接口 */
 const TODO_META = {
-  member_expiring: { icon: 'crown', action: '去续费', to: { name: 'MemberPlans' } },
+  // 2.4.0 起没有「续费」这一说：旧套餐到期后只能靠开卡资格转成永久会员
+  member_expiring: { icon: 'crown', action: '开通永久会员', to: { name: 'MemberPlans' } },
   coupon_expiring: { icon: 'ticket', action: '查看券包', to: { name: 'Coupons' } },
   points_expiring: { icon: 'clock', action: '查看明细', to: { name: 'Points' } },
 }
@@ -419,7 +420,7 @@ const identityActions = computed(() => {
   const actions = []
   if (memberPlansAvailable.value) {
     actions.push({
-      label: memberStore.isMember ? '续费会员' : '开通会员',
+      label: memberStore.isMember ? '会员卡' : '开通会员',
       to: { name: 'MemberPlans' },
       variant: 'primary',
     })
@@ -440,7 +441,7 @@ const SHORTCUTS = [
   { label: '我的优惠券', icon: 'ticket', to: { name: 'Coupons' } },
   { label: '积分明细', icon: 'file', to: { name: 'Points', query: { tab: 'history' } } },
   { label: '消息中心', icon: 'mail', to: { name: 'Mail' } },
-  { label: '会员套餐', icon: 'credit-card', to: { name: 'MemberPlans' } },
+  { label: '开通会员', icon: 'credit-card', to: { name: 'MemberPlans' } },
   { label: '权益详解', icon: 'book-open', to: { name: 'MemberBenefits' } },
 ]
 

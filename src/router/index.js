@@ -115,7 +115,7 @@ const routes = [
     path: '/member/plans',
     name: 'MemberPlans',
     component: () => import('@/pages/MemberPlans.vue'),
-    meta: { title: '会员套餐 - 星辰商行', requiresAuth: true }
+    meta: { title: '开通会员 - 星辰商行', requiresAuth: true }
   },
   {
     // 权益详解：8 项权益的逐档数值矩阵 + 规则 FAQ。

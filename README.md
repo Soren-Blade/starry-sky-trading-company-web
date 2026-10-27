@@ -4,6 +4,16 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
+> **当前版本 `2.5.0`**（2026-10-28 发布）：会员改为「**10 元开卡资格 + 成长值定级**」——
+> 等级不再售卖（`/member/plans` 只剩一张永久开卡卡，`Member.vue` 去掉「续费」语义），
+> 等级由购买商品与兑换卡密积累的成长值决定（v1–v8，阈值仍由服务端下发）；
+> 工具页改为**全量目录**（`stores/tool.js` 按 `pagination.has_next` 聚合，搜索补派生标签与 `tool_slug`）；
+> 服务端 `/toolApi/getTools` 加匿名 10 s 缓存。完整清单见 [CHANGELOG.md](CHANGELOG.md)。
+> 版本号两仓库共用（当前 `2.5.0`）。
+>
+> 更早的版本演进（`1.4.0` 会员中心、`1.5.0` 七个端点接线、`1.6.0` 补签与邀请中心）见
+> [CHANGELOG.md](CHANGELOG.md)；下面保留当时的记录作为历史说明。
+>
 > **当前版本 `1.4.0`**（2026-10-15 发布）：会员中心重构为 **1 个枢纽 + 3 个子页**
 > （`/member` 七区块 / `/member/benefits` 权益详解与 8×8 数值矩阵 / `/member/growth` 成长值 /
 > `/user/checkin` 每日签到），权益由 6 项扩为 **8 项**且逐档数值全部由服务端下发
@@ -249,7 +259,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/user/orders` | `Orders` | `pages/Orders.vue` | 订单管理 - 星辰商行 | ✅ |
 | `/user/orders/:orderNo` | `OrderDetail` | `pages/OrderDetail.vue` | 订单详情 - 星辰商行 | ✅ |
 | `/member` | `Member` | `pages/Member.vue` | 会员中心 - 星辰商行 | ✅ |
-| `/member/plans` | `MemberPlans` | `pages/MemberPlans.vue` | 会员套餐 - 星辰商行 | ✅ |
+| `/member/plans` | `MemberPlans` | `pages/MemberPlans.vue` | 开通会员 - 星辰商行 | ✅ |
 | `/member/benefits` | `MemberBenefits` | `pages/MemberBenefits.vue` | 会员权益详解 - 星辰商行 | **不要求登录**，见下 |
 | `/member/growth` | `MemberGrowth` | `pages/MemberGrowth.vue` | 成长值 - 星辰商行 | ✅ |
 | `/points` | `Points` | `pages/Points.vue` | 积分中心 - 星辰商行 | ✅ |
@@ -402,7 +412,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `ProductDetail.vue` | 面包屑 + 「左图右信息」两栏 + 描述面板 + 同类商品推荐 |
 | `CategoryDetail.vue` | 标题带（含子分类入口）+ 该分类下的商品网格。**本分类为空时退回展示子分类的商品**（规则在 `utils/categoryProducts.js`，有单测）：本分类有自己的商品时绝不混入子分类的，否则「这个分类下有什么」就没法回答了 |
 | `Cart.vue` | 左条目列表（勾选 / 步进器 / 移除）+ 右吸顶结算面板（**1.5.0 M7 起含选券、积分抵扣与试算明细**，再是联系方式、备注、提交订单）。结算面板**不自己算钱**：选中项一变就（250ms 防抖）调 `POST /couponApi/previewUse`，明细行原样展示服务端返回的六个数；提交时发的是 **试算后的 `points_used`** 而不是输入框里的数字，且只带 `coupon_code` / `use_points` 这两个意图字段 |
-| `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次 |
+| `Tool.vue` | 工具页：左侧筛选轨（**「使用方式」+「分类」两组**，≤991 单栏时分类换行，不做隐藏滚动条的横滚条）+ 工具条（搜索 + 计数）+ `ToolCard` 网格。计数只在工具条里出现一次。**`2.5.0` 起目录全量加载**（`stores/tool.js` 按 `pagination.has_next` 聚合到 10 页 / 1000 条上限：服务端默认一页 20 条，只取首页会让分类计数偏小、搜索找不到第 21 个之后的工具），搜索同时匹配 `class_name`/`tool_name`/`display_name`/`description`/`tool_slug` 与派生标签（`toolTagsOf`） |
 | `VideoTool.vue` | 本地视频分析页（`ToolPageShell` + 四态结果区）：选本地文件后读真实时长、分辨率、体积、估算码率、容器与 MIME，并用 `canvas.drawImage` 抽首帧导出 PNG。**不做在线直链解析**（需要服务端代理与平台授权），页面把这条写在「能力边界」里，也不再提供清晰度/格式这类做不到的控件。视频不上传，只在本地 `<video>` 解码 |
 | `ImageCompressor.vue` | 图片压缩工具的**骨架页**：拖放/点选本地图片（校验类型与 5MB 上限）→ 压缩档位（约 80/60/40%）→ 「开始压缩」。**压缩是估算法**：只按档位系数折算体积，不做真实编码，预览用 `URL.createObjectURL`（离开或换图时 revoke）；下载按钮保持禁用并在侧栏写明「骨架阶段」。图片不上传，全部本地处理 |
 | `JsonFormatter.vue` | JSON 格式化工具的**唯一真实实现页**：`JSON.parse` + `JSON.stringify(obj, null, indent)`，缩进 2/4/Tab、可切「压缩为单行」，失败时原样展示 `SyntaxError.message`（含位置），成功展示字符数与行数并可一键复制。解析期间插一帧让出主线程，保证加载态可见 |
@@ -413,7 +423,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `MemberBenefits.vue` | 会员权益详解（**公开页，不要求登录**）：权益说明（八项，逐项给规则与当前值）、**8×8 数值矩阵**（全部来自服务端 `levels[]` 的六个新列，当前档高亮，窄屏降级成「每档一张卡」）、规则与常见问题。**页面上不写死任何折扣 / 倍率 / 金额 / 档位数字** —— 数字只有服务端一份，改档位不用改页面。**1.5.0 M6/M7 起文案与矩阵也走服务端**（`GET /memberApi/getBenefits`）：`benefitDetails` 按字段回落（服务端缺哪个字段就用内置的那一条），`faq` 优先服务端、`detail` 归一成数组逐行渲染，矩阵取 `memberStore.matrixLevels`（服务端 `benefitsPage.levels` → `plans.levels` → `[]`） |
 | `MemberGrowth.vue` | 成长值（原 `/growth`）：汇总三数（累计 / 成长值等级 / **当前生效等级**）、升级进度、来源说明（四条规则文案由 `getGrowthHistory` 的 `rules` 下发）、八档门槛对照表。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`）；非会员不写「已是最高等级」，而是说「按成长值门槛定档、到账即时生效」 |
 | `Growth.vue` | 12 行的**转发薄壳**：渲染 `MemberGrowth.vue`。留着它的唯一理由是 `test/growthPage.test.js` 直接渲染这个文件路径，而路由已迁到 `/member/growth` |
-| `MemberPlans.vue` | 会员套餐：按等级分组的套餐卡 + 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明（文案由服务端 `getPlans` 下发，缺字段整块不渲染）。`is_current` **只标记不禁用按钮** —— 同级续费必须能继续买，理由写在文件头 |
+| `MemberPlans.vue` | 会员开通（`2.5.0` 重构）：身份卡 + **一张 ¥10「会员开卡资格」卡**（一次付费、永久有效、已开通时按钮换成静态文案）+「成长值怎么涨」（购买商品 / 兑换卡密两条真实入口）+ 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明。**等级不再售卖**：`plans` 只剩 `member_activation` 一条，身份卡等级取 `overview.level` 而不是 `plans[].is_current`（后者会把 v3 会员显示成 V1）；开卡卡用页面级网格 `minmax(0, 480px)` 限宽（页族契约禁止页面自设 `max-width`） |
 | `Points.vue` | 积分中心：**四个页签** —— 「概览」（余额 / 折抵金额 / 积分倍率与「会员加成生效中」/ 即将过期提醒）、「流水」（原 `PointsHistory` 的类型筛选 + 分页整体并进来，只有一页时不渲染分页控件）、**「商城」（1.5.0 M3：券与实物，库存只认服务端，不可兑时先给理由再禁用按钮）**、**「任务」（1.5.0 M5：进度条 + 四态按钮，签到任务显示「自动发放」）**。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」。页签值写进 `?tab=`（`normalizeTab()` 认不出回 `overview`），直接落在商城/任务的分享链接也能取到数据。列表每条**横向排版**（图标 · 名称 · 说明 · 积分/库存 一行，右侧按钮一行，两处都可换行），`≤575` 退回上下两行 —— 纵向排版会把每条记录拉到三行高，条数一多就翻不到底。**行上同时挂了全局 `.ui-card`（它是 `flex-direction: column`），所以每条列表都必须显式写 `flex-direction: row`**，`test/pointsPage.test.js` 直接读源码钉住这一点 |
 | `UserCheckin.vue` | 每日签到（**挂在个人中心下**，`/user/checkin`）：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）、奖励规则。签到与会员**结构解绑、倍率保留**：服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的 `points_multiplier` 放大积分（成长值固定 +5），所以文案是「会员等级倍率对签到积分同样生效」，不能写成消费专属。**1.6.0 M8 起可补签**：本月已经过去、且没签到的日子渲染成按钮（虚线描边 + 手型光标），点击即补（`POST /pointsApi/replenishCheckin`）；不可补签的日子同样给出理由（今天直接签到 / 已签到 / 次数用完 / 积分不足），判定与文案都在 `utils/checkinDisplay.js`，**服务端仍是最终裁决**。补签成功后必须**重拉日历** —— 服务端会重算整条连续段（含补签日之后已签到的天），只改本地那一个格子会让 `streak` 与服务端分叉 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |

@@ -3,6 +3,19 @@ import api from '@/api/index'
 import { classifyToolsByClass } from '@/hooks/useClass'
 
 /**
+ * 工具目录聚合分页的取数上限。
+ *
+ * 后端 getTools 的单页上限就是 100（超过会被截到 100），因此第一页按 100 取。
+ * 页数与条数是**防御性**硬上限：`has_next` 由后端计算，一旦它恒为 true
+ * （分页字段被代理改写、后端 bug，或将来换成别的分页语义），
+ * 没有上限的循环会一直发请求，把标签页拖死。当前目录只有 37 条，
+ * 10 页 × 100 条远高于真实规模 —— 触顶说明数据异常，而不是目录变大了。
+ */
+const TOOL_FETCH_PAGE_SIZE = 100
+const TOOL_FETCH_MAX_PAGES = 10
+const TOOL_FETCH_MAX_TOOLS = 1000
+
+/**
  * 工具目录与共享 Apple ID
  *
  * 原实现的 toolData 形状是未定义的（初始化为 [] 却到处当对象用），
@@ -49,26 +62,89 @@ export const useToolStore = defineStore('tool', {
     },
 
     actions: {
-        /** 获取工具列表并完成分类 */
+        /**
+         * 获取工具列表并完成分类。
+         *
+         * `/tool` 页要做全目录的分类计数、分类筛选和搜索，因此默认必须拿到**全部**工具：
+         * 后端 getTools 的默认 limit 是 20，只取第一页会让左轨计数、分类与搜索
+         * 只覆盖前 20 条（37 条目录里另外 17 条既看不见也搜不到）。
+         * 这里先按后端上限 100 取第一页，再顺着 `has_next` 把余下的页拼起来。
+         *
+         * 外部显式传 page / limit 时按调用方给的分页语义执行、**不做聚合** ——
+         * 搜索页 / 首页热门工具各自只需要一页，替它们取全量会改变返回条数与加载成本。
+         */
         async fetchTools(params = {}) {
             this.toolsLoading = true
             this.toolsError = null
             try {
-                const { success, data, meta, message } = await api.getTools(params)
-                if (!success) {
-                    throw new Error(message || '获取工具列表失败')
+                const externallyPaged = params.page !== undefined || params.limit !== undefined
+                const firstParams = externallyPaged
+                    ? { ...params }
+                    : { ...params, limit: TOOL_FETCH_PAGE_SIZE }
+
+                const firstResponse = await api.getTools(firstParams)
+                if (!firstResponse.success) {
+                    throw new Error(firstResponse.message || '获取工具列表失败')
                 }
-                const tools = data?.tools ?? []
+
+                const firstData = firstResponse.data
+                // 先累加到局部数组、所有页都成功后才写 store：
+                // 中途失败时保留上一次成功的目录，而不是让界面看到半份列表
+                const tools = [...(firstData?.tools ?? [])]
+                const serverPagination = firstData?.pagination
+                let hasNext = serverPagination?.has_next === true
+
+                if (!externallyPaged) {
+                    let page = 1
+                    // 任一条件触发就停：页数上限、条数上限（防 has_next 恒真导致死循环），
+                    // 以及后端返回空页（has_next 与实际数据矛盾时不再空转）
+                    while (hasNext && page < TOOL_FETCH_MAX_PAGES && tools.length < TOOL_FETCH_MAX_TOOLS) {
+                        page += 1
+                        const nextResponse = await api.getTools({
+                            ...params,
+                            page,
+                            limit: TOOL_FETCH_PAGE_SIZE,
+                        })
+                        if (!nextResponse.success) {
+                            throw new Error(nextResponse.message || '获取工具列表失败')
+                        }
+
+                        const nextTools = nextResponse.data?.tools ?? []
+                        if (nextTools.length === 0) break
+
+                        tools.push(...nextTools)
+                        hasNext = nextResponse.data?.pagination?.has_next === true
+                    }
+                }
+
                 // classifyToolsByClass 会返回 { classified, classes }
                 const classifiedResult = classifyToolsByClass(tools)
+                const total = Number(serverPagination?.total)
 
                 this.toolData = {
                     tools,
                     classes: classifiedResult.classes ?? [],
                     classified: classifiedResult.classified ?? {},
-                    pagination: data?.pagination ?? this.toolData.pagination,
-                    filters: data?.filters ?? {},
-                    meta: meta ?? null,
+                    // 聚合后整份目录等价于「第 1 页」：page / total_pages 固定为 1，
+                    // limit 取实际合并条数，total 仍用后端给的真实总数 ——
+                    // 调用方既知道当前拿到了多少条，也知道目录一共有多少条。
+                    // 外部显式分页时原样透传后端分页信息，不篡改调用方的语义。
+                    // 后端整份响应都没带 pagination 时没有可用的 total：
+                    // 保持上一次的分页信息，而不是编造 total=0 覆盖掉它。
+                    pagination: externallyPaged
+                        ? (serverPagination ?? this.toolData.pagination)
+                        : serverPagination
+                            ? {
+                                page: 1,
+                                limit: tools.length,
+                                total: Number.isFinite(total) ? total : tools.length,
+                                total_pages: tools.length > 0 ? 1 : 0,
+                                has_next: false,
+                                has_prev: false,
+                            }
+                            : this.toolData.pagination,
+                    filters: firstData?.filters ?? {},
+                    meta: firstResponse.meta ?? null,
                 }
                 return true
             } catch (error) {

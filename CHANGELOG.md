@@ -9,6 +9,25 @@
 
 ---
 
+## [2.5.0] — 2026-10-28 · 会员改为「10 元开卡资格」+ 工具目录全量加载
+
+会员模型重构（**行为变更**：等级不再可购买）+ 工具页能看全 37 个工具；按 `2.5.0` 发。
+
+| 位置 | 变更 |
+| --- | --- |
+| `src/pages/MemberPlans.vue` | 整页改为「开通会员」：顶部身份卡 + 一张**会员开卡资格**卡（¥10、一次开通永久有效、`已开通` 静态态）+ 「成长值怎么涨」（购买商品 / 兑换卡密两条真实入口）。等级不再出现在套餐卡里，删除按等级分组的 `groups` 与 `DURATION_LABELS` |
+| `src/pages/Member.vue` | 文案与入口对齐新模型：`续费会员` → `会员卡`（已开通）／`开通会员`；`去续费` → `查看会员卡`；`会员套餐` → `开通会员`；到期待办的动作文案改「开通永久会员」（2.5.0 起没有续费概念） |
+| `src/pages/Tool.vue` | 搜索条件补 `toolTagsOf(tool)`（派生标签）与 `tool_slug`：以前搜「解析」「加密」这类描述词搜不到对应工具 |
+| `src/stores/tool.js` | `fetchTools()` 改为**分页聚合**：首页 `limit: 100`，按 `pagination.has_next` 续拉（`TOOL_FETCH_MAX_PAGES = 10`、`TOOL_FETCH_MAX_TOOLS = 1000` 硬上限）；显式传 `page/limit` 时保持原样不聚合。此前只拿服务端默认第一页 20 条，导致左轨分类计数偏小、「分类下没有其他工具」、搜索找不到第 21 个之后的工具 |
+
+**与后端契约的对应**：`/memberApi/getOverview` 新增 `is_permanent`；`/memberApi/getPlans` 由 6 档变 1 条（`kind: 'activation'`、`duration_days: 0`、`price_per_day: null`）。
+
+**取舍**
+
+- 等级不售卖后，`plans[].is_current` 只剩「这一档能不能买」的含义，身份卡等级改从 `overview.level` 取（否则 v3 会员会被显示成 V1）。
+- 开卡资格卡用页面级网格 `grid-template-columns: minmax(0, 480px)` 限宽，不用 `max-width` —— 页族宽度契约（`test/componentClasses.test.js`）禁止页面自设 `max-width`。
+- 37 个工具一次性拉回（约 20 KB）可接受；目录继续膨胀时应改成服务端搜索，前端聚合有 10 页上限兜底。
+
 ## [2.4.0] — 2026-10-28 · 请求合并与短缓存（性能）
 
 只改性能与共享 Apple ID 页布局，无新页面、无破坏性变更；按 `2.4.0` 发。
