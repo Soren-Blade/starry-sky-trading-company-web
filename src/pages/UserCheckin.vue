@@ -59,98 +59,122 @@
         </div>
       </section>
 
-      <!--
-        ② 档位进度：把「10 / 15 / 20」从底部规则里提上来，回答「我还要签几天才更多」。
-        档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
-      -->
-      <section class="ui-card checkin-tiers" aria-labelledby="checkin-tiers-title">
-        <div class="checkin-section-head">
-          <h2 id="checkin-tiers-title" class="checkin-section-title">每日积分档位</h2>
-          <span class="checkin-section-hint">{{ tierHint }}</span>
-        </div>
-
-        <ol class="checkin-tier-rail">
-          <li
-            v-for="tier in TIERS"
-            :key="tier.days"
-            class="checkin-tier"
-            :class="{
-              'is-reached': pointsStore.streak >= tier.days,
-              'is-current': currentTier.days === tier.days,
-            }"
-          >
-            <span class="checkin-tier-dot" aria-hidden="true">
-              <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
-            </span>
-            <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
-            <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
-          </li>
-        </ol>
-      </section>
-
-      <!-- ③ 本月日历 -->
+      <!-- ② 本月日历（左）+ 档位进度（右，垂直居中） -->
       <section class="ui-card checkin-calendar" aria-labelledby="checkin-cal-title">
-        <div class="checkin-section-head">
-          <h2 id="checkin-cal-title" class="checkin-section-title">{{ calendarTitle }}</h2>
-          <span class="checkin-section-hint">
-            <template v-if="calendar">
-              本月已签 {{ monthCount }} 天 · 剩余补签 {{ calendar.replenish_left }} 次
-            </template>
-          </span>
-        </div>
-
-        <div v-if="!calendar" class="checkin-skeleton">
-          <span class="u-skeleton checkin-skeleton-line"></span>
-        </div>
-
-        <template v-else>
-          <ul class="checkin-weekdays" aria-hidden="true">
-            <li v-for="label in WEEKDAYS" :key="label">{{ label }}</li>
-          </ul>
-
-          <ul class="checkin-grid">
-            <li v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="checkin-blank" />
-            <li
-              v-for="day in calendar.days"
-              :key="day.date"
-              class="checkin-cell"
-              :class="{
-                'is-checked': day.checked,
-                'is-today': day.is_today,
-                'is-future': day.future,
-                'is-replenishable': canReplenish(day),
-              }"
-              :title="cellTitle(day)"
-            >
-              <!--
-                只有「可补签」的日子渲染成按钮（沿用 1.5.0 M4 的判断）：
-                已签到、还没到的日子做成按钮会让读屏一路 Tab 过去全是无效目标。
-              -->
-              <button
-                v-if="canReplenish(day)"
-                type="button"
-                class="checkin-cell-hit"
-                :disabled="pointsStore.replenishingDate === day.date"
-                :aria-label="cellTitle(day)"
-                @click="handleReplenish(day)"
-              >
-                <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-                <span class="checkin-cell-flag">补</span>
-              </button>
-              <template v-else>
-                <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-                <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
+        <div class="checkin-section-head checkin-cal-head">
+          <div class="checkin-cal-titles">
+            <h2 id="checkin-cal-title" class="checkin-section-title">{{ calendarTitle }}</h2>
+            <span class="checkin-section-hint">
+              <template v-if="calendar">
+                本月已签 {{ monthCount }} 天 · 剩余补签 {{ calendar.replenish_left }} 次
+                <template v-if="calendarFilter !== 'all'"> · 筛选命中 {{ filteredCount }} 天</template>
               </template>
-            </li>
-          </ul>
+            </span>
+          </div>
 
-          <ul class="checkin-legend">
-            <li v-for="item in legend" :key="item.label" class="checkin-legend-item">
-              <span class="checkin-legend-mark" :class="item.mark" aria-hidden="true" />
-              <span>{{ item.label }}</span>
-            </li>
-          </ul>
-        </template>
+          <!--
+            1.1 日期显示筛选：只筛「日历里显示哪些日子」，不改统计口径
+            （本月已签 / 剩余补签仍是整月的真实数字），避免筛完数字跟着变让人以为数据丢了。
+          -->
+          <SelectField
+            id="checkin-date-filter"
+            v-model="calendarFilter"
+            class="checkin-cal-filter"
+            :options="CALENDAR_FILTERS"
+            aria-label="筛选日期显示"
+          />
+        </div>
+
+        <div class="checkin-cal-body">
+          <div class="checkin-cal-main">
+            <div v-if="!calendar" class="checkin-skeleton">
+              <span class="u-skeleton checkin-skeleton-line"></span>
+            </div>
+
+            <template v-else>
+              <ul class="checkin-weekdays" aria-hidden="true">
+                <li v-for="label in WEEKDAYS" :key="label">{{ label }}</li>
+              </ul>
+
+              <ul class="checkin-grid">
+                <li v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="checkin-blank" />
+                <li
+                  v-for="day in calendar.days"
+                  :key="day.date"
+                  class="checkin-cell"
+                  :class="{
+                    'is-checked': day.checked,
+                    'is-today': day.is_today,
+                    'is-future': day.future,
+                    'is-replenishable': canReplenish(day),
+                    'is-filtered-out': !dayMatchesFilter(day),
+                  }"
+                  :title="dayMatchesFilter(day) ? cellTitle(day) : `${dayNumber(day.date)} 日（已被筛选隐藏）`"
+                >
+                  <!--
+                    只有「可补签」的日子渲染成按钮（沿用 1.5.0 M4 的判断）：
+                    已签到、还没到的日子做成按钮会让读屏一路 Tab 过去全是无效目标。
+                    被筛掉的日子连内容都不渲染，只剩占位保持网格对齐。
+                  -->
+                  <template v-if="dayMatchesFilter(day)">
+                    <button
+                      v-if="canReplenish(day)"
+                      type="button"
+                      class="checkin-cell-hit"
+                      :disabled="pointsStore.replenishingDate === day.date"
+                      :aria-label="cellTitle(day)"
+                      @click="handleReplenish(day)"
+                    >
+                      <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+                      <span class="checkin-cell-flag">补</span>
+                    </button>
+                    <template v-else>
+                      <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+                      <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
+                    </template>
+                  </template>
+                </li>
+              </ul>
+
+              <ul class="checkin-legend">
+                <li v-for="item in legend" :key="item.label" class="checkin-legend-item">
+                  <span class="checkin-legend-mark" :class="item.mark" aria-hidden="true" />
+                  <span>{{ item.label }}</span>
+                </li>
+              </ul>
+            </template>
+          </div>
+
+          <!--
+            档位进度并入本卡片右侧并垂直居中：它回答的是「这一个月签下来值多少」，
+            与左边的月历是同一件事的两个面，分成两张卡会把视线拉成 Z 字。
+            档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
+          -->
+          <aside class="checkin-cal-side" aria-labelledby="checkin-tiers-title">
+            <div class="checkin-side-head">
+              <h3 id="checkin-tiers-title" class="checkin-side-title">每日积分档位</h3>
+              <p class="checkin-side-hint">{{ tierHint }}</p>
+            </div>
+
+            <ol class="checkin-tier-rail">
+              <li
+                v-for="tier in TIERS"
+                :key="tier.days"
+                class="checkin-tier"
+                :class="{
+                  'is-reached': pointsStore.streak >= tier.days,
+                  'is-current': currentTier.days === tier.days,
+                }"
+              >
+                <span class="checkin-tier-dot" aria-hidden="true">
+                  <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
+                </span>
+                <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
+                <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
+              </li>
+            </ol>
+          </aside>
+        </div>
       </section>
 
       <!--
@@ -189,9 +213,10 @@
  *   2. **「今天已签到」是正常状态，不是错误**：服务端返回 200 + `already=true`。
  *   3. **余额用服务端返回的快照**（store 里已处理），不本地 +10。
  */
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
 import AppIcon from '@/components/AppIcon.vue'
+import SelectField from '@/components/SelectField.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
 import { usePointsStore } from '@/stores/points.js'
@@ -270,6 +295,31 @@ const legend = [
   { label: `可补签（${REPLENISH_COST} 积分）`, mark: 'is-replenishable' },
   { label: '还没到', mark: 'is-future' },
 ]
+
+/**
+ * 1.1 日期显示筛选。
+ *
+ * 只筛「显示」，不改统计：`本月已签 N 天` 与 `剩余补签 N 次` 始终是整月的真实值 ——
+ * 筛完让数字跟着变，用户会以为数据丢了。被筛掉的格子留空占位，网格因此不会塌行。
+ */
+const CALENDAR_FILTERS = [
+  { value: 'all', label: '全部日期' },
+  { value: 'checked', label: '只看已签到' },
+  { value: 'pending', label: '只看待签到' },
+  { value: 'replenishable', label: '只看可补签' },
+]
+
+const calendarFilter = ref('all')
+
+function dayMatchesFilter(day) {
+  if (calendarFilter.value === 'all') return true
+  if (calendarFilter.value === 'checked') return Boolean(day.checked)
+  if (calendarFilter.value === 'pending') return !day.checked && !day.future
+  if (calendarFilter.value === 'replenishable') return canReplenish(day)
+  return true
+}
+
+const filteredCount = computed(() => (calendar.value?.days || []).filter(dayMatchesFilter).length)
 
 function dayNumber(date) {
   return Number(String(date).slice(-2))
@@ -466,14 +516,80 @@ onMounted(() => {
   text-align: right;
 }
 
-.checkin-tiers {
+/* ── ② 日历（左）+ 档位（右） ─────────────────────────────── */
+
+.checkin-calendar {
   padding: calc(var(--space-unit) * 3);
 }
 
+/* 标题在左、筛选器在右；窄屏自动折行（筛选器落到第二行靠左）。 */
+.checkin-cal-head {
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.checkin-cal-titles {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
+}
+
+.checkin-cal-titles .checkin-section-hint {
+  text-align: left;
+}
+
+.checkin-cal-filter {
+  flex: 0 0 auto;
+  width: calc(var(--space-unit) * 30);
+}
+
+/*
+ * 日期靠左、档位靠右并垂直居中（2.6.2）：
+ * 月历格只有 7×64px 宽，居中会左右各留一大块空白；档位是「这个月值多少」的另一面，
+ * 挪到右侧同一张卡里，视线从「今天」向右就是「能拿多少」。
+ */
+.checkin-cal-body {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--space-unit) * 4);
+  margin-top: calc(var(--space-unit) * 2.5);
+}
+
+.checkin-cal-main {
+  min-width: 0;
+}
+
+.checkin-cal-side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 12px;
+  background: var(--bg-surface-2);
+  min-width: 0;
+}
+
+.checkin-side-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+}
+
+.checkin-side-hint {
+  margin: calc(var(--space-unit) * 0.5) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 右侧是竖排三档：横排的话每块只剩 60px 宽，数字与文案都要换行。 */
 .checkin-tier-rail {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(var(--space-unit) * 2);
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(var(--space-unit) * 1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -481,15 +597,15 @@ onMounted(() => {
 
 .checkin-tier {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  padding: calc(var(--space-unit) * 1) calc(var(--space-unit) * 1.5);
   border: 1px solid var(--ec-border-subtle);
   border-radius: 10px;
-  background: var(--bg-surface-2);
+  background: var(--bg-surface);
 }
 
-/* 已达成的档位：边框与数字用主色，但不填实色 —— 三块并排，实色会把卡片压沉 */
+/* 已达成的档位：边框与数字用主色，但不填实色 —— 竖排三块，实色会把卡片压沉 */
 .checkin-tier.is-reached {
   border-color: var(--ec-action-primary-border);
 }
@@ -534,16 +650,40 @@ onMounted(() => {
 /* 轨道宽度（不是容器宽度）：格子是 aspect-ratio: 1 的正方形、七列等分容器宽。
  * 本页容器最宽到 --container-page-narrow，照抄 1fr 会让桌面每格被撑成 160px 的巨块，
  * 与「月份标题 + 提示」的文字层级脱节。页面不得自设 max-width（componentClasses.test.js 把关），
- * 所以这里收的是轨道：每格 8 × 8px = 64px。 */
+ * 所以这里收的是轨道：每格 8 × 8px = 64px。
+ * 2.6.2 起 `justify-content: start`：月历移到卡片左侧，右侧让给档位栏。 */
 .checkin-weekdays,
 .checkin-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 8)));
-  justify-content: center;
+  justify-content: start;
   gap: calc(var(--space-unit) * 1);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* 被筛选隐藏的日子：留占位保持网格对齐，但不显示日期、勾选与任何状态底色。
+ * 选择器带 `.checkin-grid` 是为了压过 `.checkin-cell.is-checked`（同层都要 0,3,0）。 */
+.checkin-grid .checkin-cell.is-filtered-out,
+.checkin-grid .checkin-cell.is-filtered-out.is-checked,
+.checkin-grid .checkin-cell.is-filtered-out.is-today,
+.checkin-grid .checkin-cell.is-filtered-out.is-future,
+.checkin-grid .checkin-cell.is-filtered-out.is-replenishable {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  opacity: 1;
+  color: transparent;
+  pointer-events: none;
+}
+
+.checkin-cell.is-filtered-out::before {
+  content: '';
+  width: calc(var(--space-unit) * 0.5);
+  height: calc(var(--space-unit) * 0.5);
+  border-radius: 999px;
+  background: var(--ec-border-subtle);
 }
 
 .checkin-weekdays {
@@ -727,6 +867,16 @@ onMounted(() => {
 
   .checkin-tier-rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 窄屏放不下「日期在左、档位在右」：先日历、后档位竖排 */
+  .checkin-cal-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 2.5);
+  }
+
+  .checkin-cal-filter {
+    width: 100%;
   }
 
   .checkin-section-head {
