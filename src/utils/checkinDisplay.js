@@ -68,3 +68,26 @@ export function checkinCellTitle(day, { replenishLeft = 0, points = 0, cost = 0 
   const { ok, reason } = canReplenishDay(day, { replenishLeft, points, cost })
   return ok ? `${day.date} 未签到，点击补签（${cost} 积分）` : `${day.date} 未签到：${reason}`
 }
+
+/**
+ * 连签进度条：当前连签天数在「上一档 → 下一档」这一段里的百分比。
+ *
+ * 基准点必须是**已达成档位的最大天数**，不能用「当前档」：
+ * `currentTier` 在 streak 为 0 时已经落到第 1 档（days = 1），
+ * 而 `nextTier` 同样是 days = 1 的那一档，两者重合 → span 为 0 → 进度算成 100%，
+ * 新用户一进来就看到满条（2.6.3 实测踩到，这里钉死）。
+ *
+ * @param {number} streak 连续签到天数
+ * @param {{days: number, points: number}[]} tiers 升序档位
+ * @returns {{percent: number, next: object|null, reachedDays: number}}
+ */
+export function checkinTierProgress(streak, tiers) {
+  const days = Number(streak) || 0
+  const next = tiers.find((tier) => tier.days > days) || null
+  const reachedDays = tiers.reduce((best, tier) => (days >= tier.days ? tier.days : best), 0)
+  if (!next) return { percent: 100, next: null, reachedDays }
+  const span = next.days - reachedDays
+  if (span <= 0) return { percent: 100, next, reachedDays }
+  const percent = Math.max(0, Math.min(100, Math.round(((days - reachedDays) / span) * 100)))
+  return { percent, next, reachedDays }
+}

@@ -151,28 +151,73 @@
             档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
           -->
           <aside class="checkin-cal-side" aria-labelledby="checkin-tiers-title">
-            <div class="checkin-side-head">
+            <!--
+              ②-1 今日档位：先回答「现在每天值多少」，再用进度条回答「还差几天」。
+              三段共用一条左对齐轴与全宽分隔线，读起来是一个侧栏而不是四张卡。
+            -->
+            <div class="checkin-side-block">
               <h3 id="checkin-tiers-title" class="checkin-side-title">每日积分档位</h3>
+              <p class="checkin-side-points">
+                <strong>{{ tierPoints }}</strong>
+                <span class="checkin-side-unit">积分 / 天</span>
+              </p>
+              <div
+                class="checkin-side-progress"
+                role="img"
+                :aria-label="tierProgressLabel"
+              >
+                <span class="checkin-side-progress-bar" :style="{ width: `${tierProgressPercent}%` }" />
+              </div>
               <p class="checkin-side-hint">{{ tierHint }}</p>
             </div>
 
-            <ol class="checkin-tier-rail">
-              <li
-                v-for="tier in TIERS"
-                :key="tier.days"
-                class="checkin-tier"
-                :class="{
-                  'is-reached': pointsStore.streak >= tier.days,
-                  'is-current': currentTier.days === tier.days,
-                }"
-              >
-                <span class="checkin-tier-dot" aria-hidden="true">
-                  <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
-                </span>
-                <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
-                <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
-              </li>
-            </ol>
+            <!-- ②-2 三档阶梯：已达成/当前用边框与底色区分，不填实色（竖排填色会压沉卡片） -->
+            <div class="checkin-side-block">
+              <h3 class="checkin-side-title">连签里程碑</h3>
+              <ol class="checkin-tier-rail">
+                <li
+                  v-for="tier in TIERS"
+                  :key="tier.days"
+                  class="checkin-tier"
+                  :class="{
+                    'is-reached': pointsStore.streak >= tier.days,
+                    'is-current': currentTier.days === tier.days,
+                  }"
+                >
+                  <span class="checkin-tier-dot" aria-hidden="true">
+                    <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
+                  </span>
+                  <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
+                  <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
+                </li>
+              </ol>
+            </div>
+
+            <!--
+              ②-3 本月账本：已签 / 最长连签 / 剩余补签。
+              这三项都是月历上「看得见但数不出来」的量，放在侧栏底部收口；
+              规则入口做成整行按钮（≥44px），点击展开并滚到下方的 details。
+            -->
+            <div class="checkin-side-block checkin-side-foot">
+              <div class="checkin-side-figures">
+                <div class="checkin-side-figure">
+                  <span class="checkin-side-figure-value">{{ monthCount }}</span>
+                  <span class="checkin-side-figure-label">已签天数</span>
+                </div>
+                <div class="checkin-side-figure">
+                  <span class="checkin-side-figure-value">{{ monthLongestStreak }}</span>
+                  <span class="checkin-side-figure-label">最长连签</span>
+                </div>
+                <div class="checkin-side-figure">
+                  <span class="checkin-side-figure-value">{{ replenishLeft }}</span>
+                  <span class="checkin-side-figure-label">剩余补签</span>
+                </div>
+              </div>
+              <button type="button" class="checkin-side-rule-link" @click="openRules">
+                <span>签到规则与补签说明</span>
+                <AppIcon name="chevron-right" class="checkin-side-rule-icon" />
+              </button>
+            </div>
           </aside>
         </div>
       </section>
@@ -181,7 +226,7 @@
         ④ 规则与补签说明：6 条规则对老用户是「看一次就够」，常驻会把日历挤到屏幕外，
         因此收进 details（默认折叠），标题上写清里面有什么。
       -->
-      <details class="ui-card checkin-rules">
+      <details ref="rulesRef" class="ui-card checkin-rules">
         <summary class="checkin-rules-summary">签到规则与补签说明</summary>
         <ul class="checkin-rules-list">
           <li v-for="rule in rules" :key="rule.text" class="checkin-rule">
@@ -225,6 +270,7 @@ import { formatPointsValue, REPLENISH_COST, REPLENISH_MONTHLY_LIMIT } from '@/co
 import {
   canReplenishDay,
   checkinCellTitle,
+  checkinTierProgress,
   replenishErrorMessage,
   replenishRuleText,
 } from '@/utils/checkinDisplay.js'
@@ -265,6 +311,53 @@ const tierHint = computed(() => {
   const gap = next.days - (pointsStore.streak || 0)
   return `再连签 ${gap} 天升到 ${next.points} 积分/天`
 })
+
+/**
+ * 侧栏三段的数据（2.6.3）。
+ *
+ * 背景：右栏原本只有「档位」一块、约 225px，却占着约 480px 的内容区高度，
+ * 上下各空 128px —— 留白没有形状，看起来像内容没加载完。
+ * 填充的正确做法不是把卡片加高（高度由 7×64px 的日历格决定，加高只会让洞更大），
+ * 而是给这块空间补上「还差几天」与「本月账本」两类**本来就有**的真实数据。
+ */
+const replenishLeft = computed(() => calendar.value?.replenish_left ?? 0)
+
+/** 本月最长连续签到：从 `days` 里数最长的一段 checked，不额外请求接口 */
+const monthLongestStreak = computed(() => {
+  let best = 0
+  let run = 0
+  for (const day of calendar.value?.days || []) {
+    if (day.checked) {
+      run += 1
+      if (run > best) best = run
+    } else {
+      run = 0
+    }
+  }
+  return best
+})
+
+/** 到下一档的进度：按「上一档 → 下一档」这一段算，跨档瞬间从 0% 重新开始 */
+const tierProgressPercent = computed(
+  () => checkinTierProgress(pointsStore.streak || 0, TIERS).percent,
+)
+
+const tierProgressLabel = computed(() => {
+  const next = nextTier.value
+  if (!next) return `连续签到 ${pointsStore.streak} 天，已在最高档`
+  const gap = next.days - (pointsStore.streak || 0)
+  return `连续签到 ${pointsStore.streak} 天，再连签 ${gap} 天升到每天 ${next.points} 积分`
+})
+
+const rulesRef = ref(null)
+
+/** 侧栏的规则入口：展开下方 details 并滚过去 —— 比让用户自己找折叠区少一次摸索 */
+function openRules() {
+  const el = rulesRef.value
+  if (!el) return
+  el.open = true
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 const calendarTitle = computed(() => {
   const month = calendar.value?.month
@@ -549,9 +642,15 @@ onMounted(() => {
  * 月历格只有 7×64px 宽，居中会左右各留一大块空白；档位是「这个月值多少」的另一面，
  * 挪到右侧同一张卡里，视线从「今天」向右就是「能拿多少」。
  */
+/*
+ * 日期靠左、档位靠右并垂直居中（2.6.2）；
+ * 2.6.3 把右栏定为固定 320px（`space-unit * 40`）并 `space-between`：
+ * 右栏若跟着 1fr 拉伸，超宽屏下三段数字会被摊得很散，列宽定死反而稳。
+ */
 .checkin-cal-body {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(0, auto) minmax(0, calc(var(--space-unit) * 40));
+  justify-content: space-between;
   align-items: center;
   gap: calc(var(--space-unit) * 4);
   margin-top: calc(var(--space-unit) * 2.5);
@@ -564,25 +663,128 @@ onMounted(() => {
 .checkin-cal-side {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 2);
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2.5);
   border: 1px solid var(--ec-border-subtle);
   border-radius: 12px;
   background: var(--bg-surface-2);
   min-width: 0;
 }
 
+/* 三段共用一条左对齐轴、分隔线全宽、段内不缩进 —— 读起来是一个侧栏，不是三张卡。 */
+.checkin-side-block {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  min-width: 0;
+}
+
+.checkin-side-block + .checkin-side-block {
+  padding-top: calc(var(--space-unit) * 2);
+  border-top: 1px solid var(--ec-border-subtle);
+}
+
 .checkin-side-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: var(--fw-label);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+/* 主数字：整个右栏只留这一个最大号，让「现在每天值多少」第一个被看见 */
+.checkin-side-points {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+}
+
+.checkin-side-points strong {
+  font-family: var(--font-mono);
+  font-size: calc(var(--space-unit) * 2.75);
+  line-height: 1;
+  color: var(--accent);
+}
+
+.checkin-side-unit {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 到下一档的进度：细条不抢主数字，但把「还差几天」变成可测量的距离 */
+.checkin-side-progress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ec-border-subtle);
+}
+
+.checkin-side-progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 240ms ease;
 }
 
 .checkin-side-hint {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
+  margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
+}
+
+.checkin-side-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 1);
+}
+
+.checkin-side-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkin-side-figure-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.checkin-side-figure-label {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 规则入口做成整行按钮：触控目标 ≥44px，右侧箭头提示「会往下走」 */
+.checkin-side-rule-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: calc(var(--space-unit) * 5.5);
+  margin-top: calc(var(--space-unit) * 0.5);
+  padding: 0 calc(var(--space-unit) * 1);
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.checkin-side-rule-link:hover {
+  color: var(--accent);
+  background: var(--ec-action-primary-dim);
+}
+
+.checkin-side-rule-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
 }
 
 /* 右侧是竖排三档：横排的话每块只剩 60px 宽，数字与文案都要换行。 */
