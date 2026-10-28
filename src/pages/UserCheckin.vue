@@ -6,7 +6,7 @@
       </p>
       <h1 class="page-shell-title">每日签到</h1>
       <p class="page-shell-desc">
-        连续签到积分更多：3 天起 15 分，7 天起 20 分；会员等级倍率对签到积分同样生效
+        连续签到积分更多：3 天起 15 分、7 天起 20 分；会员等级倍率对签到积分同样生效
       </p>
     </header>
 
@@ -22,109 +22,171 @@
     </div>
 
     <template v-else>
-      <!-- ① 主签到区 -->
-      <section class="ui-card checkin-hero">
-        <div class="checkin-hero-info">
-          <p class="checkin-streak">
-            已连续签到 <strong>{{ pointsStore.streak }}</strong> 天
+      <!--
+        ① 今天的状态与唯一主操作。
+        2.6.1 重排：原先把「连续天数 / 本月已签 / 当前积分」和签到按钮挤在同一行，
+        按钮只是行内一个普通按钮；现在把「今天签没签」提到最前，按钮独占一栏，
+        签完由状态徽标 + 按钮文案同时翻面，避免「签了但看不出签了」。
+      -->
+      <section class="ui-card checkin-hero" :class="{ 'is-done': pointsStore.todayChecked }">
+        <div class="checkin-hero-main">
+          <p class="checkin-today">
+            <AppIcon :name="pointsStore.todayChecked ? 'check-circle' : 'clock'" />
+            <span>{{ pointsStore.todayChecked ? '今天已签到' : '今天还没签到' }}</span>
           </p>
-          <p class="checkin-month">本月已签 {{ monthCount }} 天</p>
-          <p v-if="pointsStore.points > 0" class="checkin-balance">
-            当前 <router-link :to="{ name: 'Points' }">{{ pointsStore.points }} 积分</router-link>
-            （可抵 ¥{{ pointsValueText }}）
+          <p class="checkin-streak">
+            <strong>{{ pointsStore.streak }}</strong>
+            <span>天连续签到</span>
+          </p>
+          <p class="checkin-tier-now">
+            当前每天 <b>{{ tierPoints }}</b> 积分
+            <span v-if="pointsStore.points > 0" class="checkin-balance">
+              · 账户 {{ pointsStore.points }} 积分（可抵 ¥{{ pointsValueText }}）
+            </span>
           </p>
         </div>
 
-        <button
-          type="button"
-          class="u-btn-primary checkin-btn"
-          :disabled="pointsStore.todayChecked || pointsStore.checkingIn"
-          @click="handleCheckin"
-        >
-          {{ checkinButtonText }}
-        </button>
+        <div class="checkin-hero-action">
+          <button
+            type="button"
+            class="u-btn-primary checkin-btn"
+            :disabled="pointsStore.todayChecked || pointsStore.checkingIn"
+            @click="handleCheckin"
+          >
+            {{ checkinButtonText }}
+          </button>
+          <router-link class="checkin-detail-link" :to="{ name: 'Points' }">积分明细</router-link>
+        </div>
       </section>
 
-      <!-- ② 日历。加载中给骨架，不显示「暂无记录」—— 那在数据回来前是错的 -->
-      <section class="checkin-calendar">
-        <div class="checkin-calendar-head">
-          <h2 class="checkin-section-title">{{ calendarTitle }}</h2>
-          <span class="checkin-calendar-hint">
+      <!--
+        ② 档位进度：把「10 / 15 / 20」从底部规则里提上来，回答「我还要签几天才更多」。
+        档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
+      -->
+      <section class="ui-card checkin-tiers" aria-labelledby="checkin-tiers-title">
+        <div class="checkin-section-head">
+          <h2 id="checkin-tiers-title" class="checkin-section-title">每日积分档位</h2>
+          <span class="checkin-section-hint">{{ tierHint }}</span>
+        </div>
+
+        <ol class="checkin-tier-rail">
+          <li
+            v-for="tier in TIERS"
+            :key="tier.days"
+            class="checkin-tier"
+            :class="{
+              'is-reached': pointsStore.streak >= tier.days,
+              'is-current': currentTier.days === tier.days,
+            }"
+          >
+            <span class="checkin-tier-dot" aria-hidden="true">
+              <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
+            </span>
+            <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
+            <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ③ 本月日历 -->
+      <section class="ui-card checkin-calendar" aria-labelledby="checkin-cal-title">
+        <div class="checkin-section-head">
+          <h2 id="checkin-cal-title" class="checkin-section-title">{{ calendarTitle }}</h2>
+          <span class="checkin-section-hint">
             <template v-if="calendar">
-              补签 {{ REPLENISH_COST }} 积分/次 · 剩余补签 {{ calendar.replenish_left }} 次
+              本月已签 {{ monthCount }} 天 · 剩余补签 {{ calendar.replenish_left }} 次
             </template>
           </span>
         </div>
 
-        <div v-if="!calendar" class="ui-card checkin-skeleton">
+        <div v-if="!calendar" class="checkin-skeleton">
           <span class="u-skeleton checkin-skeleton-line"></span>
         </div>
 
-        <ul v-else class="ui-card u-mm-checkin-grid">
-          <li
-            v-for="day in calendar.days"
-            :key="day.date"
-            class="u-mm-checkin-cell"
-            :class="{
-              'u-mm-checkin-cell--checked': day.checked,
-              'u-mm-checkin-cell--today': day.is_today,
-              'u-mm-checkin-cell--future': day.future,
-              'u-mm-checkin-cell--makeup': canReplenish(day),
-            }"
-            :title="cellTitle(day)"
-          >
-            <!--
-              可补签的日子渲染成按钮（1.5.0 M4）：不可补签的照旧是纯展示。
-              不把每个格子都做成按钮 —— 那会让「已签到」「还没到」这些日子
-              也能被聚焦，读屏时一路 Tab 过去全是无效目标。
-            -->
-            <button
-              v-if="canReplenish(day)"
-              type="button"
-              class="checkin-cell-hit"
-              :disabled="pointsStore.replenishingDate === day.date"
-              :aria-label="cellTitle(day)"
-              @click="handleReplenish(day)"
-            >
-              <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-            </button>
-            <template v-else>
-              <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-              <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
-            </template>
-          </li>
-        </ul>
+        <template v-else>
+          <ul class="checkin-weekdays" aria-hidden="true">
+            <li v-for="label in WEEKDAYS" :key="label">{{ label }}</li>
+          </ul>
 
-        <!-- ③ 规则：连签档位与后端 sstc.checkin_base_points 必须一致 -->
-        <ul class="ui-card checkin-rules">
+          <ul class="checkin-grid">
+            <li v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="checkin-blank" />
+            <li
+              v-for="day in calendar.days"
+              :key="day.date"
+              class="checkin-cell"
+              :class="{
+                'is-checked': day.checked,
+                'is-today': day.is_today,
+                'is-future': day.future,
+                'is-replenishable': canReplenish(day),
+              }"
+              :title="cellTitle(day)"
+            >
+              <!--
+                只有「可补签」的日子渲染成按钮（沿用 1.5.0 M4 的判断）：
+                已签到、还没到的日子做成按钮会让读屏一路 Tab 过去全是无效目标。
+              -->
+              <button
+                v-if="canReplenish(day)"
+                type="button"
+                class="checkin-cell-hit"
+                :disabled="pointsStore.replenishingDate === day.date"
+                :aria-label="cellTitle(day)"
+                @click="handleReplenish(day)"
+              >
+                <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+                <span class="checkin-cell-flag">补</span>
+              </button>
+              <template v-else>
+                <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
+                <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
+              </template>
+            </li>
+          </ul>
+
+          <ul class="checkin-legend">
+            <li v-for="item in legend" :key="item.label" class="checkin-legend-item">
+              <span class="checkin-legend-mark" :class="item.mark" aria-hidden="true" />
+              <span>{{ item.label }}</span>
+            </li>
+          </ul>
+        </template>
+      </section>
+
+      <!--
+        ④ 规则与补签说明：6 条规则对老用户是「看一次就够」，常驻会把日历挤到屏幕外，
+        因此收进 details（默认折叠），标题上写清里面有什么。
+      -->
+      <details class="ui-card checkin-rules">
+        <summary class="checkin-rules-summary">签到规则与补签说明</summary>
+        <ul class="checkin-rules-list">
           <li v-for="rule in rules" :key="rule.text" class="checkin-rule">
             <AppIcon :name="rule.icon" />
             <span>{{ rule.text }}</span>
           </li>
         </ul>
-      </section>
+      </details>
     </template>
   </div>
 </template>
 
 <script setup>
 /**
- * 每日签到（`/user/checkin`，旧 `/checkin` 重定向到此）—— 方案 §P0-5
+ * 每日签到（`/user/checkin`，旧 `/checkin` 重定向到此）
  *
  * 语义归属：签到是**个人中心功能**，不是会员权益 —— 非会员同样每天签到赚积分，
- * 所以它挂在 `/user/*` 下，入口在顶栏下拉与个人中心，而不是会员中心。
+ * 所以它挂在 `/user/*` 下，入口在顶栏下拉与个人中心。
  *
  * 与会员的关系只剩一处，且**方向是「会员影响签到」而不是「签到属于会员」**：
  * 服务端 `sstc.checkin` 会拿 `get_member_snapshot(...)->>'points_multiplier'`
- * 乘在每天的基础积分上（`v_points := round(v_base * v_mult)`），
- * 即等级倍率对签到积分同样生效。文案必须照实说 —— 早期版本写的是
- * 「会员消费积分另有等级倍率加成」，读起来像「签到不吃倍率」，与库里的公式相反。
+ * 乘在每天的基础积分上（`v_points := round(v_base * v_mult)`）。
+ *
+ * 版面（2.6.1 重排）：今天状态与主按钮 → 档位进度 → 本月日历 → 规则（折叠）。
+ * 目标是在首屏回答三个问题：今天签没签、连签几天、还要签几天才涨到下一档。
  *
  * 三条纪律：
- *   1. **签到不传日期**：服务端按 `Asia/Shanghai` 判定「今天」。客户端传日期会让
- *      「客户端时区与服务器不一致」变成 bug 来源，而签到最在意这一点。
- *   2. **「今天已签到」是正常状态，不是错误**：服务端对重复签到返回 200 +
- *      `already=true`（不是 409），按钮因此置灰而不是弹错误。
+ *   1. **签到不传日期**：服务端按 `Asia/Shanghai` 判定「今天」。
+ *   2. **「今天已签到」是正常状态，不是错误**：服务端返回 200 + `already=true`。
  *   3. **余额用服务端返回的快照**（store 里已处理），不本地 +10。
  */
 import { computed, onMounted } from 'vue'
@@ -145,9 +207,39 @@ import {
 const pointsStore = usePointsStore()
 const userStore = useUserStore()
 
+/** 与后端 `sstc.checkin_base_points` 的档位一致，改一处必须改另一处 */
+const TIERS = [
+  { days: 1, points: 10 },
+  { days: 3, points: 15 },
+  { days: 7, points: 20 },
+]
+
+/** 周一为一周之始，与服务端「本周」口径一致（`date_trunc('week')` 在 PG 里也是周一） */
+const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+
 const calendar = computed(() => pointsStore.calendar)
 const monthCount = computed(() => calendar.value?.month_count ?? 0)
 const pointsValueText = computed(() => formatPointsValue(pointsStore.points))
+
+const currentTier = computed(() => {
+  const streak = pointsStore.streak || 0
+  let hit = TIERS[0]
+  for (const tier of TIERS) {
+    if (streak >= tier.days) hit = tier
+  }
+  return hit
+})
+
+const tierPoints = computed(() => currentTier.value.points)
+
+const nextTier = computed(() => TIERS.find((tier) => tier.days > (pointsStore.streak || 0)) || null)
+
+const tierHint = computed(() => {
+  const next = nextTier.value
+  if (!next) return '已在最高档：每天 20 积分'
+  const gap = next.days - (pointsStore.streak || 0)
+  return `再连签 ${gap} 天升到 ${next.points} 积分/天`
+})
 
 const calendarTitle = computed(() => {
   const month = calendar.value?.month
@@ -160,6 +252,24 @@ const checkinButtonText = computed(() => {
   if (pointsStore.checkingIn) return '签到中…'
   return pointsStore.todayChecked ? '今天已签到' : '立即签到'
 })
+
+/**
+ * 月历第一行要空几格：服务端 `days` 是整月 1 号起的连续日期（没有前导占位），
+ * 这里按「周一开头」补占位，否则 1 号是周三时会显示在周一的位置上。
+ */
+const leadingBlanks = computed(() => {
+  const first = calendar.value?.days?.[0]?.date
+  if (!first) return 0
+  const weekday = new Date(`${String(first).slice(0, 10)}T00:00:00`).getDay()
+  return (weekday + 6) % 7
+})
+
+const legend = [
+  { label: '已签到', mark: 'is-checked' },
+  { label: '今天', mark: 'is-today' },
+  { label: `可补签（${REPLENISH_COST} 积分）`, mark: 'is-replenishable' },
+  { label: '还没到', mark: 'is-future' },
+]
 
 function dayNumber(date) {
   return Number(String(date).slice(-2))
@@ -188,11 +298,8 @@ function cellTitle(day) {
 }
 
 /**
- * 补签的点击闸门。
- *
- * 补签是「消耗积分 + 占用当月名额」的写操作，连点两次就会重复扣分。
- * 这里用 800ms 的同步闸门（而不是等 store 的忙碌标记），因为补签按钮是
- * 日历格里的图标，没有 disabled 态可依赖。
+ * 补签的点击闸门：补签是「消耗积分 + 占用当月名额」的写操作，连点两次会重复扣分。
+ * 用 800ms 同步闸门而不是 store 的忙碌标记，因为补签按钮是日历格里的图标，没有 disabled 态可依赖。
  */
 const replenishGuard = createClickGuard(800)
 
@@ -212,7 +319,6 @@ async function handleReplenish(day) {
   }
 }
 
-/** 与后端 `sstc.checkin_base_points` 的档位一致，改一处必须改另一处 */
 const rules = [
   { icon: 'check-circle', text: `连续签到 1-2 天：每天 10 积分` },
   { icon: 'check-circle', text: `连续签到 3-6 天：每天 15 积分` },
@@ -254,145 +360,388 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 3);
 }
 
-/* 未登录 —— 容器与文案层走共享分片 .u-mm-state（见 ui-kit-member.css §2） */
+/* ── ① 今天的状态 ───────────────────────────────────────────── */
 
-/* 主签到区 */
 .checkin-hero {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: calc(var(--space-unit) * 3);
   padding: calc(var(--space-unit) * 4);
 }
-.checkin-streak {
+
+.checkin-hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
+  min-width: 0;
+}
+
+.checkin-today {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
   margin: 0;
-  font-size: var(--fs-h3);
-}
-.checkin-streak strong {
-  font-family: var(--font-mono);
-  font-size: var(--fs-h2);
-  color: var(--accent);
-}
-.checkin-month {
-  margin: var(--space-unit) 0 0;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
   color: var(--text-muted);
 }
-.checkin-balance {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
+
+/* 已签到用成功色，未签到用主色 —— 状态靠「图标 + 颜色 + 文案」三重表达，不只靠颜色 */
+.checkin-hero.is-done .checkin-today {
+  color: var(--ec-success);
+}
+
+.checkin-streak {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.checkin-streak strong {
+  font-family: var(--font-mono);
+  font-size: calc(var(--fs-h1) * 0.9);
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.checkin-tier-now {
+  margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
-.checkin-btn {
-  flex-shrink: 0;
-  min-width: calc(var(--space-unit) * 16);
+
+.checkin-tier-now b {
+  color: var(--accent);
+  font-family: var(--font-mono);
 }
 
-/* 日历 */
-/* 轨道宽度（不是容器宽度）：分片 §14 的格子是 aspect-ratio: 1 的正方形、七列等分容器宽 ——
- * 格宽完全由轨道决定。showcase 里这组放在 300–450px 的 .demo 面板中（格宽 45–60px）；
- * 本页容器最宽 1180px（--container-page-narrow），照抄 1fr 会让桌面上每格被撑成 164px 的巨块，
- * 与「月份标题 + 补签提示」的文字层级脱节。窄页族的宽度唯一出口是 .page-shell--narrow，
- * 页面不得自设 max-width（componentClasses.test.js 把关），所以这里收的是轨道而不是容器：
- * 每格 7 × 8px = 56px，格子仍是正方形，卡片横向留白用居中吸收。
- */
-.u-mm-checkin-grid {
-  grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 7)));
-  justify-content: center;
+.checkin-balance {
+  color: var(--text-muted);
 }
-.checkin-calendar-head {
+
+.checkin-hero-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  flex-shrink: 0;
+}
+
+.checkin-btn {
+  min-width: calc(var(--space-unit) * 18);
+}
+
+.checkin-detail-link {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.checkin-detail-link:hover {
+  color: var(--accent);
+}
+
+/* ── ② 档位进度 ─────────────────────────────────────────────── */
+
+.checkin-section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
   margin-bottom: calc(var(--space-unit) * 2);
 }
+
 .checkin-section-title {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
 }
-.checkin-calendar-hint {
+
+.checkin-section-hint {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.checkin-tiers {
+  padding: calc(var(--space-unit) * 3);
+}
+
+.checkin-tier-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkin-tier {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-2);
+}
+
+/* 已达成的档位：边框与数字用主色，但不填实色 —— 三块并排，实色会把卡片压沉 */
+.checkin-tier.is-reached {
+  border-color: var(--ec-action-primary-border);
+}
+
+.checkin-tier.is-current {
+  background: var(--ec-action-primary-dim);
+}
+
+.checkin-tier-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 2.5);
+  height: calc(var(--space-unit) * 2.5);
+  border-radius: 50%;
+  border: 1px solid var(--ec-border-subtle);
+  color: var(--accent);
+}
+
+.checkin-tier.is-reached .checkin-tier-dot {
+  border-color: var(--ec-action-primary-border);
+  background: var(--ec-action-primary-dim);
+}
+
+.checkin-tier-days {
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
-.checkin-skeleton {
+
+.checkin-tier-points {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  color: var(--text-primary);
+}
+
+/* ── ③ 日历 ─────────────────────────────────────────────────── */
+
+.checkin-calendar {
   padding: calc(var(--space-unit) * 3);
 }
-.checkin-skeleton-line {
-  display: block;
-  height: calc(var(--space-unit) * 12);
-  border-radius: var(--radius-media);
+
+/* 轨道宽度（不是容器宽度）：格子是 aspect-ratio: 1 的正方形、七列等分容器宽。
+ * 本页容器最宽到 --container-page-narrow，照抄 1fr 会让桌面每格被撑成 160px 的巨块，
+ * 与「月份标题 + 提示」的文字层级脱节。页面不得自设 max-width（componentClasses.test.js 把关），
+ * 所以这里收的是轨道：每格 8 × 8px = 64px。 */
+.checkin-weekdays,
+.checkin-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 8)));
+  justify-content: center;
+  gap: calc(var(--space-unit) * 1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-/* 日历格：七列栅格与四态（已签 / 今天 / 未来 / 补签位）走共享分片
- * `.u-mm-checkin-grid` / `.u-mm-checkin-cell`（见 ui-kit-member.css §14）。
- * 这一页只留分片没有的两件事：补签格的手型与悬停反馈、盖满整格的按钮热区。 */
-.u-mm-checkin-cell--makeup {
-  cursor: pointer;
+
+.checkin-weekdays {
+  margin-bottom: calc(var(--space-unit) * 1);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-align: center;
 }
-.u-mm-checkin-cell--makeup:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+
+.checkin-blank {
+  aspect-ratio: 1;
 }
-/*
- * 格子里的按钮：视觉上必须与父级 li 完全重合（否则点击热区只有数字那么大，
- * 手机上一半的点按会落空）。因此清掉按钮自身的边框/内边距/背景，只留交互语义。
- */
-.checkin-cell-hit {
+
+.checkin-cell {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-}
-.checkin-cell-hit:disabled {
-  cursor: progress;
-}
-.checkin-cell-hit:focus-visible {
-  outline: var(--stroke-width) solid var(--accent);
-  outline-offset: calc(var(--stroke-width) * 2);
-  border-radius: var(--radius-input);
-}
-.checkin-cell-icon {
-  font-size: var(--fs-label);
-}
-
-/* 规则 */
-.checkin-rules {
-  margin: calc(var(--space-unit) * 2) 0 0;
-  padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 3);
-  list-style: none;
-}
-.checkin-rule {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 0.5) 0;
+  aspect-ratio: 1;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface-2);
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
-/* 窄屏：主签到区改竖排，按钮占满宽度 */
-@media (max-width: 575px) {
+.checkin-cell.is-checked {
+  border-color: var(--ec-success-border, var(--ec-border-subtle));
+  background: var(--ec-success-soft);
+  color: var(--ec-success);
+}
+
+/* 今天用内描边环表示，不抢「已签到」的实心底色 —— 两者的信息量不同 */
+.checkin-cell.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--text-primary);
+}
+
+.checkin-cell.is-future {
+  opacity: 0.5;
+}
+
+/* 可补签：虚线 + 角标「补」，与「已签到」的实线实心明确区分 */
+.checkin-cell.is-replenishable {
+  border-style: dashed;
+  border-color: var(--ec-action-primary-border);
+  background: transparent;
+  color: var(--accent);
+}
+
+.checkin-cell-hit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.checkin-cell-hit:disabled {
+  cursor: progress;
+}
+
+.checkin-cell-flag {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.checkin-cell-icon {
+  position: absolute;
+  bottom: 3px;
+  font-size: 11px;
+}
+
+.checkin-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 2);
+  margin: calc(var(--space-unit) * 2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.checkin-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.checkin-legend-mark {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 4px;
+  background: var(--bg-surface-2);
+}
+
+.checkin-legend-mark.is-checked {
+  border-color: var(--ec-success-border, var(--ec-border-subtle));
+  background: var(--ec-success-soft);
+}
+
+.checkin-legend-mark.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.checkin-legend-mark.is-replenishable {
+  border-style: dashed;
+  border-color: var(--ec-action-primary-border);
+  background: transparent;
+}
+
+.checkin-legend-mark.is-future {
+  opacity: 0.5;
+}
+
+.checkin-skeleton {
+  padding: calc(var(--space-unit) * 3);
+}
+
+/* ── ④ 规则（折叠） ─────────────────────────────────────────── */
+
+.checkin-rules {
+  padding: calc(var(--space-unit) * 2.5) calc(var(--space-unit) * 3);
+}
+
+.checkin-rules-summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  color: var(--text-primary);
+}
+
+.checkin-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  margin: calc(var(--space-unit) * 2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkin-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 1);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* ── 窄屏 ─────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
   .checkin-hero {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  .checkin-hero-action {
     align-items: stretch;
   }
+
   .checkin-btn {
     width: 100%;
   }
-}
 
-/* 返回个人中心（签到是个人中心功能，不是会员权益） */
-.checkin-back {
-  color: var(--accent);
-}
-.checkin-back:hover {
-  text-decoration: underline;
+  .checkin-detail-link {
+    text-align: center;
+  }
+
+  .checkin-tier-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .checkin-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(var(--space-unit) * 0.5);
+  }
+
+  .checkin-section-hint {
+    text-align: left;
+  }
+
+  .checkin-weekdays,
+  .checkin-grid {
+    grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 5.5)));
+  }
 }
 </style>

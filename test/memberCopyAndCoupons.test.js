@@ -43,13 +43,17 @@ test('永久会员：到期提示不再说「剩余 N 天」', () => {
   assert.match(hint, /一次开通，长期有效/)
 })
 
-test('会员免卡密：附注固定为「根据会员等级解锁固定数量的卡密工具」', () => {
-  assert.match(MEMBER, /function benefitFootText/)
-  assert.match(
-    MEMBER,
-    /remote\.key === 'free_tool'\) return '根据会员等级解锁固定数量的卡密工具'/
+test('会员免卡密：附注按「本等级已解锁/上限」渲染，而不是固定话术', () => {
+  // 2.6.1：用户实测反馈这条附注要显示当前等级的额度（v1 形如「可解锁 1/1 个卡密工具」）
+  const block = MEMBER.slice(
+    MEMBER.indexOf('function benefitFootText'),
+    MEMBER.indexOf('function formatDate')
   )
-  // 权益元数据里的说明同步（锁定态直接用 desc）
+  assert.match(block, /toolQuota\.value/)
+  assert.match(block, /quota\.is_member !== true/)
+  assert.match(block, /可解锁 \$\{used\}\/\$\{limit\} 个卡密工具/)
+  assert.match(block, /不限次数，已激活 \$\{used\} 个/)
+  // 锁定态仍走权益元数据的 desc（这条没变）
   assert.match(MEMBER_CONST, /根据会员等级解锁固定数量的卡密工具/)
 })
 

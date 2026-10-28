@@ -414,39 +414,37 @@ img {
 }
 
 /**
- * hover 态：**换一对反相底/字**，不再用 `filter: brightness()`（2.6.0 修复）。
+ * hover 态：**不动底色**，只在原渐变上加一点亮 + 更深的投影（2.6.1 回退）。
  *
- * 原实现只有 `filter: brightness(1.06)`，而深色主题的 `--ec-button-primary-bg`
- * 本身就是浅色渐变（blue-300 → #C3B4FF → #8FE6F5），再提亮就与文字撞色；
- * 主题里又没有「hover 背景」这层令牌，无从按主题分别取值。
+ * 2.6.0 曾把 hover 改成「换一对反相底/字」（`--ec-bg-inverse` + `--ec-text-inverse`），
+ * 那是**改错了方向**：用户要的是「文字与背景不要糊在一起」，不是「悬停时换一个底色」，
+ * 整块换色反而让按钮在悬停时像换了一个组件。这里回退到 2.5.0 的行为（底色恒为
+ * `--ec-button-primary-bg`，只用 `filter: brightness()` 提亮）。
  *
- * 改用 EC 已有的明暗反相令牌对：`--ec-bg-inverse` / `--ec-text-inverse`
- * （浅色 = 深底白字 #1F2430 / #FFFFFF ≈ 15.4:1；深色 = 浅底深字 #E8EBF2 / #0B0E14 ≈ 15.9:1），
- * 一对令牌同时适配两套主题，观感上也与常态的渐变面明确区分（= 可感知的 hover 反馈）。
- * `::before` 的内高光是给渐变面准备的，反相实底上必须关掉，否则会浮一层灰膜。
+ * 对比度改由**字色**兜底：把悬停时的 `color` 钉在 `--ec-text-on-action` 上，
+ * 而不是跟着 `--ec-button-primary-fg` 被动接受主题取值。两者在暗色主题下是同一个值
+ * （ink-900，压浅紫渐变约 9.5:1），亮色主题下前者是 white、后者也是 white，
+ * 但语义不同：`--ec-text-on-action` 是「行动面专用字色」，换主题时由主题保证与渐变配套；
+ * 一旦某套主题只改渐变不改 fg，这里不会跟着一起糊掉。
  *
- * 同一套规则同时覆盖 `.ec-btn--primary`（设计系统按钮，VIP 卡里的「ec-btn ec-btn--sm ec-btn--primary」）。
+ * 同一套规则同时覆盖 `.ec-btn--primary`（设计系统按钮，会员卡里的「ec-btn ec-btn--sm ec-btn--primary」），
+ * 否则会员卡里的按钮 hover 只有 EC 自带的 `brightness(1.06)`，与站内按钮观感不一致。
  */
 .u-btn-primary:hover:not(:disabled),
 .ec-btn--primary:hover:not(:disabled) {
-  color: var(--ec-text-inverse);
-  background: var(--ec-bg-inverse);
+  color: var(--ec-text-on-action);
   box-shadow: var(--ec-button-primary-hover-shadow);
-  filter: none;
+  filter: brightness(1.06);
 }
 
-.u-btn-primary:hover:not(:disabled)::before,
-.ec-btn--primary:hover:not(:disabled)::before {
-  opacity: 0;
-}
-
-.u-btn-primary:hover:not(:disabled):active,
-.ec-btn--primary:hover:not(:disabled):active {
-  filter: brightness(0.96);
+.u-btn-primary:active:not(:disabled),
+.ec-btn--primary:active:not(:disabled) {
+  filter: brightness(0.94);
   transform: var(--btn-active-transform);
 }
 
-.u-btn-primary:focus-visible {
+.u-btn-primary:focus-visible,
+.ec-btn--primary:focus-visible {
   outline: none;
   box-shadow: var(--ec-ring);
 }

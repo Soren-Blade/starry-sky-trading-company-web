@@ -3,6 +3,9 @@ import { defineStore } from 'pinia'
 import { getOverview, getPlans, getGrowthHistory, getBenefits } from '@/api/ask/member.js'
 import { shortCache } from '@/utils/shortCache.js'
 
+/** 会员总览的短缓存键（写操作后要用它失效，别在多处各写一遍字符串） */
+const OVERVIEW_CACHE_KEY = 'member:overview'
+
 /**
  * 会员状态（阶段 P0）
  *
@@ -96,13 +99,21 @@ export const useMemberStore = defineStore('member', {
   },
 
   actions: {
-    async fetchOverview({ silent = false } = {}) {
+    /**
+     * 拉会员总览。
+     *
+     * `force: true` 用于**写操作之后**（签到、激活卡密、开通会员…）：
+     * shortCache 有 8 秒 TTL，写操作后立刻再读会拿到写之前的快照 ——
+     * 表现就是「签到了但按钮还写着『立即签到』」。force 先失效缓存再请求，
+     * 保证拿到的是服务端的最新状态。只读场景（导航栏、页面首屏）不要传，否则每次都要打接口。
+     */
+    async fetchOverview({ silent = false, force = false } = {}) {
       this.loadingOverview = true
       if (!silent) this.error = ''
       try {
         // 导航栏与页面组件几乎同时调它；走 shortCache 后同一批只发一次请求。
-        // 签到/激活等写操作完成后由调用方 invalidate('member:overview')。
-        const body = await shortCache.run('member:overview', () => getOverview())
+        if (force) shortCache.invalidate(OVERVIEW_CACHE_KEY)
+        const body = await shortCache.run(OVERVIEW_CACHE_KEY, () => getOverview())
         const data = body?.data ?? body
         this.overview = data
         return data

@@ -605,7 +605,9 @@ async function handleProfileCheckin() {
     } else {
       notify.success(`签到成功，获得 ${result.awarded} 积分（连签 ${result.streak} 天）`)
     }
-    await memberStore.fetchOverview({ silent: true })
+    // force: 签到是写操作，8 秒短缓存里还是签到前的快照（checkin_available 仍为 true），
+    // 不穿透的话按钮会一直停在「立即签到」—— 这正是用户实测到的「签完没换成查看签到日历」。
+    await memberStore.fetchOverview({ silent: true, force: true })
   } catch (error) {
     notify.error(error?.response?.data?.message || '签到失败，请稍后重试')
   } finally {

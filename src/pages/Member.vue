@@ -230,7 +230,7 @@
  *   3. **不新增后端调用**：资产三卡全部取自已拉取的 `getOverview`；
  *      `getPlans` 只在需要下一档门槛且尚未加载时补一次。
  */
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppIcon from '@/components/AppIcon.vue'
@@ -245,6 +245,7 @@ import {
 } from '@/constants/member.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
+import api from '@/api/index.js'
 
 const memberStore = useMemberStore()
 const userStore = useUserStore()
@@ -362,14 +363,34 @@ function requiredLabel(level) {
 }
 
 /**
+ * 免卡密额度的实时快照（`GET /kamiApi/memberQuota`）。
+ *
+ * 为什么单独取一份而不是从总览里推：总览只给「当前等级」，不给「本等级上限 / 已用几个」，
+ * 而权益卡要显示的正是 `已用/上限`（例如 V1 的「1/1」）。这个接口很轻，且就在卡密侧，
+ * 不额外动会员契约。
+ */
+const toolQuota = ref(null)
+
+/**
  * 权益卡片底部的附注文案（`.u-mm-benefit-next`）。
  *
- * 「会员免卡密」这一项例外：它下方永远显示口径说明，而不是「下一档 N 个」——
- * 额度数字已经在数值区展示（`valueText`/`nextText`），底部再写一遍是重复；
- * 而且新用户更需要的是一句话讲清这条权益到底按什么给（2.6.0 用户要求）。
+ * 「会员免卡密」这一项例外：它要回答「**我现在**能免卡密用几个、已经用掉几个」，
+ * 而不是「下一档几个」—— 用户实测反馈的正是这里（2.6.1）。形如：
+ *   V1 且已用满 → `可解锁 1/1 个卡密工具`（可解锁 1 个、已解锁 1 个）
+ *   V3 未用满   → `可解锁 0/2 个卡密工具，还可激活 2 个`
+ *   v7/v8 不限  → `不限次数，已激活 3 个`
+ *   非会员      → 引导开卡（等级决定数量）
  */
 function benefitFootText(remote, meta, nextText) {
-  if (remote.key === 'free_tool') return '根据会员等级解锁固定数量的卡密工具'
+  if (remote.key === 'free_tool') {
+    const quota = toolQuota.value
+    if (!quota || quota.is_member !== true) return '开通会员后按等级解锁，等级越高可同时激活越多'
+    const used = Number(quota.used ?? 0)
+    if (quota.unlimited === true || Number(quota.quota) < 0) return `不限次数，已激活 ${used} 个`
+    const limit = Number(quota.quota ?? 0)
+    const remaining = Number(quota.remaining ?? Math.max(0, limit - used))
+    return `可解锁 ${used}/${limit} 个卡密工具${remaining > 0 ? `，还可激活 ${remaining} 个` : '（已用满）'}`
+  }
   if (remote.unlocked) return nextText ? `下一档 ${nextText}` : '已达最高档'
   return meta.desc || ''
 }
@@ -466,6 +487,15 @@ onMounted(() => {
   memberStore.fetchOverview()
   // 下一档门槛要读 levels[]；已加载过就不再请求
   if (!memberStore.hasLevels) memberStore.fetchPlans({ silent: true })
+  // 免卡密权益卡的「已用/上限」来自卡密侧额度接口；失败时保持 null，卡片自动退回引导文案
+  api
+    .getMemberQuota()
+    .then((payload) => {
+      toolQuota.value = payload?.data ?? payload ?? null
+    })
+    .catch(() => {
+      toolQuota.value = null
+    })
 })
 </script>
 
