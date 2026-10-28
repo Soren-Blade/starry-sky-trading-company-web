@@ -389,14 +389,30 @@ const previewItems = computed(() =>
   selectedItems.value.map((item) => ({ product_id: item.product_id, quantity: item.quantity }))
 )
 
-/** 券下拉：`value` 用券码，不可用的券也列出来但禁止点选 */
+/**
+ * 券下拉：**只列当前真正可用的券**（2.6.0）。
+ *
+ * 服务端的 `get_available_coupons()` 是「把用户全部券都返回、逐张标 selectable + reason」，
+ * 因为券包页与试算接口都需要看到已用/已过期的券。但在结算页把它们列出来只会误导：
+ * 用户会以为「已使用」的券还能再抵一次。所以这里按 `selectable` 过滤掉。
+ * 过滤后如果全部不可用，`couponOptions` 为空、下拉自动置灰（见模板上的 :disabled）。
+ */
 const couponOptions = computed(() =>
-  checkoutStore.coupons.map((coupon) => ({
+  checkoutStore.selectableCoupons.map((coupon) => ({
     value: coupon.coupon_code,
     label: couponOptionLabel(coupon),
-    disabled: coupon.selectable !== true,
   }))
 )
+
+/**
+ * 选中的券若已不在可选列表里（例如刚被别处用掉、订单金额变化导致不满足门槛），
+ * 就退回「不使用优惠券」—— 否则触发器会显示一个选不中的值，提交时还会带着它。
+ */
+watch(couponOptions, (options) => {
+  const current = checkoutStore.couponCode
+  if (!current) return
+  if (!options.some((option) => option.value === current)) checkoutStore.setCoupon('')
+})
 
 /**
  * SelectField 用空串表示「未选择」，因此「不使用优惠券」需要一个哨兵值 ——

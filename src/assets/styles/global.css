@@ -413,14 +413,36 @@ img {
   z-index: -1;
 }
 
-.u-btn-primary:hover:not(:disabled) {
-  color: var(--ec-button-primary-fg);
+/**
+ * hover 态：**换一对反相底/字**，不再用 `filter: brightness()`（2.6.0 修复）。
+ *
+ * 原实现只有 `filter: brightness(1.06)`，而深色主题的 `--ec-button-primary-bg`
+ * 本身就是浅色渐变（blue-300 → #C3B4FF → #8FE6F5），再提亮就与文字撞色；
+ * 主题里又没有「hover 背景」这层令牌，无从按主题分别取值。
+ *
+ * 改用 EC 已有的明暗反相令牌对：`--ec-bg-inverse` / `--ec-text-inverse`
+ * （浅色 = 深底白字 #1F2430 / #FFFFFF ≈ 15.4:1；深色 = 浅底深字 #E8EBF2 / #0B0E14 ≈ 15.9:1），
+ * 一对令牌同时适配两套主题，观感上也与常态的渐变面明确区分（= 可感知的 hover 反馈）。
+ * `::before` 的内高光是给渐变面准备的，反相实底上必须关掉，否则会浮一层灰膜。
+ *
+ * 同一套规则同时覆盖 `.ec-btn--primary`（设计系统按钮，VIP 卡里的「ec-btn ec-btn--sm ec-btn--primary」）。
+ */
+.u-btn-primary:hover:not(:disabled),
+.ec-btn--primary:hover:not(:disabled) {
+  color: var(--ec-text-inverse);
+  background: var(--ec-bg-inverse);
   box-shadow: var(--ec-button-primary-hover-shadow);
-  filter: brightness(1.06);
+  filter: none;
 }
 
-.u-btn-primary:active:not(:disabled) {
-  filter: brightness(0.94);
+.u-btn-primary:hover:not(:disabled)::before,
+.ec-btn--primary:hover:not(:disabled)::before {
+  opacity: 0;
+}
+
+.u-btn-primary:hover:not(:disabled):active,
+.ec-btn--primary:hover:not(:disabled):active {
+  filter: brightness(0.96);
   transform: var(--btn-active-transform);
 }
 

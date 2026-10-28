@@ -9,6 +9,31 @@
 
 ---
 
+## [2.6.0] — 2026-10-28 · 表格对齐、券下拉过滤、永久会员文案与按钮 hover 反相
+
+六项体验修复 + 一个跨端缺陷（买商品不发成长值）。无新路由，按 `2.6.0` 发。
+
+| 位置 | 变更 |
+| --- | --- |
+| `src/components/MemberLevelLadder.vue` | 三个数值列表头加 `u-mm-ladder-num`：表头「成长值门槛 / 消费折扣 / 积分倍率」由左对齐改为右对齐，与表体数字同向 |
+| `src/pages/MemberBenefits.vue` | 等级权益对照表同样处理（`成长值门槛` 表头加 `u-mm-ladder-num`），矩阵列头加 `u-mm-matrix-cell` 居中，与表体一致 |
+| `src/assets/styles/ui-kit-member.css` | 新增 `.u-mm-ladder th.u-mm-ladder-num`（右）与 `.u-mm-matrix-table th.u-mm-matrix-cell`（居中）两条选择器 —— 两张表此前**只有 td 有对齐规则、th 全吃 `.u-table th` 的左对齐**。`.u-mm-benefit-next` 的 `margin-top: auto` 改为 `0`：单行附注不再被推到底部拉开与标题的距离 |
+| `src/pages/Cart.vue` | 结算卡片的优惠券下拉改由 `checkoutStore.selectableCoupons` 生成（**只列本次可用的券**），并在「选中券已不可用」时自动回退到「不使用优惠券」 |
+| `src/pages/Member.vue` | 会员到期日先判 `overview.is_permanent`：永久会员显示「永久会员」+「一次开通，长期有效」（此前因为 `expires_at` 为 `null` 显示「—」）。「会员免卡密」卡的附注改走 `benefitFootText()`，固定为「根据会员等级解锁固定数量的卡密工具」 |
+| `src/constants/member.js` | `free_tool` 的 `desc`/`detail` 重写，与卡面附注口径一致 |
+| `src/assets/styles/global.css` | `.u-btn-primary:hover` 与 `.ec-btn--primary:hover` 合并为一条**反相**规则：`background: var(--ec-bg-inverse)` + `color: var(--ec-text-inverse)`，`filter: none` 并关掉渐变内高光。原来只靠 `filter: brightness(1.06)`，深色主题下浅紫渐变被提亮后与近白文字撞色 |
+
+**修复**
+
+- **买商品不加成长值**（跨端）：`sstc.complete_order` 在 `2026-10-16-add-invite-and-hero.sql` 整函数重写时丢了 `order_growth_reward` + `append_growth_ledger` 两步，导致完成订单只改状态不发成长值；已由服务端迁移重建（见后端 CHANGELOG）。兑换卡密走 `use_card`，一直正常。
+- 深色主题 `.u-btn-primary` hover 时文字与背景几乎同色（见上表 `global.css` 行）。
+
+**取舍**
+
+- 优惠券过滤放在前端、不改库函数 `get_available_coupons()`：券包页与试算仍需要看到已用/过期券及不可用原因，过滤只发生在「结算时选择」这一处。
+- hover 用反相令牌对（`--ec-bg-inverse` / `--ec-text-inverse`）而不是新增 hover 专用色：这一对在明暗两套主题里本身就是互补色，实测浅色 15.4:1、深色 15.9:1，省掉两个新令牌和一条主题分叉。
+- 历史 7 笔已完成订单的成长值**不补发**（用户确认只修「以后」），避免一次性改动用户成长值与等级。
+
 ## [2.5.0] — 2026-10-28 · 会员改为「10 元开卡资格」+ 工具目录全量加载
 
 会员模型重构（**行为变更**：等级不再可购买）+ 工具页能看全 37 个工具；按 `2.5.0` 发。

@@ -70,8 +70,13 @@
             <thead>
               <tr>
                 <th scope="col">等级</th>
-                <th scope="col">成长值门槛</th>
-                <th v-for="column in matrixColumns" :key="column.key" scope="col">{{ column.label }}</th>
+                <th scope="col" class="u-mm-ladder-num">成长值门槛</th>
+                <th
+                  v-for="column in matrixColumns"
+                  :key="column.key"
+                  scope="col"
+                  class="u-mm-matrix-cell"
+                >{{ column.label }}</th>
               </tr>
             </thead>
             <tbody>

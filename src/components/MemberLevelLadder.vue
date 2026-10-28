@@ -14,9 +14,9 @@
           <thead>
             <tr>
               <th scope="col">等级</th>
-              <th scope="col">成长值门槛</th>
-              <th v-if="showRewards" scope="col">消费折扣</th>
-              <th v-if="showRewards" scope="col">积分倍率</th>
+              <th scope="col" class="u-mm-ladder-num">成长值门槛</th>
+              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">消费折扣</th>
+              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">积分倍率</th>
             </tr>
           </thead>
           <tbody>

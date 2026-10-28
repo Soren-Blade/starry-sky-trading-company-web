@@ -445,7 +445,9 @@
 /* 下一档预告：一行小字。它是这一格存在的意义 —— 没有它，已解锁的格子
  * 就只是一块静止的说明。 */
 .u-mm-benefit-next {
-  margin-top: auto;
+  /* 2.6.0：原先 `margin-top: auto` 会把这段附注顶到卡片底部 —— 只有一行文字时
+   * 表现为「下方一大块空白 + 上文被挤压」。改成自然流，靠 padding 与数值组拉开。 */
+  margin-top: 0;
   /* 10px：与「标签 + 数值」组拉开，且比图标的 12px 略小 —— 它是附注，不是主信息 */
   padding-top: calc(var(--space-unit) * 1.25);
   font-size: var(--fs-label);
@@ -488,6 +490,14 @@
   text-align: right;
 }
 
+/* 表头必须跟着数值列一起右对齐：`.u-table th` 默认左对齐，而数值单元格是右对齐，
+ * 不补这条就会出现「表头贴左、数字贴右」的错列观感（2.6.0 修复）。
+ * 选择器带元素名 `th`，特异性 (0,2,1) 高于 `.u-table th` (0,1,1)，无需 !important。 */
+.u-mm-ladder th.u-mm-ladder-num,
+.u-mm-matrix-table th.u-mm-ladder-num {
+  text-align: right;
+}
+
 .u-mm-ladder tr.is-current {
   box-shadow: inset calc(var(--space-unit) * 0.5) 0 0 0 var(--accent);
 }
@@ -517,6 +527,11 @@
   font-variant-numeric: tabular-nums;
   text-align: center;
   white-space: nowrap;
+}
+
+/* 同上：矩阵表头也要居中，否则每列表头与数值错开半列（2.6.0 修复） */
+.u-mm-matrix-table th.u-mm-matrix-cell {
+  text-align: center;
 }
 
 .u-mm-matrix-table col.is-current {

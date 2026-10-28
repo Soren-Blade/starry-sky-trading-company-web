@@ -338,11 +338,7 @@ const benefitCards = computed(() =>
       valueText,
       nextText,
       displayText: remote.unlocked ? valueText || '已解锁' : requiredLabel(remote.required_level),
-      footText: remote.unlocked
-        ? nextText
-          ? `下一档 ${nextText}`
-          : '已达最高档'
-        : meta.desc || '',
+      footText: benefitFootText(remote, meta, nextText),
     }
   })
 )
@@ -365,6 +361,19 @@ function requiredLabel(level) {
   return `V${String(level).replace(/^v/i, '')} 解锁`
 }
 
+/**
+ * 权益卡片底部的附注文案（`.u-mm-benefit-next`）。
+ *
+ * 「会员免卡密」这一项例外：它下方永远显示口径说明，而不是「下一档 N 个」——
+ * 额度数字已经在数值区展示（`valueText`/`nextText`），底部再写一遍是重复；
+ * 而且新用户更需要的是一句话讲清这条权益到底按什么给（2.6.0 用户要求）。
+ */
+function benefitFootText(remote, meta, nextText) {
+  if (remote.key === 'free_tool') return '根据会员等级解锁固定数量的卡密工具'
+  if (remote.unlocked) return nextText ? `下一档 ${nextText}` : '已达最高档'
+  return meta.desc || ''
+}
+
 function formatDate(value) {
   if (!value) return '——'
   const d = new Date(value)
@@ -375,11 +384,16 @@ function formatDate(value) {
 
 const expiryValue = computed(() => {
   if (!memberStore.isMember) return '尚未开通'
+  // 永久会员：库里 `expires_at IS NULL`，接口同时下发 `is_permanent`。
+  // 必须先判 is_permanent —— 否则 formatDate(null) 会回落到「——」，
+  // 永久会员被显示成「到期日未知」（2.6.0 用户报的问题）。
+  if (overview.value.is_permanent === true) return '永久会员'
   return formatDate(overview.value.expires_at)
 })
 
 const expiryHint = computed(() => {
   if (!memberStore.isMember) return '开通后立即生效'
+  if (overview.value.is_permanent === true) return '一次开通，长期有效'
   if (overview.value.days_left == null) return '到期时间以服务端为准'
   return `剩余 ${overview.value.days_left} 天`
 })
