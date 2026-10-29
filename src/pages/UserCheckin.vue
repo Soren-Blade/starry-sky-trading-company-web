@@ -255,8 +255,8 @@
 
             <!--
               ②-3 本月账本：已签 / 最长连签 / 剩余补签。
-              这三项都是月历上「看得见但数不出来」的量，放在侧栏底部收口；
-              规则入口做成整行按钮（≥44px），点击展开并滚到下方的 details。
+              这三项都是月历上「看得见但数不出来」的量，放在侧栏底部收口。
+              规则入口不在这里重复——下方 `checkin-rules` 卡片本身就是入口。
             -->
             <div class="checkin-side-block checkin-side-foot">
               <div class="checkin-side-figures">
@@ -273,10 +273,6 @@
                   <span class="checkin-side-figure-label">剩余补签</span>
                 </div>
               </div>
-              <button type="button" class="checkin-side-rule-link" @click="openRules">
-                <span>签到规则与补签说明</span>
-                <AppIcon name="chevron-right" class="checkin-side-rule-icon" />
-              </button>
             </div>
           </aside>
         </div>
@@ -286,7 +282,7 @@
         ④ 规则与补签说明：6 条规则对老用户是「看一次就够」，常驻会把日历挤到屏幕外，
         因此收进 details（默认折叠），标题上写清里面有什么。
       -->
-      <details ref="rulesRef" class="ui-card checkin-rules">
+      <details class="ui-card checkin-rules">
         <summary class="checkin-rules-summary">签到规则与补签说明</summary>
         <ul class="checkin-rules-list">
           <li v-for="rule in rules" :key="rule.text" class="checkin-rule">
@@ -417,16 +413,6 @@ const tierProgressLabel = computed(() => {
   return `连续签到 ${pointsStore.streak} 天，再连签 ${gap} 天升到每天 ${next.points} 积分`
 })
 
-const rulesRef = ref(null)
-
-/** 侧栏的规则入口：展开下方 details 并滚过去 —— 比让用户自己找折叠区少一次摸索 */
-function openRules() {
-  const el = rulesRef.value
-  if (!el) return
-  el.open = true
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
 const calendarTitle = computed(() => {
   const month = calendar.value?.month
   if (!month) return '本月签到'
@@ -474,17 +460,22 @@ const selectedStatus = computed(() =>
 
 const selectedTitle = computed(() => formatDayTitle(selectedDay.value?.date || ''))
 
+/*
+ * 选中日的副标题：**节日/节气放前面**，农历垫后。
+ * 3.0.1 起服务端只在「正日子」下发 `holidayName`，所以这里能同时列出
+ * 「国庆节 · 寒露 · 农历 八月廿八」而不会出现七天连续的「国庆节」。
+ */
 const selectedSubtitle = computed(() => {
   const day = selectedDay.value
   if (!day) return ''
   const parts = []
+  if (day.holidayName) parts.push(day.holidayName)
+  if (day.festival && day.festival !== day.holidayName) parts.push(day.festival)
+  if (day.solarTerm) parts.push(day.solarTerm)
   if (day.lunarMonth) {
     // 初一只写月名（「农历 九月」），其余写「农历 八月廿八」
     parts.push(`农历 ${day.lunarMonth}${Number(day.lunarDay) === 1 ? '' : day.lunar || ''}`)
   }
-  if (day.solarTerm) parts.push(day.solarTerm)
-  if (day.festival && day.festival !== day.holidayName) parts.push(day.festival)
-  if (day.holidayName) parts.push(day.holidayName)
   return parts.join(' · ')
 })
 
@@ -915,26 +906,31 @@ onMounted(() => {
  * 挪到右侧同一张卡里，视线从「今天」向右就是「能拿多少」。
  */
 /*
- * 日期靠左、档位靠右并垂直居中（2.6.2）；
- * 2.6.3 把右栏定为固定 320px（`space-unit * 40`）并 `space-between`：
- * 右栏若跟着 1fr 拉伸，超宽屏下三段数字会被摊得很散，列宽定死反而稳。
+ * 3.0.1：左栏按内容宽（7×64px 格 + 间距 ≈ 496px），右栏固定 320px，
+ * 中间只留 24px gap，整体在卡片里居中 —— 两侧留白对称，不再出现「日历贴左、侧栏甩到最右」。
+ * 3.0.0 是 `auto + space-between`，正是那段空白的来源。
+ * 高度方向靠默认的 `align-items: stretch` + 侧栏 `justify-content: space-between`，
+ * 让四段撑满，与左侧月历上下齐平。
  */
 .checkin-cal-body {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, calc(var(--space-unit) * 40));
-  justify-content: space-between;
-  align-items: center;
-  gap: calc(var(--space-unit) * 4);
+  justify-content: center;
+  align-items: stretch;
+  gap: calc(var(--space-unit) * 3);
   margin-top: calc(var(--space-unit) * 2.5);
 }
 
 .checkin-cal-main {
   min-width: 0;
+  /* 侧栏通常比月历高：让日历在自己的那一行里垂直居中，底部的空白两侧才对称 */
+  align-self: center;
 }
 
 .checkin-cal-side {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2.5);
   border: 1px solid var(--ec-border-subtle);
@@ -1029,34 +1025,6 @@ onMounted(() => {
 .checkin-side-figure-label {
   font-size: var(--fs-label);
   color: var(--text-muted);
-}
-
-/* 规则入口做成整行按钮：触控目标 ≥44px，右侧箭头提示「会往下走」 */
-.checkin-side-rule-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: calc(var(--space-unit) * 5.5);
-  margin-top: calc(var(--space-unit) * 0.5);
-  padding: 0 calc(var(--space-unit) * 1);
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--fs-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.checkin-side-rule-link:hover {
-  color: var(--accent);
-  background: var(--ec-action-primary-dim);
-}
-
-.checkin-side-rule-icon {
-  flex: 0 0 auto;
-  font-size: 14px;
 }
 
 /* 右侧是竖排三档：横排的话每块只剩 60px 宽，数字与文案都要换行。 */

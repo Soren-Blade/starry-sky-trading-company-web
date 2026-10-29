@@ -79,16 +79,20 @@ test('本月账本的三项数据都来自已有的日历快照，不额外发�
   assert.match(PAGE, /\{\{ replenishLeft \}\}/)
 })
 
-test('规则入口展开下方 details 并滚过去', () => {
-  assert.match(PAGE, /<details ref="rulesRef"/)
-  const start = PAGE.indexOf('function openRules')
-  const body = PAGE.slice(start, PAGE.indexOf('\n}', start))
-  assert.match(body, /el\.open = true/, '必须先展开，否则滚过去是个折着的空壳')
-  assert.match(body, /scrollIntoView/)
-  assert.match(PAGE, /class="checkin-side-rule-link"[^>]*@click="openRules"/)
+test('规则入口只剩下方 details 一处，侧栏不再重复', () => {
+  assert.match(PAGE, /<details class="ui-card checkin-rules">/)
+  assert.doesNotMatch(PAGE, /checkin-side-rule-link/, '3.0.1 起侧栏不再放规则入口')
+  assert.doesNotMatch(PAGE, /function openRules/, 'openRules 随入口一起删掉')
 })
 
-test('右栏宽度定死 320px，窄屏转单列（不跟着 1fr 无限拉伸）', () => {
-  assert.match(PAGE, /grid-template-columns: minmax\(0, auto\) minmax\(0, calc\(var\(--space-unit\) \* 40\)\)/)
+test('左栏按内容宽、右栏定死 320px、两者居中且等高（3.0.1 版式）', () => {
+  assert.match(
+    PAGE,
+    /grid-template-columns: minmax\(0, auto\) minmax\(0, calc\(var\(--space-unit\) \* 40\)\);\s*\n\s*justify-content: center;/,
+    '左栏 auto + 整体居中：不再用 space-between 把右栏推到最右',
+  )
+  assert.doesNotMatch(PAGE, /justify-content: space-between;\s*\n\s*align-items: center/, '旧的「居中 + 推到两边」组合必须删掉')
+  // 右栏撑满高度：flex 列 + space-between，四段与左侧月历上下齐平
+  assert.match(PAGE, /\.checkin-cal-side \{[\s\S]*?justify-content: space-between/)
   assert.match(PAGE, /@media \(max-width: 767px\)[\s\S]*?\.checkin-cal-body \{\s*grid-template-columns: minmax\(0, 1fr\)/)
 })
