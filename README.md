@@ -4,14 +4,24 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `3.0.1`**（2026-10-29 发布）：签到日历的**节日口径与版式修正** ——
-> ① 节日只在「正日子」写名字：国庆 10-01 写「国庆节」，连休其余天回落节气/农历，
-> 调休上班日（如 10-10）只标「班」不带节日名（服务端 `holidayName` 同步收紧）；
-> ② 选中某天时右栏副标题**同时**给出节日与节气（节日/节气在前、农历垫后）；
-> ③ 删掉侧栏重复的规则入口，只留下方 `ui-card checkin-rules`；
-> ④ `.checkin-cal-body` 改为 `auto + 320px + 居中 + 24px gap`：宽屏下日历与侧栏不再被推到两端，
-> 侧栏 `justify-content: space-between` 撑满行高、月历 `align-self: center` 垂直居中，两栏等高。
-> > 上一版 `3.0.0`：签到页重构为「**签到日历**」——
+> **当前版本 `3.1.0`**（2026-10-29 发布）：签到日历的**版式与「下个月」** ——
+> ① `.checkin-cal-body` 改回 `justify-content: space-between`，但列宽改成
+> `minmax(0, 1.45fr) minmax(35u, 1fr)`：剩余空间由两栏按比例吃满，中间只留一个 24px 栅格间距，
+> 不再像 `3.0.1` 那样靠居中把空白留在中间；
+> ② `.checkin-grid` 轨道从「每格定宽 64px」改成 `repeat(7, minmax(0, 1fr))`，
+> 列变宽时格子跟着长（1440 宽约 71px/格），否则多出来的宽度会空在日历列内部；
+> ③ **放开「下一个月」**：可以往后翻任意未来月份，副标题加「· 未来月份，仅预览」，
+> 未来格子 `is-future` 灰显、右栏只显示「还没到这一天」不给按钮；
+> ④ 修「是不是本月」的判断（原用 `calendar.month`，而服务端会原样回传请求月份，
+> 翻月后恒为「本月」），改用 `calendar.today` 截出的 `todayMonthKey`；
+> ⑤ `points` store 新增 `calendarLoading`，连点翻月时锁住按钮。
+> > 上一版 `3.0.1`：签到日历的**节日口径与版式修正** ——
+> > ① 节日只在「正日子」写名字：国庆 10-01 写「国庆节」，连休其余天回落节气/农历，
+> > 调休上班日（如 10-10）只标「班」不带节日名（服务端 `holidayName` 同步收紧）；
+> > ② 选中某天时右栏副标题**同时**给出节日与节气（节日/节气在前、农历垫后）；
+> > ③ 删掉侧栏重复的规则入口，只留下方 `ui-card checkin-rules`；
+> > ④ `.checkin-cal-body` 改为 `auto + 320px + 居中 + 24px gap`，侧栏撑满行高、月历垂直居中。
+> > 再上一版 `3.0.0`：签到页重构为「**签到日历**」——
 > `/user/checkin` 不再只是「本月打勾表」，每格第二行显示副数据（优先级：法定节假日名 → 传统节日 →
 > 节气 → 农历日），左上角加「休 / 班」角标；顶栏下拉入口同步改名「签到日历」并换成日历图标。
 > 副数据由服务端下发（新建 `src/utils/calendarAux.js`，依赖 `chinese-days@1.5.9`），但**优先级留在前端**
@@ -25,7 +35,7 @@
 > ③ 本月账本 + 可点的「签到规则与补签说明」），宽度固定 320px；
 > **没有选择加高卡片**（高度由 7 × 64px 日历格决定，加高只会让留白更大）。
 > 再上一版 `2.6.2`：签到页档位并入月历卡 + 日期筛选（只筛显示不改统计，被筛掉的格子留小圆点占位）。
-> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `3.0.1`）。
+> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `3.1.0`）。
 >
 > **`2.6.0`**（2026-10-28）：会员两张表的表头对齐、购物车券下拉只列可用券、永久会员文案、
 > `.u-mm-benefit-next` 去 `margin-top`、跨端修复「完成订单不发成长值」（`sstc.complete_order` 迁移重建）。
@@ -450,7 +460,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Growth.vue` | 12 行的**转发薄壳**：渲染 `MemberGrowth.vue`。留着它的唯一理由是 `test/growthPage.test.js` 直接渲染这个文件路径，而路由已迁到 `/member/growth` |
 | `MemberPlans.vue` | 会员开通（`2.5.0` 重构）：身份卡 + **一张 ¥10「会员开卡资格」卡**（一次付费、永久有效、已开通时按钮换成静态文案）+「成长值怎么涨」（购买商品 / 兑换卡密两条真实入口）+ 等级阶梯（`MemberLevelLadder`，8 档）+ 结算与退款说明。**等级不再售卖**：`plans` 只剩 `member_activation` 一条，身份卡等级取 `overview.level` 而不是 `plans[].is_current`（后者会把 v3 会员显示成 V1）；开卡卡用页面级网格 `minmax(0, 480px)` 限宽（页族契约禁止页面自设 `max-width`） |
 | `Points.vue` | 积分中心：**四个页签** —— 「概览」（余额 / 折抵金额 / 积分倍率与「会员加成生效中」/ 即将过期提醒）、「流水」（原 `PointsHistory` 的类型筛选 + 分页整体并进来，只有一页时不渲染分页控件）、**「商城」（1.5.0 M3：券与实物，库存只认服务端，不可兑时先给理由再禁用按钮）**、**「任务」（1.5.0 M5：进度条 + 四态按钮，签到任务显示「自动发放」）**。页头说明「签到、消费与任务都能获得积分，100 积分可抵 ¥1」。页签值写进 `?tab=`（`normalizeTab()` 认不出回 `overview`），直接落在商城/任务的分享链接也能取到数据。列表每条**横向排版**（图标 · 名称 · 说明 · 积分/库存 一行，右侧按钮一行，两处都可换行），`≤575` 退回上下两行 —— 纵向排版会把每条记录拉到三行高，条数一多就翻不到底。**行上同时挂了全局 `.ui-card`（它是 `flex-direction: column`），所以每条列表都必须显式写 `flex-direction: row`**，`test/pointsPage.test.js` 直接读源码钉住这一点 |
-| `UserCheckin.vue` | 每日签到（**挂在个人中心下**，`/user/checkin`）：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）、奖励规则。签到与会员**结构解绑、倍率保留**：服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的 `points_multiplier` 放大积分（成长值固定 +5），所以文案是「会员等级倍率对签到积分同样生效」，不能写成消费专属。**1.6.0 M8 起可补签**：本月已经过去、且没签到的日子渲染成按钮（虚线描边 + 手型光标），点击即补（`POST /pointsApi/replenishCheckin`）；不可补签的日子同样给出理由（今天直接签到 / 已签到 / 次数用完 / 积分不足），判定与文案都在 `utils/checkinDisplay.js`，**服务端仍是最终裁决**。补签成功后必须**重拉日历** —— 服务端会重算整条连续段（含补签日之后已签到的天），只改本地那一个格子会让 `streak` 与服务端分叉。**`2.6.1` 整页重排**：状态栏（今日徽标 + 大号连续天数 + 当前档位/账户积分 + 主按钮）→ 三档积分阶梯（`checkin-tier-rail`，`is-current`/`is-reached` + 「再连签 N 天升到 X 分/天」）→ 带星期表头的月历（`leadingBlanks` 前导占位、已签实心绿 + 勾、今天描边环、可补签虚线 + 「补」角标、四项图例）→ 规则收进 `<details>`；档位数值 10/15/20 与补签成本仍与库函数手工对齐。**`2.6.2` 合并版面**：档位不再是独立卡片，`checkin-tiers` 并入 `checkin-calendar` —— `.checkin-cal-body` 两列网格（左 `.checkin-cal-main` 日期块靠左、右 `.checkin-cal-side` 档位栏 `align-items: center` 垂直居中），档位改竖排三行；卡头右上新增日期筛选 `SelectField`（全部 / 只看已签到 / 只看待签到 / 只看可补签），只筛显示不改统计（`本月已签`、`剩余补签` 恒为整月真值，另附「筛选命中 N 天」），被筛掉的格子留小圆点占位保持网格对齐，≤767px 转单列。**`2.6.3` 右栏补齐三段**：上一版合并后右栏只剩档位一块（约 225px）却占着约 480px 高，上下各空约 128px；现在 `.checkin-cal-side` 是连续侧栏，三段依次为 ① 当前档位（大号数字 + 到下一档的进度条，进度由 `checkinTierProgress()` 纯函数算，基准点是「已达成档位的最大天数」—— 用 `currentTier` 会让 streak=0 时算成满条）② 连签里程碑（三档阶梯，已达成/当前用边框与底色区分，不填实色）③ 本月账本（已签天数 / 最长连签 / 剩余补签，全部取自 `calendar.days` 与 `replenish_left`，不额外请求）+ 可点的规则行（展开 `<details ref="rulesRef">` 并 `scrollIntoView`）；右栏宽度固定 `space-unit * 40`（320px）而非 `1fr`。**`3.0.0` 重构为「签到日历」**：格子改用 `cells`（`utils/checkinCalendar.js` 的 `buildCalendarCells()` 产出 `{type:'blank'|'day'}`，前导占位与日期格共用 `.checkin-cell`，所以 `.checkin-blank` 必须显式 `border-color/background: transparent`），每格两行 —— 上行日期 + `.checkin-cell-badge`（`resolveDayBadge()` 的休/班），下行 `.checkin-cell-sub`（`resolveDaySubLabel()` 的优先级：`holidayName` → `festival` → `solarTerm` → `lunar`，≤767px 隐藏）；副数据来自服务端 `GET /pointsApi/getCheckinCalendar` 新增的 `lunar/lunarMonth/lunarDay/leap/dayType/holidayName/festival/solarTerm`（服务端 `utils/calendarAux.js`，节日走 `MAJOR_FESTIVALS` 16 项白名单）。**点格子只选中不写库**（`selectDay()`），写操作统一在右栏 `.checkin-side-detail` 的主按钮（`actOnSelected()`）—— 加副数据后一格有两个可点语义，直接补签容易误触；右栏因此四段：选中日详情 / 档位进度 / 连签里程碑 / 本月账本。月切换 `‹ / 回到今天 / ›`（`shiftMonth()` + `pointsStore.fetchCalendar({ month })`，`canGoNext` 在当前月禁用），签到成功后清掉 `currentMonth`/`selectedDate` 回到当月。漏签但补不了时只给文案「漏签，但补签次数或积分不足」（`resolveDayStatus()` 的 `options.canReplenish` 与格子虚线同口径），不给按钮 |
+| `UserCheckin.vue` | 每日签到（**挂在个人中心下**，`/user/checkin`）：连续天数、签到日历与补签（剩余补签次数来自接口的 `replenish_left`）、奖励规则。签到与会员**结构解绑、倍率保留**：服务端 `sstc.checkin` 仍按 `get_member_snapshot` 的 `points_multiplier` 放大积分（成长值固定 +5），所以文案是「会员等级倍率对签到积分同样生效」，不能写成消费专属。**1.6.0 M8 起可补签**：本月已经过去、且没签到的日子渲染成按钮（虚线描边 + 手型光标），点击即补（`POST /pointsApi/replenishCheckin`）；不可补签的日子同样给出理由（今天直接签到 / 已签到 / 次数用完 / 积分不足），判定与文案都在 `utils/checkinDisplay.js`，**服务端仍是最终裁决**。补签成功后必须**重拉日历** —— 服务端会重算整条连续段（含补签日之后已签到的天），只改本地那一个格子会让 `streak` 与服务端分叉。**`2.6.1` 整页重排**：状态栏（今日徽标 + 大号连续天数 + 当前档位/账户积分 + 主按钮）→ 三档积分阶梯（`checkin-tier-rail`，`is-current`/`is-reached` + 「再连签 N 天升到 X 分/天」）→ 带星期表头的月历（`leadingBlanks` 前导占位、已签实心绿 + 勾、今天描边环、可补签虚线 + 「补」角标、四项图例）→ 规则收进 `<details>`；档位数值 10/15/20 与补签成本仍与库函数手工对齐。**`2.6.2` 合并版面**：档位不再是独立卡片，`checkin-tiers` 并入 `checkin-calendar` —— `.checkin-cal-body` 两列网格（左 `.checkin-cal-main` 日期块靠左、右 `.checkin-cal-side` 档位栏 `align-items: center` 垂直居中），档位改竖排三行；卡头右上新增日期筛选 `SelectField`（全部 / 只看已签到 / 只看待签到 / 只看可补签），只筛显示不改统计（`本月已签`、`剩余补签` 恒为整月真值，另附「筛选命中 N 天」），被筛掉的格子留小圆点占位保持网格对齐，≤767px 转单列。**`2.6.3` 右栏补齐三段**：上一版合并后右栏只剩档位一块（约 225px）却占着约 480px 高，上下各空约 128px；现在 `.checkin-cal-side` 是连续侧栏，三段依次为 ① 当前档位（大号数字 + 到下一档的进度条，进度由 `checkinTierProgress()` 纯函数算，基准点是「已达成档位的最大天数」—— 用 `currentTier` 会让 streak=0 时算成满条）② 连签里程碑（三档阶梯，已达成/当前用边框与底色区分，不填实色）③ 本月账本（已签天数 / 最长连签 / 剩余补签，全部取自 `calendar.days` 与 `replenish_left`，不额外请求）+ 可点的规则行（展开 `<details ref="rulesRef">` 并 `scrollIntoView`）；右栏宽度固定 `space-unit * 40`（320px）而非 `1fr`。**`3.0.0` 重构为「签到日历」**：格子改用 `cells`（`utils/checkinCalendar.js` 的 `buildCalendarCells()` 产出 `{type:'blank'|'day'}`，前导占位与日期格共用 `.checkin-cell`，所以 `.checkin-blank` 必须显式 `border-color/background: transparent`），每格两行 —— 上行日期 + `.checkin-cell-badge`（`resolveDayBadge()` 的休/班），下行 `.checkin-cell-sub`（`resolveDaySubLabel()` 的优先级：`holidayName` → `festival` → `solarTerm` → `lunar`，≤767px 隐藏）；副数据来自服务端 `GET /pointsApi/getCheckinCalendar` 新增的 `lunar/lunarMonth/lunarDay/leap/dayType/holidayName/festival/solarTerm`（服务端 `utils/calendarAux.js`，节日走 `MAJOR_FESTIVALS` 16 项白名单）。**点格子只选中不写库**（`selectDay()`），写操作统一在右栏 `.checkin-side-detail` 的主按钮（`actOnSelected()`）—— 加副数据后一格有两个可点语义，直接补签容易误触；右栏因此四段：选中日详情 / 档位进度 / 连签里程碑 / 本月账本。月切换 `‹ / 回到今天 / ›`（`shiftMonth()` + `pointsStore.fetchCalendar({ month })`，**`3.1.0` 起「下一个月」不再禁用**：可以往后翻到任意未来月份，副标题加「· 未来月份，仅预览」，未来格子走 `is-future`、右栏只显示「还没到这一天」；翻月按钮用 `pointsStore.calendarLoading` 锁住防连点；「是不是本月」用 `calendar.today` 截出的 `todayMonthKey` 判断，不能用 `calendar.month` —— 服务端会把请求月份原样回传），签到成功后清掉 `currentMonth`/`selectedDate` 回到当月。漏签但补不了时只给文案「漏签，但补签次数或积分不足」（`resolveDayStatus()` 的 `options.canReplenish` 与格子虚线同口径），不给按钮 |
 | `Coupons.vue` | 我的优惠券：三态页签（**角标来自服务端的 `counts`，前端不自己数**）+ 券列表，带门槛与有效期提醒 |
 | `Invite.vue` | 邀请中心（`/invite`，**1.6.0 M8 新增**）：邀请码与邀请链接（都可一键复制，走共享的 `utils/clipboard.js`）、三态计数（已注册 / 已完成首单 / 已失效）、奖励口径（好友完成首单后双方各得多少）、进度条（满 N 人额外奖励，**每账号只发一次**）、邀请榜、邀请记录（分页）。四条纪律写在文件头：码与链接一律用服务端返回值、奖励数字不自己算、`invitee_label` 已在库内脱敏、**发奖时机是「首单」而不是「注册」**（所以 `registered` 状态显示「待完成首单」）。**2.3.0 修布局**：`.invite-code-card` 从单列 flex 改成两栏 grid —— `.ui-card` 自带 `flex-direction: column`，旧代码只覆盖 `display` 没改方向，链接块的 `flex: 1 1 30×space-unit` 被当成**高度**基准，1440 下卡高 435px、按钮下方约 150px 死白（现 198px） |
 | `Mail.vue` | 消息中心：三个页签（通知 / 通知偏好 / 邮件记录）+ 顶栏下拉入口的未读角标。通知页每条可单条或全部标为已读，**未读圆点只看服务端的 `is_read`**；偏好页六个开关直接对应 `notification_preferences` 的六列，改动只提交差异项（`master` 总开关的后果写在界面上，不藏在注释里）；邮件记录页是自查用的投递台账（状态、重试次数、时间），**不含正文**。游客能看到的是登录引导而不是空列表 |

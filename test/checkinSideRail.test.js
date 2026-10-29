@@ -85,13 +85,16 @@ test('规则入口只剩下方 details 一处，侧栏不再重复', () => {
   assert.doesNotMatch(PAGE, /function openRules/, 'openRules 随入口一起删掉')
 })
 
-test('左栏按内容宽、右栏定死 320px、两者居中且等高（3.0.1 版式）', () => {
+test('两栏按比例吃满整行、只留一个栅格间距（3.1.0 版式）', () => {
   assert.match(
     PAGE,
-    /grid-template-columns: minmax\(0, auto\) minmax\(0, calc\(var\(--space-unit\) \* 40\)\);\s*\n\s*justify-content: center;/,
-    '左栏 auto + 整体居中：不再用 space-between 把右栏推到最右',
+    /grid-template-columns: minmax\(0, 1\.45fr\) minmax\(calc\(var\(--space-unit\) \* 35\), 1fr\);\s*\n\s*justify-content: space-between;/,
+    '1.45fr : 1fr 分掉整行宽度，space-between 只保留对齐语义',
   )
-  assert.doesNotMatch(PAGE, /justify-content: space-between;\s*\n\s*align-items: center/, '旧的「居中 + 推到两边」组合必须删掉')
+  // 3.0.1 的「整体居中」必须删掉，否则又会在中间留一块
+  assert.doesNotMatch(PAGE, /\.checkin-cal-body \{[^}]*justify-content: center;/, '不能再靠居中把空白留在中间')
+  // 格子跟着列宽流体，否则宽度会空在日历列内部
+  assert.match(PAGE, /grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/)
   // 右栏撑满高度：flex 列 + space-between，四段与左侧月历上下齐平
   assert.match(PAGE, /\.checkin-cal-side \{[\s\S]*?justify-content: space-between/)
   assert.match(PAGE, /@media \(max-width: 767px\)[\s\S]*?\.checkin-cal-body \{\s*grid-template-columns: minmax\(0, 1fr\)/)

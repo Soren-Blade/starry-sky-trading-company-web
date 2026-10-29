@@ -28,6 +28,8 @@ export const usePointsStore = defineStore('points', {
   state: () => ({
     account: null,
     calendar: null,
+    // 3.1.0：放开「下一个月」后，翻月请求可能连点，用标记把翻月按钮锁住
+    calendarLoading: false,
 
     history: [],
     page: 1,
@@ -117,6 +119,7 @@ export const usePointsStore = defineStore('points', {
     },
 
     async fetchCalendar({ month } = {}) {
+      this.calendarLoading = true
       try {
         const { data } = await getCheckinCalendar(month ? { month } : undefined)
         this.calendar = data
@@ -125,6 +128,8 @@ export const usePointsStore = defineStore('points', {
         this.error = error?.message || '获取签到日历失败'
         this.calendar = null
         return null
+      } finally {
+        this.calendarLoading = false
       }
     },
 

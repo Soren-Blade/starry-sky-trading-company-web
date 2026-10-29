@@ -174,7 +174,11 @@ test('页面用 cells 渲染、点格子只选中不写库', () => {
 test('月切换走 fetchCalendar({ month })，签完回到当月', () => {
   assert.match(PAGE, /await pointsStore\.fetchCalendar\(\{ month: target \}\)/)
   assert.match(PAGE, /const viewingMonth = computed/)
-  assert.match(PAGE, /const canGoNext = computed/)
+  // 3.1.0：放开「下一个月」，只要拿到日历就能往后翻；未来月以 isFutureMonth 标记
+  assert.match(PAGE, /const isFutureMonth = computed/)
+  assert.match(PAGE, /:disabled="!calendar \|\| pointsStore\.calendarLoading"/)
+  assert.doesNotMatch(PAGE, /const canGoNext = computed/)
+  assert.match(PAGE, /v-if="isFutureMonth"> · 未来月份，仅预览/)
   // 签到成功后清掉翻月状态，否则停在旧月份看不到刚签的那天
   assert.match(PAGE, /currentMonth\.value = ''\n\s*selectedDate\.value = ''\n\s*await pointsStore\.fetchCalendar\(\)/)
 })

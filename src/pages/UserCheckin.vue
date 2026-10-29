@@ -67,6 +67,7 @@
             <span class="checkin-section-hint">
               <template v-if="calendar">
                 本月已签 {{ monthCount }} 天 · 剩余补签 {{ calendar.replenish_left }} 次
+                <template v-if="isFutureMonth"> · 未来月份，仅预览</template>
                 <template v-if="calendarFilter !== 'all'"> · 筛选命中 {{ filteredCount }} 天</template>
               </template>
             </span>
@@ -78,8 +79,9 @@
           -->
           <!--
             3.0.0 月切换：服务端 `getCheckinCalendar` 本来就接受任意 month，
-            前端只是把「上/下月 + 回到今天」接出来。往后没有意义（未来月全是空签），
-            因此「下一个月」在当前月时禁用；「回到今天」也顺手把选择清掉。
+            前端只是把「上/下月 + 回到今天」接出来。
+            3.1.0 起放开「下一个月」：未来月份的节日/节气是真实排期，值得提前看
+            （格子 `is-future` 灰显、右栏只给「还没到」，不会产生任何可执行操作）。
           -->
           <div class="checkin-cal-tools">
             <div class="checkin-month-nav">
@@ -102,7 +104,7 @@
               <button
                 type="button"
                 class="checkin-nav-btn"
-                :disabled="!canGoNext"
+                :disabled="!calendar || pointsStore.calendarLoading"
                 aria-label="下一个月"
                 @click="goMonth(1)"
               >
@@ -434,9 +436,27 @@ const checkinButtonText = computed(() => {
 const currentMonth = ref('')
 const selectedDate = ref('')
 
+/** 正在看的月份：没翻过月就跟着服务端返回的当月走 */
 const viewingMonth = computed(() => currentMonth.value || calendar.value?.month || '')
-const isCurrentMonth = computed(() => !calendar.value || viewingMonth.value === calendar.value.month)
-const canGoNext = computed(() => Boolean(calendar.value) && !isCurrentMonth.value)
+
+/**
+ * 3.1.0：判断「是不是本月」不能拿 `calendar.month` 比 —— 服务端会把请求的那个月原样返回，
+ * 翻到 11 月后 `calendar.month` 就是 `2026-11`，比出来永远是「本月」。
+ * 用 `calendar.today`（上海时区的今天）截出真·当月，翻月前后都稳定。
+ */
+const todayMonthKey = computed(() => (calendar.value?.today || '').slice(0, 7))
+const isCurrentMonth = computed(
+  () => !viewingMonth.value || !todayMonthKey.value || viewingMonth.value === todayMonthKey.value,
+)
+
+/**
+ * 3.1.0：未来月份不再禁用「下一个月」。
+ * 月历本身就是「哪天过节、哪天放假」的信息载体，提前看下个月是合理诉求；
+ * 只是未来日期一律 `is-future`、右栏只显示「还没到」，不产生可执行动作。
+ */
+const isFutureMonth = computed(
+  () => Boolean(viewingMonth.value) && Boolean(todayMonthKey.value) && viewingMonth.value > todayMonthKey.value,
+)
 
 /** 选中日：默认落在今天（不在本月时落在 1 号），翻月后重新落位 */
 const selectedDay = computed(() => {
@@ -906,16 +926,16 @@ onMounted(() => {
  * 挪到右侧同一张卡里，视线从「今天」向右就是「能拿多少」。
  */
 /*
- * 3.0.1：左栏按内容宽（7×64px 格 + 间距 ≈ 496px），右栏固定 320px，
- * 中间只留 24px gap，整体在卡片里居中 —— 两侧留白对称，不再出现「日历贴左、侧栏甩到最右」。
- * 3.0.0 是 `auto + space-between`，正是那段空白的来源。
- * 高度方向靠默认的 `align-items: stretch` + 侧栏 `justify-content: space-between`，
- * 让四段撑满，与左侧月历上下齐平。
+ * 3.1.0：两栏按比例吃掉整行宽度 —— `space-between` 只负责「最后一列贴右」的对齐语义，
+ * 剩余空间由 `1.45fr : 1fr` 分掉，中间只剩一个栅格间距（3u = 24px），
+ * 不再出现 3.0.1 那种「日历居中、侧栏 320、中间空一大块」的观感。
+ * 格子也跟着从 64px 定宽改成 1fr 流体（下面 `.checkin-grid`），否则多出来的宽度会
+ * 空在日历列内部，看起来像另一个洞。
  */
 .checkin-cal-body {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, calc(var(--space-unit) * 40));
-  justify-content: center;
+  grid-template-columns: minmax(0, 1.45fr) minmax(calc(var(--space-unit) * 35), 1fr);
+  justify-content: space-between;
   align-items: stretch;
   gap: calc(var(--space-unit) * 3);
   margin-top: calc(var(--space-unit) * 2.5);
@@ -1089,16 +1109,15 @@ onMounted(() => {
   padding: calc(var(--space-unit) * 3);
 }
 
-/* 轨道宽度（不是容器宽度）：格子是 aspect-ratio: 1 的正方形、七列等分容器宽。
- * 本页容器最宽到 --container-page-narrow，照抄 1fr 会让桌面每格被撑成 160px 的巨块，
- * 与「月份标题 + 提示」的文字层级脱节。页面不得自设 max-width（componentClasses.test.js 把关），
- * 所以这里收的是轨道：每格 8 × 8px = 64px。
- * 2.6.2 起 `justify-content: start`：月历移到卡片左侧，右侧让给档位栏。 */
+/* 3.1.0：列宽由「每格定宽 64px 的轨道」改成 1fr 流体 —— 日历列变宽时格子跟着长，
+ * 多出来的宽度才不会被留在列内右侧（那会看起来像另一个洞）。
+ * 上界由 `.checkin-cal-body` 的 `1.45fr` 比例控制（1440 宽下约 71px/格），
+ * 不会被撑成 160px 巨块。页面不得自设 max-width（componentClasses.test.js 把关）。 */
 .checkin-weekdays,
 .checkin-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 8)));
-  justify-content: start;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  justify-content: stretch;
   gap: calc(var(--space-unit) * 1);
   margin: 0;
   padding: 0;
