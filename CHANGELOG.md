@@ -9,6 +9,17 @@
 
 ---
 
+## [3.2.0] — 2026-10-29 · 签到日历：骨架屏、翻月节流、数据加载提速
+
+- **首屏骨架屏**（`UserCheckin.vue`）：日历接口回来之前，hero / 月历 / 右栏三处都渲染骨架块（`.checkin-skeleton-*`，复用 `.u-skeleton` 的闪烁动画）。此前首屏会先闪一下「0 天连续签到 / 今天还没签到 / 已签 0 天」，数字跳成真实值时才变 —— 既跳版又像「你没签到」。
+- **翻月节流**：新增 `MONTH_NAV_THROTTLE = 260` 与同步闸门 `monthNavAllowed()`，`goMonth` / `goToday` 在改状态前过闸门。翻月是「一次点击一次请求」，响应要 0.2–0.9 s，连点五下会把五次往返全打出去且互相覆盖。按钮同时按 `calendarLoading` 禁用。
+- **前端缓存 + 预取**（`stores/points.js`）：`fetchCalendar` 按月缓存 15 s（`CALENDAR_CACHE_TTL`），命中不发请求；新增 `prefetchCalendar(month)`（只写缓存、不动当前画面）与 `invalidateCalendarCache()`。首屏 `onMounted` 拿到当月后静默预取相邻两月，翻月直接命中。
+- **半截响应不再当成加载成功**：`data.days` 不是数组时不写 `calendar`、不写缓存，骨架屏继续留着 —— 否则页面会把 `{}` 当「已加载」，四栏全渲染成 0 与空网格，比一直转圈更像坏了。
+- **补签后由页面刷新**：`doReplenish` 只清缓存不再自己 `fetchCalendar`（页面知道用户翻到了哪个月），消除了原先 store 与页面各拉一次的重复请求。
+- **三列数字居中**（`align-items: center` + `text-align: center`）：三个数字宽度不同（0 / 12 / 3），靠左会让视觉重心偏左。
+- **服务端配套**（同版本）：`getCheckinCalendar` 加 10 秒 TTL 缓存并在响应头打 `X-Cache: HIT|MISS`。实测同一月份「冷 1113 ms → 热 37 ms」。
+- 未改：窄屏（≤767px）单列、副数据行隐藏、日历格子与字段口径全部不变。
+
 ## [3.1.0] — 2026-10-29 · 签到日历：两栏吃满整行、放开「下个月」提前看未来
 
 - **版式改回 `space-between`，但不再留空洞**：`.checkin-cal-body` 的列从「`auto` + 固定 320px + 整体居中」改成 `minmax(0, 1.45fr) minmax(35u, 1fr)` —— `space-between` 只保留对齐语义，剩余空间由两栏按比例分掉，中间只剩一个 24px 栅格间距。3.0.1 的居中把空白留在了中间，宽屏下更明显。

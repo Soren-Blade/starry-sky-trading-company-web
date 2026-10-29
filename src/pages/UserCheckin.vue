@@ -29,34 +29,52 @@
         签完由状态徽标 + 按钮文案同时翻面，避免「签了但看不出签了」。
       -->
       <section class="ui-card checkin-hero" :class="{ 'is-done': pointsStore.todayChecked }">
-        <div class="checkin-hero-main">
-          <p class="checkin-today">
-            <AppIcon :name="pointsStore.todayChecked ? 'check-circle' : 'clock'" />
-            <span>{{ pointsStore.todayChecked ? '今天已签到' : '今天还没签到' }}</span>
-          </p>
-          <p class="checkin-streak">
-            <strong>{{ pointsStore.streak }}</strong>
-            <span>天连续签到</span>
-          </p>
-          <p class="checkin-tier-now">
-            当前每天 <b>{{ tierPoints }}</b> 积分
-            <span v-if="pointsStore.points > 0" class="checkin-balance">
-              · 账户 {{ pointsStore.points }} 积分（可抵 ¥{{ pointsValueText }}）
-            </span>
-          </p>
-        </div>
+        <!--
+          3.2.0 骨架屏：首屏日历还没回来时，`streak` / `todayChecked` 全是 0，
+          直接渲染会先闪一下「0 天连续签到 / 今天还没签到」，然后跳成真实值。
+          先把这块占住，数据到了再换，避免数字跳动（也顺手挡住误以为没签到的错觉）。
+        -->
+        <template v-if="!calendar">
+          <div class="checkin-hero-main" aria-hidden="true">
+            <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--sm" />
+            <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--lg" />
+            <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--md" />
+          </div>
+          <div class="checkin-hero-action" aria-hidden="true">
+            <span class="u-skeleton checkin-skeleton-btn" />
+          </div>
+        </template>
 
-        <div class="checkin-hero-action">
-          <button
-            type="button"
-            class="u-btn-primary checkin-btn"
-            :disabled="pointsStore.todayChecked || pointsStore.checkingIn"
-            @click="handleCheckin"
-          >
-            {{ checkinButtonText }}
-          </button>
-          <router-link class="checkin-detail-link" :to="{ name: 'Points' }">积分明细</router-link>
-        </div>
+        <template v-else>
+          <div class="checkin-hero-main">
+            <p class="checkin-today">
+              <AppIcon :name="pointsStore.todayChecked ? 'check-circle' : 'clock'" />
+              <span>{{ pointsStore.todayChecked ? '今天已签到' : '今天还没签到' }}</span>
+            </p>
+            <p class="checkin-streak">
+              <strong>{{ pointsStore.streak }}</strong>
+              <span>天连续签到</span>
+            </p>
+            <p class="checkin-tier-now">
+              当前每天 <b>{{ tierPoints }}</b> 积分
+              <span v-if="pointsStore.points > 0" class="checkin-balance">
+                · 账户 {{ pointsStore.points }} 积分（可抵 ¥{{ pointsValueText }}）
+              </span>
+            </p>
+          </div>
+
+          <div class="checkin-hero-action">
+            <button
+              type="button"
+              class="u-btn-primary checkin-btn"
+              :disabled="pointsStore.todayChecked || pointsStore.checkingIn"
+              @click="handleCheckin"
+            >
+              {{ checkinButtonText }}
+            </button>
+            <router-link class="checkin-detail-link" :to="{ name: 'Points' }">积分明细</router-link>
+          </div>
+        </template>
       </section>
 
       <!-- ② 本月日历（左）+ 档位进度（右，垂直居中） -->
@@ -88,6 +106,7 @@
               <button
                 type="button"
                 class="checkin-nav-btn"
+                :disabled="!calendar || pointsStore.calendarLoading"
                 aria-label="上一个月"
                 @click="goMonth(-1)"
               >
@@ -123,9 +142,24 @@
         </div>
 
         <div class="checkin-cal-body">
-          <div class="checkin-cal-main">
-            <div v-if="!calendar" class="checkin-skeleton">
-              <span class="u-skeleton checkin-skeleton-line"></span>
+          <div
+            class="checkin-cal-main"
+            :class="{ 'is-loading': Boolean(calendar) && pointsStore.calendarLoading }"
+            :aria-busy="Boolean(calendar) && pointsStore.calendarLoading ? 'true' : 'false'"
+          >
+            <!-- 3.2.0 骨架屏：首屏用「星期表头 + 7×6 灰格」占位，形状与真实月历一致，数据到了不跳版 -->
+            <div
+              v-if="!calendar"
+              class="checkin-skeleton"
+              role="status"
+              aria-label="正在加载签到日历"
+            >
+              <ul class="checkin-weekdays" aria-hidden="true">
+                <li v-for="label in WEEKDAYS" :key="`sk-${label}`">{{ label }}</li>
+              </ul>
+              <div class="checkin-skeleton-grid" aria-hidden="true">
+                <span v-for="n in 42" :key="`sk-cell-${n}`" class="u-skeleton checkin-skeleton-cell" />
+              </div>
             </div>
 
             <template v-else>
@@ -190,6 +224,28 @@
             档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
           -->
           <aside class="checkin-cal-side" aria-label="签到详情">
+            <!--
+              3.2.0 骨架屏：右栏四个数字（档位 / 已签 / 最长连签 / 剩余补签）全来自日历接口，
+              首屏没数据时渲染成 0，看起来像「这个月什么都没签」。用骨架块占位更诚实。
+            -->
+            <template v-if="!calendar">
+              <div class="checkin-side-block" aria-hidden="true">
+                <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--sm" />
+                <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--lg" />
+                <span class="u-skeleton checkin-skeleton-bar" />
+              </div>
+              <div class="checkin-side-block" aria-hidden="true">
+                <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--sm" />
+                <span class="u-skeleton checkin-skeleton-line" />
+                <span class="u-skeleton checkin-skeleton-line" />
+                <span class="u-skeleton checkin-skeleton-line" />
+              </div>
+              <div class="checkin-side-block checkin-side-foot" aria-hidden="true">
+                <span class="u-skeleton checkin-skeleton-line checkin-skeleton-line--md" />
+              </div>
+            </template>
+
+            <template v-else>
             <!--
               ②-0 选中日详情：月历的天然搭档。
               点一格 → 右栏回答「这天是什么日子、我签没签、还能不能补」，
@@ -276,6 +332,7 @@
                 </div>
               </div>
             </div>
+            </template>
           </aside>
         </div>
       </section>
@@ -521,16 +578,36 @@ function badgeOf(day) {
   return resolveDayBadge(day)
 }
 
+/**
+ * 3.2.0 翻月节流（260ms，前导触发）。
+ *
+ * 翻月是「一次点击 = 一次网络请求」的动作，而且响应要 0.2–0.9 s 才回来 ——
+ * 连点五下就会打五次（服务端只有 10 秒缓存，五次里有四次是 MISS），
+ * 回来时还会互相覆盖。这里用同步节流闸门在发请求前就挡住：
+ * 只有第一次点击立刻生效，之后 260ms 内的点击直接丢弃（不影响按钮 disabled 态）。
+ */
+const MONTH_NAV_THROTTLE = 260
+let monthNavAt = 0
+
+function monthNavAllowed() {
+  const now = Date.now()
+  if (now - monthNavAt < MONTH_NAV_THROTTLE) return false
+  monthNavAt = now
+  return true
+}
+
 /** 翻月：服务端 `getCheckinCalendar` 支持任意 month，这里只负责把月份传下去 */
 async function goMonth(delta) {
   const target = shiftMonth(viewingMonth.value, delta)
   if (!target) return
+  if (!monthNavAllowed()) return
   currentMonth.value = target
   selectedDate.value = ''
   await pointsStore.fetchCalendar({ month: target })
 }
 
 async function goToday() {
+  if (!monthNavAllowed()) return
   currentMonth.value = ''
   selectedDate.value = ''
   calendarFilter.value = 'all'
@@ -669,7 +746,14 @@ async function handleCheckin() {
 
 onMounted(() => {
   if (!userStore.isLoggedIn) return
-  pointsStore.fetchCalendar()
+  pointsStore.fetchCalendar().then((data) => {
+    // 3.2.0：首屏拿到之后，静默预取相邻两个月 —— 用户翻月时就能直接命中，
+    // 不用再等一次 Neon 往返（服务端也会把这几次读打到自己的 10 秒缓存上）。
+    const month = data?.month
+    if (!month) return
+    pointsStore.prefetchCalendar(shiftMonth(month, -1))
+    pointsStore.prefetchCalendar(shiftMonth(month, 1))
+  })
   if (!pointsStore.account) pointsStore.fetchAccount()
 })
 </script>
@@ -1028,11 +1112,17 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 1);
 }
 
+/*
+ * 3.2.0：三列数字居中 —— 原来靠左排，三个数字宽度不同（0 / 12 / 3），
+ * 视觉重心落在左边，看起来像三行独立的文字而不是一组指标。
+ */
 .checkin-side-figure {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
   min-width: 0;
+  text-align: center;
 }
 
 .checkin-side-figure-value {
@@ -1334,8 +1424,67 @@ onMounted(() => {
   opacity: 0.5;
 }
 
+/* ── 3.2.0 骨架屏 ──────────────────────────────────────────── */
+
+/*
+ * 骨架只负责「占位的形状」，闪烁交给 `.u-skeleton`（ui-kit-feedback.css §16 的
+ * `--skeleton-animation-name`，五套主题各自不同）。这里刻意让骨架的尺寸与真实
+ * 内容一一对应（行高、按钮高、格子 64/72px），数据到了之后不发生跳版。
+ */
 .checkin-skeleton {
-  padding: calc(var(--space-unit) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+}
+
+.checkin-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 0.75);
+}
+
+.checkin-skeleton-cell {
+  min-height: calc(var(--space-unit) * 9.5);
+  border-radius: 10px;
+}
+
+.checkin-skeleton-line {
+  display: block;
+  height: var(--fs-label);
+  border-radius: 6px;
+}
+
+.checkin-skeleton-line--sm {
+  width: 32%;
+}
+
+.checkin-skeleton-line--md {
+  width: 56%;
+}
+
+.checkin-skeleton-line--lg {
+  width: 44%;
+  height: calc(var(--fs-h3) * 1.2);
+}
+
+.checkin-skeleton-bar {
+  display: block;
+  height: calc(var(--space-unit) * 0.75);
+  border-radius: 999px;
+}
+
+.checkin-skeleton-btn {
+  display: block;
+  width: calc(var(--space-unit) * 16);
+  height: calc(var(--space-unit) * 5);
+  border-radius: 10px;
+}
+
+/* 翻到「还没缓存」的月份时，旧月历先压暗占位，避免整块消失造成的跳动 */
+.checkin-cal-main.is-loading {
+  opacity: 0.45;
+  transition: opacity 160ms ease;
+  pointer-events: none;
 }
 
 /* ── ④ 规则（折叠） ─────────────────────────────────────────── */

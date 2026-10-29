@@ -197,10 +197,11 @@ test('reset：清掉商城清单与加载标记（换账号不该看到上一个
 
 // ── 补签（1.5.0 M4 端点 + M8 前端入口）──────────────────────────────
 
-test('doReplenish：余额用服务端快照，且补签后重新拉日历（连签会被整段重算）', async () => {
+test('doReplenish：余额用服务端快照，并清掉日历缓存（由页面决定重拉哪个月）', async () => {
   const store = freshStore()
   store.account = { points: 1010, points_value: 10.1, multiplier: 1 }
   store.calendar = { month: '2026-10', streak: 1, today_checked: true, replenish_left: 3, days: [] }
+  store.calendarCache = { '2026-10-01': { at: Date.now(), data: { month: '2026-09', days: [] } } }
 
   const stub = stubRequest({
     post: {
@@ -214,30 +215,27 @@ test('doReplenish：余额用服务端快照，且补签后重新拉日历（连
         points_value: 9.9,
       },
     },
-    get: {
-      // 重算后的日历：昨天补上后今天变成连签 2 天
-      'GET /pointsApi/getCheckinCalendar': {
-        month: '2026-10',
-        streak: 2,
-        today_checked: true,
-        replenish_left: 2,
-        days: [],
-      },
-    },
   })
   try {
     const data = await store.doReplenish('2026-10-14')
+    /*
+     * 3.2.0 起 store 不再自己拉日历：页面知道用户翻到了哪个月，
+     * 由它拿响应去刷新（否则「在 9 月补签 → store 去拉 10 月」白花一次往返）。
+     * 这里守的是「只发一次 POST + 清掉缓存」。
+     */
     assert.deepEqual(
       stub.calls.map((call) => `${call.method} ${call.url}`),
-      ['POST /pointsApi/replenishCheckin', 'GET /pointsApi/getCheckinCalendar'],
+      ['POST /pointsApi/replenishCheckin'],
     )
     assert.deepEqual(stub.calls[0].body, { date: '2026-10-14' })
     assert.equal(data.cost, 20)
     assert.equal(store.account.points, 990)
     assert.equal(store.account.points_value, 9.9)
-    // 连续天数来自服务端重算结果，不是本地 +1
-    assert.equal(store.calendar.streak, 2)
-    assert.equal(store.calendar.replenish_left, 2)
+    assert.deepEqual(store.calendarCache, {}, '补签会重算连签，缓存必须整片清掉')
+    // 连续天数来自服务端快照，不是本地 +1
+    assert.equal(data.streak, 2)
+    assert.equal(store.replenishingDate, '')
+    assert.equal(store.calendar.replenish_left, 3, 'store 不再自己重拉，页面负责刷新')
     assert.equal(store.replenishingDate, '')
   } finally {
     stub.restore()

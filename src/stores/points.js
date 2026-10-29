@@ -24,12 +24,17 @@ import {
  *    兑换成功后用响应里的 `item` 覆盖该行，不本地 -1 —— 券是「别人也在抢」的库存，
  *    本地递减会与真实值分叉。
  */
+/** 日历前端缓存有效期：服务端自己缓存 10 秒，前端稍长一点用来扛「来回翻月」 */
+const CALENDAR_CACHE_TTL = 15000
+
 export const usePointsStore = defineStore('points', {
   state: () => ({
     account: null,
     calendar: null,
     // 3.1.0：放开「下一个月」后，翻月请求可能连点，用标记把翻月按钮锁住
     calendarLoading: false,
+    // 3.2.0：按月缓存日历（key 为空串表示「今天所在月」），命中就不发请求
+    calendarCache: {},
 
     history: [],
     page: 1,
@@ -118,11 +123,36 @@ export const usePointsStore = defineStore('points', {
       this.page = 1
     },
 
-    async fetchCalendar({ month } = {}) {
+    async fetchCalendar({ month, force = false } = {}) {
+      const key = month || ''
+      /*
+       * 3.2.0：日历加一层前端短缓存（15 秒）。
+       * 服务端那条 SQL 的往返已经压到「一次往返」的地板（Neon 冷启 ~0.9 s / 热 ~0.22 s），
+       * 能减的只有「重复请求同一份数据」：翻回去看上月、在两个月之间来回切、
+       * 以及 `prefetchCalendar()` 预取的相邻月份，都走这里，不再等一次往返。
+       */
+      const hit = this.calendarCache[key]
+      if (!force && hit && Date.now() - hit.at < CALENDAR_CACHE_TTL) {
+        this.calendar = hit.data
+        this.calendarLoading = false
+        return hit.data
+      }
+
       this.calendarLoading = true
       try {
         const { data } = await getCheckinCalendar(month ? { month } : undefined)
+        /*
+         * 只有拿到「带 days 的完整快照」才算加载成功。
+         * 半截响应（`{}` / 少字段）如果照单全收，页面会把它当成「已加载」，
+         * 骨架屏退场、四栏全渲染成 0 与空网格 —— 那比一直转圈更像坏了。
+         */
+        if (!data || !Array.isArray(data.days)) {
+          this.error = '获取签到日历失败'
+          this.calendar = null
+          return null
+        }
         this.calendar = data
+        this.calendarCache[key] = { at: Date.now(), data }
         return data
       } catch (error) {
         this.error = error?.message || '获取签到日历失败'
@@ -131,6 +161,30 @@ export const usePointsStore = defineStore('points', {
       } finally {
         this.calendarLoading = false
       }
+    },
+
+    /**
+     * 预取相邻月份（3.2.0）。只写缓存，**不动 `this.calendar`** ——
+     * 用户还在看当前月，预取只是把「下一次翻月」的那次往返提前花掉。
+     */
+    async prefetchCalendar(month) {
+      if (!month) return
+      const hit = this.calendarCache[month]
+      if (hit && Date.now() - hit.at < CALENDAR_CACHE_TTL) return
+
+      try {
+        const { data } = await getCheckinCalendar({ month })
+        // 同样只缓存完整快照，半截响应留在缓存里会污染后续所有翻月
+        if (!data || !Array.isArray(data.days)) return
+        this.calendarCache[month] = { at: Date.now(), data }
+      } catch {
+        // 预取失败不影响任何交互，静默忽略
+      }
+    },
+
+    /** 签到/补签后本地与缓存都可能过期：整片清掉，下一次读必然是新的 */
+    invalidateCalendarCache() {
+      this.calendarCache = {}
     },
 
     /**
@@ -156,6 +210,8 @@ export const usePointsStore = defineStore('points', {
         const { data } = await checkin()
         // 用服务端返回的整份快照，不本地加
         this.applyBalance(data)
+        // 签到改了今天与连签：本地缓存整片作废，翻月回来才会拿到新状态
+        this.invalidateCalendarCache()
         if (this.calendar) {
           this.calendar = {
             ...this.calendar,
@@ -187,7 +243,12 @@ export const usePointsStore = defineStore('points', {
       try {
         const { data } = await replenishCheckin(target)
         this.applyBalance(data)
-        await this.fetchCalendar()
+        /*
+         * 补签重算整条连签：缓存必须作废，否则翻回该月会读到旧格子。
+         * 重新拉取交给页面（它知道用户当前翻到哪个月），store 不替页面猜月份，
+         * 否则「在 9 月补签 → store 去拉 10 月」会白花一次往返。
+         */
+        this.invalidateCalendarCache()
         return data
       } finally {
         this.replenishingDate = ''

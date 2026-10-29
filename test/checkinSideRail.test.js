@@ -53,8 +53,12 @@ test('连签进度：最高档固定 100%，负数与非法输入按 0 处理', 
 
 test('右栏由四段组成：选中日详情 / 今日档位 / 连签里程碑 / 本月账本', () => {
   const aside = PAGE.slice(PAGE.indexOf('<aside class="checkin-cal-side"'))
-  const blocks = aside.match(/class="checkin-side-block/g) || []
-  // 3.0.0 在原有三段之前加了「选中日详情」——点格子只看选中日，补签按钮搬到那里
+  /*
+   * 3.2.0 加了首屏骨架分支，骨架里也有 3 个 .checkin-side-block 占位，
+   * 所以只能数「真实内容」那一支（v-else 之后）。
+   */
+  const realBranch = aside.slice(aside.indexOf('<template v-else>'))
+  const blocks = realBranch.match(/class="checkin-side-block/g) || []
   assert.equal(blocks.length, 4, '四段：选中日详情、今日档位、连签里程碑、本月账本')
 
   assert.match(aside, /checkin-side-detail/)
