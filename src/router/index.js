@@ -153,7 +153,7 @@ const routes = [
     path: '/user/checkin',
     name: 'UserCheckin',
     component: () => import('@/pages/UserCheckin.vue'),
-    meta: { title: '每日签到 - 星辰商行', requiresAuth: true }
+    meta: { title: '签到日历 - 星辰商行', requiresAuth: true }
   },
   {
     path: '/checkin',

@@ -4,7 +4,7 @@
       <p class="page-shell-eyebrow">
         <router-link class="checkin-back" :to="{ name: 'Profile' }">个人中心</router-link>
       </p>
-      <h1 class="page-shell-title">每日签到</h1>
+      <h1 class="page-shell-title">签到日历</h1>
       <p class="page-shell-desc">
         连续签到积分更多：3 天起 15 分、7 天起 20 分；会员等级倍率对签到积分同样生效
       </p>
