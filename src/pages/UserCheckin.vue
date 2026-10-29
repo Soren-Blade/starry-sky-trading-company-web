@@ -76,13 +76,48 @@
             1.1 日期显示筛选：只筛「日历里显示哪些日子」，不改统计口径
             （本月已签 / 剩余补签仍是整月的真实数字），避免筛完数字跟着变让人以为数据丢了。
           -->
-          <SelectField
-            id="checkin-date-filter"
-            v-model="calendarFilter"
-            class="checkin-cal-filter"
-            :options="CALENDAR_FILTERS"
-            aria-label="筛选日期显示"
-          />
+          <!--
+            3.0.0 月切换：服务端 `getCheckinCalendar` 本来就接受任意 month，
+            前端只是把「上/下月 + 回到今天」接出来。往后没有意义（未来月全是空签），
+            因此「下一个月」在当前月时禁用；「回到今天」也顺手把选择清掉。
+          -->
+          <div class="checkin-cal-tools">
+            <div class="checkin-month-nav">
+              <button
+                type="button"
+                class="checkin-nav-btn"
+                aria-label="上一个月"
+                @click="goMonth(-1)"
+              >
+                <AppIcon name="chevron-left" />
+              </button>
+              <button
+                type="button"
+                class="checkin-today-btn"
+                :disabled="isCurrentMonth && !selectedOffToday"
+                @click="goToday"
+              >
+                回到今天
+              </button>
+              <button
+                type="button"
+                class="checkin-nav-btn"
+                :disabled="!canGoNext"
+                aria-label="下一个月"
+                @click="goMonth(1)"
+              >
+                <AppIcon name="chevron-right" />
+              </button>
+            </div>
+
+            <SelectField
+              id="checkin-date-filter"
+              v-model="calendarFilter"
+              class="checkin-cal-filter"
+              :options="CALENDAR_FILTERS"
+              aria-label="筛选日期显示"
+            />
+          </div>
         </div>
 
         <div class="checkin-cal-body">
@@ -96,42 +131,44 @@
                 <li v-for="label in WEEKDAYS" :key="label">{{ label }}</li>
               </ul>
 
+              <!--
+                3.0.0：格子从「点了直接补签」改成「点了选中」——
+                选中后在右栏详情里再决定签到/补签，一个格子只会触发一件事，
+                也才有位置放第二行（农历/节气/节日）与「休/班」角标。
+              -->
               <ul class="checkin-grid">
-                <li v-for="blank in leadingBlanks" :key="`blank-${blank}`" class="checkin-blank" />
                 <li
-                  v-for="day in calendar.days"
-                  :key="day.date"
+                  v-for="cell in cells"
+                  :key="cell.key"
                   class="checkin-cell"
                   :class="{
-                    'is-checked': day.checked,
-                    'is-today': day.is_today,
-                    'is-future': day.future,
-                    'is-replenishable': canReplenish(day),
-                    'is-filtered-out': !dayMatchesFilter(day),
+                    'checkin-blank': cell.type === 'blank',
+                    'is-checked': cell.type === 'day' && cell.day.checked,
+                    'is-today': cell.type === 'day' && cell.day.is_today,
+                    'is-future': cell.type === 'day' && cell.day.future,
+                    'is-replenishable': cell.type === 'day' && canReplenish(cell.day),
+                    'is-selected': cell.type === 'day' && isSelected(cell.day),
+                    'is-filtered-out': cell.type === 'day' && !dayMatchesFilter(cell.day),
                   }"
-                  :title="dayMatchesFilter(day) ? cellTitle(day) : `${dayNumber(day.date)} 日（已被筛选隐藏）`"
                 >
-                  <!--
-                    只有「可补签」的日子渲染成按钮（沿用 1.5.0 M4 的判断）：
-                    已签到、还没到的日子做成按钮会让读屏一路 Tab 过去全是无效目标。
-                    被筛掉的日子连内容都不渲染，只剩占位保持网格对齐。
-                  -->
-                  <template v-if="dayMatchesFilter(day)">
+                  <template v-if="cell.type === 'day'">
                     <button
-                      v-if="canReplenish(day)"
+                      v-if="dayMatchesFilter(cell.day)"
                       type="button"
                       class="checkin-cell-hit"
-                      :disabled="pointsStore.replenishingDate === day.date"
-                      :aria-label="cellTitle(day)"
-                      @click="handleReplenish(day)"
+                      :aria-current="isSelected(cell.day) ? 'date' : undefined"
+                      :aria-label="cellTitle(cell.day)"
+                      @click="selectDay(cell.day)"
                     >
-                      <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-                      <span class="checkin-cell-flag">补</span>
+                      <span class="checkin-cell-top">
+                        <span class="checkin-cell-day">{{ dayNumber(cell.day.date) }}</span>
+                        <span v-if="badgeOf(cell.day)" class="checkin-cell-badge" :class="`is-${cell.day.dayType}`">
+                          {{ badgeOf(cell.day) }}
+                        </span>
+                      </span>
+                      <span class="checkin-cell-sub">{{ subLabel(cell.day) }}</span>
+                      <AppIcon v-if="cell.day.checked" name="check-circle" class="checkin-cell-icon" />
                     </button>
-                    <template v-else>
-                      <span class="checkin-cell-day">{{ dayNumber(day.date) }}</span>
-                      <AppIcon v-if="day.checked" name="check-circle" class="checkin-cell-icon" />
-                    </template>
                   </template>
                 </li>
               </ul>
@@ -150,7 +187,30 @@
             与左边的月历是同一件事的两个面，分成两张卡会把视线拉成 Z 字。
             档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
           -->
-          <aside class="checkin-cal-side" aria-labelledby="checkin-tiers-title">
+          <aside class="checkin-cal-side" aria-label="签到详情">
+            <!--
+              ②-0 选中日详情：月历的天然搭档。
+              点一格 → 右栏回答「这天是什么日子、我签没签、还能不能补」，
+              补签按钮也从格子里搬到这儿（格子只负责选，避免误触直接扣积分）。
+            -->
+            <div class="checkin-side-block checkin-side-detail">
+              <p class="checkin-side-eyebrow">{{ selectedTitle }}</p>
+              <p class="checkin-side-sub">{{ selectedSubtitle }}</p>
+              <p class="checkin-side-status" :class="`is-${selectedStatus.key}`">
+                <AppIcon :name="selectedStatus.key === 'checked' ? 'check-circle' : 'clock'" />
+                <span>{{ selectedStatus.label }}</span>
+              </p>
+              <button
+                v-if="selectedStatus.action"
+                type="button"
+                class="u-btn-primary checkin-side-action"
+                :disabled="actionBusy"
+                @click="actOnSelected"
+              >
+                {{ selectedStatus.action === 'checkin' ? checkinButtonText : '补签这一天' }}
+              </button>
+            </div>
+
             <!--
               ②-1 今日档位：先回答「现在每天值多少」，再用进度条回答「还差几天」。
               三段共用一条左对齐轴与全宽分隔线，读起来是一个侧栏而不是四张卡。
@@ -268,6 +328,14 @@ import { usePointsStore } from '@/stores/points.js'
 import { useUserStore } from '@/stores/user.js'
 import { formatPointsValue, REPLENISH_COST, REPLENISH_MONTHLY_LIMIT } from '@/constants/member.js'
 import {
+  buildCalendarCells,
+  formatDayTitle,
+  resolveDayBadge,
+  resolveDayStatus,
+  resolveDaySubLabel,
+  shiftMonth,
+} from '@/utils/checkinCalendar.js'
+import {
   canReplenishDay,
   checkinCellTitle,
   checkinTierProgress,
@@ -372,15 +440,109 @@ const checkinButtonText = computed(() => {
 })
 
 /**
- * 月历第一行要空几格：服务端 `days` 是整月 1 号起的连续日期（没有前导占位），
- * 这里按「周一开头」补占位，否则 1 号是周三时会显示在周一的位置上。
+ * 3.0.0 月历状态。
+ *
+ * `currentMonth` 为空表示「跟着服务端返回的当月走」——这样签到、补签之后
+ * 调 `fetchCalendar()` 不用自己算今天是哪个月；只有用户翻了月才写死月份。
  */
-const leadingBlanks = computed(() => {
-  const first = calendar.value?.days?.[0]?.date
-  if (!first) return 0
-  const weekday = new Date(`${String(first).slice(0, 10)}T00:00:00`).getDay()
-  return (weekday + 6) % 7
+const currentMonth = ref('')
+const selectedDate = ref('')
+
+const viewingMonth = computed(() => currentMonth.value || calendar.value?.month || '')
+const isCurrentMonth = computed(() => !calendar.value || viewingMonth.value === calendar.value.month)
+const canGoNext = computed(() => Boolean(calendar.value) && !isCurrentMonth.value)
+
+/** 选中日：默认落在今天（不在本月时落在 1 号），翻月后重新落位 */
+const selectedDay = computed(() => {
+  const list = calendar.value?.days || []
+  const hit = selectedDate.value ? list.find((day) => day.date === selectedDate.value) : null
+  if (hit) return hit
+  return list.find((day) => day.is_today) || list[0] || null
 })
+
+const todayIso = computed(() => calendar.value?.today || '')
+
+/** 「回到今天」按钮只在「翻到了别的月」或「选了非今天的日期」时可点 */
+const selectedOffToday = computed(() => Boolean(selectedDate.value) && selectedDate.value !== todayIso.value)
+
+const selectedStatus = computed(() =>
+  resolveDayStatus(selectedDay.value, todayIso.value, {
+    // 与格子的虚线口径保持一致：次数或积分不够时右栏也不给补签按钮
+    canReplenish: selectedDay.value ? canReplenish(selectedDay.value) : false,
+  }),
+)
+
+const selectedTitle = computed(() => formatDayTitle(selectedDay.value?.date || ''))
+
+const selectedSubtitle = computed(() => {
+  const day = selectedDay.value
+  if (!day) return ''
+  const parts = []
+  if (day.lunarMonth) {
+    // 初一只写月名（「农历 九月」），其余写「农历 八月廿八」
+    parts.push(`农历 ${day.lunarMonth}${Number(day.lunarDay) === 1 ? '' : day.lunar || ''}`)
+  }
+  if (day.solarTerm) parts.push(day.solarTerm)
+  if (day.festival && day.festival !== day.holidayName) parts.push(day.festival)
+  if (day.holidayName) parts.push(day.holidayName)
+  return parts.join(' · ')
+})
+
+const actionBusy = computed(() => pointsStore.checkingIn || Boolean(pointsStore.replenishingDate))
+
+/** 格子：前导占位 + 整月日期，占位让 1 号落在正确的星期列 */
+const cells = computed(() => buildCalendarCells(calendar.value?.days || []))
+
+function isSelected(day) {
+  return Boolean(day) && Boolean(selectedDay.value) && day.date === selectedDay.value.date
+}
+
+function selectDay(day) {
+  if (!day) return
+  selectedDate.value = day.date
+}
+
+function subLabel(day) {
+  return resolveDaySubLabel(day)
+}
+
+function badgeOf(day) {
+  return resolveDayBadge(day)
+}
+
+/** 翻月：服务端 `getCheckinCalendar` 支持任意 month，这里只负责把月份传下去 */
+async function goMonth(delta) {
+  const target = shiftMonth(viewingMonth.value, delta)
+  if (!target) return
+  currentMonth.value = target
+  selectedDate.value = ''
+  await pointsStore.fetchCalendar({ month: target })
+}
+
+async function goToday() {
+  currentMonth.value = ''
+  selectedDate.value = ''
+  calendarFilter.value = 'all'
+  await pointsStore.fetchCalendar()
+}
+
+/** 右栏详情里的主操作：今天→签到；过去漏签→补签 */
+async function actOnSelected() {
+  const day = selectedDay.value
+  if (!day) return
+  if (selectedStatus.value.action === 'checkin') {
+    await handleCheckin()
+    return
+  }
+  if (selectedStatus.value.action === 'replenish') {
+    await handleReplenish(day)
+  }
+}
+
+/** 翻着月看的时候刷新，必须留在用户当前看的月份上 */
+async function refreshCalendar() {
+  await pointsStore.fetchCalendar(currentMonth.value ? { month: currentMonth.value } : undefined)
+}
 
 const legend = [
   { label: '已签到', mark: 'is-checked' },
@@ -454,11 +616,13 @@ async function handleReplenish(day) {
     notify.success(
       `已补签 ${day.date}（消耗 ${result.cost} 积分，本月还可补签 ${result.replenish_left} 次）`,
     )
+    // 补签会改「已签 / 剩余次数 / 连签」，留在当前翻到的月份上刷新
+    await refreshCalendar()
   } catch (error) {
     // 四种失败码各有各的说法（超出月度上限 / 这天已签 / 跨月或未来 / 积分不够）
     notify.error(replenishErrorMessage(error))
     // 失败也可能是「日历已经过期」（比如另一个标签页刚补过），重新拉一次对齐
-    await pointsStore.fetchCalendar()
+    await refreshCalendar()
   }
 }
 
@@ -481,7 +645,10 @@ async function handleCheckin() {
     } else {
       notify.success(`签到成功，获得 ${result.awarded} 积分（连签 ${result.streak} 天）`)
     }
-    // 日历里的连签与今日状态由服务端维护，签完重新拉一次保证一致
+    // 日历里的连签与今日状态由服务端维护，签完重新拉一次保证一致；
+    // 同时把视图拉回当月 —— 停在旧月份会看不到刚签的那一天
+    currentMonth.value = ''
+    selectedDate.value = ''
     await pointsStore.fetchCalendar()
   } catch (error) {
     // 服务端不可达与业务失败都给同一句提示：用户能做的动作只有重试
@@ -635,6 +802,111 @@ onMounted(() => {
 .checkin-cal-filter {
   flex: 0 0 auto;
   width: calc(var(--space-unit) * 30);
+}
+
+/* 月切换与筛选并排；窄屏时改成两行，筛选器占满一行 */
+.checkin-cal-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space-unit) * 1.5);
+  flex: 0 0 auto;
+}
+
+.checkin-month-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+.checkin-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 4.5);
+  height: calc(var(--space-unit) * 4.5);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.checkin-nav-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--ec-action-primary-dim);
+}
+
+.checkin-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.checkin-today-btn {
+  height: calc(var(--space-unit) * 4.5);
+  padding: 0 calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--ec-border-subtle);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-label);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.checkin-today-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.checkin-today-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 右栏第一段：选中日详情（3.0.0） */
+.checkin-side-eyebrow {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.checkin-side-sub {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.checkin-side-status {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+
+.checkin-side-status.is-checked {
+  color: var(--ec-success);
+}
+
+.checkin-side-status.is-today-pending {
+  color: var(--accent);
+}
+
+.checkin-side-status.is-missed {
+  color: var(--ec-warning-text);
+}
+
+.checkin-side-action {
+  width: 100%;
+  margin-top: calc(var(--space-unit) * 0.5);
 }
 
 /*
@@ -895,16 +1167,29 @@ onMounted(() => {
   text-align: center;
 }
 
-.checkin-blank {
+/*
+ * 前导占位与日期格共用 `.checkin-cell`（网格列宽要一致），
+ * 所以必须把格子的边框与底色显式去掉，否则月初会出现一排空方块。
+ *
+ * 用 `.checkin-grid .checkin-blank` 而不是单个类：`.checkin-cell` 在本文件里定义得更晚，
+ * 同为 0,1,0 时后者胜出，单价选择器会被它的 `border`/`background` 盖掉（已踩过一次）。
+ */
+.checkin-grid .checkin-blank {
   aspect-ratio: 1;
+  border-color: transparent;
+  background: transparent;
 }
 
+/*
+ * 3.0.0：格子从 64×64 的正方形改成 76px 高的竖长条 —— 第二行（农历/节气/节日）
+ * 需要一条独立基线，挤在正方形里会把日期数字压扁。宽度仍由 7 等分决定。
+ */
 .checkin-cell {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1;
+  min-height: calc(var(--space-unit) * 9.5);
   border: 1px solid var(--ec-border-subtle);
   border-radius: 10px;
   background: var(--bg-surface-2);
@@ -924,11 +1209,21 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
+/*
+ * 选中：底色提亮 + 边框换成主色。**不用外描边环**，
+ * 因为「今天」已经占用了 box-shadow 这个通道，两环叠在一起会变成双层描边。
+ */
+.checkin-cell.is-selected {
+  border-color: var(--accent);
+  background: var(--ec-action-primary-dim);
+  color: var(--text-primary);
+}
+
 .checkin-cell.is-future {
   opacity: 0.5;
 }
 
-/* 可补签：虚线 + 角标「补」，与「已签到」的实线实心明确区分 */
+/* 可补签：虚线 + 主色，与「已签到」的实线实心明确区分 */
 .checkin-cell.is-replenishable {
   border-style: dashed;
   border-color: var(--ec-action-primary-border);
@@ -940,13 +1235,17 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
+  gap: 1px;
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 0.75);
   border: none;
   border-radius: inherit;
   background: transparent;
   color: inherit;
   font: inherit;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -954,19 +1253,54 @@ onMounted(() => {
   cursor: progress;
 }
 
-.checkin-cell-flag {
-  position: absolute;
-  top: 2px;
-  right: 3px;
+.checkin-cell-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+}
+
+.checkin-cell-day {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.1;
+}
+
+/* 休 / 班：12px 放不下两个字，用单字 + 语义色区分 */
+.checkin-cell-badge {
   font-size: 10px;
+  font-weight: var(--fw-label);
   line-height: 1;
-  color: var(--accent);
+}
+
+.checkin-cell-badge.is-holiday {
+  color: var(--ec-danger);
+}
+
+.checkin-cell-badge.is-workday {
+  color: var(--ec-warning-text);
+}
+
+/* 第二行只放一条（优先级见 `resolveDaySubLabel`），超长省略而不是换行 */
+.checkin-cell-sub {
+  display: block;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkin-cell.is-checked .checkin-cell-sub {
+  color: var(--ec-success);
 }
 
 .checkin-cell-icon {
   position: absolute;
-  bottom: 3px;
-  font-size: 11px;
+  right: 3px;
+  bottom: 2px;
+  font-size: 10px;
 }
 
 .checkin-legend {
@@ -1081,6 +1415,12 @@ onMounted(() => {
     width: 100%;
   }
 
+  /* 窄屏把月切换与筛选各占一行，避免挤成两个半截控件 */
+  .checkin-cal-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .checkin-section-head {
     flex-direction: column;
     align-items: flex-start;
@@ -1094,6 +1434,19 @@ onMounted(() => {
   .checkin-weekdays,
   .checkin-grid {
     grid-template-columns: repeat(7, minmax(0, calc(var(--space-unit) * 5.5)));
+  }
+
+  /*
+   * 窄屏格子只有 44px 宽，第二行（农历/节气）会被压成两个字一行 ——
+   * 宁可只留日期数字，也不要在手机上塞一条读不全的副标题。
+   * 副数据在右栏详情里仍然完整（选中日那里会写「农历 八月廿八 · 寒露」）。
+   */
+  .checkin-cell-sub {
+    display: none;
+  }
+
+  .checkin-cell {
+    min-height: calc(var(--space-unit) * 6.5);
   }
 }
 </style>

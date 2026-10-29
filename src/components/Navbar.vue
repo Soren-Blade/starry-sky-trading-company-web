@@ -309,8 +309,10 @@
               卡密管理
             </router-link>
             <!--
-              每日签到归「账号资产」而不是会员那一组：非会员同样每天签到赚积分，
+              签到归「账号资产」而不是会员那一组：非会员同样每天签到赚积分，
               它是个人中心功能（`/user/checkin`），不是会员门槛。
+              3.0.0 起页面本身是「日历 + 日详情」，入口文案随之改成「签到日历」——
+              名字要跟点进去看到的东西一致，否则「每日签到」会让人以为是一键按钮。
             -->
             <router-link
               role="menuitem"
@@ -318,8 +320,8 @@
               to="/user/checkin"
               @click="handleMenuClick"
             >
-              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="check-circle" /></span>
-              每日签到
+              <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="calendar" /></span>
+              签到日历
             </router-link>
 
             <!--

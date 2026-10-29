@@ -51,11 +51,15 @@ test('连签进度：最高档固定 100%，负数与非法输入按 0 处理', 
   assert.equal(checkinTierProgress(3, []).percent, 100)
 })
 
-test('右栏由三段组成：今日档位 / 连签里程碑 / 本月账本', () => {
+test('右栏由四段组成：选中日详情 / 今日档位 / 连签里程碑 / 本月账本', () => {
   const aside = PAGE.slice(PAGE.indexOf('<aside class="checkin-cal-side"'))
   const blocks = aside.match(/class="checkin-side-block/g) || []
-  assert.equal(blocks.length, 3, '三段：今日档位、连签里程碑、本月账本')
+  // 3.0.0 在原有三段之前加了「选中日详情」——点格子只看选中日，补签按钮搬到那里
+  assert.equal(blocks.length, 4, '四段：选中日详情、今日档位、连签里程碑、本月账本')
 
+  assert.match(aside, /checkin-side-detail/)
+  assert.match(aside, /selectedTitle/)
+  assert.match(aside, /selectedStatus\.action === 'checkin'/)
   assert.match(aside, /id="checkin-tiers-title"/)
   assert.match(aside, /连签里程碑/)
   assert.match(aside, /已签天数[\s\S]*最长连签[\s\S]*剩余补签/)
