@@ -22,7 +22,9 @@ import { formatUtils } from '@/utils/index.js'
 const props = defineProps({
   orderNo: { type: String, required: true },
   amountFen: { type: Number, default: 0 },
-  amountYuan: { type: String, default: '' },
+  // 接口下发的是字符串（`"0.01"`），页面里的 computed 也可能给出 Number —— 两种都收，
+  // 只做展示，不参与任何金额计算（比较一律用 amountFen 的整数分）。
+  amountYuan: { type: [String, Number], default: '' },
   payMethods: { type: Array, default: () => ['alipay', 'wxpay'] },
 })
 
@@ -49,9 +51,14 @@ const isWechat = /MicroMessenger/i.test(ua)
 const isMobile = /Mobile|Android|iPhone|iPad|iPod/i.test(ua)
 
 /** 金额展示用服务端的 fen，不自己从订单算（口径只有服务端一处） */
-const amountText = computed(() =>
-  props.amountYuan || formatUtils.formatPrice(props.amountFen / 100, { prefix: '', decimals: 2 })
-)
+const amountText = computed(() => {
+  const raw = props.amountYuan
+  if (raw !== '' && raw !== null && raw !== undefined) {
+    const numeric = Number(raw)
+    if (Number.isFinite(numeric)) return numeric.toFixed(2)
+  }
+  return formatUtils.formatPrice(props.amountFen / 100, { prefix: '', decimals: 2 })
+})
 
 const methods = computed(() =>
   (props.payMethods || []).map((value) => ({
