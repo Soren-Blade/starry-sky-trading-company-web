@@ -177,13 +177,18 @@
         />
       </section>
 
-      <!-- 状态时间线：只列出已经发生过的节点 -->
+      <!-- 状态时间线：只列出已经发生过的节点，顺序必须是真实发生的先后
+           （下单 → 已支付 → 已完成 → 已退款；已取消是替代分支）。 -->
       <section class="page-panel">
         <h2 class="page-panel-head">状态流转</h2>
         <ol class="timeline">
           <li class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
             <span class="timeline-text">下单 {{ toDate(order.created_at) }}</span>
+          </li>
+          <li v-if="order.paid_at" class="timeline-item timeline-item--done">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="timeline-text">已支付 {{ toDate(order.paid_at) }}</span>
           </li>
           <li v-if="order.completed_at" class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
@@ -192,10 +197,6 @@
           <li v-if="order.cancelled_at" class="timeline-item timeline-item--cancelled">
             <span class="timeline-dot" aria-hidden="true"></span>
             <span class="timeline-text">已取消 {{ toDate(order.cancelled_at) }}</span>
-          </li>
-          <li v-if="order.paid_at" class="timeline-item timeline-item--done">
-            <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">已支付 {{ toDate(order.paid_at) }}</span>
           </li>
           <li v-if="order.refunded_at" class="timeline-item timeline-item--cancelled">
             <span class="timeline-dot" aria-hidden="true"></span>
