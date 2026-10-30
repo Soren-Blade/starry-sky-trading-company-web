@@ -150,6 +150,25 @@
         </dl>
       </section>
 
+      <!-- 卡密：卡密类商品在订单变为「已支付」时由服务端发放，这里只展示与复制 -->
+      <section v-if="cards.length" class="page-panel">
+        <h2 class="page-panel-head">{{ TRADE.orderCards }}</h2>
+
+        <ul class="detail-cards">
+          <li v-for="card in cards" :key="card.card_no" class="detail-card">
+            <div class="detail-card-main">
+              <p class="detail-card-name">{{ card.product_title || card.card_name || TRADE.orderCards }}</p>
+              <code class="detail-card-no">{{ card.card_no }}</code>
+            </div>
+            <button type="button" class="link-btn detail-card-copy" @click="copyCard(card.card_no)">
+              {{ TRADE.orderCardCopy }}
+            </button>
+          </li>
+        </ul>
+
+        <p class="page-note">{{ TRADE.orderCardsHint }}</p>
+      </section>
+
       <!-- 备注与联系信息：下单时填过才显示，空字段不占位 -->
       <section v-if="order.contact || order.remark" class="page-panel">
         <h2 class="page-panel-head">联系与备注</h2>
@@ -290,6 +309,8 @@ const breadcrumbItems = [
 ]
 
 const order = ref(null)
+/** 本单已发放的卡密（非卡密订单恒为空数组） */
+const cards = ref([])
 const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
@@ -367,6 +388,8 @@ const load = async () => {
       return
     }
     order.value = result.data.order
+    // 卡密类订单随详情一起下发；非卡密订单是空数组（服务端保证），据此整块不渲染
+    cards.value = Array.isArray(result.data.cards) ? result.data.cards : []
     if (result.data.payment_notice) paymentNotice.value = result.data.payment_notice
     payEnabled.value = result.data?.pay_enabled === true
     payMethods.value = Array.isArray(result.data?.pay_methods) ? result.data.pay_methods : []
@@ -387,6 +410,13 @@ const handlePaid = async () => {
 const copyOrderNo = async () => {
   const result = await copyText(orderNo.value)
   if (result.ok) notify.success(TRADE.orderCopied)
+  else notify.error(result.message)
+}
+
+/** 复制卡密：卡密是一长串码，手抄容易错位，必须给一键复制 */
+const copyCard = async (cardNo) => {
+  const result = await copyText(String(cardNo || ''))
+  if (result.ok) notify.success(TRADE.orderCardCopied)
   else notify.error(result.message)
 }
 
@@ -569,6 +599,51 @@ a.detail-title:hover {
   font-size: var(--fs-sm);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
+}
+
+/* 卡密：一张卡一行，号码用等宽字体（避免 0/O、1/l 混淆），复制按钮靠右 */
+.detail-cards {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.25);
+  margin: 0 0 calc(var(--space-unit) * 1.5);
+  padding: 0;
+  list-style: none;
+}
+
+.detail-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  background: var(--bg-surface-2);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-input);
+}
+
+.detail-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
+}
+
+.detail-card-name {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.detail-card-no {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.detail-card-copy {
+  flex-shrink: 0;
 }
 
 .detail-totals {

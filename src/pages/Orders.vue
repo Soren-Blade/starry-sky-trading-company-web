@@ -11,20 +11,31 @@
       <span class="u-tag u-tag--accent">{{ pagination.total }} 笔</span>
     </header>
 
-    <!-- 状态筛选：胶囊页签，与收藏页同构 -->
-    <div class="orders-tabs" role="tablist" aria-label="订单状态">
-      <button
-        v-for="tabItem in statusTabs"
-        :key="tabItem.value"
-        type="button"
-        role="tab"
-        class="orders-tab"
-        :class="{ 'orders-tab--active': status === tabItem.value }"
-        :aria-selected="status === tabItem.value"
-        @click="changeStatus(tabItem.value)"
-      >
-        {{ tabItem.label }}
-      </button>
+    <!-- 状态筛选：胶囊页签，与收藏页同构；右侧固定一个搜索框（订单号或商品名） -->
+    <div class="orders-toolbar">
+      <div class="orders-tabs" role="tablist" aria-label="订单状态">
+        <button
+          v-for="tabItem in statusTabs"
+          :key="tabItem.value"
+          type="button"
+          role="tab"
+          class="orders-tab"
+          :class="{ 'orders-tab--active': status === tabItem.value }"
+          :aria-selected="status === tabItem.value"
+          @click="changeStatus(tabItem.value)"
+        >
+          {{ tabItem.label }}
+        </button>
+      </div>
+
+      <div class="orders-search">
+        <SearchBar
+          v-model="keywordInput"
+          label="搜索订单号或商品名"
+          placeholder="搜索订单号或商品名"
+          :show-submit="false"
+        />
+      </div>
     </div>
 
     <div v-if="loading" class="u-loading-block" role="status">
@@ -175,12 +186,15 @@
  * 失败时按状态码给不同处理：404 说明这笔订单已经不是当前账号的了（或已删除），
  * 此时刷新列表；409 说明状态变了（例如另一个标签页刚取消过），同样刷新。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index'
+import payment from '@/api/ask/payment'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import AppAlert from '@/components/AppAlert.vue'
+import SearchBar from '@/components/SearchBar.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
@@ -196,6 +210,8 @@ import {
 } from '@/constants/order.js'
 
 const themeStore = useThemeStore()
+const route = useRoute()
+const router = useRouter()
 
 /** 面包屑：订单一览属于账户中心下的二级页，给一条回首页/回个人中心的路 */
 const breadcrumbItems = [
@@ -207,6 +223,11 @@ const orders = ref([])
 const loading = ref(true)
 const error = ref('')
 const status = ref('all')
+/** 搜索框里正在输入的内容（不直接触发请求，防抖后再落到 keyword） */
+const keywordInput = ref('')
+/** 已生效的搜索词：请求参数用它，避免每敲一个字都发一次请求 */
+const keyword = ref('')
+let searchTimer = null
 const paymentNotice = ref(PRODUCT_GRID.paymentNotice)
 /** 服务端是否已配置支付通道：决定「去支付」「确认完成」是否出现（未配置时保留线下结算流程） */
 const payEnabled = ref(false)
@@ -252,6 +273,7 @@ const fetchOrders = async (page = 1) => {
   try {
     const params = { page, limit: pagination.value.limit }
     if (status.value !== 'all') params.status = status.value
+    if (keyword.value) params.keyword = keyword.value
 
     const result = await api.getOrders(params)
     if (!result?.success) {
@@ -278,6 +300,20 @@ const changeStatus = (value) => {
   status.value = value
   fetchOrders(1)
 }
+
+/**
+ * 搜索防抖 300ms：订单列表每次请求都要连数据库，
+ * 逐字发请求既浪费往返也让输入框发卡（列表整块被 loading 替换）。
+ */
+watch(keywordInput, (value) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    const next = String(value || '').trim()
+    if (next === keyword.value) return
+    keyword.value = next
+    fetchOrders(1)
+  }, 300)
+})
 
 const goPage = (page) => {
   if (page < 1) return
@@ -329,8 +365,53 @@ const handleComplete = async (order) => {
 }
 
 onMounted(() => {
+  handleGatewayReturn()
   fetchOrders(1)
 })
+
+onUnmounted(() => {
+  if (searchTimer) clearTimeout(searchTimer)
+})
+
+/**
+ * 支付网关回跳（手机端扫码后跳回本站）。
+ *
+ * 网关会把一整串参数原样拼在 `YIPAY_RETURN_URL` 后面
+ * （`out_trade_no` / `trade_no` / `trade_status` / `money` …），
+ * 所以这里**只认 `out_trade_no`，并且要把它还原成订单号**：
+ * 支付单号是 `订单号-尝试序号`（`PAY001-UI-001-1`），订单号本身也可能带连字符，
+ * 因此只能从末尾按 `-数字` 剥，不能 `split('-')[0]`。
+ *
+ * 拿到订单号后重新问一次服务端（按需对账会顺带向网关确认），
+ * 这样即使回调还没到，用户也能立刻看到「已支付」，而不是盯着旧状态。
+ */
+const handleGatewayReturn = async () => {
+  const outTradeNo = String(route.query.out_trade_no || '').trim()
+  if (!outTradeNo) return
+
+  const orderNo = outTradeNo.replace(/-\d+$/, '')
+  if (!orderNo) return
+
+  // 回跳参数只用于定位，不展示；立刻从地址栏抹掉，
+  // 否则用户刷新页面会重复弹一次提示，分享出去的链接也会带着别人的交易号。
+  router.replace({ path: route.path, query: {} })
+
+  try {
+    const result = await payment.getPaymentStatus({ order_no: orderNo })
+    const paid = result?.data?.payment?.status === 'paid'
+    if (paid) notify.success('支付成功，订单已更新为「已支付」')
+    else notify.info('已回到订单列表，支付结果以订单状态为准')
+  } catch (err) {
+    // 回跳只是「顺路的提示」，失败不该打断页面：列表本身会显示真实状态
+    if (err?.status !== 401) notify.info('已回到订单列表')
+  }
+
+  // 有搜索词时先把搜索清掉，否则刚付的那笔可能被过滤掉，看起来像没成功
+  if (keyword.value) {
+    keywordInput.value = ''
+    keyword.value = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -339,11 +420,25 @@ onMounted(() => {
  * 卡片复用 .page-panel 外壳，只写订单特有的「订单号 / 缩略图 / 金额 / 动作」四段。
  */
 
+/* 页签与搜索框同一行：页签左、搜索右；窄屏自动换行，搜索框独占一行 */
+.orders-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: var(--section-gap);
+}
+
 .orders-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: calc(var(--space-unit));
-  margin-bottom: var(--section-gap);
+}
+
+.orders-search {
+  flex: 0 1 260px;
+  min-width: 180px;
 }
 
 .orders-tab {

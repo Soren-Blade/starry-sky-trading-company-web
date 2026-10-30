@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="卡密商品">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1f2430"/>
+      <stop offset="100%" stop-color="#2b2f3d"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#8f95ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="140" y="200" width="360" height="240" rx="28"/>
+    <circle cx="212" cy="272" r="20"/>
+    <path d="M212 292v56"/>
+    <path d="M300 272h140"/>
+    <path d="M300 320h96"/>
+    <path d="M300 368h120"/>
+  </g>
+  <text x="320" y="530" fill="#c9cdf5" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="34" text-anchor="middle" letter-spacing="6">CARD KEY</text>
+</svg>

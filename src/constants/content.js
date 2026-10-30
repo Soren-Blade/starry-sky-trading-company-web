@@ -306,6 +306,17 @@ export const TRADE = {
   orderNo: '订单号',
   orderCopyNo: '复制订单号',
   orderCopied: '订单号已复制',
+  /**
+   * 卡密类商品的交付区（3.5.0）。
+   *
+   * 文案强调「随订单发放、可随时回来查看」：卡密是一次性交付物，
+   * 用户最怕的是「关掉页面就再也找不回来」，所以要明确告诉他这里一直都在。
+   */
+  orderCards: '卡密',
+  orderCardsHint: '卡密已随本订单发放，随时可以回到这个页面查看。',
+  orderCardCopy: '复制卡密',
+  orderCardCopied: '卡密已复制',
+  orderCardsPending: '正在发放卡密，稍后刷新本页即可看到。',
   orderFilterAll: '全部',
   orderNotFound: '订单不存在或无权查看',
   ordersLoginFirst: '请先登录账号后再查看订单',
