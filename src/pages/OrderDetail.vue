@@ -55,7 +55,9 @@
         </div>
 
         <div class="order-head-side">
-          <span class="u-tag" :class="statusTagClass(order.status)">{{ order.status_text }}</span>
+          <span class="u-tag" :class="statusTagClass(order.status)">
+            {{ order.status_text || orderStatusLabel(order.status) }}
+          </span>
           <button type="button" class="link-btn" @click="copyOrderNo">
             {{ TRADE.orderCopyNo }}
           </button>
@@ -163,6 +165,18 @@
         </dl>
       </section>
 
+      <!-- 在线支付：仅待付款且服务端已配置支付通道时出现（未配置时保留线下结算流程） -->
+      <section v-if="order.status === 'pending' && payEnabled" class="page-panel">
+        <h2 class="page-panel-head">在线支付</h2>
+        <PaymentPanel
+          :order-no="order.order_no"
+          :amount-fen="amountFen"
+          :amount-yuan="payableAmount"
+          :pay-methods="payMethods"
+          @paid="handlePaid"
+        />
+      </section>
+
       <!-- 状态时间线：只列出已经发生过的节点 -->
       <section class="page-panel">
         <h2 class="page-panel-head">状态流转</h2>
@@ -179,9 +193,17 @@
             <span class="timeline-dot" aria-hidden="true"></span>
             <span class="timeline-text">已取消 {{ toDate(order.cancelled_at) }}</span>
           </li>
-          <li v-if="order.status === 'pending'" class="timeline-item timeline-item--todo">
+          <li v-if="order.paid_at" class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">等待线下结算后确认完成</span>
+            <span class="timeline-text">已支付 {{ toDate(order.paid_at) }}</span>
+          </li>
+          <li v-if="order.refunded_at" class="timeline-item timeline-item--cancelled">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="timeline-text">已退款 {{ toDate(order.refunded_at) }}</span>
+          </li>
+          <li v-if="pendingTodoNote" class="timeline-item timeline-item--todo">
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <span class="timeline-text">{{ pendingTodoNote }}</span>
           </li>
         </ol>
       </section>
@@ -191,7 +213,7 @@
           {{ TRADE.orderBackToList }}
         </router-link>
         <button
-          v-if="order.status === 'pending'"
+          v-if="canCancel(order.status)"
           type="button"
           class="u-btn-secondary"
           :disabled="busy"
@@ -200,7 +222,7 @@
           {{ TRADE.orderCancel }}
         </button>
         <button
-          v-if="order.status === 'pending'"
+          v-if="canConfirmComplete(order.status, payEnabled)"
           type="button"
           class="u-btn-primary"
           :disabled="busy"
@@ -230,6 +252,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
+import PaymentPanel from '@/components/PaymentPanel.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
@@ -238,6 +261,12 @@ import { copyText } from '@/utils/clipboard.js'
 import { settlementRows } from '@/utils/checkout.js'
 import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
+import {
+  orderStatusLabel,
+  orderStatusTagClass,
+  canCancel,
+  canConfirmComplete,
+} from '@/constants/order.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -255,6 +284,10 @@ const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
 const paymentNotice = ref(PRODUCT_GRID.paymentNotice)
+/** 服务端是否已配置支付通道；未配置时详情页不出现支付面板，按钮回到线下结算的老流程 */
+const payEnabled = ref(false)
+/** 支持的支付方式，由服务端下发（未配置时为空数组） */
+const payMethods = ref([])
 
 /**
  * 是否展示「下单成功」结果块。
@@ -283,11 +316,33 @@ const settlementTotal = computed(() =>
   formatUtils.splitPrice(order.value?.payable_amount ?? order.value?.total_amount, currency.value)
 )
 
-const statusTagClass = (value) => {
-  if (value === 'completed') return 'u-tag--success'
-  if (value === 'cancelled') return 'u-tag--danger'
-  return 'u-tag--warning'
-}
+const statusTagClass = (value) => orderStatusTagClass(value)
+
+/** 支付金额（整数分）与展示金额：两者都取实付口径 payable_amount ?? total_amount */
+const payableAmount = computed(() => {
+  const value = order.value?.payable_amount ?? order.value?.total_amount
+  return value === null || value === undefined ? null : Number(value)
+})
+const amountFen = computed(() =>
+  payableAmount.value === null ? 0 : Math.round(payableAmount.value * 100)
+)
+
+/**
+ * 时间线最后一条待办文案。
+ *
+ * 未配置支付通道时保持原来的线下结算话术；配置后「待付款」与「已付款待交付」是
+ * 两个不同动作，分别说清下一步该做什么。
+ */
+const pendingTodoNote = computed(() => {
+  const status = order.value?.status
+  if (status === 'pending') {
+    return payEnabled.value
+      ? '等待付款：下单后 24 小时内未支付将自动关闭'
+      : '等待线下结算后确认完成'
+  }
+  if (status === 'paid') return '等待交付，收到商品后点「确认完成」'
+  return ''
+})
 
 const orderNo = computed(() => String(route.params.orderNo || '').trim())
 
@@ -303,12 +358,20 @@ const load = async () => {
     }
     order.value = result.data.order
     if (result.data.payment_notice) paymentNotice.value = result.data.payment_notice
+    payEnabled.value = result.data?.pay_enabled === true
+    payMethods.value = Array.isArray(result.data?.pay_methods) ? result.data.pay_methods : []
   } catch (err) {
     error.value = err?.status === 404 ? TRADE.orderNotFound : err?.message || TRADE.orderNotFound
     order.value = null
   } finally {
     loading.value = false
   }
+}
+
+/** 支付面板轮询到已付款：重新拉订单，让徽标/时间线/按钮一起进入新状态 */
+const handlePaid = async () => {
+  notify.success('支付成功，订单已进入待交付状态')
+  await load()
 }
 
 const copyOrderNo = async () => {

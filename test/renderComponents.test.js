@@ -116,6 +116,8 @@ const REQUIRED_PROPS = {
   'HelpModal.vue': { title: '桩标题' },
   // AppIcon 的 name 同理：给它一个默认图标名会把「漏传」藏起来
   'AppIcon.vue': { name: 'search' },
+  // PaymentPanel 的 orderNo 同理：没有订单号就没有可支付的单，默认值只会掩盖接线错误
+  'PaymentPanel.vue': { orderNo: 'SSTC20261030000000TEST' },
 }
 
 const propsFor = (spec) => REQUIRED_PROPS[path.basename(spec)] || {}

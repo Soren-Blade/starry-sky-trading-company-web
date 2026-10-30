@@ -42,6 +42,8 @@ export default defineConfig(({ mode }) => {
         '/kamiApi': { target: apiTarget, changeOrigin: true },
         '/cartApi': { target: apiTarget, changeOrigin: true },
         '/orderApi': { target: apiTarget, changeOrigin: true },
+        // 3.3.0 支付：/payNotify 与 /payCron 是给网关与定时器调的，浏览器不发，因此刻意不代理
+        '/payApi': { target: apiTarget, changeOrigin: true },
         '/favoriteApi': { target: apiTarget, changeOrigin: true },
         // v1.1.0 新增的三个前缀（会员 / 积分 / 优惠券）。漏配的后果见上方注释：
         // dev 下请求会打到 dev server 自己，拿到 index.html，前端把它报成网络错误。

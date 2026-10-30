@@ -4,7 +4,15 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `3.2.0`**（2026-10-29 发布）：签到日历的**骨架屏、翻月节流与加载提速** ——
+> **当前版本 `3.3.0`**（2026-10-30 发布）：**在线支付面板与订单五态** ——
+> ① 新增 `PaymentPanel.vue`：点「立即支付」才申请支付单，桌面端二维码（白底烘进 PNG，暗色主题也能扫）、
+> 移动端直接跳收银台，2.5 秒轮询 `/payApi/status`，后台标签页暂停、401 立即停表、卸载清定时器；
+> ② 新增 `src/constants/order.js`（状态文案/徽标/动作判定唯一实例），`Orders.vue` 页签与徽标改五态并新增「去支付」，
+> `OrderDetail.vue` 增加在线支付区与「已支付 / 已退款」时间线，底部按钮改由 `canCancel` / `canConfirmComplete` 判定；
+> ③ `payment_notice` 改由服务端下发，条款里「会员开通后不支持自助退款」改成与退款实现一致的说法；
+> ④ 新增守卫 `test/noStalePaymentCopy.test.js`（离线文案单一副本、禁用过期说法、按钮不得写死 `pending`、轮询不得套缓存）。
+>
+> **更早（`3.2.0`，2026-10-29）**：签到日历的**骨架屏、翻月节流与加载提速** ——
 > ① 首屏 hero / 月历 / 右栏三处改骨架屏（`.checkin-skeleton-*` 复用 `.u-skeleton` 的闪烁动画），
 > 不再先闪一下「0 天连续签到 / 已签 0 天」再跳成真实值；
 > ② 翻月加 260ms 同步闸门（`MONTH_NAV_THROTTLE` + `monthNavAllowed()`），
@@ -42,7 +50,7 @@
 > ③ 本月账本 + 可点的「签到规则与补签说明」），宽度固定 320px；
 > **没有选择加高卡片**（高度由 7 × 64px 日历格决定，加高只会让留白更大）。
 > 再上一版 `2.6.2`：签到页档位并入月历卡 + 日期筛选（只筛显示不改统计，被筛掉的格子留小圆点占位）。
-> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `3.2.0`）。
+> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `3.3.0`）。
 >
 > **`2.6.0`**（2026-10-28）：会员两张表的表头对齐、购物车券下拉只列可用券、永久会员文案、
 > `.u-mm-benefit-next` 去 `margin-top`、跨端修复「完成订单不发成长值」（`sstc.complete_order` 迁移重建）。
@@ -752,7 +760,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | --- | --- |
 | `overview` | `/memberApi/getOverview` 的整份响应（等级、有效期、成长值、**8 项权益解锁态与逐档数值**、待办） |
 | `plans` / `levels` | 套餐列表与等级阶梯表（8 档）。两者同一次 `getPlans` 响应下发；`MemberPlans.vue`、`MemberBenefits.vue` 的 8×8 矩阵与成长值页的 `MemberLevelLadder` 都取 `levels`，**新六列（券包 / 抵扣上限 / 免卡密额度 / 生日 / 客服档 / 身份档）也在里面** |
-| `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编（支付通道未接入的如实说明） |
+| `paymentNotice` / `refundNotice` | **服务端下发的文案**，前端不自己编：`payment_notice` 按「是否配置支付通道」在「在线支付 / 线下结算」两句之间切换，`pay_enabled` 决定是否渲染支付面板 |
 | `growth` / `growthSummary` / `growthRules` / `growthPage` / `growthTotal` / `growthTotalPages` / `loadingGrowth` | 成长值页（`/member/growth`）的全部状态，来源是 `getGrowthHistory` 一条响应（`list` / `summary` / `rules` / `thresholds` + 分页元数据） |
 | `isMember` / `level` / `levelName` / `points` / `benefits` / `todos` | 派生 getter |
 | `growthTotalValue` / `growthHasPrev` / `growthHasNext` | 成长值派生 getter（分页控件与「还能翻页吗」的判断） |

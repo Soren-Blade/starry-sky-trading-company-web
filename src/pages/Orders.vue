@@ -64,7 +64,7 @@
               <p class="order-time">{{ toDate(order.created_at) }}</p>
             </div>
             <span class="u-tag" :class="statusTagClass(order.status)">
-              {{ order.status_text }}
+              {{ order.status_text || orderStatusLabel(order.status) }}
             </span>
           </header>
 
@@ -105,8 +105,15 @@
               >
                 {{ TRADE.orderDetail }}
               </router-link>
+              <router-link
+                v-if="canPay(order.status) && payEnabled"
+                :to="`/user/orders/${order.order_no}`"
+                class="u-btn-primary"
+              >
+                去支付
+              </router-link>
               <button
-                v-if="order.status === 'pending'"
+                v-if="canCancel(order.status)"
                 type="button"
                 class="u-btn-secondary"
                 :disabled="busy.has(order.order_no)"
@@ -115,7 +122,7 @@
                 {{ TRADE.orderCancel }}
               </button>
               <button
-                v-if="order.status === 'pending'"
+                v-if="canConfirmComplete(order.status, payEnabled)"
                 type="button"
                 class="u-btn-primary"
                 :disabled="busy.has(order.order_no)"
@@ -179,6 +186,14 @@ import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
 import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
+import {
+  ORDER_STATUS_TABS,
+  orderStatusLabel,
+  orderStatusTagClass,
+  canCancel,
+  canConfirmComplete,
+  canPay,
+} from '@/constants/order.js'
 
 const themeStore = useThemeStore()
 
@@ -193,6 +208,8 @@ const loading = ref(true)
 const error = ref('')
 const status = ref('all')
 const paymentNotice = ref(PRODUCT_GRID.paymentNotice)
+/** 服务端是否已配置支付通道：决定「去支付」「确认完成」是否出现（未配置时保留线下结算流程） */
+const payEnabled = ref(false)
 const pagination = ref({
   page: 1,
   limit: 10,
@@ -205,12 +222,13 @@ const pagination = ref({
 /** 正在请求中的订单号：禁用该卡片的按钮，避免连点 */
 const busy = ref(new Set())
 
-const statusTabs = computed(() => [
-  { value: 'all', label: TRADE.orderFilterAll },
-  { value: 'pending', label: '待处理' },
-  { value: 'completed', label: '已完成' },
-  { value: 'cancelled', label: '已取消' },
-])
+/** 五态页签（3.3.0 接入支付后新增 paid / refunded）：文案与徽标色统一在 constants/order.js 定义 */
+const statusTabs = computed(() =>
+  ORDER_STATUS_TABS.map((value) => ({
+    value,
+    label: value === 'all' ? TRADE.orderFilterAll : orderStatusLabel(value),
+  }))
+)
 
 const currency = computed(() => ({
   prefix: themeStore.pricePrefix,
@@ -218,12 +236,8 @@ const currency = computed(() => ({
 }))
 const formatPrice = (value) => formatUtils.formatPrice(value, currency.value)
 
-/** 状态徽标的语义色：与卡密、Apple ID 状态同族（success / warning / danger） */
-const statusTagClass = (value) => {
-  if (value === 'completed') return 'u-tag--success'
-  if (value === 'cancelled') return 'u-tag--danger'
-  return 'u-tag--warning'
-}
+/** 状态徽标语义色：与卡密、Apple ID 状态同族；映射表在 constants/order.js（未知状态不冒充「待处理」） */
+const statusTagClass = (value) => orderStatusTagClass(value)
 
 const markBusy = (orderNo, on) => {
   const next = new Set(busy.value)
@@ -249,6 +263,8 @@ const fetchOrders = async (page = 1) => {
     if (result.data?.pagination) pagination.value = result.data.pagination
     // 服务端会附带支付说明文案，前端直接展示，不各自编一套
     if (result.data?.payment_notice) paymentNotice.value = result.data.payment_notice
+    // 支付通道是否开启：服务端说了算（未配置时回到线下结算文案与老流程）
+    payEnabled.value = result.data?.pay_enabled === true
   } catch (err) {
     error.value = err?.message || '加载订单失败'
     orders.value = []

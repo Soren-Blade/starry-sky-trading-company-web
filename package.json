@@ -1,6 +1,6 @@
 {
   "name": "starry-sky-trading-company-web",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "private": true,
   "type": "module",
   "description": "星辰商行前端（Vue 3 + Vite + Pinia，部署于 Vercel）",

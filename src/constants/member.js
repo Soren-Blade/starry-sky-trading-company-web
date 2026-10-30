@@ -233,6 +233,9 @@ export const POINTS_LEDGER_TYPES = [
   { value: 'spend_redeem', label: '积分兑换' },
   { value: 'spend_replenish', label: '补签消耗' },
   { value: 'expire', label: '积分过期' },
+  // 3.3.0：退款按订单回滚时写 refund 流水（不退回「已用结算」的收入账）
+  { value: 'refund', label: '退款返还' },
+  { value: 'adjust', label: '人工调整' },
 ]
 
 /**
