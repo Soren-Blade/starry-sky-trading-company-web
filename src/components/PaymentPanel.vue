@@ -1,14 +1,16 @@
 <script setup>
 /**
- * 支付面板（易支付，3.3.0）
+ * 支付面板（易支付，3.4.0）
  *
- * 只在「订单待支付」时出现。三个刻意的行为：
+ * 只在「订单待支付」时出现。四个刻意的行为：
  *
  * 1. **不自动建支付单**：用户点「立即支付」才 `createPayment`。下单即建单会让
  *    每一次「打开详情页看看」都在网关上留下一次尝试记录。
- * 2. **轮询有节流与停表**：2.5 秒一次，页面隐藏时暂停、重新可见立刻补查一次；
+ * 2. **再次进入直接恢复上次的二维码**：`getPaymentStatus` 现在会带回
+ *    `pay_url`/`pay_type`/`fee_*`，pending 且已有渠道参数时直接渲染，用户不用重新点。
+ * 3. **轮询有节流与停表**：2.5 秒一次，页面隐藏时暂停、重新可见立刻补查一次；
  *    401 立刻停表（会话过期还继续轮询只会连弹错误），组件卸载必须清理定时器。
- * 3. **绝不套 shortCache**（`utils/shortCache.js` 默认 8 秒 TTL）：那会让
+ * 4. **绝不套 shortCache**（`utils/shortCache.js` 默认 8 秒 TTL）：那会让
  *    「已付款」最多晚 8 秒才反映，用户会以为没成功又付一次。
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -25,7 +27,7 @@ const props = defineProps({
   // 接口下发的是字符串（`"0.01"`），页面里的 computed 也可能给出 Number —— 两种都收，
   // 只做展示，不参与任何金额计算（比较一律用 amountFen 的整数分）。
   amountYuan: { type: [String, Number], default: '' },
-  payMethods: { type: Array, default: () => ['alipay', 'wxpay'] },
+  payMethods: { type: Array, default: () => ['alipay'] },
 })
 
 const emit = defineEmits(['paid'])
@@ -43,6 +45,8 @@ const qrDataUrl = ref('')
 const errorText = ref('')
 const paid = ref(false)
 const polling = ref(false)
+/** 服务端下发的手续费口径（分）。拿到之前按 0 处理，不自己猜费率 */
+const feeInfo = ref({ rate: 0, feeFen: 0, totalFen: 0 })
 
 let timer = null
 
@@ -60,6 +64,30 @@ const amountText = computed(() => {
   return formatUtils.formatPrice(props.amountFen / 100, { prefix: '', decimals: 2 })
 })
 
+/** 手续费与实付：客户在收银台看到的是 total（含手续费），我们页面必须同样显示 */
+const feeText = computed(() =>
+  formatUtils.formatPrice(feeInfo.value.feeFen / 100, { prefix: '', decimals: 2 })
+)
+/**
+ * 实付金额：拿到服务端的 total 就用它，**还没拿到（首屏）或手续费为 0（例如 ¥0.01 单，
+ * 9% 进位后为 0）时回落成订单金额**。不回落的话首屏会闪一下「¥0.00」，
+ * 而 ¥0.01 这种单甚至永远不会显示正确金额。
+ */
+const resolvedTotalFen = computed(() => {
+  if (feeInfo.value.totalFen > 0) return feeInfo.value.totalFen
+  const fromYuan = Math.round(Number(props.amountYuan) * 100)
+  if (Number.isFinite(fromYuan) && fromYuan > 0) return fromYuan
+  return Number(props.amountFen) || 0
+})
+const totalText = computed(() =>
+  formatUtils.formatPrice(resolvedTotalFen.value / 100, { prefix: '', decimals: 2 })
+)
+const feeRateText = computed(() => {
+  const rate = Number(feeInfo.value.rate) || 0
+  return `${Math.round(rate * 1000) / 10}%`
+})
+const hasFee = computed(() => feeInfo.value.feeFen > 0)
+
 const methods = computed(() =>
   (props.payMethods || []).map((value) => ({
     value,
@@ -75,14 +103,37 @@ const stopPolling = () => {
   }
 }
 
+/** 把接口下发的含费金额收进本地（三个字段都要有值才算数） */
+const applyFee = (payment) => {
+  if (!payment) return
+  const feeFen = Number(payment.fee_fen ?? NaN)
+  const totalFen = Number(payment.total_fen ?? NaN)
+  if (!Number.isFinite(feeFen) || !Number.isFinite(totalFen)) return
+  feeInfo.value = { rate: Number(payment.fee_rate) || 0, feeFen, totalFen }
+}
+
 const refreshStatus = async () => {
   try {
     const res = await paymentApi.getPaymentStatus({ order_no: props.orderNo })
-    const status = res && res.data && res.data.payment ? res.data.payment.status : ''
+    const payment = res && res.data ? res.data.payment : null
+    applyFee(payment)
+    const status = payment ? payment.status : ''
     if (status === 'paid' || status === 'refunded') {
       paid.value = true
       stopPolling()
       if (status === 'paid') emit('paid')
+      return
+    }
+    // 再次进入（或首次进入时已经点过支付）：直接把上次那张二维码恢复出来
+    // 但只在「这张单的支付方式当前可用」时恢复 —— 否则会把已停用通道（例如网关关闭维护的
+    // 微信支付）的收银台二维码画给用户，扫码后看到的是「支付方式暂时关闭维护」。
+    if (!payload.value && status === 'pending' && (payment.pay_url || payment.qrcode)) {
+      const allowed = methods.value.map((item) => item.value)
+      const usable = payment.pay_type ? allowed.includes(payment.pay_type) : true
+      if (usable) {
+        if (payment.pay_type) payType.value = payment.pay_type
+        await applyPayload(payment)
+      }
     }
   } catch (error) {
     // 401 = 会话过期：停表，别把用户刷成一片红字
@@ -107,6 +158,8 @@ const handleVisibility = () => {
 
 const applyPayload = async (data) => {
   payload.value = data
+  applyFee(data)
+  if (data.pay_type) payType.value = data.pay_type
   const url = data.qrcode || data.pay_url || ''
   if (url) {
     try {
@@ -122,6 +175,22 @@ const applyPayload = async (data) => {
     }
   }
   startPolling()
+}
+
+/**
+ * 切换支付方式。
+ *
+ * 以前这里只改本地状态导致「点微信支付还显示支付宝二维码」——
+ * 现在服务端的 `create_payment_order` 只在 **支付方式相同** 时复用旧单，
+ * 所以换方式必须重新建单：本地先清掉旧的二维码，用户点「立即支付」时自然走新单。
+ */
+const choosePayType = (value) => {
+  if (payType.value === value) return
+  payType.value = value
+  payload.value = null
+  qrDataUrl.value = ''
+  errorText.value = ''
+  stopPolling()
 }
 
 const handlePay = async () => {
@@ -184,7 +253,7 @@ onBeforeUnmount(() => {
   <section class="pay-panel ui-card">
     <header class="pay-panel-head">
       <h3 class="pay-panel-title">在线支付</h3>
-      <span class="pay-panel-amount">{{ amountText }}</span>
+      <span class="pay-panel-amount">¥{{ totalText }}</span>
     </header>
 
     <p v-if="paid" class="pay-panel-done">
@@ -193,22 +262,43 @@ onBeforeUnmount(() => {
     </p>
 
     <template v-else>
+      <dl class="pay-panel-fee">
+        <div class="pay-panel-fee-row">
+          <dt>商品金额</dt>
+          <dd>¥{{ amountText }}</dd>
+        </div>
+        <div v-if="hasFee" class="pay-panel-fee-row">
+          <dt>支付手续费（{{ feeRateText }}）</dt>
+          <dd>+ ¥{{ feeText }}</dd>
+        </div>
+        <div class="pay-panel-fee-row pay-panel-fee-row--total">
+          <dt>实付合计</dt>
+          <dd>¥{{ totalText }}</dd>
+        </div>
+      </dl>
+      <p v-if="hasFee" class="pay-panel-tip pay-panel-tip--fee">
+        手续费由支付通道收取，收银台显示的金额即「实付合计」。
+      </p>
+
       <div v-if="!payload" class="pay-panel-body">
         <p class="pay-panel-tip">选择支付方式后生成支付单（30 分钟内有效）。</p>
-        <div class="pay-panel-methods">
+        <div v-if="methods.length > 1" class="pay-panel-methods">
           <button
             v-for="item in methods"
             :key="item.value"
             type="button"
             class="pay-panel-method"
             :class="{ 'pay-panel-method--active': payType === item.value }"
-            @click="payType = item.value"
+            @click="choosePayType(item.value)"
           >
             {{ item.label }}
           </button>
         </div>
+        <p v-else-if="methods.length === 1" class="pay-panel-tip">
+          当前仅支持{{ methods[0].label }}支付。
+        </p>
         <p v-if="isWechat" class="pay-panel-warn">
-          微信里无法直接打开支付宝收银台，请选择微信支付或换浏览器打开。
+          微信里无法直接打开支付宝收银台，请复制链接到浏览器打开。
         </p>
         <button type="button" class="u-btn-primary pay-panel-pay" :disabled="creating" @click="handlePay">
           {{ creating ? '正在创建支付单…' : '立即支付' }}
@@ -219,7 +309,9 @@ onBeforeUnmount(() => {
       <div v-else class="pay-panel-body pay-panel-body--qr">
         <div v-if="qrDataUrl" class="pay-panel-qr">
           <img :src="qrDataUrl" alt="支付二维码" width="220" height="220" />
-          <p class="pay-panel-tip">用{{ payType === 'wxpay' ? '微信' : '支付宝' }}扫一扫完成支付</p>
+          <p class="pay-panel-tip">
+            用{{ payType === 'wxpay' ? '微信' : '支付宝' }}扫一扫完成支付（实付 ¥{{ totalText }}）
+          </p>
         </div>
         <p v-else class="pay-panel-tip">支付单已创建，请点击下方按钮打开收银台。</p>
         <div class="pay-panel-actions">
@@ -270,6 +362,45 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
+}
+
+.pay-panel-fee {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1);
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+  border-radius: var(--radius-input);
+  background: var(--bg-soft);
+}
+
+.pay-panel-fee-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.pay-panel-fee-row dt,
+.pay-panel-fee-row dd {
+  margin: 0;
+}
+
+.pay-panel-fee-row--total {
+  padding-top: calc(var(--space-unit) * 1);
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pay-panel-fee-row--total dd {
+  color: var(--accent);
+}
+
+.pay-panel-tip--fee {
+  font-size: var(--fs-label);
 }
 
 .pay-panel-body--qr {

@@ -71,3 +71,14 @@ export function canCancel(status) {
 export function canPay(status) {
   return status === 'pending'
 }
+
+/**
+ * 已付款或已完成的单可以申请退款。
+ *
+ * 退款**不开放自助**：商户后台的「自助退款」开关没开，渠道退款只能人工处理，
+ * 所以这里只决定「要不要显示那条引导用户去客服/售后工单的说明」，
+ * 不渲染任何点了会失败的按钮。
+ */
+export function canRequestRefund(status) {
+  return status === 'paid' || status === 'completed'
+}

@@ -233,6 +233,14 @@
           <span>{{ TRADE.orderComplete }}</span>
         </button>
       </div>
+
+      <!-- 退款不开放自助：商户后台「自助退款」未开启，渠道退款必须人工处理。
+           对客户只给一条明确的路（客服/售后工单），不要放一个点了会失败的按钮。 -->
+      <p v-if="canRequestRefund(order.status)" class="order-detail-refund-tip">
+        如需退款，请
+        <router-link to="/support" class="order-detail-refund-link">联系客服</router-link>
+        提交售后工单，核对后由人工原路退回（会员权益同步撤销）。
+      </p>
     </template>
   </div>
 </template>
@@ -266,6 +274,7 @@ import {
   orderStatusTagClass,
   canCancel,
   canConfirmComplete,
+  canRequestRefund,
 } from '@/constants/order.js'
 
 const route = useRoute()
@@ -667,6 +676,18 @@ a.detail-title:hover {
 
 .order-detail-actions {
   margin-top: var(--section-gap);
+}
+
+/* 退款引导：只解释「怎么退」，不渲染会失败的自助按钮 */
+.order-detail-refund-tip {
+  margin: calc(var(--space-unit) * 2) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.order-detail-refund-link {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 /* 结果块（下单成功 / 订单不存在）：模板样式来自 .ec-redeem-result，这里只补页面间距 */
