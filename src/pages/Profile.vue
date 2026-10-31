@@ -695,15 +695,17 @@ const isDirty = computed(
  *
  * 优先级：刚选中的预览 > 表单里的地址 > 已保存的头像。
  * 三个来源都要经 `resolveAssetUrl` —— 表单里可能是 `/uploads/...` 相对路径
- * （上传成功后服务端回写的就是它），直接塞进 `<img src>` 在生产环境会 404。
+ * （本地开发上传成功后服务端回写的就是它），或 `/userApi/avatar/<id>?v=...`
+ * （4.0.5 起线上把头像字节存数据库，由该接口现取现发），
+ * 直接塞进 `<img src>` 在生产环境会 404 或 401。
  */
 const avatarShown = computed(() => {
   if (avatarPreview.value) return avatarPreview.value
 
   const raw = form.value.avatar_url.trim()
   if (!raw) return ''
-  // 外部地址与站内相对路径都放行；唯独不放行 javascript: / data:text 这类
-  if (!/^(https?:\/\/|\/uploads\/)/i.test(raw)) return ''
+  // 外部地址、站内磁盘路径、站内头像接口都放行；唯独不放行 javascript: / data:text 这类
+  if (!/^(https?:\/\/|\/uploads\/|\/userApi\/avatar\/)/i.test(raw)) return ''
   return resolveAssetUrl(raw)
 })
 
