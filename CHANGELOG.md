@@ -9,6 +9,27 @@
 
 ---
 
+## [4.0.2] — 2026-11-01
+
+后端无代码改动（只同步版本号）。本版把「域名接入」从一份操作步骤定稿成**有实测依据的方案结论**。
+
+### 文档
+
+- `docs/guides/2026-11-01-Cloudflare域名接入Vercel教程.md` 重写为终版：
+  - 先给结论：**Cloudflare 只当 DNS 用，记录走灰云直连 Vercel**；
+  - 补实测：橙云 HTML 均值 447ms / 直连 340ms；橙云静态资源 `cf-cache-status: REVALIDATED`（没命中）；
+  - 补本次真故障：橙云 + Host 改写下一时刻两个入口引用的构建产物不同（`index-Bs52Qrsv.js` vs `index-DOCegoui.js`），
+    旧 HTML 请求新 `assets/*` 命中 SPA 回退 → `text/html` 被当 JS 解析 → 白屏；
+  - 补 Bot Fight Mode 拦截自动化访问的截图结论；
+  - 六种方案对比表（CF 灰云 / 阿里云 DNS / NS 迁 Vercel / CF 橙云 / 阿里云 CDN / 自建反代）+ 回滚方式。
+
+### 说明
+
+- 服务端 `CORS_ORIGINS` 已在 `4.0.0` 加入两个自定义域名并重新部署，域名切换后无需再改；
+- 本次**没有改任何运行时代码**，`npm test` / `npm run build` 仅作回归确认。
+
+---
+
 ## [4.0.1] — 2026-11-01
 
 ### 修复
