@@ -1,0 +1,47 @@
+# 推送到 main 即部署生产环境（Git 触发的部署，不依赖本地 CLI）
+#
+# 背景：这两个 Vercel 项目是用 CLI 建的，没有连 GitHub 仓库，
+# 所以 `git push` 不会自动部署。这里用 Actions 在每次推送后跑
+# `vercel deploy --prod`，等价于 Vercel 的 Git 集成，而且部署内容
+# 就是仓库里的这次提交（不再需要「拷贝一份去掉 .git 的目录」）。
+#
+# 需要在仓库 Secrets 里配 VERCEL_TOKEN（已配置）。
+# 注意：前端是「构建期注入环境变量」的，所以这里部署时 Vercel 侧会重新构建，
+# 改动 `VITE_API_BASE_URL` 之类仍要在 Vercel 项目设置里改并重新部署。
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # 项目是用 CLI 建的，仓库里没有 .vercel/project.json（它被 gitignore 了），
+      # 这里按项目 id 写回来，CLI 才知道要部署到哪个项目。
+      - name: 绑定 Vercel 项目
+        run: |
+          mkdir -p .vercel
+          printf '{"projectId":"prj_6nnqt9oN6NaKSds8vGpqHsbZ9Sxg","orgId":"team_DuO75lRgcTx1S9V2wtgtISdQ"}\n' > .vercel/project.json
+
+      - name: 部署到生产环境
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
