@@ -253,9 +253,13 @@
           type="button"
           class="u-btn-secondary"
           :disabled="busy"
+          :aria-busy="busy"
           @click="handleCancel"
         >
-          {{ TRADE.orderCancel }}
+          <!-- 取消也要有转圈与文案变化：只置灰的话，用户看到的是一颗「按下去没反应」的按钮，
+               等一秒就会再点一次（重复请求被服务端挡掉，但观感是坏的）。 -->
+          <span v-if="busy" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+          <span>{{ busy ? TRADE.orderProcessing : TRADE.orderCancel }}</span>
         </button>
         <button
           v-if="canConfirmComplete(order.status, payEnabled)"
@@ -266,7 +270,7 @@
           @click="handleComplete"
         >
           <span v-if="busy" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-          <span>{{ TRADE.orderComplete }}</span>
+          <span>{{ busy ? TRADE.orderProcessing : TRADE.orderComplete }}</span>
         </button>
       </div>
 
