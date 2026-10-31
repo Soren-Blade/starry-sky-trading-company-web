@@ -251,22 +251,41 @@
               点一格 → 右栏回答「这天是什么日子、我签没签、还能不能补」，
               补签按钮也从格子里搬到这儿（格子只负责选，避免误触直接扣积分）。
             -->
+            <!--
+              ②-0 选中日详情：月历的天然搭档。
+              点一格 → 右栏回答「这天是什么日子、我签没签、还能不能补」，
+              补签按钮也从格子里搬到这儿（格子只负责选，避免误触直接扣积分）。
+
+              4.0.1：翻到非本月的月份时不再预选 1 号（那样会被误读成「1 号已选中/已签到」）。
+              没选日期时这支回答「这个月整体怎么样」，用户点哪天才切到那天的详情。
+              两支共用同一个 .checkin-side-block 容器，右栏始终是四段、不做成五段。
+            -->
             <div class="checkin-side-block checkin-side-detail">
-              <p class="checkin-side-eyebrow">{{ selectedTitle }}</p>
-              <p class="checkin-side-sub">{{ selectedSubtitle }}</p>
-              <p class="checkin-side-status" :class="`is-${selectedStatus.key}`">
-                <AppIcon :name="selectedStatus.key === 'checked' ? 'check-circle' : 'clock'" />
-                <span>{{ selectedStatus.label }}</span>
-              </p>
-              <button
-                v-if="selectedStatus.action"
-                type="button"
-                class="u-btn-primary checkin-side-action"
-                :disabled="actionBusy"
-                @click="actOnSelected"
-              >
-                {{ selectedStatus.action === 'checkin' ? checkinButtonText : '补签这一天' }}
-              </button>
+              <template v-if="selectedDay">
+                <p class="checkin-side-eyebrow">{{ selectedTitle }}</p>
+                <p class="checkin-side-sub">{{ selectedSubtitle }}</p>
+                <p class="checkin-side-status" :class="`is-${selectedStatus.key}`">
+                  <AppIcon :name="selectedStatus.key === 'checked' ? 'check-circle' : 'clock'" />
+                  <span>{{ selectedStatus.label }}</span>
+                </p>
+                <button
+                  v-if="selectedStatus.action"
+                  type="button"
+                  class="u-btn-primary checkin-side-action"
+                  :disabled="actionBusy"
+                  @click="actOnSelected"
+                >
+                  {{ selectedStatus.action === 'checkin' ? checkinButtonText : '补签这一天' }}
+                </button>
+              </template>
+              <template v-else>
+                <p class="checkin-side-eyebrow">{{ viewingMonthLabel }}</p>
+                <p class="checkin-side-sub">{{ monthOverviewSubtitle }}</p>
+                <p class="checkin-side-status is-idle">
+                  <AppIcon name="clock" />
+                  <span>点日历上的任意一天查看当天情况</span>
+                </p>
+              </template>
             </div>
 
             <!--
@@ -497,6 +516,26 @@ const selectedDate = ref('')
 const viewingMonth = computed(() => currentMonth.value || calendar.value?.month || '')
 
 /**
+ * 4.0.1：翻月后未选日期时，右栏先讲「这个月整体怎么样」。
+ * 标题用「2026 年 9 月」，副标题把已签 / 可补 / 剩余次数一次说完。
+ */
+const viewingMonthLabel = computed(() => {
+  const month = viewingMonth.value
+  if (!month) return '本月'
+  const [y, m] = String(month).split('-')
+  return `${y} 年 ${Number(m)} 月`
+})
+
+const monthOverviewSubtitle = computed(() => {
+  const left = calendar.value?.replenish_left ?? 0
+  const longest = monthLongestStreak.value
+  const parts = [`已签 ${monthCount.value} 天`]
+  if (longest) parts.push(`最长连签 ${longest} 天`)
+  parts.push(left > 0 ? `剩余补签 ${left} 次` : '本月补签次数已用完')
+  return parts.join(' · ')
+})
+
+/**
  * 3.1.0：判断「是不是本月」不能拿 `calendar.month` 比 —— 服务端会把请求的那个月原样返回，
  * 翻到 11 月后 `calendar.month` 就是 `2026-11`，比出来永远是「本月」。
  * 用 `calendar.today`（上海时区的今天）截出真·当月，翻月前后都稳定。
@@ -515,12 +554,18 @@ const isFutureMonth = computed(
   () => Boolean(viewingMonth.value) && Boolean(todayMonthKey.value) && viewingMonth.value > todayMonthKey.value,
 )
 
-/** 选中日：默认落在今天（不在本月时落在 1 号），翻月后重新落位 */
+/**
+ * 选中日：只有用户真的点过某一天，或者当前正在看的就是「本月」，才算有选中。
+ *
+ * 4.0.1 修复：原来是 `list.find(is_today) || list[0]`，`list[0]` 就是 1 号 ——
+ * 于是每次翻月都会自动把 1 号高亮成「选中」，用户会以为 1 号已经被选中/已经签了，
+ * 而且右栏一直在讲 1 号的事，翻月这个动作本身没给出任何「本月概览」。
+ * 现在：翻到别的月份一律不预选，右栏改讲当月的整体情况。
+ */
 const selectedDay = computed(() => {
   const list = calendar.value?.days || []
-  const hit = selectedDate.value ? list.find((day) => day.date === selectedDate.value) : null
-  if (hit) return hit
-  return list.find((day) => day.is_today) || list[0] || null
+  if (selectedDate.value) return list.find((day) => day.date === selectedDate.value) || null
+  return list.find((day) => day.is_today) || null
 })
 
 const todayIso = computed(() => calendar.value?.today || '')
@@ -997,6 +1042,11 @@ onMounted(() => {
 
 .checkin-side-status.is-missed {
   color: var(--ec-warning-text);
+}
+
+/* 4.0.1：翻月后还没选日期时的中性提示，不能借用「已签到/漏签」的语义色 */
+.checkin-side-status.is-idle {
+  color: var(--text-muted);
 }
 
 .checkin-side-action {
