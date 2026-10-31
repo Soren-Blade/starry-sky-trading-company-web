@@ -9,6 +9,22 @@
 
 ---
 
+## [4.0.3] — 2026-11-01
+
+后端无代码改动（只同步版本号）。本版修的是**自定义域名在生产上服务了旧构建**导致的「登录后立刻 401」。
+
+### 修复
+
+- **自定义域名登录后立刻报「token 已失效或已过期」**
+  - 根因：`xingchenshanghang.top` / `www.xingchenshanghang.top` 在 Vercel 侧一直处于 `pending_domain_verification`
+    （TXT 早就加好了，但域名是我用 API 挂上去的，Vercel 从未重新校验过），
+    于是这两个域名被**旧的 production 部署**服务：它内联的 API 基址是 `https://starry-sky-trading-company-server.vercel.app`，
+    而当前生产是 `https://starry-sky-trading-company-server-nu.vercel.app` —— 两个 host 的 `JWT_SECRET` 不同。
+    实测：用当前生产密钥签的 token，旧 host 返回 **401**、新 host 返回 **200**。
+  - 修法：`POST /v9/projects/<id>/domains/<domain>/verify` 让两个域名变成 `verified=true`，
+    随后 `www`、根域、`*-web-two` 三个入口都指向**同一个**部署（构建哈希一致，包里内联的 API 基址是 `-nu`）。
+  - 顺带把「设 Primary / 另一域名 301」这件事直接配好了：根域 → `www` 的 **308 永久跳转**（`redirectStatusCode: 308`）。
+
 ## [4.0.2] — 2026-11-01
 
 后端无代码改动（只同步版本号）。本版把「域名接入」从一份操作步骤定稿成**有实测依据的方案结论**。
