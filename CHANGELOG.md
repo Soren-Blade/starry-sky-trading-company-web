@@ -9,6 +9,34 @@
 
 ---
 
+## [4.0.0] — 2026-11-01
+
+> 版本号跳到 4.x 是因为本次同时改了**设计系统的基础类**（`.u-tag`）与部署形态
+> （自定义域名 + CORS 白名单），影响面覆盖全站所有标签与所有跨域请求。
+
+### 修复
+
+- **签到日历：过去的月份点日期没有选中反馈**（用户报「9 月和 8 月及之前的日期点击无选中效果」）。
+  根因是 CSS 层叠：`.checkin-cell.is-selected` 与 `.checkin-cell.is-replenishable` 都是单类选择器
+  （权重相同），后者声明在后，把选中的 `border-style` / `border-color` / `background` 全部覆盖；
+  漏签日恰好都落在「可补签」分支，所以越往前翻越明显（右栏日期变了、格子上毫无痕迹）。
+  修法：新增 `.checkin-cell.is-selected.is-replenishable` 组合兜底（声明在可补签之后），
+  显式写 `border-style: solid` + 主色描边 + 提亮底色。守卫 `test/checkinSelection.test.js`（5 条）。
+- **`.u-tag` 默认变体在深色表格里「隐身」**（用户报「来源下的 u-tag 被 padding 挤压」）。
+  根因不是 padding，而是默认标签 `border: 1px solid transparent` + `background: var(--ec-bg-muted)`，
+  与表格行底色 `--bg-surface-2` 在深色主题下几乎同色 —— 盒子看不见，只剩一串贴边的文字。
+  修法：默认描边改用 `--ec-border-subtle`，标签恢复「浅底 + 描边 + 文字」三件套。
+  变体（accent / success / warning / danger / info / muted）各自覆盖描边色，不受影响。
+  守卫 `test/tagVisibility.test.js`（3 条：禁止 transparent、必须用 `--ec-border-*` 令牌、保持单行）。
+
+### 变更
+
+- **自定义域名上线**：`xingchenshanghang.top` 与 `www.xingchenshanghang.top` 已挂到 Vercel 前端项目；
+  后端 `CORS_ORIGINS` 增补这两个来源（此前跨域被拒，页面能打开但所有接口失败），
+  `MAIL_LINK_BASE_URL` / `YIPAY_RETURN_URL` 同步指向新域名。详见 server 仓库 README §4.13。
+
+---
+
 ## [3.7.0] — 2026-11-01
 
 ### 新增

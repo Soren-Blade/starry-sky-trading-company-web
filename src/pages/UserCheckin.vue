@@ -1308,6 +1308,23 @@ onMounted(() => {
   color: var(--accent);
 }
 
+/*
+ * 4.0.0 修复：「选中」被「可补签」吃掉。
+ *
+ * 两者都是单类选择器（同权重 0,2,0），后声明的 .is-replenishable 会覆盖
+ * .is-selected 的 border-style / border-color / background —— 于是「可补签」的格子
+ * 点下去右栏明明换了日期，格子上却完全没有选中痕迹。
+ * 过去的月份（9 月、8 月…）里每个漏签日都是可补签的，所以表现为「点哪都没反应」。
+ * 选中必须是最高优先级的状态，这里显式压过虚线：
+ */
+.checkin-cell.is-selected,
+.checkin-cell.is-selected.is-replenishable {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--ec-action-primary-dim);
+  color: var(--text-primary);
+}
+
 .checkin-cell-hit {
   position: absolute;
   inset: 0;

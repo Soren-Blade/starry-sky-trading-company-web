@@ -4,7 +4,18 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `3.7.0`**（2026-11-01 发布）：**卡密商品付款即完成 + 卡密列表体验** ——
+> **当前版本 `4.0.0`**（2026-11-01 发布）：**标签可见性、签到日历选中态与自定义域名** ——
+> ① `.u-tag` 默认变体原为 `border: 1px solid transparent`，深色主题下与表格行底色同色、
+> 盒子整体隐形（用户报成「padding 被挤压」），改用 `--ec-border-subtle` 描边后恢复
+> 「浅底 + 描边 + 文字」三件套，全站默认标签一次性修好；
+> ② 签到日历 `.is-selected` 被后声明的 `.is-replenishable` 覆盖掉（同权重），
+> 漏签日点下去右栏日期变了、格子上毫无反馈 —— 越往前的月份越明显；新增
+> `.checkin-cell.is-selected.is-replenishable` 组合兜底，显式 `border-style: solid`；
+> ③ `xingchenshanghang.top` / `www.` 接入 Vercel，后端 `CORS_ORIGINS` 补两个来源
+> （此前页面能打开但所有接口被浏览器拦掉），邮件链接与支付回跳同步指向新域名；
+> ④ 新增守卫 `test/tagVisibility.test.js`、`test/checkinSelection.test.js`。
+>
+> **上一版 `3.7.0`**（2026-11-01 发布）：**卡密商品付款即完成 + 卡密列表体验** ——
 > ① 卡密商品付款成功后由服务端自动完成订单（`sstc.auto_complete_card_order`，混单不动），
 > 详情页不再出现「确认完成」，购买前后各提示一句「卡密一经发出不支持退货退款」；
 > ② 关于我们页容器从 960px 放宽到 1200px（与商品分类页一致），aside 与各段正文
@@ -95,7 +106,7 @@
 > ③ 本月账本 + 可点的「签到规则与补签说明」），宽度固定 320px；
 > **没有选择加高卡片**（高度由 7 × 64px 日历格决定，加高只会让留白更大）。
 > 再上一版 `2.6.2`：签到页档位并入月历卡 + 日期筛选（只筛显示不改统计，被筛掉的格子留小圆点占位）。
-> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `3.7.0`）。
+> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `4.0.0`）。
 >
 > **`2.6.0`**（2026-10-28）：会员两张表的表头对齐、购物车券下拉只列可用券、永久会员文案、
 > `.u-mm-benefit-next` 去 `margin-top`、跨端修复「完成订单不发成长值」（`sstc.complete_order` 迁移重建）。

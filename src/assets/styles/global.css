@@ -780,7 +780,15 @@ textarea.u-input {
   letter-spacing: var(--ec-micro-track);
   color: var(--ec-text-secondary);
   background: var(--ec-bg-muted);
-  border: 1px solid transparent;
+  /*
+   * 4.0.0：默认变体的描边由 transparent 改成实色。
+   *
+   * 深色主题下 `--ec-bg-muted` 与表格行底色（`--bg-surface-2`）几乎同色，
+   * 透明描边让默认标签在表格里彻底「隐身」：用户看到的只是一串没有内边距的文字，
+   * 于是会报「u-tag 的 padding 被挤压」——其实是标签的盒子看不见。
+   * 变体（--accent/--success/…）各自覆盖 border-color，不受影响。
+   */
+  border: 1px solid var(--ec-border-subtle);
   border-radius: var(--ec-radius-sm);
   white-space: nowrap;
 }
