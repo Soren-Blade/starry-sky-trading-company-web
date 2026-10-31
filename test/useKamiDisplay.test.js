@@ -192,19 +192,22 @@ test('toToolOptions：非数组入参返回空数组', () => {
 
 test('KAMI_TABLE_COLUMNS：覆盖组件模板里用到的所有 column.key', () => {
   const keys = KAMI_TABLE_COLUMNS.map((c) => c.key)
-  // 这些 key 在 KamiSection 的 #bodyCell 插槽里被逐一判断
+  // 这些 key 在 KamiSection 的 #bodyCell 插槽里被逐一判断。
+  // 3.7.0 起 8 列 → 6 列：valid_until 并进 status_text，used_at 并进状态单元格第二行，
+  // 避免右侧面板（≈757px）里常驻横向滚动条、卡号被折成两行。
   for (const expected of [
-    'card_value',
+    'card_name',
     'card_no_display',
+    'card_value',
     'status',
-    'valid_until',
-    'used_at',
     'tool_id',
     'action',
   ]) {
     assert.ok(keys.includes(expected), `列定义应包含 ${expected}`)
   }
-  assert.ok(keys.includes('card_name'), '应含卡密名称列')
+  assert.equal(keys.includes('valid_until'), false, '有效期不再单独成列')
+  assert.equal(keys.includes('used_at'), false, '使用日期并入状态列，不再单独成列')
+  assert.equal(keys.length, 6, '控制台表格固定 6 列')
 })
 
 test('KAMI_TABLE_COLUMNS：key 唯一', () => {

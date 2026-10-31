@@ -112,16 +112,29 @@ export function toToolOptions(tools) {
   }))
 }
 
-/** 卡密列表的表格列定义 */
+/**
+ * 卡密列表的表格列定义
+ *
+ * 3.7.0 从 8 列收敛到 6 列。原因是控制台右侧面板在 1280 屏下只有 ≈757px，
+ * 8 列（合计 1160px）意味着**常驻横向滚动条**，最重要的「操作」默认在视野外，
+ * 且卡号与名称被压成两行。
+ *
+ * 两次合并的信息都有唯一来源，不会出现两处口径：
+ *  - 「有效期至」并入状态文案（服务端 `getCardStatusText(status, revokedAt, validUntil)`
+ *    产出「已激活 · 2027-01-01 到期」）—— 到期日只在需要它的地方出现一次；
+ *  - 「使用日期」并入状态单元格的第二行（只有用过才有值，绝大多数卡是空的，
+ *    单独占一列等于整列空白）。
+ *
+ * `width` 只是**期望宽度**（渲染在 th 的 min-width 上），不是硬约束：
+ * 表格用 auto 布局，窄屏按内容压缩；极端窄屏仍交给 .u-table-wrap 横滚。
+ */
 export const KAMI_TABLE_COLUMNS = [
   { title: '卡密名称', dataIndex: 'card_name', key: 'card_name', width: 150 },
-  { title: '面值', dataIndex: 'card_value', key: 'card_value', width: 100 },
-  { title: '卡号', dataIndex: 'card_no_display', key: 'card_no_display', width: 150 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
-  { title: '有效期至', dataIndex: 'valid_until', key: 'valid_until', width: 170 },
-  { title: '使用日期', dataIndex: 'used_at', key: 'used_at', width: 170 },
-  { title: '已关联工具', dataIndex: 'tool_id', key: 'tool_id', width: 180 },
+  { title: '卡号', dataIndex: 'card_no_display', key: 'card_no_display', width: 130 },
+  { title: '面值', dataIndex: 'card_value', key: 'card_value', width: 70 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 200 },
+  { title: '已关联工具', dataIndex: 'tool_id', key: 'tool_id', width: 110 },
   // 2026-10-12 移除 ant-design-vue 时删掉了 align: 'center'：原生表格由 CSS 决定对齐，
-  // 操作列改为左对齐见 KamiSection.vue:645-648 的 .u-table-col-action 覆盖。
-  { title: '操作', key: 'action', width: 120 },
+  // 操作列改为左对齐见 KamiSection.vue 的 .u-table-col-action 覆盖。
+  { title: '操作', key: 'action', width: 70 },
 ]

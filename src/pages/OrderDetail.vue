@@ -150,6 +150,16 @@
         </dl>
       </section>
 
+      <!--
+        卡密订单的退款政策：**付款前后各说一次**。
+        · 未发卡（未付款/刚下单）：预告「付款后自动发卡 + 自动完成 + 不可退」；
+        · 已发卡：在卡密区块里再确认一次（见下方 cards 区块）。
+        只对卡密订单显示——实物订单仍走「确认收货 → 可售后」的老流程。
+      -->
+      <p v-if="isCardOrder && !cards.length" class="ec-alert ec-alert--warning detail-policy" role="note">
+        <span class="ec-alert__body">{{ CARD_PRODUCT.noticePending }}</span>
+      </p>
+
       <!-- 卡密：卡密类商品在订单变为「已支付」时由服务端发放，这里只展示与复制。
            默认脱敏（`abcd****wxyz`），点眼睛换成明文——脱敏是为了「截图/录屏不外泄」，
            但不能牺牲买家拿走能激活的码，所以「复制」始终复制完整卡号。 -->
@@ -157,8 +167,7 @@
         <h2 class="page-panel-head">{{ TRADE.orderCards }}</h2>
 
         <ul class="detail-cards">
-          <li v-for="card in cards" :key="card.card_no" class="detail-card">
-            <div class="detail-card-main">
+          <li v-for="card in cards" :key="card.card_no" class="detail-card">            <div class="detail-card-main">
               <p class="detail-card-name">{{ card.product_title || card.card_name || TRADE.orderCards }}</p>
               <p class="detail-card-line">
                 <code class="detail-card-no">
@@ -183,6 +192,7 @@
         </ul>
 
         <p class="page-note">{{ TRADE.orderCardsHint }}</p>
+        <p class="page-note detail-policy-note">{{ CARD_PRODUCT.noticeAfter }}</p>
       </section>
 
       <!-- 备注与联系信息：下单时填过才显示，空字段不占位 -->
@@ -261,8 +271,12 @@
           <span v-if="busy" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
           <span>{{ busy ? TRADE.orderProcessing : TRADE.orderCancel }}</span>
         </button>
+        <!-- 卡密订单不出现「确认完成」：付款那一刻服务端已自动完成
+             （docs/migrations/2026-11-01-auto-complete-card-orders.sql）。
+             这里再判一次 isCardOrder，是为了防历史数据（3.7.0 之前遗留的 paid 卡密单）
+             与自动完成失败这两种边缘态下又冒出一个人工按钮。 -->
         <button
-          v-if="canConfirmComplete(order.status, payEnabled)"
+          v-if="canConfirmComplete(order.status, payEnabled) && !isCardOrder"
           type="button"
           class="u-btn-primary"
           :disabled="busy"
@@ -310,7 +324,7 @@ import { copyText } from '@/utils/clipboard.js'
 import { maskCode } from '@/utils/mask.js'
 import { settlementRows } from '@/utils/checkout.js'
 import { formatUtils } from '@/utils/index.js'
-import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
+import { PAGES, PRODUCT_GRID, TRADE, CARD_PRODUCT } from '@/constants/index.js'
 import {
   orderStatusLabel,
   orderStatusTagClass,
@@ -333,6 +347,18 @@ const breadcrumbItems = [
 const order = ref(null)
 /** 本单已发放的卡密（非卡密订单恒为空数组） */
 const cards = ref([])
+
+/**
+ * 本单是否是卡密订单。
+ *
+ * 用**明细**判断而不是用「有没有卡密」：付款前还没有卡密，但那时正需要提前
+ * 告知「付款后自动发卡、自动完成、不支持退货退款」（缺口在付款前，不是付款后）。
+ * 判定取「任一明细是卡密商品」——混单里只要含卡密，退款条件也必须说清楚。
+ */
+const isCardOrder = computed(() =>
+  Array.isArray(order.value?.items) && order.value.items.some((item) => item?.is_card_product === true)
+)
+
 const loading = ref(true)
 const error = ref('')
 const busy = ref(false)
@@ -636,6 +662,16 @@ a.detail-title:hover {
   font-size: var(--fs-sm);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
+}
+
+/* 卡密商品的退款政策条：与面板同宽，上下留一点呼吸；颜色由 .ec-alert--warning 决定 */
+.detail-policy {
+  margin: 0;
+}
+
+/* 已发卡后的确认文案：跟在上一条说明后面，字号更小、颜色更弱 */
+.detail-policy-note {
+  margin-top: calc(var(--space-unit) * 0.5);
 }
 
 /* 卡密：一张卡一行，号码用等宽字体（避免 0/O、1/l 混淆），复制按钮靠右 */

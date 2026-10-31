@@ -96,28 +96,42 @@
           <thead>
             <tr>
               <th scope="col">卡密名称</th>
-              <th scope="col">面值</th>
               <th scope="col">卡号</th>
+              <th scope="col">面值</th>
               <th scope="col">状态</th>
-              <th scope="col">有效期至</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="card in cards" :key="card.id">
               <td><span class="assets-name">{{ card.card_name || '—' }}</span></td>
-              <td>{{ card.card_value ?? '—' }}</td>
-              <td><span class="assets-mono"><MaskedValue :value="card.card_no_display || '—'" /></span></td>
+              <!--
+                卡号：默认脱敏（截图/录屏不外泄），右侧一键复制**完整**卡号 ——
+                用户拿到卡密的目的就是去工具页激活，只给 `TEST****CF87` 等于让他自己拼。
+                脱敏值与明文都由服务端下发（本人数据，requireSameUser 过）。
+              -->
               <td>
-                <span class="u-tag">{{ card.status_text || card.status }}</span>
+                <span class="assets-mono-cell">
+                  <MaskedValue class="assets-mono" :value="card.card_no_display || '—'" />
+                  <button
+                    v-if="card.card_no"
+                    type="button"
+                    class="assets-copy-btn"
+                    :aria-label="`复制卡密 ${card.card_name || card.card_no_display || ''}`"
+                    :title="TRADE.orderCardCopy"
+                    @click="copyCardNo(card)"
+                  >
+                    <AppIcon name="clipboard" />
+                  </button>
+                </span>
               </td>
+              <td>{{ card.card_value ?? '—' }}</td>
               <td>
-                <span v-if="card.valid_until" class="assets-muted">{{ toDate(card.valid_until) }}</span>
-                <span v-else class="assets-muted">永久有效</span>
+                <span class="u-tag">{{ card.status_text || card.status || '—' }}</span>
               </td>
             </tr>
 
             <tr v-if="!cardsLoading && !cards.length" class="assets-empty-row">
-              <td colspan="5">还没有卡密。</td>
+              <td colspan="4">还没有卡密。</td>
             </tr>
           </tbody>
         </table>
@@ -214,8 +228,10 @@ import AppIcon from '@/components/AppIcon.vue'
 import api from '@/api/index'
 import orderApi from '@/api/ask/order'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
-import { PAGES } from '@/constants/index.js'
+import { PAGES, TRADE } from '@/constants/index.js'
 import { goodsTypeLabel } from '@/utils/goodsType.js'
+import { copyText } from '@/utils/clipboard.js'
+import { notify } from '@/hooks/useToast/index.js'
 
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
@@ -325,6 +341,23 @@ function loadCards() {
   kamiStore.fetchUserKamis(userStore.userId, { page: 1, limit: 50 })
 }
 
+/**
+ * 复制完整卡号
+ *
+ * 页面显示的是脱敏值（`TEST****CF87`），但复制必须给**明文** —— 用户复制卡密的
+ * 唯一目的就是去工具页粘贴激活。`card.card_no` 由服务端下发（本人数据）。
+ */
+async function copyCardNo(card) {
+  const value = card?.card_no
+  if (!value) {
+    notify.error('这张卡密没有可复制的卡号，请到订单详情查看。')
+    return
+  }
+  const ok = await copyText(value)
+  if (ok?.ok) notify.success(TRADE.orderCardCopied)
+  else notify.error(ok?.message || '复制失败，请手动长按选择卡号。')
+}
+
 onMounted(() => {
   if (!userStore.isLoggedIn) return
   loadOrders()
@@ -382,6 +415,49 @@ onMounted(() => {
 
 .assets-mono {
   font-family: var(--font-mono, monospace);
+}
+
+/*
+ * 卡号单元格：字号等宽 + 「脱敏值 + 复制按钮」一行排开。
+ * nowrap 是必须的 —— 单元格两侧有 --table-cell-padding，卡号本身又长，
+ * 允许换行时 `TEST****CF87` 会被折成两行（原来的挤压观感就是这么来的）。
+ */
+.assets-mono-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  white-space: nowrap;
+}
+
+.assets-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 3);
+  height: calc(var(--space-unit) * 3);
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: transparent;
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--btn-radius);
+  transition:
+    color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+.assets-copy-btn:hover,
+.assets-copy-btn:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
+
+/* 状态列里现在带到期日（「已激活 · 2027-01-01 到期」）：
+   标签不换行，列宽由内容撑开，不再把状态挤成两行 */
+.assets-table td .u-tag {
+  white-space: nowrap;
 }
 
 .assets-link {

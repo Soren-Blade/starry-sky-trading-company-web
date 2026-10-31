@@ -100,11 +100,9 @@ test('表头包含全部 8 列，且顺序与列定义一致', async () => {
   const th = headers(html)
   assert.deepEqual(th, [
     '卡密名称',
-    '面值',
     '卡号',
+    '面值',
     '状态',
-    '有效期至',
-    '使用日期',
     '已关联工具',
     '操作',
   ])
@@ -120,23 +118,23 @@ test('「卡密名称」列渲染出 card_name（曾整列为空）', async () =
   assert.ok(html.includes('季卡'), '应渲染第二个卡密的名称')
 
   const tds = cells(html)
-  // 每行 8 列，第一列必须是卡密名称
+  // 每行 7 列，第一列必须是卡密名称
   assert.equal(tds[0], '月卡', `第 1 行第 1 列应为「月卡」，实际 ${JSON.stringify(tds[0])}`)
-  assert.equal(tds[8], '季卡', `第 2 行第 1 列应为「季卡」，实际 ${JSON.stringify(tds[8])}`)
+  assert.equal(tds[6], '季卡', `第 2 行第 1 列应为「季卡」，实际 ${JSON.stringify(tds[7])}`)
 })
 
 test('没有任何一列是空的（表格有表头却整列空白是典型缺陷）', async () => {
   const html = await renderKami()
   const tds = cells(html)
-  assert.equal(tds.length, 16, `2 行 × 8 列应为 16 个单元格，实际 ${tds.length}`)
+  assert.equal(tds.length, 12, `2 行 × 6 列应为 12 个单元格，实际 ${tds.length}`)
 
   const empty = tds.map((v, i) => ({ i, v })).filter((x) => x.v === '' || x.v === '—')
   // 「使用日期」对未使用卡密显示 —，属预期；其余为空即异常
-  const unexpected = empty.filter((x) => x.i % 8 !== 5)
+  const unexpected = empty.filter((x) => x.i % 6 !== 3)
   assert.deepEqual(
     unexpected,
     [],
-    `以下单元格为空（列索引 % 8 = ${unexpected.map((x) => x.i % 8).join(',')}）：${JSON.stringify(unexpected)}`
+    `以下单元格为空（列索引 % 6 = ${unexpected.map((x) => x.i % 6).join(',')}）：${JSON.stringify(unexpected)}`
   )
 })
 
@@ -144,32 +142,32 @@ test('没有任何一列是空的（表格有表头却整列空白是典型缺�
 
 test('面值、卡号、状态三列内容正确', async () => {
   const tds = cells(await renderKami())
-  assert.equal(tds[1], '30', '第 1 行面值')
-  // 卡号单元格里除文本外还有「复制」图标按钮，因此用包含判断
-  assert.match(tds[2], /\*\*\*\*1111/, `第 1 行脱敏卡号，实际 ${JSON.stringify(tds[2])}`)
+  // 3.7.0 列序：卡密名称 / 卡号 / 面值 / 状态 / 已关联工具 / 操作（6 列）
+  assert.match(tds[1], /\*\*\*\*1111/, `第 1 行脱敏卡号，实际 ${JSON.stringify(tds[1])}`)
+  assert.equal(tds[2], '30', '第 1 行面值')
   assert.equal(tds[3], '未使用', '第 1 行状态文案')
-  assert.equal(tds[9], '90', '第 2 行面值')
-  assert.match(tds[10], /\*\*\*\*2222/, `第 2 行脱敏卡号，实际 ${JSON.stringify(tds[10])}`)
-  assert.equal(tds[11], '已使用', '第 2 行状态文案')
+  assert.match(tds[7], /\*\*\*\*2222/, `第 2 行脱敏卡号，实际 ${JSON.stringify(tds[7])}`)
+  assert.equal(tds[8], '90', '第 2 行面值')
+  assert.ok(tds[9].startsWith('已使用'), `第 2 行状态文案，实际 ${JSON.stringify(tds[9])}`)
 })
 
-test('卡号单元格里的复制按钮带 aria-label（图标型按钮必须有无障碍名）', async () => {
+test('有效期不再单独成列：口径并入状态文案（3.7.0）', async () => {
   const html = await renderKami()
-  assert.match(html, /aria-label="复制脱敏卡号，仅用于核对"/)
-  // 卡号列只回传脱敏值，按钮文案必须如实说明，避免用户以为复制到了完整卡号
-  assert.match(html, /title="复制脱敏卡号（含掩码，仅用于核对）"/)
+  assert.equal(headers(html).includes('有效期至'), false, '有效期应并入状态列，不再占一列')
+  // 状态列渲染的是服务端下发的 status_text（含到期日）
+  const tds = cells(html)
+  assert.equal(tds[3], '未使用', '未使用卡密的状态文案')
 })
 
-test('有效期为空时显示「永久有效」，有值时显示格式化日期', async () => {
+test('使用日期并入状态列：未用过的卡不显示，用过的显示在徽标下方', async () => {
   const tds = cells(await renderKami())
-  assert.equal(tds[4], '永久有效', 'valid_until 为 null 应显示永久有效')
-  assert.match(tds[12], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/, `第 2 行有效期应被格式化，实际 ${tds[12]}`)
-})
-
-test('使用日期为空时显示「—」，有值时显示日期', async () => {
-  const tds = cells(await renderKami())
-  assert.equal(tds[5], '—')
-  assert.match(tds[13], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/, `实际 ${tds[13]}`)
+  // 第 1 行（未使用）状态列只有文案，没有使用时间
+  assert.equal(tds[3], '未使用')
+  // 第 2 行（已使用）状态列第二行带使用时间
+  assert.ok(tds[9].startsWith('已使用'), `实际 ${JSON.stringify(tds[9])}`)
+  const html = await renderKami()
+  assert.match(html, /kami-status-sub/, '用过的卡应在状态列渲染第二行使用时间')
+  assert.match(html, /\d{4}-\d{2}-\d{2} \d{2}:\d{2} 使用/, '使用时间应带「使用」后缀')
 })
 
 test('工具名按 tool_id 解析出来（数字与字符串 id 都能匹配）', async () => {
@@ -177,19 +175,26 @@ test('工具名按 tool_id 解析出来（数字与字符串 id 都能匹配）'
   const tds = cells(html)
 
   // cells() 会剥掉标签，因此这里断言工具名文字 …
-  assert.equal(tds[6], '视频解析')
-  assert.equal(tds[14], '图片压缩')
+  assert.equal(tds[4], '视频解析')
+  assert.equal(tds[10], '图片压缩')
 
   // … 图标则以 AppIcon 的 SVG 形式出现在工具名旁边（不再是 emoji 字符）
   const toolCells = [...kamiTable(html).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1])
-  assert.match(toolCells[6], /class="app-icon"/, `工具名前应有线性图标，实际 ${toolCells[6]}`)
-  assert.match(toolCells[14], /class="app-icon"/, `实际 ${toolCells[14]}`)
+  assert.match(toolCells[4], /class="app-icon"/, `工具名前应有线性图标，实际 ${toolCells[5]}`)
+  assert.match(toolCells[10], /class="app-icon"/, `实际 ${toolCells[12]}`)
 })
 
 test('操作列：未使用的卡密显示「去激活」，已使用的显示占位', async () => {
   const tds = cells(await renderKami())
-  assert.equal(tds[7], '去激活')
-  assert.equal(tds[15], '已激活')
+  assert.equal(tds[5], '去激活')
+  assert.equal(tds[11], '已激活')
+})
+
+test('复制按钮复制的是完整卡号（3.7.0）', async () => {
+  const html = await renderKami()
+  // 展示仍是脱敏值，但按钮的 aria/title 不再自称「仅复制脱敏值」
+  assert.match(html, /aria-label="复制卡密/)
+  assert.equal(/复制脱敏卡号/.test(html), false, '不应再出现「复制脱敏卡号」的旧文案')
 })
 
 test('计数文案跟随 pagination.total', async () => {
@@ -223,7 +228,7 @@ test('游客态（isLoggedIn 为 false）显示登录提示且不渲染表格', 
 
 test('空列表时仍渲染表头，并给出空态提示', async () => {
   const html = await renderKami({ kami: { userKamis: [], pagination: { total: 0 } } })
-  assert.equal(headers(html).length, 8, '空列表也应保留表头')
+  assert.equal(headers(html).length, 6, '空列表也应保留表头')
   assert.match(html, /共 0 张卡密/)
   assert.match(html, /暂无卡密/, '应显示空态文案')
 })

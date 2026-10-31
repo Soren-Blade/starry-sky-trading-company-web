@@ -269,11 +269,13 @@
             <table class="u-table kami-table">
               <thead>
                 <tr>
+                  <!-- 3.7.0：不再给 th 写 min-width。列宽由内容决定、剩余空间按比例分配，
+                       行内 min-width 会把 6 列的下限之和顶到容器宽度之外，
+                       于是「无论怎么调都有一条横向滚动条」。 -->
                   <th
                     v-for="column in tableColumns"
                     :key="column.key"
                     :class="{ 'u-table-col-action': column.key === 'action' }"
-                    :style="{ minWidth: `${column.width}px` }"
                     scope="col"
                   >
                     {{ column.title }}
@@ -297,19 +299,16 @@
                     </template>
 
                     <template v-else-if="column.key === 'status'">
-                      <span class="u-tag" :class="getStatusVariantClass(record.status)">
-                        {{ record.status_text || getStatusText(record.status) }}
-                      </span>
-                    </template>
-
-                    <template v-else-if="column.key === 'valid_until'">
-                      <span v-if="record.valid_until" class="muted">{{ formatDate(record.valid_until) }}</span>
-                      <span v-else class="permanent">永久有效</span>
-                    </template>
-
-                    <template v-else-if="column.key === 'used_at'">
-                      <span v-if="record.used_at" class="muted">{{ formatDate(record.used_at) }}</span>
-                      <span v-else class="empty">—</span>
+                      <div class="kami-status-cell">
+                        <span class="u-tag" :class="getStatusVariantClass(record.status)">
+                          {{ record.status_text || getStatusText(record.status) }}
+                        </span>
+                        <!-- 使用日期并入状态列第二行：只有用过的卡才有值，
+                             单独占一列等于整列空白（3.7.0） -->
+                        <span v-if="record.used_at" class="kami-status-sub">
+                          {{ formatDate(record.used_at) }} 使用
+                        </span>
+                      </div>
                     </template>
 
                     <template v-else-if="column.key === 'tool_id'">
@@ -325,8 +324,8 @@
                         <button
                           type="button"
                           class="copy-icon-btn"
-                          title="复制脱敏卡号（含掩码，仅用于核对）"
-                          aria-label="复制脱敏卡号，仅用于核对"
+                          :title="TRADE.orderCardCopy"
+                          :aria-label="`复制卡密 ${record.card_name || ''}`.trim()"
                           @click="copyCardNo(record)"
                         >
                           <AppIcon name="clipboard" />
@@ -336,8 +335,11 @@
 
                     <template v-else-if="column.key === 'action'">
                       <div class="card-no-cell">
+                        <!-- 3.7.0：'issued'（商品订单发出的卡）同样还没被兑换，
+                             之前只有 'unused' 才给「去激活」，于是「已发放」的卡
+                             在操作列显示成「已激活」——把没用的卡说成已用。 -->
                         <button
-                          v-if="record.status === 'unused'"
+                          v-if="record.status === 'unused' || record.status === 'issued'"
                           type="button"
                           class="link-btn kami-action-link"
                           @click="focusActivate"
@@ -580,6 +582,10 @@ import {
   resolveToolName,
   toToolOptions,
 } from '@/hooks/useKamiDisplay'
+// 复制卡号走统一的 clipboard 封装（navigator.clipboard 在非安全上下文/被拒权限下会失败，
+// copyText 内部有 execCommand 降级），与「我的资产」「订单详情」用的是同一份实现。
+import { copyText } from '@/utils/clipboard.js'
+import { TRADE } from '@/constants/index.js'
 
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
@@ -1033,18 +1039,19 @@ const resetMemberPanel = () => {
 const handleActivate = guardAsync(() => activation.activate())
 const handleMemberActivate = guardAsync(runMemberActivate)
 
+/**
+ * 复制卡号
+ *
+ * 3.7.0 起列表接口对**本人**下发完整 `card_no`（此前只有脱敏值，
+ * 复制出来是 `TEST****CF87`，拿去激活必然失败）。展示仍然脱敏，
+ * 复制给明文——与「我的资产」「订单详情」三处保持一致。
+ */
 const copyCardNo = async (card) => {
-  // 列表接口只返回**脱敏**卡号（见 server 端 kamiApi：完整 card_no 会导致掩码失效）。
-  // 因此这里复制到的是 "****1234" 这类值 —— 按钮文案必须如实说明，
-  // 否则用户会以为复制到了可用于激活的完整卡号。
-  const text = card.card_no_display
+  const text = card.card_no || card.card_no_display
   if (!text) return
-  try {
-    await navigator.clipboard.writeText(text)
-    notify.success('已复制脱敏卡号（含掩码，仅用于核对）')
-  } catch {
-    notify.error('复制失败，请手动选择复制')
-  }
+  const result = await copyText(text)
+  if (result?.ok) notify.success(TRADE.orderCardCopied)
+  else notify.error(result?.message || '复制失败，请手动选择复制')
 }
 
 onMounted(async () => {
@@ -1415,10 +1422,49 @@ watch(
   padding: calc(var(--space-unit) * 2);
 }
 
-/* 列宽由 KAMI_TABLE_COLUMNS 的 width 通过行内 min-width 给出；
-   表格整体允许横向滚动（窄屏列不会被压扁） */
+/* 列宽由内容自适应（见模板里去掉行内 min-width 的注释）。
+ *
+ * 3.7.0 从 8 列收敛到 6 列，并把单元格左右内边距压到 1 个间距单位：
+ * 6 列 × 2 × 16px 的内边距就要 192px，加上列内容很容易把表格顶出容器，
+ * 于是右侧面板（1280 屏下 ≈757px）里就出现常驻横向滚动条、
+ * 「操作」列永远在视野之外。现在整表在容器内自适应，窄屏才交给 .u-table-wrap 横滚。
+ */
 .kami-table {
-  min-width: calc(var(--table-action-col-width) + 940px);
+  min-width: 0;
+  width: 100%;
+}
+
+.kami-table th,
+.kami-table td {
+  padding-left: calc(var(--space-unit) * 1);
+  padding-right: calc(var(--space-unit) * 1);
+}
+
+/* 表体不折行：卡号（VERI****RED01）与状态（已激活 · 2027-01-01 到期）
+ * 被折成两三行是「表格被挤压」的主因，这里统一压成单行。 */
+.kami-table tbody td {
+  white-space: nowrap;
+}
+
+/* 状态列：徽标 + （用过的卡）第二行使用时间 */
+.kami-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 0.5);
+}
+
+.kami-status-sub {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 名称列例外：允许省略而不是换行 —— 名称最长，是唯一值得让步的列 */
+.kami-table tbody td:first-child,
+.kami-table th:first-child {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kami-table .u-table-col-action,

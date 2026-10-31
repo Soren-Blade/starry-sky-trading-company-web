@@ -7,7 +7,7 @@
   <div class="about-page">
     <div class="about-shell">
       <!-- 左栏：锚点用原生 <a href="#id">，滚动定位交给浏览器，不写 JS -->
-      <aside class="about-aside">
+      <aside class="about-aside u-enter" :style="{ '--i': 0 }">
         <p class="about-eyebrow">{{ PAGES.about.eyebrow }}</p>
         <h1 class="about-title">{{ PAGES.about.title }}</h1>
         <p class="about-lead">{{ PAGES.about.description }}</p>
@@ -23,7 +23,7 @@
 
       <!-- 右栏：三段正文，段间用 --divider 分隔 -->
       <div class="about-body">
-        <section id="about-vision" class="about-section">
+        <section id="about-vision" class="about-section u-enter" :style="{ '--i': 1 }">
           <h2>我们的愿景</h2>
           <p>
             星辰商行致力于为用户带来精选商品和优质服务。我们相信，每一件商品都承载着独特的故事和品质，
@@ -31,26 +31,26 @@
           </p>
         </section>
 
-        <section id="about-values" class="about-section">
+        <section id="about-values" class="about-section u-enter" :style="{ '--i': 2 }">
           <h2>我们的核心价值</h2>
           <!-- 编号列表：等宽的 01/02/03/04 替代主页那种卡片网格，与首页拉开观感 -->
           <ol class="value-list">
-            <li class="value-item">
+            <li class="value-item u-enter" :style="{ '--i': 3 }">
               <span class="value-index" aria-hidden="true">01</span>
               <h3 class="value-title">品质优先</h3>
               <p class="value-text">每一件商品都经过严格筛选，确保品质与美学的完美结合</p>
             </li>
-            <li class="value-item">
+            <li class="value-item u-enter" :style="{ '--i': 4 }">
               <span class="value-index" aria-hidden="true">02</span>
               <h3 class="value-title">高效服务</h3>
               <p class="value-text">快速配送、贴心售后，让您的购物体验更加轻松</p>
             </li>
-            <li class="value-item">
+            <li class="value-item u-enter" :style="{ '--i': 5 }">
               <span class="value-index" aria-hidden="true">03</span>
               <h3 class="value-title">创新体验</h3>
               <p class="value-text">不断创新购物方式，为用户提供更好的体验</p>
             </li>
-            <li class="value-item">
+            <li class="value-item u-enter" :style="{ '--i': 6 }">
               <span class="value-index" aria-hidden="true">04</span>
               <h3 class="value-title">用户至上</h3>
               <p class="value-text">以用户需求为中心，打造温暖的购物社区</p>
@@ -58,7 +58,7 @@
           </ol>
         </section>
 
-        <section id="about-contact" class="about-section">
+        <section id="about-contact" class="about-section u-enter" :style="{ '--i': 7 }">
           <h2>联系我们</h2>
           <!--
             联系方式做成「标签 + 值」对照表，值用等宽字体。
@@ -118,7 +118,10 @@ import { PAGES, CONTACT } from '@/constants/index.js'
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: calc(var(--section-gap) * 0.5);
   align-items: start;
-  max-width: var(--container-narrow);
+  /* 主内容宽度与商品分类页（--container-max = 1200px）对齐：此前用
+     --container-narrow（960px），在 1440 屏上左右各空出 240px，
+     与本页「编辑式双栏」的比例也不匹配（正文栏被压到 640px）。 */
+  max-width: var(--container-max);
   margin: 0 auto;
   padding: 0 var(--container-padding);
 }

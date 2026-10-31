@@ -35,10 +35,14 @@ const parts = computed(() => splitMasked(props.value));
 <style scoped>
 .masked-value {
     display: inline-flex;
-    flex-wrap: wrap;
+    /* 脱敏编码**永远不折行**：卡号被折成「VERI / **** / RED01」三行
+       既难读又不像一个整体，是「表格被挤压」最刺眼的表现。
+       这里不换行，让调用方用列宽/省略号去解决空间问题。 */
+    flex-wrap: nowrap;
     align-items: baseline;
     gap: 0;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 /* 掩码段：主题令牌决定颜色与字重，浅色主题下是浅灰、深色主题下是暗灰 */

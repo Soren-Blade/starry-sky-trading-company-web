@@ -81,6 +81,19 @@
             <span class="ec-alert__body">{{ deliveryNote }}</span>
           </p>
 
+          <!--
+            卡密商品的退款政策：必须在下单前说清楚。付款成功后服务端立刻发卡并把
+            订单置为「已完成」，没有可撤回的交付物 —— 事后才告知等于欺瞒。
+            用 --warning 而不是 --info：这是「不可退」的硬约束，不是中性说明。
+          -->
+          <p
+            v-if="product.is_card_product"
+            class="ec-alert ec-alert--warning product-delivery product-no-refund"
+            role="note"
+          >
+            <span class="ec-alert__body">{{ CARD_PRODUCT.noticeBefore }}</span>
+          </p>
+
           <!-- 数量：控件是真 <input type="number">，桌面可键盘输入、移动端唤起数字键盘 -->
           <div class="u-field product-quantity">
             <label class="u-field-label" for="product-quantity">数量</label>
@@ -207,7 +220,7 @@ import { useProductActions } from '@/hooks/useProductActions'
 import { notify } from '@/hooks/useToast/index.js'
 import { formatUtils } from '@/utils/index.js'
 import { buildDeliveryNote } from '@/utils/goodsType.js'
-import { PAGES, PRODUCT_GRID } from '@/constants/index.js'
+import { PAGES, PRODUCT_GRID, CARD_PRODUCT } from '@/constants/index.js'
 
 const route = useRoute()
 const router = useRouter()
