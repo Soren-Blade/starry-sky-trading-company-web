@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="纯棉T恤">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a2a33"/>
+      <stop offset="100%" stop-color="#3a3746"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#b7b1ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250 170l70 34 70-34 70 60-46 52-24-20v208H250V262l-24 20-46-52z"/>
+    <path d="M280 182c12 22 68 22 80 0"/>
+  </g>
+  <text x="320" y="560" fill="#dbd7ff" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="32" text-anchor="middle" letter-spacing="6">T-SHIRT</text>
+</svg>

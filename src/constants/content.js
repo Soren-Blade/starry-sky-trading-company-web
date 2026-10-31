@@ -215,6 +215,8 @@ export const PRODUCT_GRID = {
   defaultSeller: '星辰商行',
   addToCart: '加入购物车',
   buyNow: '立即购买',
+  /** 点下「立即购买」后到跳转订单页之间，按钮要自己说明在忙 */
+  buying: '正在下单…',
   addedToCart: '已加入购物车',
   addedToFavorites: '已收藏',
   removedFromFavorites: '已取消收藏',
@@ -295,6 +297,8 @@ export const TRADE = {
   orderCancel: '取消订单',
   orderCancelConfirm: '取消后库存会退回，确定取消这笔订单吗？',
   orderComplete: '确认完成',
+  /** 列表卡片上的取消/确认是就地请求，期间按钮要转圈并改文案，否则用户会连点 */
+  orderProcessing: '处理中…',
   orderCompleteConfirm: '确认已收到商品？完成后订单不可取消。',
   orderDetail: '订单详情',
   orderBackToList: '返回订单列表',
@@ -317,6 +321,11 @@ export const TRADE = {
   orderCardCopy: '复制卡密',
   orderCardCopied: '卡密已复制',
   orderCardsPending: '正在发放卡密，稍后刷新本页即可看到。',
+  /** 卡号默认脱敏，两个按钮文案是一对：显示明文 / 收起明文 */
+  orderCardReveal: '显示完整卡密',
+  orderCardHide: '隐藏完整卡密',
+  /** 订单退款后卡密会被撤销：卡号仍留作凭证，但明确告知已不可用 */
+  orderCardRevoked: '已随退款撤销，不再可用',
   orderFilterAll: '全部',
   orderNotFound: '订单不存在或无权查看',
   ordersLoginFirst: '请先登录账号后再查看订单',

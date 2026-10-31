@@ -150,7 +150,9 @@
         </dl>
       </section>
 
-      <!-- 卡密：卡密类商品在订单变为「已支付」时由服务端发放，这里只展示与复制 -->
+      <!-- 卡密：卡密类商品在订单变为「已支付」时由服务端发放，这里只展示与复制。
+           默认脱敏（`abcd****wxyz`），点眼睛换成明文——脱敏是为了「截图/录屏不外泄」，
+           但不能牺牲买家拿走能激活的码，所以「复制」始终复制完整卡号。 -->
       <section v-if="cards.length" class="page-panel">
         <h2 class="page-panel-head">{{ TRADE.orderCards }}</h2>
 
@@ -158,7 +160,21 @@
           <li v-for="card in cards" :key="card.card_no" class="detail-card">
             <div class="detail-card-main">
               <p class="detail-card-name">{{ card.product_title || card.card_name || TRADE.orderCards }}</p>
-              <code class="detail-card-no">{{ card.card_no }}</code>
+              <p class="detail-card-line">
+                <code class="detail-card-no">
+                  <MaskedValue :value="revealed.has(card.card_no) ? card.card_no : maskCode(card.card_no)" />
+                </code>
+                <button
+                  type="button"
+                  class="link-btn detail-card-reveal"
+                  :aria-label="revealed.has(card.card_no) ? TRADE.orderCardHide : TRADE.orderCardReveal"
+                  :aria-pressed="revealed.has(card.card_no)"
+                  @click="toggleReveal(card.card_no)"
+                >
+                  <AppIcon :name="revealed.has(card.card_no) ? 'eye-off' : 'eye'" />
+                </button>
+              </p>
+              <p v-if="card.revoked_at" class="detail-card-revoked">{{ TRADE.orderCardRevoked }}</p>
             </div>
             <button type="button" class="link-btn detail-card-copy" @click="copyCard(card.card_no)">
               {{ TRADE.orderCardCopy }}
@@ -279,6 +295,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/api/index'
 import AppIcon from '@/components/AppIcon.vue'
+import MaskedValue from '@/components/MaskedValue.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import PaymentPanel from '@/components/PaymentPanel.vue'
 import SmartImage from '@/components/SmartImage.vue'
@@ -286,6 +303,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
 import { copyText } from '@/utils/clipboard.js'
+import { maskCode } from '@/utils/mask.js'
 import { settlementRows } from '@/utils/checkout.js'
 import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
@@ -418,6 +436,21 @@ const copyCard = async (cardNo) => {
   const result = await copyText(String(cardNo || ''))
   if (result.ok) notify.success(TRADE.orderCardCopied)
   else notify.error(result.message)
+}
+
+/**
+ * 卡密默认脱敏、点眼睛看明文。
+ *
+ * 存的是「已展开的卡号集合」而不是每张卡一个布尔值：卡密数量来自订单，
+ * 用 Set 既能按卡号精确开关，又不用在数据里塞展示状态（刷新即回到脱敏）。
+ */
+const revealed = ref(new Set())
+
+const toggleReveal = (cardNo) => {
+  const next = new Set(revealed.value)
+  if (next.has(cardNo)) next.delete(cardNo)
+  else next.add(cardNo)
+  revealed.value = next
 }
 
 const handleCancel = async () => {
@@ -635,11 +668,33 @@ a.detail-title:hover {
   color: var(--text-muted);
 }
 
+/* 卡号与「显示/隐藏」眼睛同一行：眼睛贴着码，避免用户看不出它能点 */
+.detail-card-line {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1);
+  margin: 0;
+}
+
 .detail-card-no {
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--text-primary);
   word-break: break-all;
+}
+
+.detail-card-reveal {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+
+/* 已撤销（订单退款）：卡号仍可见（凭证），但要明确它已不能用 */
+.detail-card-revoked {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--danger);
 }
 
 .detail-card-copy {

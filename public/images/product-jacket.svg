@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="休闲夹克">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#262b31"/>
+      <stop offset="100%" stop-color="#37414a"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#9fd2c2" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 160l64 30 64-30 66 58-42 50-24-18v230H256V250l-24 18-42-50z"/>
+    <path d="M320 190v290"/>
+    <path d="M292 300h-18"/>
+    <path d="M348 300h18"/>
+    <circle cx="320" cy="330" r="8"/>
+    <circle cx="320" cy="386" r="8"/>
+  </g>
+  <text x="320" y="560" fill="#cdeadf" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="32" text-anchor="middle" letter-spacing="6">JACKET</text>
+</svg>

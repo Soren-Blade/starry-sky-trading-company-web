@@ -321,7 +321,7 @@
 
                     <template v-else-if="column.key === 'card_no_display'">
                       <div class="card-no-cell">
-                        <span class="card-no-display">{{ record.card_no_display }}</span>
+                        <span class="card-no-display"><MaskedValue :value="record.card_no_display" /></span>
                         <button
                           type="button"
                           class="copy-icon-btn"
@@ -570,6 +570,7 @@ import { CREDENTIAL_TYPES, detectCredentialType, normalizeCardNo } from '@/utils
 import { useKamiActivation } from '@/hooks/useKamiActivation'
 import SelectField from '@/components/SelectField.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import MaskedValue from '@/components/MaskedValue.vue'
 import {
   KAMI_TABLE_COLUMNS,
   STATUS_FILTER_OPTIONS,

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="游戏笔记本">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d2230"/>
+      <stop offset="100%" stop-color="#3a2740"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#a48bff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="150" y="170" width="340" height="210" rx="18"/>
+    <path d="M110 420h420l-34 40H144z"/>
+    <path d="M200 230h100"/>
+    <path d="M200 280h160"/>
+    <path d="M200 330h80"/>
+  </g>
+  <text x="320" y="540" fill="#d6c8ff" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="30" text-anchor="middle" letter-spacing="5">GAMING PC</text>
+</svg>

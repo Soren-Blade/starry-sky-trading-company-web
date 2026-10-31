@@ -106,7 +106,7 @@
             <tr v-for="card in cards" :key="card.id">
               <td><span class="assets-name">{{ card.card_name || '—' }}</span></td>
               <td>{{ card.card_value ?? '—' }}</td>
-              <td><span class="assets-mono">{{ card.card_no_display || '—' }}</span></td>
+              <td><span class="assets-mono"><MaskedValue :value="card.card_no_display || '—'" /></span></td>
               <td>
                 <span class="u-tag">{{ card.status_text || card.status }}</span>
               </td>
@@ -209,6 +209,7 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
+import MaskedValue from '@/components/MaskedValue.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import api from '@/api/index'
 import orderApi from '@/api/ask/order'

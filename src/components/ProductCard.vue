@@ -325,8 +325,19 @@ async function onToggleFavorite() {
   box-shadow: var(--ec-shadow-sm);
 }
 
+/* 价格与元信息不换行：¥15,999.00 与划线原价挤在一行时，一旦允许折行就会出现
+ * 「价格占两行、别的卡占一行」的高度差，同排卡片正文看起来参差不齐。
+ * 库存/销量这类文案较长时让它自己省略，而不是把整行撑成两行。
+ * 选择器不动 EC 的类名（`.ec-price ec-price--md` 是 productCard 守卫测试断言的标记）。 */
+.product-card .ec-price {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .product-card__meta {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
   row-gap: var(--ec-space-1);
 }
 

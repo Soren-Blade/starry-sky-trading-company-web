@@ -128,18 +128,32 @@
                 type="button"
                 class="u-btn-secondary"
                 :disabled="busy.has(order.order_no)"
+                :aria-busy="busy.has(order.order_no)"
                 @click="handleCancel(order)"
               >
-                {{ TRADE.orderCancel }}
+                <!-- 只有 disabled 的按钮看起来和「没点上」几乎一样，用户会连点：
+                     必须同时给出转圈与文案变化 -->
+                <span
+                  v-if="busy.has(order.order_no)"
+                  class="u-spinner u-spinner--sm"
+                  aria-hidden="true"
+                ></span>
+                <span>{{ busy.has(order.order_no) ? TRADE.orderProcessing : TRADE.orderCancel }}</span>
               </button>
               <button
                 v-if="canConfirmComplete(order.status, payEnabled)"
                 type="button"
                 class="u-btn-primary"
                 :disabled="busy.has(order.order_no)"
+                :aria-busy="busy.has(order.order_no)"
                 @click="handleComplete(order)"
               >
-                {{ TRADE.orderComplete }}
+                <span
+                  v-if="busy.has(order.order_no)"
+                  class="u-spinner u-spinner--sm"
+                  aria-hidden="true"
+                ></span>
+                <span>{{ busy.has(order.order_no) ? TRADE.orderProcessing : TRADE.orderComplete }}</span>
               </button>
             </div>
           </footer>

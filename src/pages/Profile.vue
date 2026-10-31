@@ -1067,6 +1067,16 @@ onMounted(() => {
   gap: var(--section-gap);
 }
 
+/*
+ * 全局 `.page-panel + .page-panel` 给相邻面板加了 margin-top，那是为「同一条竖向流」
+ * 准备的间距。这里两栏是 grid 的并列项，右栏（修改资料）会被这条规则整体压低
+ * —— 表现为「修改资料标题比账号信息低一截、顶部像被顶下去了」。
+ * 版式间距交给 grid 的 gap，兄弟选择器在这层失效。
+ */
+.profile-layout > .page-panel + .page-panel {
+  margin-top: 0;
+}
+
 .profile-identity {
   display: flex;
   align-items: center;
@@ -1318,6 +1328,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
+  /* 与上方「会员卡」的 margin-bottom 同一个 24px 节奏：两张卡片贴在一起会像同一块内容 */
+  margin-top: calc(var(--space-unit) * 3);
 }
 .profile-logs-head {
   display: flex;

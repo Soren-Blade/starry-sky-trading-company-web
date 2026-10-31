@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="智能手机">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#222b3a"/>
+      <stop offset="100%" stop-color="#2f3a52"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#87a9ff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="230" y="130" width="180" height="360" rx="34"/>
+    <path d="M296 176h48"/>
+    <path d="M320 452h.01"/>
+    <circle cx="320" cy="300" r="46"/>
+  </g>
+  <text x="320" y="560" fill="#c6d6ff" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="32" text-anchor="middle" letter-spacing="6">PHONE</text>
+</svg>

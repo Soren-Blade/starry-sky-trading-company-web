@@ -195,10 +195,12 @@ const copyToClipboard = async (text) => {
   gap: calc(var(--space-unit));
 }
 
-/* 掩码点用等宽字体才等距，同时避免泄密时长度一眼可估 */
+/* 掩码点用等宽字体才等距，同时避免泄密时长度一眼可估。
+   颜色不写死：跟随主题的 --ec-code-mask，与其他脱敏位置（卡密、邮箱）保持一致。 */
 .masked {
   font-family: var(--font-mono);
   letter-spacing: var(--tracking-label);
+  color: var(--ec-code-mask);
 }
 
 /* 显隐密码：行内小按钮，圆角与悬停底色走令牌 */

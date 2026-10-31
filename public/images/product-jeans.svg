@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640" role="img" aria-label="牛仔裤">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#20283a"/>
+      <stop offset="100%" stop-color="#2c3b57"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <g fill="none" stroke="#84a8e8" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M232 150h176l-8 300h-56l-24-190-24 190h-56z"/>
+    <path d="M232 214h176"/>
+    <path d="M300 150v64"/>
+    <path d="M340 150v64"/>
+  </g>
+  <text x="320" y="560" fill="#c3d6f7" font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="32" text-anchor="middle" letter-spacing="6">JEANS</text>
+</svg>

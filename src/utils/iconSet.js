@@ -464,6 +464,8 @@ export const ICONS = {
 export const EMOJI_TO_ICON = {
     // 工具与商品
     '🎬': 'video',
+    // 「工具卡密」分类用的票券图标：map 里没有就会回落成彩色 emoji，破坏线性单色体系
+    '🎫': 'ticket',
     '📺': 'video',
     '🎥': 'video',
     '📝': 'file',

@@ -9,6 +9,39 @@
 
 ---
 
+## [3.6.0] — 2026-10-31
+
+### 新增
+
+- **卡密脱敏 + 按需查看**：新增 `src/utils/mask.js`（`maskCode` / `splitMasked` / `hasMask`）与
+  `src/components/MaskedValue.vue`。订单详情的卡密默认显示 `TEST****CF87`，点眼睛图标才展开完整
+  卡号（按钮带 `aria-pressed`，`AppIcon` 的 `eye`/`eye-off`）；**「复制卡密」始终复制完整卡号** ——
+  只给脱敏值的话买家根本没法去工具页兑换。已撤销的卡（`revoked_at`）就地提示「已随退款撤销，不再可用」。
+- **脱敏随主题变化**：掩码段统一用 `var(--ec-code-mask)`，因此跟着 5 套主题走；
+  「我的资产 / 我的卡密」的 `card_no_display` 也改由 `<MaskedValue>` 渲染，AppleId 卡片的 `.masked` 同改。
+- **按钮点击态**：商品详情「立即购买」、订单页「取消订单 / 确认完成」在请求期间显示 spinner +
+  「正在下单…」「处理中…」并置 `aria-busy`（路由跳转本身已有全局进度条 `useRouteLoading`，没有重复造）。
+- **工具卡密分类入口**：商品分类页新增「工具卡密」根分类与两个子分类（视频下载卡密 / 通用激活卡密），
+  `iconSet.js` 的 `EMOJI_TO_ICON` 补 `🎫 → ticket`（缺这条映射时图标会回落成彩色 emoji）。
+- 新增 6 个本地商品插画 `public/images/product-*.svg`（笔记本 / 游戏本 / 手机 / T恤 / 夹克 / 牛仔裤）。
+
+### 修复
+
+- **个人中心「修改资料」被挤下去**：`.profile-layout` 是 grid，左右两块仍是相邻兄弟，
+  命中了全局 `.page-panel + .page-panel { margin-top }`。已用
+  `.profile-layout > .page-panel + .page-panel { margin-top: 0 }` 抵消；「操作日志」卡片补 `margin-top`。
+- **商品卡布局错乱**：`.ec-product__cta` 改为 `margin-block-start: auto`（按钮吸底，同排对齐），
+  `.ec-product__body` 加 `flex: 1 1 auto`；价格与「浏览·销量·库存」不再换行。
+  触发条件正是**内容长度不一**的卡片（有副标题 / 无副标题、meta 换行）——之前靠内容等长掩盖了。
+
+### 验证
+
+- 新增守卫 `test/mask.test.js`（9 条）：订单详情不得直接插值完整卡号、Assets/KamiSection 必须用
+  `MaskedValue`、掩码必须走令牌而非色值。
+- 浏览器逐页核对：`/category/5` 三张笔记本卡按钮同排、`/category/10` 工具卡密子分类可点、
+  `/hot` 10 张卡对齐、`/user/profile` 左右两栏标题齐顶、订单详情脱敏与眼睛切换、退款后卡片保留并标「已撤销」。
+- 全量测试 **1234/1234**、`eslint` 无输出、`npm run build` 通过、`verify:dev` 18/18。
+
 ## [3.5.0] — 2026-10-31
 
 ### 新增

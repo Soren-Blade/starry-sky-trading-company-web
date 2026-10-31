@@ -134,9 +134,13 @@
               type="button"
               class="u-btn-secondary"
               :disabled="isOut || busy"
+              :aria-busy="busy === 'buy'"
               @click="handleBuyNow"
             >
-              {{ PRODUCT_GRID.buyNow }}
+              <!-- 「立即购买」会先建单再跳转，中间这一两秒原本毫无反馈（按钮只是变灰），
+                   用户会以为没点上而连点，最后下了好几张单 -->
+              <span v-if="busy === 'buy'" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
+              <span>{{ busy === 'buy' ? PRODUCT_GRID.buying : PRODUCT_GRID.buyNow }}</span>
             </button>
             <!-- 收藏：图标按钮 + aria-pressed 表达状态 -->
             <button

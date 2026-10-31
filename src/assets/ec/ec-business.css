@@ -144,6 +144,7 @@
 
 .ec-product__body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--ec-space-2);
   padding: var(--ec-card-pad-md);
@@ -163,12 +164,21 @@
 .ec-product__meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--ec-space-2);
   font-size: var(--ec-micro-size);
   color: var(--ec-text-tertiary);
 }
 .ec-product__meta .ic { width: 12px; height: 12px; }
-.ec-product__cta { margin-block-start: var(--ec-space-1); }
+/*
+ * CTA 吸底：同一行里的卡片内容长短不一（副标题有没有、库存文案换不换行、
+ * 标题一行还是两行），如果按钮跟着内容走，同排的「立即购买」就会高低错落，
+ * 看起来像布局坏了。`margin-block-start: auto` 把按钮推到卡片底部，
+ * 配合网格的等高分栏，同排按钮必然对齐。
+ */
+.ec-product__cta {
+  margin-block-start: auto;
+}
 
 /* 售罄：遮罩 + 到货提醒，CTA 降级为 secondary */
 .ec-product.is-soldout .ec-product__cover::after {
