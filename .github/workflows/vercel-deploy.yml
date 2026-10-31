@@ -34,6 +34,13 @@ jobs:
         with:
           node-version: '22'
 
+      # 必须在部署前删掉 .git：Vercel 看到 git 元数据会按「提交作者」校验权限，
+      # 作者邮箱不对应团队里的 Vercel 账号时整个部署会被判 BLOCKED
+      # （错误原文：The deployment was blocked because the commit author
+      # doesn't have permission to create deployments for this project）。
+      - name: 去掉 git 元数据
+        run: rm -rf .git
+
       # 项目是用 CLI 建的，仓库里没有 .vercel/project.json（它被 gitignore 了），
       # 这里按项目 id 写回来，CLI 才知道要部署到哪个项目。
       - name: 绑定 Vercel 项目
