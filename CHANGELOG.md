@@ -9,6 +9,16 @@
 
 ---
 
+## [4.0.6] — 2026-11-20
+
+### 说明（本版前端无代码改动）
+
+- 产品版本号与服务端同步。支付异步通知迁到 `https://api.xingchenshanghang.top/payNotify/notify`，
+  前端侧无改动：线上仍走 `vercel.json` 的**同源反代** `/api/(.*)` → `https://api.xingchenshanghang.top/$1`，
+  浏览器端不产生跨域，`VITE_API_BASE_URL=/api`。
+
+---
+
 ## [4.0.5] — 2026-11-01
 
 ### 修复
