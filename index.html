@@ -35,17 +35,10 @@
     </script>
 
     <!--
-      等宽字体。EC 的 --ec-font-mono 首选项是 JetBrains Mono（卡密、代码块、
-      数字表格都靠它对齐）。正文字体走 EC 的系统字体栈（HarmonyOS Sans SC /
-      PingFang SC / 微软雅黑），不再请求 Web 字体 —— 少一次往返，首屏更快。
-      display=swap：网络不可用时退回系统等宽字体，不会出现空白文字。
+      等宽字体走系统栈（JetBrains Mono 若本机已安装则优先，否则退回
+      SF Mono / Cascadia Code / Consolas / monospace）。不再请求 Google Fonts：
+      国内网络不可达，且同步样式会阻塞首屏。
     -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
-    >
   </head>
   <body>
     <div id="app"></div>
