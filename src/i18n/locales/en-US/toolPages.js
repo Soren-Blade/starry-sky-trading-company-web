@@ -25,6 +25,12 @@ export default {
       eyebrow: 'Other',
       title: '2FA key verifier',
       description: 'Verify a TOTP code, or generate the current code from a secret key.',
+      submit: 'Start verification',
+      reset: 'Start over',
+      emptyTitle: 'Enter a secret or a code',
+      emptyDesc: 'Verify a 6-digit one-time code, or derive the current code from a secret key.',
+      resultNote: 'TOTP rolls in 30-second windows; the time left is shown in the result area.',
+      asideNotice: 'Verification runs locally in your browser; the secret never leaves this device.',
     },
     '/other/appleId': {
       eyebrow: 'Other',

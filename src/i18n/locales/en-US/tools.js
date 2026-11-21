@@ -143,4 +143,31 @@ export default {
     threadNotFoundHint:
       'One wrong digit in the receipt number and it cannot be found. Check the email or screenshot and try again.',
   },
+  twoFa: {
+    chromeTitle: '2FA code tool (live)',
+    secretLabel: 'Enter your 2FA secret key (Base32):',
+    secretPlaceholder: 'e.g. JBSWY3DPEHPK3PXP',
+    secretAria: '2FA secret key (Base32)',
+    secretHelper: 'The sample key is for demo use; copy it with “Demo key” below.',
+    generate: 'Generate and copy code',
+    copyCurrent: 'Copy current code',
+    insecureWarning:
+      'This page is not a secure context, so the browser has disabled WebCrypto and cannot generate codes. Open it over HTTPS or localhost.',
+    currentSecret: 'Current secret:',
+    unset: 'Not set',
+    currentCode: 'Current code:',
+    remaining: '{seconds}s left',
+    progressAria: 'Time left before this code expires',
+    tutorialTitle: 'How this tool works',
+    demoKey: 'Demo key',
+    copyDemoKey: 'Copy demo key',
+    copyMethod: 'Copy behaviour',
+    copyMethodValue: 'Copied to your clipboard after “Generate and copy code”',
+    beginnerTip: 'First-time tip',
+    beginnerValue:
+      'Enter the code before the countdown ends, or it expires and the site rejects it. When testing, use a correctly encoded key rather than random characters. To check a generated code, add the key to Google Authenticator and compare.',
+    copiedSecret: 'Secret copied to clipboard',
+    copiedCode: 'Code copied to clipboard',
+    invalidSecret: 'Could not parse the secret: {message}',
+  },
 }

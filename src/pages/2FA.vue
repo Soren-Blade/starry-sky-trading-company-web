@@ -19,20 +19,20 @@
           <span class="fp-dot fp-dot--warning"></span>
           <span class="fp-dot fp-dot--muted"></span>
         </span>
-        <span class="fp-chrome-title" aria-hidden="true">2FA验证码工具（实时更新）</span>
+        <span class="fp-chrome-title" aria-hidden="true">{{ t('twoFa.chromeTitle') }}</span>
       </div>
 
       <div class="fp-panel-body">
         <div class="field">
-          <label class="fp-label" for="secret">请输入双重密钥 (2FA Secret Key, Base32格式)：</label>
+          <label class="fp-label" for="secret">{{ t('twoFa.secretLabel') }}</label>
           <input
             id="secret"
             v-model="secret"
             class="u-input"
-            placeholder="例如：JBSWY3DPEHPK3PXP"
-            aria-label="2FA 密钥（Base32）"
+            :placeholder="t('twoFa.secretPlaceholder')"
+            :aria-label="t('twoFa.secretAria')"
           />
-          <div class="helper">示例密钥为演示用，点击下方"演示密钥"可复制。</div>
+          <div class="helper">{{ t('twoFa.secretHelper') }}</div>
         </div>
 
         <div class="actions">
@@ -41,12 +41,12 @@
             浏览器会解析为 aria-disabled="true" 且永远为真，反而与真实状态相悖。
             :disabled 已是原生语义，辅助技术可直接识别，无需再写 aria-disabled。
           -->
-          <button class="u-btn-primary" @click="generateNow" :disabled="!hasSecret">获取并复制验证码</button>
-          <button class="u-btn-secondary" @click="copyCode" :disabled="!code">复制当前验证码</button>
+          <button class="u-btn-primary" @click="generateNow" :disabled="!hasSecret">{{ t('twoFa.generate') }}</button>
+          <button class="u-btn-secondary" @click="copyCode" :disabled="!code">{{ t('twoFa.copyCurrent') }}</button>
         </div>
 
         <div v-if="!cryptoAvailable" class="fp-note secure-warning" role="alert">
-          当前页面不是安全上下文，浏览器已禁用 WebCrypto，无法生成验证码。请通过 HTTPS 或 localhost 访问本页。
+          {{ t('twoFa.insecureWarning') }}
         </div>
 
         <!--
@@ -64,18 +64,18 @@
           <div class="fp-code-area">
             <div class="fp-meta">
               <div class="meta-row">
-                <div class="meta-label">当前密钥：</div>
-                <div class="meta-value">{{ secret || '未设置' }}</div>
+                <div class="meta-label">{{ t('twoFa.currentSecret') }}</div>
+                <div class="meta-value">{{ secret || t('twoFa.unset') }}</div>
               </div>
               <div class="meta-row">
-                <div class="meta-label">当前验证码：</div>
+                <div class="meta-label">{{ t('twoFa.currentCode') }}</div>
                 <!--
                   这里原先带 aria-live="polite"，但验证码每 30 秒换一次、倒计时每秒都在变，
                   会把整个区域变成高频播报源，对屏幕阅读器用户是干扰而非帮助。
                   需要播报验证码时由 copyCode() 的 notify 提示承担。
                 -->
                 <div class="meta-value meta-code">{{ code || '—' }}</div>
-                <div class="meta-remaining">剩余 {{ countdown }}s</div>
+                <div class="meta-remaining">{{ t('twoFa.remaining', { seconds: countdown }) }}</div>
               </div>
             </div>
 
@@ -83,7 +83,7 @@
             <div
               class="u-progress fp-progress"
               role="progressbar"
-              aria-label="验证码有效期剩余时间"
+              :aria-label="t('twoFa.progressAria')"
               :aria-valuenow="countdown"
               aria-valuemin="0"
               aria-valuemax="30"
@@ -99,19 +99,19 @@
 
     <div class="fp-tutorial">
       <!-- 一页只有一个 h1（由页面外壳给出），这里是次级说明区块，用 h2 -->
-      <h2>2FA工具说明</h2>
+      <h2>{{ t('twoFa.tutorialTitle') }}</h2>
       <div class="fp-tutorial-body">
         <p class="fp-kv-row">
-          <span class="fp-kv-key">演示密钥</span>
-          <button class="u-btn-secondary key-inline" @click="copyDemoKey" aria-label="复制演示密钥">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
+          <span class="fp-kv-key">{{ t('twoFa.demoKey') }}</span>
+          <button class="u-btn-secondary key-inline" @click="copyDemoKey" :aria-label="t('twoFa.copyDemoKey')">7J64V3P3E77J3LKNUGSZ5QANTLRLTKVL</button>
         </p>
         <p class="fp-kv-row">
-          <span class="fp-kv-key">复制方式</span>
-          <span class="fp-kv-value">点击「获取并复制验证码」后自动写入剪贴板</span>
+          <span class="fp-kv-key">{{ t('twoFa.copyMethod') }}</span>
+          <span class="fp-kv-value">{{ t('twoFa.copyMethodValue') }}</span>
         </p>
         <p class="fp-kv-row">
-          <span class="fp-kv-key">新手提示</span>
-          <span class="fp-kv-value">必须在倒计时结束前输入验证码登录或验证，否则会失效显示错误。测试功能时必须输入正确编码的密钥，不要随便输入1串字符测试获取功能。如果想要验证生成的验证码是否正确，点击生成二维码的按钮，使用谷歌验证器APP扫描添加检查。</span>
+          <span class="fp-kv-key">{{ t('twoFa.beginnerTip') }}</span>
+          <span class="fp-kv-value">{{ t('twoFa.beginnerValue') }}</span>
         </p>
         <!-- <p class="fp-kv-row">
           <span class="fp-kv-key">更多方式</span>
@@ -124,6 +124,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useI18n } from 'vue-i18n'
 import { notify } from '@/hooks/useToast/index.js'
 import { createKeyCache, isCryptoAvailable } from '@/utils/totp.js'
 import { computeSecondsRemaining } from '@/utils/totpCountdown.js'
@@ -134,6 +135,7 @@ import { TOOL_PAGES } from '@/constants/index.js'
 
 // 页头与结果区文案统一走常量表（键 = tools 表里的 tool_path）
 const PAGE = TOOL_PAGES['/other/2fa']
+const { t } = useI18n()
 
 const secret = ref("");
 const code = ref("");
@@ -188,7 +190,7 @@ async function updateCode() {
     error.value =
       e && e.name === 'MissingSecureContext'
         ? e.message
-        : "无法解析密钥：" + (e.message || e);
+        : t('twoFa.invalidSecret', { message: e.message || e });
     code.value = "";
   } finally {
     // 只有最新一次计算才有权关掉加载态，否则旧结果会提前解除 loading
@@ -250,14 +252,14 @@ async function copyDemoKey() {
   const result = await copyText(demo)
   // 必须按结果提示：早期实现的降级分支既不检查复制是否成功、也不提示用户，
   // 失败时完全静默 —— 用户以为复制成功，粘贴出来却是旧内容。
-  if (result.ok) notify.success('密钥已复制到剪贴板')
+  if (result.ok) notify.success(t('twoFa.copiedSecret'))
   else notify.warning(result.message)
 }
 
 async function copyCode() {
   if (!code.value) return
   const result = await copyText(code.value)
-  if (result.ok) notify.success('验证码已复制到剪贴板')
+  if (result.ok) notify.success(t('twoFa.copiedCode'))
   else notify.warning(result.message)
 }
 
