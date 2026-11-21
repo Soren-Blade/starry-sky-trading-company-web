@@ -1,20 +1,20 @@
 <template>
   <div class="page-shell page-shell--narrow invite-page">
     <header class="page-shell-head">
-      <p class="page-shell-eyebrow">邀请有礼</p>
-      <h1 class="page-shell-title">邀请中心</h1>
+      <p class="page-shell-eyebrow">{{ t('member.invitePage.eyebrow') }}</p>
+      <h1 class="page-shell-title">{{ t('member.invitePage.title') }}</h1>
       <p class="page-shell-desc">
-        好友通过你的链接注册，并在完成第一笔商品订单后，双方各得积分奖励
+        {{ t('member.invitePage.description') }}
       </p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="users" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后可查看你的邀请码与邀请记录</p>
+      <p class="u-mm-state-title">{{ t('member.invitePage.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('member.invitePage.loginDesc') }}</p>
       <div class="u-mm-state-actions">
-        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可参与邀请')">
-          立即登录
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal(t('member.invitePage.loginPrompt'))">
+          {{ t('member.invitePage.loginCta') }}
         </button>
       </div>
     </div>
@@ -30,27 +30,27 @@
 
       <section v-else class="ui-card invite-code-card">
         <div class="invite-code-block">
-          <p class="invite-code-label">我的邀请码</p>
+          <p class="invite-code-label">{{ t('member.invitePage.myCode') }}</p>
           <div class="invite-code-row">
             <p class="invite-code-value">{{ inviteStore.inviteCode || '——' }}</p>
             <button type="button" class="u-btn-secondary" :disabled="!inviteStore.inviteCode" @click="copyCode">
-              复制邀请码
+              {{ t('member.invitePage.copyCode') }}
             </button>
           </div>
         </div>
         <div class="invite-link-block">
-          <p class="invite-code-label">邀请链接</p>
+          <p class="invite-code-label">{{ t('member.invitePage.linkLabel') }}</p>
           <div class="invite-link-row">
             <p class="invite-link-value">{{ inviteStore.inviteLink || '——' }}</p>
             <button type="button" class="u-btn-primary" :disabled="!inviteStore.inviteLink" @click="copyLink">
-              复制链接
+              {{ t('member.invitePage.copyLink') }}
             </button>
           </div>
         </div>
         <!-- 说明横跨两栏放在卡片收尾：它同时讲码与链接，留在任一栏都会让另一栏
              多出一截空白，卡片高度也由它统一收口 -->
         <p class="invite-code-hint">
-          邀请码由账号自动生成，注册时填在「邀请码」一栏；也可以直接把链接发给好友
+          {{ t('member.invitePage.hint') }}
         </p>
       </section>
 
@@ -58,59 +58,59 @@
       <section class="invite-stats">
         <div class="ui-card invite-stat">
           <p class="invite-stat-num">{{ counts.registered }}</p>
-          <p class="invite-stat-label">已注册</p>
+          <p class="invite-stat-label">{{ t('member.invitePage.statRegistered') }}</p>
         </div>
         <div class="ui-card invite-stat">
           <p class="invite-stat-num">{{ counts.first_order }}</p>
-          <p class="invite-stat-label">已完成首单</p>
+          <p class="invite-stat-label">{{ t('member.invitePage.statFirstOrder') }}</p>
         </div>
         <div class="ui-card invite-stat">
           <p class="invite-stat-num">{{ counts.expired }}</p>
-          <p class="invite-stat-label">已失效</p>
+          <p class="invite-stat-label">{{ t('member.invitePage.statExpired') }}</p>
         </div>
       </section>
 
       <section class="ui-card invite-reward">
         <AppIcon name="gift" class="invite-reward-icon" />
         <p class="invite-reward-text">
-          好友完成首单后：你得
-          <strong>{{ reward.inviter_points }}</strong> 积分，好友得
-          <strong>{{ reward.invitee_points }}</strong> 积分
+          {{ t('member.invitePage.rewardYou') }}
+          <strong>{{ reward.inviter_points }}</strong> {{ t('member.invitePage.rewardMiddle') }}
+          <strong>{{ reward.invitee_points }}</strong> {{ t('member.invitePage.rewardTail') }}
         </p>
       </section>
 
       <!-- 进度：满 N 人额外奖励。合计与目标都读服务端，不前端算 -->
       <section v-if="progress.target > 0" class="ui-card invite-progress">
         <div class="invite-progress-head">
-          <span>邀请进度</span>
+          <span>{{ t('member.invitePage.progressTitle') }}</span>
           <span class="invite-progress-count">
-            {{ progress.current }} / {{ progress.target }} 人（完成首单）
+            {{ t('member.invitePage.progressCount', { current: progress.current, target: progress.target }) }}
           </span>
         </div>
         <div class="invite-progress-bar">
           <span class="invite-progress-fill" :style="{ width: `${inviteStore.progressPercent}%` }"></span>
         </div>
         <p class="invite-progress-hint">
-          达到 {{ progress.target }} 人额外奖励
-          <strong>{{ progress.bonus_points }}</strong> 积分（每个账号只发一次）
+          {{ t('member.invitePage.progressHintBefore', { target: progress.target }) }}
+          <strong>{{ progress.bonus_points }}</strong> {{ t('member.invitePage.progressHintAfter') }}
         </p>
       </section>
 
       <!-- 排行榜 -->
       <section v-if="inviteStore.ranking.length" class="ui-card invite-ranking">
-        <h2 class="invite-section-title">邀请榜</h2>
+        <h2 class="invite-section-title">{{ t('member.invitePage.rankingTitle') }}</h2>
         <ul class="invite-ranking-list">
           <li v-for="row in inviteStore.ranking" :key="row.rank" class="invite-ranking-row">
             <span class="invite-ranking-rank">#{{ row.rank }}</span>
             <span class="invite-ranking-label">{{ row.label }}</span>
-            <span class="invite-ranking-count">{{ row.count }} 人</span>
+            <span class="invite-ranking-count">{{ t('member.invitePage.people', { count: row.count }) }}</span>
           </li>
         </ul>
       </section>
 
       <!-- 记录：脱敏标签由服务端给出，前端不再加工 -->
       <section class="invite-records">
-        <h2 class="invite-section-title">邀请记录</h2>
+        <h2 class="invite-section-title">{{ t('member.invitePage.recordsTitle') }}</h2>
 
         <div v-if="inviteStore.loadingRecords && !inviteStore.hasRecords" class="ui-card invite-skeleton">
           <span class="u-skeleton invite-skeleton-line"></span>
@@ -118,8 +118,8 @@
 
         <div v-else-if="!inviteStore.hasRecords" class="ui-card u-mm-state">
           <AppIcon name="users" class="u-mm-state-icon" />
-          <p class="u-mm-state-title">还没有邀请记录</p>
-          <p class="u-mm-state-desc">把上面的链接发给好友，对方注册后这里就会出现</p>
+          <p class="u-mm-state-title">{{ t('member.invitePage.emptyTitle') }}</p>
+          <p class="u-mm-state-desc">{{ t('member.invitePage.emptyDesc') }}</p>
         </div>
 
         <template v-else>
@@ -133,14 +133,14 @@
                 {{ record.status_text }}
               </span>
               <span class="invite-record-reward" :class="{ 'is-muted': !record.rewarded }">
-                {{ record.rewarded ? '已发奖' : '待完成首单' }}
+                {{ record.rewarded ? t('member.invitePage.rewarded') : t('member.invitePage.pendingFirstOrder') }}
               </span>
             </li>
           </ul>
 
           <!-- 只有一页时不渲染控件（避免出现点不动的按钮）。
                版式走共享的 .u-mm-pager，与邮件/优惠券/积分/订单等页一致。 -->
-          <div v-if="inviteStore.totalPages > 1" class="u-mm-pager">
+          <div v-if="inviteStore.totalPages > 1" class="u-mm-pager" :aria-label="t('member.invitePage.pagerAria')">
             <span class="u-mm-pager-info">{{ inviteStore.page }} / {{ inviteStore.totalPages }}</span>
             <div class="u-mm-pager-btns">
               <button
@@ -149,7 +149,7 @@
                 :disabled="!inviteStore.hasPrev"
                 @click="goPage(inviteStore.page - 1)"
               >
-                上一页
+                {{ t('member.invitePage.prev') }}
               </button>
               <button
                 type="button"
@@ -157,7 +157,7 @@
                 :disabled="!inviteStore.hasNext"
                 @click="goPage(inviteStore.page + 1)"
               >
-                下一页
+                {{ t('member.invitePage.next') }}
               </button>
             </div>
           </div>
@@ -182,6 +182,7 @@
  *      状态显示「待完成首单」，文案必须与之一致，否则用户会以为奖励丢了。
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
@@ -189,6 +190,7 @@ import { useInviteStore } from '@/stores/invite.js'
 import { useUserStore } from '@/stores/user.js'
 import { copyText } from '@/utils/clipboard.js'
 
+const { t } = useI18n()
 const inviteStore = useInviteStore()
 const userStore = useUserStore()
 
@@ -227,11 +229,11 @@ async function copy(value, successText) {
 }
 
 function copyLink() {
-  copy(inviteStore.inviteLink, '邀请链接已复制')
+  copy(inviteStore.inviteLink, t('member.invitePage.copiedLink'))
 }
 
 function copyCode() {
-  copy(inviteStore.inviteCode, '邀请码已复制')
+  copy(inviteStore.inviteCode, t('member.invitePage.copiedCode'))
 }
 
 function goPage(page) {

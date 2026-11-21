@@ -13,6 +13,8 @@
  *      不要在 util 里读 store（否则又变成第二个真相源）。
  */
 
+import { translate } from '../i18n/index.js'
+
 /** 任务周期中文（服务端 `period` 只有这三种值） */
 export const TASK_PERIOD_TEXT = {
   daily: '每日',
@@ -21,7 +23,7 @@ export const TASK_PERIOD_TEXT = {
 }
 
 export function periodText(period) {
-  return TASK_PERIOD_TEXT[period] || ''
+  return translate(`member.pointsPage.taskPeriods.${period}`, TASK_PERIOD_TEXT[period] || '')
 }
 
 /** 进度百分比：`target` 缺失或为 0 时给 0，不产生 NaN 宽度 */
@@ -54,20 +56,25 @@ export function canClaimTask(task) {
  * 判据是 `reward_points <= 0`。
  */
 export function taskButtonLabel(task) {
-  if (Number(task?.reward_points) <= 0) return '自动发放'
-  if (task?.claimed === true) return '已领取'
-  if (Number(task.progress) < Number(task.target)) return '未完成'
-  return '领取'
+  if (Number(task?.reward_points) <= 0) return translate('member.pointsPage.task.auto', '自动发放')
+  if (task?.claimed === true) return translate('member.pointsPage.task.claimed', '已领取')
+  if (Number(task.progress) < Number(task.target)) return translate('member.pointsPage.task.incomplete', '未完成')
+  return translate('member.pointsPage.task.claim', '领取')
 }
 
 /** 按钮悬浮提示：给「为什么点不了」补一句上下文，能点的时候不给噪音 */
 export function taskButtonHint(task) {
   if (Number(task?.reward_points) <= 0) {
-    return '该任务的奖励由签到接口当场发放，不需要在这里领取'
+    return translate('member.pointsPage.task.autoHint', '该任务的奖励由签到接口当场发放，不需要在这里领取')
   }
-  if (task?.claimed === true) return '本期已领取，下个周期刷新后可再领'
+  if (task?.claimed === true) {
+    return translate('member.pointsPage.task.claimedHint', '本期已领取，下个周期刷新后可再领')
+  }
   if (Number(task.progress) < Number(task.target)) {
-    return `当前进度 ${Number(task.progress) || 0}/${Number(task.target) || 0}`
+    return translate('member.pointsPage.task.progressHint', `当前进度 ${Number(task.progress) || 0}/${Number(task.target) || 0}`, {
+      progress: Number(task.progress) || 0,
+      target: Number(task.target) || 0,
+    })
   }
   return ''
 }
@@ -77,9 +84,9 @@ export function taskButtonHint(task) {
  * 三者不能糊成一句（把不限量写成「剩余 0」等于把可兑换的条目说成没货）。
  */
 export function mallStockText(item) {
-  if (item?.stock === null || item?.stock === undefined) return '不限量'
-  if (Number(item.stock) <= 0) return '已兑完'
-  return `剩余 ${item.stock}`
+  if (item?.stock === null || item?.stock === undefined) return translate('member.pointsPage.mallStock.unlimited', '不限量')
+  if (Number(item.stock) <= 0) return translate('member.pointsPage.mallStock.soldOut', '已兑完')
+  return translate('member.pointsPage.mallStock.remaining', `剩余 ${item.stock}`, { count: item.stock })
 }
 
 /**
@@ -91,14 +98,19 @@ export function mallStockText(item) {
  */
 export function mallRedeemState(item, { isMember = false, points = 0 } = {}) {
   if (item?.member_only && !isMember) {
-    return { ok: false, reason: '会员专属，开通会员后可兑换' }
+    return { ok: false, reason: translate('member.pointsPage.mallRedeem.memberOnly', '会员专属，开通会员后可兑换') }
   }
   if (item?.stock !== null && item?.stock !== undefined && Number(item.stock) <= 0) {
-    return { ok: false, reason: '已兑完，等运营补货' }
+    return { ok: false, reason: translate('member.pointsPage.mallRedeem.soldOut', '已兑完，等运营补货') }
   }
   const cost = Number(item?.cost) || 0
   if (Number(points) < cost) {
-    return { ok: false, reason: `还差 ${cost - Number(points)} 积分` }
+    return {
+      ok: false,
+      reason: translate('member.pointsPage.mallRedeem.short', `还差 ${cost - Number(points)} 积分`, {
+        points: cost - Number(points),
+      }),
+    }
   }
   return { ok: true, reason: '' }
 }

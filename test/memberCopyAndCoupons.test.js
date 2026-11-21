@@ -27,7 +27,7 @@ test('永久会员：先判 is_permanent，再回落日期', () => {
     MEMBER.indexOf('const expiryHint = computed')
   )
   assert.match(expiry, /is_permanent === true/)
-  assert.match(expiry, /return '永久会员'/)
+  assert.match(expiry, /t\('member\.page\.permanent'\)/)
   assert.ok(
     expiry.indexOf('is_permanent') < expiry.indexOf('formatDate'),
     'is_permanent 的判断必须在 formatDate 之前，否则 null 会先被格式化成「——」'
@@ -40,7 +40,7 @@ test('永久会员：到期提示不再说「剩余 N 天」', () => {
     MEMBER.indexOf('const identityName = computed')
   )
   assert.match(hint, /is_permanent === true/)
-  assert.match(hint, /一次开通，长期有效/)
+  assert.match(hint, /t\('member\.page\.permanentHint'\)/)
 })
 
 test('会员免卡密：附注按「本等级已解锁/上限」渲染，而不是固定话术', () => {
@@ -51,8 +51,8 @@ test('会员免卡密：附注按「本等级已解锁/上限」渲染，而不�
   )
   assert.match(block, /toolQuota\.value/)
   assert.match(block, /quota\.is_member !== true/)
-  assert.match(block, /可解锁 \$\{used\}\/\$\{limit\} 个卡密工具/)
-  assert.match(block, /不限次数，已激活 \$\{used\} 个/)
+  assert.match(block, /t\('member\.page\.quotaUsed', \{ used, limit \}\)/)
+  assert.match(block, /t\('member\.page\.quotaUnlimited', \{ used \}\)/)
   // 锁定态仍走权益元数据的 desc（这条没变）
   assert.match(MEMBER_CONST, /根据会员等级解锁固定数量的卡密工具/)
 })

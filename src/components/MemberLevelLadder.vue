@@ -3,8 +3,8 @@
   <section v-if="levels.length" class="ui-card u-mm-section">
     <div class="u-mm-section-head">
       <div class="u-mm-section-head-main">
-        <h2 class="u-mm-section-title">{{ title }}</h2>
-        <p v-if="description" class="u-mm-section-desc">{{ description }}</p>
+        <h2 class="u-mm-section-title">{{ resolvedTitle }}</h2>
+        <p v-if="resolvedDescription" class="u-mm-section-desc">{{ resolvedDescription }}</p>
       </div>
     </div>
 
@@ -13,10 +13,10 @@
         <table class="u-table u-mm-ladder">
           <thead>
             <tr>
-              <th scope="col">等级</th>
-              <th scope="col" class="u-mm-ladder-num">成长值门槛</th>
-              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">消费折扣</th>
-              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">积分倍率</th>
+              <th scope="col">{{ t('member.levelLadder.level') }}</th>
+              <th scope="col" class="u-mm-ladder-num">{{ t('member.levelLadder.threshold') }}</th>
+              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">{{ t('member.levelLadder.discount') }}</th>
+              <th v-if="showRewards" scope="col" class="u-mm-ladder-num">{{ t('member.levelLadder.multiplier') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -27,8 +27,8 @@
               :aria-current="level.level === currentLevel ? 'true' : undefined"
             >
               <td>
-                {{ level.name }}
-                <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">当前</span>
+                {{ levelName(level) }}
+                <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">{{ t('member.levelLadder.current') }}</span>
               </td>
               <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
               <td v-if="showRewards" class="u-mm-ladder-num">{{ discountLabel(level.discount_rate) }}</td>
@@ -82,18 +82,29 @@
  * 分片的 `tr.is-current` 给）。本组件不再自带任何 scoped 样式 —— 「当前等级整行染强调色」
  * 这种做法两页各写一遍，正是这次收敛要消掉的东西。
  */
-import { discountLabel } from '@/constants/member.js'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-defineProps({
+import { discountLabel, memberLevelLabel } from '@/constants/member.js'
+
+const props = defineProps({
   /** 服务端 `get_member_plans` 的 `levels[]`，空数组则整块不渲染 */
   levels: { type: Array, default: () => [] },
   /** 当前生效等级（`v1`–`v8`），非会员传空串 */
   currentLevel: { type: String, default: '' },
   /** 卡片内的小节标题 */
-  title: { type: String, default: '等级阶梯' },
+  title: { type: String, default: '' },
   /** 标题下的说明（成长值规则由调用页给，这里不预设口径） */
   description: { type: String, default: '' },
   /** 是否展示「消费折扣 / 积分倍率」两列（只有门槛数据时传 false） */
   showRewards: { type: Boolean, default: true },
 })
+
+const { t } = useI18n()
+const resolvedTitle = computed(() => props.title || t('member.levelLadder.title'))
+const resolvedDescription = computed(() => props.description || '')
+
+function levelName(level) {
+  return memberLevelLabel(level.level) || level.name || level.level
+}
 </script>

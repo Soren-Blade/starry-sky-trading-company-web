@@ -8,7 +8,7 @@
         <h1 class="page-shell-title">{{ PAGES.assets.title }}</h1>
         <p class="page-shell-desc">{{ PAGES.assets.description }}</p>
       </div>
-      <span class="u-tag u-tag--accent">{{ totalCount }} 项</span>
+      <span class="u-tag u-tag--accent">{{ t('member.assetsPage.total', { count: totalCount }) }}</span>
     </header>
 
     <!--
@@ -18,23 +18,23 @@
     <section class="ui-card assets-section" aria-labelledby="assets-digital-title">
       <div class="assets-head">
         <h2 id="assets-digital-title" class="assets-title">
-          <AppIcon name="shopping-bag" /> 数字商品
+          <AppIcon name="shopping-bag" /> {{ t('member.assetsPage.digitalTitle') }}
         </h2>
         <button
           type="button"
           class="refresh-btn u-btn-secondary"
           :disabled="ordersLoading"
-          :aria-label="ordersLoading ? '正在刷新数字商品' : '刷新数字商品'"
+          :aria-label="ordersLoading ? t('member.assetsPage.refreshingAria') : t('member.assetsPage.refreshAria')"
           @click="loadOrders"
         >
           <AppIcon v-if="!ordersLoading" name="refresh-cw" />
-          <span v-else class="u-spinner u-spinner--sm" role="status" aria-label="加载中"></span>
-          {{ ordersLoading ? '刷新中…' : '刷新' }}
+          <span v-else class="u-spinner u-spinner--sm" role="status" :aria-label="t('common.loading')"></span>
+          {{ ordersLoading ? t('member.assetsPage.refreshing') : t('member.assetsPage.refresh') }}
         </button>
       </div>
       <p class="assets-hint">
-        下单即交付的商品都会汇总到这里；实物商品的物流卡片仍在
-        <router-link class="assets-link" to="/user/orders">订单管理</router-link>。
+        {{ t('member.assetsPage.digitalHintBefore') }}
+        <router-link class="assets-link" to="/user/orders">{{ t('member.assetsPage.digitalHintLink') }}</router-link>{{ t('member.assetsPage.digitalHintAfter') }}
       </p>
 
       <p v-if="ordersError" class="error-banner" role="alert">{{ ordersError }}</p>
@@ -43,12 +43,12 @@
         <table class="u-table assets-table">
           <thead>
             <tr>
-              <th scope="col">商品</th>
-              <th scope="col">形态</th>
-              <th scope="col">数量</th>
-              <th scope="col">金额</th>
-              <th scope="col">下单时间</th>
-              <th scope="col">订单</th>
+              <th scope="col">{{ t('member.assetsPage.colProduct') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colType') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colQuantity') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colAmount') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colOrderedAt') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colOrder') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -73,7 +73,7 @@
             </tr>
 
             <tr v-if="!ordersLoading && !digitalItems.length" class="assets-empty-row">
-              <td colspan="6">还没有数字商品；卡密与已激活工具在下面两块。</td>
+              <td colspan="6">{{ t('member.assetsPage.digitalEmpty') }}</td>
             </tr>
           </tbody>
         </table>
@@ -83,11 +83,11 @@
     <section class="ui-card assets-section" aria-labelledby="assets-cards-title">
       <div class="assets-head">
         <h2 id="assets-cards-title" class="assets-title">
-          <AppIcon name="key" /> 我的卡密
+          <AppIcon name="key" /> {{ t('member.assetsPage.cardsTitle') }}
         </h2>
-        <router-link class="assets-link" to="/user/kami">去激活新卡密</router-link>
+        <router-link class="assets-link" to="/user/kami">{{ t('member.assetsPage.activateNew') }}</router-link>
       </div>
-      <p class="assets-hint">已兑换的卡密都留在这里，可用于核对卡号与有效期。</p>
+      <p class="assets-hint">{{ t('member.assetsPage.cardsHint') }}</p>
 
       <p v-if="cardsError" class="error-banner" role="alert">{{ cardsError }}</p>
 
@@ -95,10 +95,10 @@
         <table class="u-table assets-table">
           <thead>
             <tr>
-              <th scope="col">卡密名称</th>
-              <th scope="col">卡号</th>
-              <th scope="col">面值</th>
-              <th scope="col">状态</th>
+              <th scope="col">{{ t('member.assetsPage.colCardName') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colCardNo') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colValue') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colStatus') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,7 +116,7 @@
                     v-if="card.card_no"
                     type="button"
                     class="assets-copy-btn"
-                    :aria-label="`复制卡密 ${card.card_name || card.card_no_display || ''}`"
+                    :aria-label="t('member.assetsPage.copyCardAria', { name: card.card_name || card.card_no_display || '' })"
                     :title="TRADE.orderCardCopy"
                     @click="copyCardNo(card)"
                   >
@@ -131,7 +131,7 @@
             </tr>
 
             <tr v-if="!cardsLoading && !cards.length" class="assets-empty-row">
-              <td colspan="4">还没有卡密。</td>
+              <td colspan="4">{{ t('member.assetsPage.cardsEmpty') }}</td>
             </tr>
           </tbody>
         </table>
@@ -141,22 +141,22 @@
     <section class="ui-card assets-section" aria-labelledby="assets-tools-title">
       <div class="assets-head">
         <h2 id="assets-tools-title" class="assets-title">
-          <AppIcon name="wrench" /> 已激活工具
+          <AppIcon name="wrench" /> {{ t('member.assetsPage.toolsTitle') }}
         </h2>
         <button
           type="button"
           class="refresh-btn u-btn-secondary"
           :disabled="entitlementsLoading"
-          :aria-label="entitlementsLoading ? '正在刷新已激活工具' : '刷新已激活工具'"
+          :aria-label="entitlementsLoading ? t('member.assetsPage.refreshingAria') : t('member.assetsPage.refreshAria')"
           @click="loadEntitlements"
         >
           <AppIcon v-if="!entitlementsLoading" name="refresh-cw" />
-          <span v-else class="u-spinner u-spinner--sm" role="status" aria-label="加载中"></span>
-          {{ entitlementsLoading ? '刷新中…' : '刷新' }}
+          <span v-else class="u-spinner u-spinner--sm" role="status" :aria-label="t('common.loading')"></span>
+          {{ entitlementsLoading ? t('member.assetsPage.refreshing') : t('member.assetsPage.refresh') }}
         </button>
       </div>
       <p class="assets-hint">
-        来自卡密激活或会员免卡密额度；同一件工具续费会叠加有效期，不会重复成两行。
+        {{ t('member.assetsPage.toolsHint') }}
       </p>
 
       <p v-if="entitlementsError" class="error-banner" role="alert">{{ entitlementsError }}</p>
@@ -165,10 +165,10 @@
         <table class="u-table assets-table">
           <thead>
             <tr>
-              <th scope="col">工具名</th>
-              <th scope="col">来源</th>
-              <th scope="col">有效期</th>
-              <th scope="col">状态</th>
+              <th scope="col">{{ t('member.assetsPage.colTool') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colSource') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colValidity') }}</th>
+              <th scope="col">{{ t('member.assetsPage.colStatus') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -178,22 +178,22 @@
                 <span class="u-tag">{{ entitlementSource(item) }}</span>
               </td>
               <td>
-                <span v-if="item.is_permanent" class="assets-muted">永久有效</span>
+                <span v-if="item.is_permanent" class="assets-muted">{{ t('member.assetsPage.permanent') }}</span>
                 <span v-else-if="item.expires_at" class="assets-muted">
                   {{ toDate(item.expires_at) }}
-                  <template v-if="item.is_valid && item.days_left !== null"> · 剩 {{ item.days_left }} 天</template>
+                  <template v-if="item.is_valid && item.days_left !== null">{{ t('member.assetsPage.daysLeft', { days: item.days_left }) }}</template>
                 </span>
                 <span v-else class="assets-muted">—</span>
               </td>
               <td>
                 <span class="u-tag" :class="item.is_valid ? 'u-tag--success' : 'u-tag--muted'">
-                  {{ item.is_valid ? '有效' : '已过期' }}
+                  {{ item.is_valid ? t('member.assetsPage.valid') : t('member.assetsPage.expired') }}
                 </span>
               </td>
             </tr>
 
             <tr v-if="!entitlementsLoading && !entitlements.length" class="assets-empty-row">
-              <td colspan="4">还没有已激活的工具。</td>
+              <td colspan="4">{{ t('member.assetsPage.toolsEmpty') }}</td>
             </tr>
           </tbody>
         </table>
@@ -219,6 +219,7 @@
  * 也不要把实物商品说成「已到账」。
  */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
@@ -228,11 +229,12 @@ import AppIcon from '@/components/AppIcon.vue'
 import api from '@/api/index'
 import orderApi from '@/api/ask/order'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
-import { PAGES, TRADE } from '@/constants/index.js'
+import { PAGES, TRADE, NAV_MENU } from '@/constants/index.js'
 import { goodsTypeLabel } from '@/utils/goodsType.js'
 import { copyText } from '@/utils/clipboard.js'
 import { notify } from '@/hooks/useToast/index.js'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
 const { userKamis: cards, loading: cardsLoading, error: cardsError } = storeToRefs(kamiStore)
@@ -240,11 +242,11 @@ const { userKamis: cards, loading: cardsLoading, error: cardsError } = storeToRe
 /** 资产页只展示「能交付」的形态，实物走订单 */
 const DIGITAL_TYPES = ['digital', 'account', 'service']
 
-const breadcrumbItems = [
-  { label: '首页', to: '/home' },
-  { label: '个人中心', to: '/user/profile' },
-  { label: '我的资产' },
-]
+const breadcrumbItems = computed(() => [
+  { label: NAV_MENU[0]?.label || 'Home', to: '/home' },
+  { label: t('pages.profile.title'), to: '/user/profile' },
+  { label: t('pages.assets.title') },
+])
 
 const orders = ref([])
 const ordersLoading = ref(false)
@@ -286,13 +288,14 @@ const formatAmount = (value) => {
   return Number.isFinite(num) ? num.toFixed(2) : '—'
 }
 
-const entitlementSource = (item) => (item?.grant_source === 'member' ? '会员额度' : '卡密')
+const entitlementSource = (item) =>
+  item?.grant_source === 'member' ? t('member.assetsPage.sourceMember') : t('member.assetsPage.sourceCard')
 
 /** 服务端已带 tool_name；工具被删时回落成「工具 #id」，不要留空单元格 */
 const entitlementToolName = (item) => {
   if (item?.tool_name) return item.tool_name
   if (item?.tool_slug) return item.tool_slug
-  return item?.tool_id ? `工具 #${item.tool_id}` : '—'
+  return item?.tool_id ? t('member.assetsPage.toolFallback', { id: item.tool_id }) : '—'
 }
 
 async function loadOrders() {
@@ -302,14 +305,14 @@ async function loadOrders() {
     // 一次拉够：资产页不翻页，按 50 条封顶（服务端上限），超出部分去订单管理看
     const result = await orderApi.getOrders({ page: 1, limit: 50 })
     if (!result?.success) {
-      ordersError.value = result?.message || '数字商品读取失败，请稍后重试。'
+      ordersError.value = result?.message || t('member.assetsPage.ordersError')
       orders.value = []
       return
     }
     orders.value = result.data?.orders || []
     ordersError.value = ''
   } catch (error) {
-    ordersError.value = error?.message || '数字商品读取失败，请稍后重试。'
+    ordersError.value = error?.message || t('member.assetsPage.ordersError')
     orders.value = []
   } finally {
     ordersLoading.value = false
@@ -327,10 +330,10 @@ async function loadEntitlements() {
       return
     }
     entitlements.value = []
-    entitlementsError.value = '已激活工具读取失败，请稍后重试。'
+    entitlementsError.value = t('member.assetsPage.entitlementsError')
   } catch (error) {
     entitlements.value = []
-    entitlementsError.value = error?.message || '已激活工具读取失败，请稍后重试。'
+    entitlementsError.value = error?.message || t('member.assetsPage.entitlementsError')
   } finally {
     entitlementsLoading.value = false
   }
@@ -350,12 +353,12 @@ function loadCards() {
 async function copyCardNo(card) {
   const value = card?.card_no
   if (!value) {
-    notify.error('这张卡密没有可复制的卡号，请到订单详情查看。')
+    notify.error(t('member.assetsPage.copyCardMissing'))
     return
   }
   const ok = await copyText(value)
   if (ok?.ok) notify.success(TRADE.orderCardCopied)
-  else notify.error(ok?.message || '复制失败，请手动长按选择卡号。')
+  else notify.error(ok?.message || t('member.assetsPage.copyCardFailed'))
 }
 
 onMounted(() => {

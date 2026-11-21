@@ -17,27 +17,27 @@
       <p v-if="fileError" class="u-field-error" role="alert">{{ fileError }}</p>
       <p v-if="fileName" class="tool-file-name"><AppIcon name="check-circle" aria-hidden="true" /><span>{{ fileName }}（{{ formatBytes(fileSize) }}）</span></p>
       <div v-if="previewUrl" class="tool-preview-media">
-        <img :src="previewUrl" alt="待压缩的图片" />
+        <img :src="previewUrl" :alt="t('imageCompressor.previewAlt')" />
       </div>
     </section>
 
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="wrench" aria-hidden="true" /><span>压缩参数</span></h2>
+      <h2 class="tool-panel-title"><AppIcon name="wrench" aria-hidden="true" /><span>{{ t('imageCompressor.paramsTitle') }}</span></h2>
       <div class="tool-form">
         <div class="u-field">
-          <label class="u-field-label" for="cmp-target">目标体积（KB）</label>
+          <label class="u-field-label" for="cmp-target">{{ t('imageCompressor.targetLabel') }}</label>
           <input id="cmp-target" v-model="targetKb" class="u-input" type="number" min="10" max="5120" step="10" />
-          <p class="u-field-hint">允许 ±10% 误差，最多编码 {{ MAX_ROUNDS }} 次逼近这个体积。</p>
+          <p class="u-field-hint">{{ t('imageCompressor.toleranceHint', { rounds: MAX_ROUNDS }) }}</p>
         </div>
         <div class="u-field">
           <label class="u-field-label" for="cmp-format">{{ PAGE.formatLabel }}</label>
-          <SelectField id="cmp-format" v-model="format" :options="FORMAT_OPTIONS" aria-label="输出格式" />
-          <p class="u-field-hint">PNG 是无损格式，质量参数无效，所以这里只提供 JPEG 与 WebP。</p>
+          <SelectField id="cmp-format" v-model="format" :options="FORMAT_OPTIONS" :aria-label="t('imageCompressor.formatAria')" />
+          <p class="u-field-hint">{{ t('imageCompressor.pngHint') }}</p>
         </div>
       </div>
       <div class="tool-actions">
         <button type="button" class="u-btn-primary" :disabled="!file || state === 'loading'" @click="compress">
-          {{ state === 'loading' ? '压缩中…' : PAGE.submit }}
+          {{ state === 'loading' ? t('imageCompressor.compressing') : PAGE.submit }}
         </button>
         <button type="button" class="u-btn-secondary" :disabled="state === 'loading'" @click="reset">{{ PAGE.reset }}</button>
       </div>
@@ -45,7 +45,7 @@
 
     <section class="ui-card tool-panel">
       <h2 class="tool-panel-title"><AppIcon name="clipboard" aria-hidden="true" /><span>{{ PAGE.resultTitle }}</span></h2>
-      <ToolResultPane :state="state" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" :error="errorMessage" loading-text="正在重新编码并搜索质量参数…">
+      <ToolResultPane :state="state" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" :error="errorMessage" :loading-text="t('imageCompressor.encoding')">
         <div v-if="result" class="tool-result-meta">
           <span class="tool-result-meta-item"><span>{{ META.originalSize }}</span><strong>{{ formatBytes(fileSize) }}</strong></span>
           <span class="tool-result-meta-item"><span>{{ META.outputSize }}</span><strong>{{ formatBytes(result.outputBytes) }}</strong></span>
@@ -53,11 +53,11 @@
           <span class="tool-result-meta-item"><span>{{ META.quality }}</span><strong>{{ Math.round(result.quality * 100) }}%</strong></span>
         </div>
         <p v-if="result" class="tool-result-note">
-          {{ result.met ? '已命中目标体积（±10%）。' : `在质量范围内最接近目标：${formatBytes(result.outputBytes)}，未落入 ±10% 容差。` }}
+          {{ result.met ? t('imageCompressor.metTarget') : t('imageCompressor.closestNotMet', { size: formatBytes(result.outputBytes) }) }}
         </p>
         <p v-if="result" class="tool-result-note">{{ RESULT_NOTE }}</p>
         <div v-if="result" class="tool-preview-media">
-          <img :src="result.url" alt="压缩后的图片" />
+          <img :src="result.url" :alt="t('imageCompressor.outputAlt')" />
         </div>
         <template #actions>
           <button v-if="result" type="button" class="u-btn-primary" @click="download">{{ PAGE.download }}</button>
@@ -72,7 +72,7 @@
       </div>
       <div class="ui-card tool-aside-card">
         <h3 class="tool-aside-title"><span class="tool-aside-title-icon"><AppIcon name="alert-triangle" aria-hidden="true" /></span><span>{{ TOOL_PAGE.noticeTitle }}</span></h3>
-        <p class="tool-aside-note">体积下限受图片分辨率限制：质量降到 {{ Math.round(QUALITY_MIN * 100) }}% 仍超出目标时，需要先缩小尺寸（可用图片工具箱的缩放/裁剪）。</p>
+        <p class="tool-aside-note">{{ t('imageCompressor.asideNote', { quality: Math.round(QUALITY_MIN * 100) }) }}</p>
       </div>
     </template>
   </ToolPageShell>
@@ -81,6 +81,7 @@
 <script setup>
 import { formatBytes, sizeDeltaLabel } from '@/utils/format.js'
 import { computed, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
@@ -90,12 +91,13 @@ import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/image/compressor']
 const usage = useToolUsage('/image/compressor')
+const { t, tm } = useI18n()
 
 const META = TOOL_RESULT.meta
 // 常量表里的 resultNote / asideItems 还写着「按档位系数估算」，页面内覆盖为真实口径，不改 constants。
-const RESULT_NOTE = '在浏览器内重新编码，画质由质量参数决定；体积是按真实编码结果逐步逼近出来的。'
-const SAVED_LABEL = '体积变化'
-const ASIDE_ITEMS = ['按目标体积二分搜索质量参数（0.30 – 0.95），最多 8 次真实编码。', '显示的是编码后的实际字节数，不是估算。', '图片不上传服务器，压缩结果可直接下载。']
+const RESULT_NOTE = computed(() => t('imageCompressor.resultNote'))
+const SAVED_LABEL = computed(() => t('imageCompressor.savedLabel'))
+const ASIDE_ITEMS = computed(() => tm('imageCompressor.asideItems'))
 const ACCEPT_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const FORMAT_OPTIONS = [
   { value: 'jpeg', label: 'JPEG' },
@@ -171,7 +173,7 @@ function loadImage(url) {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('图片解码失败，请确认文件没有损坏。'))
+    image.onerror = () => reject(new Error(t('imageCompressor.errorDecode')))
     image.src = url
   })
 }
@@ -180,7 +182,7 @@ function encode(canvas, mime, quality) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob)
-      else reject(new Error('浏览器拒绝了本次编码，请换一种输出格式。'))
+      else reject(new Error(t('imageCompressor.errorEncode')))
     }, mime, quality)
   })
 }
@@ -216,11 +218,11 @@ async function compress() {
     canvas.width = image.naturalWidth
     canvas.height = image.naturalHeight
     const context = canvas.getContext('2d')
-    if (!context) throw new Error('当前浏览器不支持 canvas 2D，无法压缩。')
+    if (!context) throw new Error(t('imageCompressor.errorCanvas'))
     context.drawImage(image, 0, 0)
     const mime = MIME[format.value]
     const best = await searchQuality(canvas, mime, target)
-    if (!best) throw new Error('编码没有产出有效结果，请换一张图片再试。')
+    if (!best) throw new Error(t('imageCompressor.errorNoResult'))
     result.value = {
       url: URL.createObjectURL(best.blob),
       outputBytes: best.blob.size,
@@ -232,7 +234,7 @@ async function compress() {
     usage.record({ durationMs: performance.now() - startedAt, meta: { originalSize: fileSize.value, outputSize: best.blob.size, quality: best.quality } })
   } catch (error) {
     state.value = 'error'
-    errorMessage.value = error && error.message ? error.message : '压缩失败，请换一张图片再试。'
+    errorMessage.value = error && error.message ? error.message : t('imageCompressor.errorFailed')
     usage.record({ durationMs: performance.now() - startedAt, ok: false, errorCode: 'IMAGE_COMPRESS_FAILED' })
   }
 }

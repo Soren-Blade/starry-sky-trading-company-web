@@ -17,10 +17,10 @@
     <!-- 计数与 AppleIdSection 共用同一份 store 状态：数据到达后自动更新 -->
     <ul class="apple-id-stats">
       <li>
-        <span class="u-tag u-tag--accent">主线路 {{ nanoCloudCount }}</span>
+        <span class="u-tag u-tag--accent">{{ t('appleId.mainLane') }} {{ nanoCloudCount }}</span>
       </li>
       <li>
-        <span class="u-tag">副线路 {{ fangQiangNanCount }}</span>
+        <span class="u-tag">{{ t('appleId.backupLane') }} {{ fangQiangNanCount }}</span>
       </li>
     </ul>
 
@@ -39,12 +39,14 @@
  * 因此这里不额外发请求、也不新增入参。
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import AppleIdSection from '@/components/AppleIdSection.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import { TOOL_PAGES } from '@/constants/index.js'
 import { useToolStore } from '@/stores/tool'
 
+const { t } = useI18n()
 const PAGE = TOOL_PAGES['/other/appleId']
 
 // 拉取仍由 AppleIdSection 负责，这里只读同一份状态做计数

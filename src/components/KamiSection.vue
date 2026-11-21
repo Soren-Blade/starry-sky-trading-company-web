@@ -4,8 +4,8 @@
       <!-- 未登录提示：卡密属于账号资产，游客态不给操作入口。
            新版式没有页签，这块居中的提示卡就是整个区块的全部内容。 -->
       <div v-if="!canUseKami" class="notice-card">
-        <p class="notice-title">请先登录账号</p>
-        <p class="notice-desc">卡密与账号绑定，游客身份无法激活或查看卡密。</p>
+        <p class="notice-title">{{ t('kami.noticeTitle') }}</p>
+        <p class="notice-desc">{{ t('kami.noticeDesc') }}</p>
       </div>
 
       <!--
@@ -18,8 +18,8 @@
         <div class="console-side">
           <div class="panel activate-panel">
             <div class="panel-head">
-              <h3 class="panel-title"><AppIcon name="sparkles" /> 激活卡密 / 会员权益</h3>
-              <p class="panel-sub">粘贴卡密或用户 UID，自动识别类型并选好工具</p>
+              <h3 class="panel-title"><AppIcon name="sparkles" /> {{ t('kami.panelTitle') }}</h3>
+              <p class="panel-sub">{{ t('kami.panelSub') }}</p>
             </div>
 
             <!--
@@ -33,17 +33,17 @@
               <SelectField
                 v-model="selectedToolId"
                 :options="toolOptions"
-                placeholder="请选择工具"
+                :placeholder="t('kami.toolPlaceholder')"
                 searchable
-                aria-label="选择工具"
+                :aria-label="t('kami.toolAria')"
               />
               <input
                 ref="activateInput"
                 v-model="activateCode"
                 type="text"
                 class="u-input"
-                placeholder="粘贴卡密 / 用户 UID"
-                aria-label="卡密或用户 UID"
+                :placeholder="t('kami.codePlaceholder')"
+                :aria-label="t('kami.codeAria')"
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -61,7 +61,7 @@
                 :disabled="submitDisabled"
                 :aria-busy="submitting"
               >
-                {{ submitting ? '激活中...' : submitLabel }}
+                {{ submitting ? t('kami.submitting') : submitLabel }}
               </button>
             </form>
 
@@ -110,7 +110,7 @@
               :class="activationResult.success ? 'success-msg' : 'error-msg'"
               role="status"
             >
-              {{ activationResult.message }}<span v-if="activationRewards">，已发放 {{ activationRewards }}</span>
+              {{ activationResult.message }}<span v-if="activationRewards">{{ isEnglish() ? ', ' : '，' }}{{ t('kami.result.granted', { rewards: activationRewards }) }}</span>
             </p>
 
             <!--
@@ -156,7 +156,7 @@
             </div>
 
             <p class="activate-tips">
-              <AppIcon name="zap" /> 激活后可在「我的卡密」与「我的资产」中查看详情
+              <AppIcon name="zap" /> {{ t('kami.tips') }}
             </p>
           </div>
 
@@ -168,23 +168,23 @@
           -->
           <aside class="side-notes" aria-labelledby="kami-side-notes-title">
             <h4 id="kami-side-notes-title" class="side-notes-title">
-              <AppIcon name="info" /> 激活说明
+              <AppIcon name="info" /> {{ t('kami.notesTitle') }}
             </h4>
             <ol class="side-notes-list">
-              <li>有卡密：把卡密粘贴到输入框，系统会自动识别它绑定的工具并选好，点「激活」即可。</li>
+              <li>{{ t('kami.noteCard') }}</li>
               <li>
-                是会员：粘贴自己的用户 UID（留空则按当前登录账号校验），选好工具后点「免卡密激活」。
+                {{ t('kami.noteMember') }}
               </li>
               <li>
-                会员额度：
+                {{ t('kami.noteQuota') }}
                 <span v-if="memberQuotaLoading && !memberQuota" class="member-identity">
-                  正在读取会员权益…
+                  {{ t('kami.readingQuota') }}
                 </span>
                 <span
                   v-else-if="memberQuota && !memberQuota.is_member"
                   class="member-identity member-identity--guest"
                 >
-                  还不是会员 · 开通会员可免卡密使用工具
+                  {{ t('kami.notMember') }}
                 </span>
                 <span v-else-if="memberQuota" class="member-identity">{{ memberQuotaText }}</span>
                 <span
@@ -195,7 +195,7 @@
                   {{ memberQuotaError }}
                 </span>
                 <span v-if="memberQuota?.is_member && memberQuota.expires_at" class="member-expire">
-                  权益有效期至 {{ formatDate(memberQuota.expires_at) }}
+                  {{ t('kami.expiresAt', { date: formatDate(memberQuota.expires_at) }) }}
                 </span>
                 <button
                   v-if="memberQuotaError && !memberQuota"
@@ -203,12 +203,12 @@
                   class="ec-btn ec-btn--sm ec-btn--secondary side-notes-retry"
                   @click="loadMemberQuota"
                 >
-                  重试
+                  {{ t('kami.retry') }}
                 </button>
               </li>
               <li>
-                额度用尽或不是会员：<router-link to="/member/plans" class="side-notes-link">升级会员</router-link>
-                或 <router-link to="/tool" class="side-notes-link">购买卡密</router-link>。
+                {{ t('kami.exhausted') }}<router-link to="/member/plans" class="side-notes-link">{{ t('kami.upgradeMember') }}</router-link>
+                {{ t('kami.or') }} <router-link to="/tool" class="side-notes-link">{{ t('kami.buyCard') }}</router-link>{{ isEnglish() ? '.' : '。' }}
               </li>
             </ol>
           </aside>
@@ -218,24 +218,24 @@
         <div ref="listPanel" class="panel list-panel">
           <div class="list-toolbar">
             <div class="toolbar-left">
-              <span class="card-count">共 {{ pagination.total }} 张卡密</span>
+              <span class="card-count">{{ t('kami.count', { count: pagination.total }) }}</span>
             </div>
             <div class="toolbar-right">
               <button
                 type="button"
                 class="refresh-btn u-btn-secondary"
                 :disabled="loading"
-                :aria-label="loading ? '正在刷新卡密列表' : '刷新卡密列表'"
+                :aria-label="loading ? t('kami.refreshingAria') : t('kami.refreshAria')"
                 @click="reload(1)"
               >
                 <span
                   v-if="loading"
                   class="u-spinner u-spinner--sm"
                   role="status"
-                  aria-label="加载中"
+                  :aria-label="t('kami.loadingAria')"
                 ></span>
                 <AppIcon v-else name="refresh-cw" />
-                {{ loading ? '刷新中...' : '刷新' }}
+                {{ loading ? t('kami.refreshing') : t('kami.refresh') }}
               </button>
               <!--
                 v-model 与 @update:model-value 的**书写顺序有意义**：编译器把两者合并成
@@ -250,7 +250,7 @@
                 v-model="statusFilter"
                 class="status-select"
                 :options="statusFilterOptions"
-                aria-label="按状态筛选"
+                :aria-label="t('kami.filterAria')"
                 @update:model-value="reload(1)"
               />
             </div>
@@ -306,7 +306,7 @@
                         <!-- 使用日期并入状态列第二行：只有用过的卡才有值，
                              单独占一列等于整列空白（3.7.0） -->
                         <span v-if="record.used_at" class="kami-status-sub">
-                          {{ formatDate(record.used_at) }} 使用
+                          {{ formatDate(record.used_at) }} {{ t('kami.usedLabel') }}
                         </span>
                       </div>
                     </template>
@@ -315,7 +315,7 @@
                       <span v-if="getToolName(record.tool_id)" class="u-tag">
                         <AppIcon name="wrench" /> {{ getToolName(record.tool_id) }}
                       </span>
-                      <span v-else class="empty-small">未绑定工具</span>
+                      <span v-else class="empty-small">{{ t('kami.noTool') }}</span>
                     </template>
 
                     <template v-else-if="column.key === 'card_no_display'">
@@ -325,7 +325,7 @@
                           type="button"
                           class="copy-icon-btn"
                           :title="TRADE.orderCardCopy"
-                          :aria-label="`复制卡密 ${record.card_name || ''}`.trim()"
+                          :aria-label="t('kami.copyCardAria', { name: record.card_name || '' }).trim()"
                           @click="copyCardNo(record)"
                         >
                           <AppIcon name="clipboard" />
@@ -344,9 +344,9 @@
                           class="link-btn kami-action-link"
                           @click="focusActivate"
                         >
-                          去激活
+                          {{ t('kami.goActivate') }}
                         </button>
-                        <span v-else class="empty-small">已激活</span>
+                        <span v-else class="empty-small">{{ t('kami.activated') }}</span>
                       </div>
                     </template>
                   </td>
@@ -354,7 +354,7 @@
 
                 <!-- 空态：整表只有一行提示，避免出现一条悬挂在表头下方的空线 -->
                 <tr v-if="!loading && !userKamis.length" class="kami-empty-row">
-                  <td :colspan="tableColumns.length">暂无卡密</td>
+                  <td :colspan="tableColumns.length">{{ t('kami.empty') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -371,12 +371,12 @@
             只有一页时不渲染，避免出现一个孤零零的「1」。
             与 antd 版本的差异：不再提供 showQuickJumper（输入页码跳转），只能逐页点击。
           -->
-          <nav v-if="pagination.total_pages > 1" class="kami-pager" aria-label="卡密分页">
+          <nav v-if="pagination.total_pages > 1" class="kami-pager" :aria-label="t('kami.pagerAria')">
             <button
               type="button"
               class="u-icon-btn"
               :disabled="!pagination.has_prev || loading"
-              aria-label="上一页"
+              :aria-label="t('kami.prevPage')"
               @click="handlePaginationChange(pagination.page - 1)"
             >
               <AppIcon name="chevron-left" />
@@ -389,7 +389,7 @@
               class="u-icon-btn kami-pager-item"
               :class="{ 'kami-pager-item--active': pageNo === pagination.page }"
               :aria-current="pageNo === pagination.page ? 'page' : undefined"
-              :aria-label="`第 ${pageNo} 页`"
+              :aria-label="t('kami.pageAria', { page: pageNo })"
               @click="handlePaginationChange(pageNo)"
             >
               {{ pageNo }}
@@ -399,13 +399,13 @@
               type="button"
               class="u-icon-btn"
               :disabled="!pagination.has_next || loading"
-              aria-label="下一页"
+              :aria-label="t('kami.nextPage')"
               @click="handlePaginationChange(pagination.page + 1)"
             >
               <AppIcon name="chevron-right" />
             </button>
 
-            <span class="kami-pager-total">共 {{ pagination.total }} 条</span>
+            <span class="kami-pager-total">{{ t('kami.total', { count: pagination.total }) }}</span>
           </nav>
 
           <!--
@@ -415,7 +415,7 @@
           -->
           <p class="entitlements-link-row">
             <router-link class="u-btn-secondary" to="/user/assets">
-              <AppIcon name="wrench" /> 已激活的工具在「我的资产」查看
+              <AppIcon name="wrench" /> {{ t('kami.assetsLink') }}
             </router-link>
           </p>
         </div>
@@ -425,6 +425,8 @@
 </template>
 
 <script>
+import { i18n } from '@/i18n/index.js'
+
 /**
  * 兑换结果 → 设计系统 RedeemResult 四模板。
  *
@@ -454,30 +456,32 @@ export const REDEEM_RESULT_VARIANTS = {
 export function buildActivationResultView(result, { rewards = '', formatDate } = {}) {
   if (!result || typeof result !== 'object') return null
 
+  const tr = (key, params) => i18n.global.t(key, params)
+  const separator = i18n.global.locale.value === 'en-US' ? ', ' : '，'
   const data = result.data && typeof result.data === 'object' ? result.data : {}
   const message = String(result.message || '')
   const format = typeof formatDate === 'function' ? formatDate : (value) => String(value || '—')
 
   if (result.success === true) {
     const parts = []
-    const name = data.card_name ? `「${data.card_name}」` : '卡密'
-    parts.push(`${name}已到账`)
+    const name = data.card_name || tr('kami.result.cardFallback')
+    parts.push(tr('kami.result.arrived', { name }))
     if (data.entitlement_expires_at) {
-      parts.push(`有效期至 ${format(data.entitlement_expires_at)}`)
+      parts.push(tr('kami.result.validUntil', { date: format(data.entitlement_expires_at) }))
     } else if (data.duration_days) {
-      parts.push(`有效期 ${data.duration_days} 天`)
+      parts.push(tr('kami.result.validDays', { days: data.duration_days }))
     }
-    if (rewards) parts.push(`已发放 ${rewards}`)
-    parts.push('可在「我的卡密」查看详情，也可以继续兑换下一张。')
+    if (rewards) parts.push(tr('kami.result.granted', { rewards }))
+    parts.push(tr('kami.result.successTail'))
 
     return {
       variant: REDEEM_RESULT_VARIANTS.SUCCESS,
       icon: 'check-circle',
-      title: '兑换成功',
-      desc: parts.join('，'),
+      title: tr('kami.result.successTitle'),
+      desc: parts.join(separator),
       actions: [
-        { label: '查看我的卡密', kind: 'primary', action: 'show-cards' },
-        { label: '继续兑换', kind: 'outline', action: 'continue' },
+        { label: tr('kami.result.viewCards'), kind: 'primary', action: 'show-cards' },
+        { label: tr('kami.result.continueRedeem'), kind: 'outline', action: 'continue' },
       ],
     }
   }
@@ -492,9 +496,9 @@ export function buildActivationResultView(result, { rewards = '', formatDate } =
     return {
       variant: REDEEM_RESULT_VARIANTS.NOTFOUND,
       icon: 'search',
-      title: '没有找到这张卡密',
-      desc: '请检查是否输错了字母（如 O 与 0、I 与 1）。若确认无误，可能是购买渠道尚未同步，请稍后重试。',
-      actions: [{ label: '重新输入', kind: 'outline', action: 'restart' }],
+      title: tr('kami.result.notFoundTitle'),
+      desc: tr('kami.result.notFoundDesc'),
+      actions: [{ label: tr('kami.result.restart'), kind: 'outline', action: 'restart' }],
     }
   }
 
@@ -502,11 +506,11 @@ export function buildActivationResultView(result, { rewards = '', formatDate } =
     return {
       variant: REDEEM_RESULT_VARIANTS.EXPIRED,
       icon: 'alert-triangle',
-      title: '卡密已过期',
-      desc: '这张卡密已超过有效期，无法继续兑换。若为近期购买，可凭订单号联系客服核实延期。',
+      title: tr('kami.result.expiredTitle'),
+      desc: tr('kami.result.expiredDesc'),
       actions: [
-        { label: '联系客服', kind: 'primary', href: '/support' },
-        { label: '重新输入', kind: 'outline', action: 'restart' },
+        { label: tr('kami.result.contactSupport'), kind: 'primary', href: '/support' },
+        { label: tr('kami.result.restart'), kind: 'outline', action: 'restart' },
       ],
     }
   }
@@ -515,9 +519,9 @@ export function buildActivationResultView(result, { rewards = '', formatDate } =
     return {
       variant: REDEEM_RESULT_VARIANTS.USED,
       icon: 'clock',
-      title: '这张卡密已被使用',
-      desc: '卡密已兑换过，不能重复使用。可在「我的卡密」中查看兑换记录；如果是本人操作，无需处理。',
-      actions: [{ label: '查看我的卡密', kind: 'outline', action: 'show-cards' }],
+      title: tr('kami.result.usedTitle'),
+      desc: tr('kami.result.usedDesc'),
+      actions: [{ label: tr('kami.result.viewCards'), kind: 'outline', action: 'show-cards' }],
     }
   }
 
@@ -537,22 +541,24 @@ export function buildActivationResultView(result, { rewards = '', formatDate } =
 export function buildMemberResultView(info) {
   if (!info || typeof info !== 'object') return null
 
-  const toolName = String(info.tool_name || '').trim() || '所选工具'
-  const parts = [`已为「${toolName}」开通会员额度授权`]
+  const tr = (key, params) => i18n.global.t(key, params)
+  const separator = i18n.global.locale.value === 'en-US' ? ', ' : '，'
+  const toolName = String(info.tool_name || '').trim() || tr('kami.result.toolFallback')
+  const parts = [tr('kami.result.memberGranted', { tool: toolName })]
   const remaining = Number(info.remaining)
   if (info.remaining !== undefined && info.remaining !== null && Number.isFinite(remaining)) {
-    parts.push(`当前剩余 ${remaining} 个额度`)
+    parts.push(tr('kami.result.memberRemaining', { remaining }))
   }
-  parts.push('可在「我的资产」查看。')
+  parts.push(tr('kami.result.memberTail'))
 
   return {
     variant: REDEEM_RESULT_VARIANTS.SUCCESS,
     icon: 'check-circle',
-    title: '免卡密激活成功',
-    desc: parts.join('，'),
+    title: tr('kami.result.memberTitle'),
+    desc: parts.join(separator),
     actions: [
-      { label: '查看我的资产', kind: 'primary', action: 'show-entitlements' },
-      { label: '继续激活', kind: 'outline', action: 'continue' },
+      { label: tr('kami.result.viewAssets'), kind: 'primary', action: 'show-entitlements' },
+      { label: tr('kami.result.continueActivate'), kind: 'outline', action: 'continue' },
     ],
   }
 }
@@ -560,8 +566,10 @@ export function buildMemberResultView(info) {
 
 <script setup>
 import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
+import { translate, isEnglish } from '@/i18n/index.js'
 import { notify } from '@/hooks/useToast/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
@@ -577,6 +585,8 @@ import {
   KAMI_TABLE_COLUMNS,
   STATUS_FILTER_OPTIONS,
   formatCardDate,
+  getKamiColumnTitle,
+  getStatusFilterLabel,
   getStatusVariantClass,
   getStatusText,
   resolveToolName,
@@ -586,6 +596,8 @@ import {
 // copyText 内部有 execCommand 降级），与「我的资产」「订单详情」用的是同一份实现。
 import { copyText } from '@/utils/clipboard.js'
 import { TRADE } from '@/constants/index.js'
+
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
@@ -629,8 +641,12 @@ function applyToolFromQuery() {
   return true
 }
 
-const tableColumns = KAMI_TABLE_COLUMNS
-const statusFilterOptions = STATUS_FILTER_OPTIONS
+const tableColumns = computed(() =>
+  KAMI_TABLE_COLUMNS.map((column) => ({ ...column, title: getKamiColumnTitle(column.key) }))
+)
+const statusFilterOptions = computed(() =>
+  STATUS_FILTER_OPTIONS.map((option) => ({ ...option, label: getStatusFilterLabel(option.value) }))
+)
 
 const formatDate = formatCardDate
 
@@ -713,12 +729,10 @@ const credentialHint = computed(() => {
   const value = activateCode.value.trim()
   if (!value) return ''
   if (credentialType.value === CREDENTIAL_TYPES.UID) {
-    return selectedToolId.value
-      ? '已识别为用户 UID，将按会员免卡密激活'
-      : '已识别为用户 UID，请先选择要激活的工具'
+    return selectedToolId.value ? t('kami.credential.uidReady') : t('kami.credential.uidNeedTool')
   }
-  if (credentialType.value === CREDENTIAL_TYPES.CARD) return '已识别为卡密'
-  return '请输入卡密或用户 UID'
+  if (credentialType.value === CREDENTIAL_TYPES.CARD) return t('kami.credential.card')
+  return t('kami.credential.unknown')
 })
 
 /** 输入不像卡密也不像 UID：按钮禁用 + 提示用告警色，别让用户对着灰按钮猜 */
@@ -753,12 +767,12 @@ async function runToolLookup(cardNo) {
     const option = toolOptions.value.find((item) => String(item.value) === String(toolId))
     if (!option) {
       // 卡密有效但工具已下架：明确告知，不自动选中一个不存在的项
-      notify.error('该卡密绑定的工具已下架')
+      notify.error(t('kami.toolMissing'))
       return
     }
     selectedToolId.value = option.value
     autoSelectedToolId = option.value
-    notify.success('已自动选择该卡密对应的工具')
+    notify.success(t('kami.toolSelected'))
   } catch (error) {
     // 静默失败：识别只是锦上添花，用户可能还在输入完整卡密，
     // 任何 toast 都会打断。只在开发环境留一条 debug。
@@ -805,7 +819,7 @@ function handleSubmit() {
 
 /** 主按钮：卡密「激活」/ UID「免卡密激活」/ 未识别也显示「激活」但禁用 */
 const submitLabel = computed(() =>
-  credentialType.value === CREDENTIAL_TYPES.UID ? '免卡密激活' : '激活'
+  credentialType.value === CREDENTIAL_TYPES.UID ? t('kami.memberActivate') : t('kami.activate')
 )
 
 const submitting = computed(() => activating.value || memberActivating.value)
@@ -842,9 +856,13 @@ const activationRewards = computed(() => {
   const info = activationResult.value?.data
   if (!info || typeof info !== 'object') return ''
   const parts = []
-  if (info.points_granted !== undefined) parts.push(`${info.points_granted} 积分`)
-  if (info.growth_granted !== undefined) parts.push(`${info.growth_granted} 成长值`)
-  return parts.join('、')
+  if (info.points_granted !== undefined) {
+    parts.push(t('kami.rewardPoints', { count: info.points_granted }))
+  }
+  if (info.growth_granted !== undefined) {
+    parts.push(t('kami.rewardGrowth', { count: info.growth_granted }))
+  }
+  return parts.join(isEnglish() ? ', ' : '、')
 })
 
 /** 四模板视图；null 表示这是流程性错误（缺工具 / 网络异常），走普通错误提示 */
@@ -898,11 +916,19 @@ const memberView = ref(null)
 const memberQuotaText = computed(() => {
   const quota = memberQuota.value
   if (!quota?.is_member) return ''
-  const level = quota.level || quota.level_name || '会员'
+  const level = quota.level || quota.level_name || t('member.page.memberName')
   if (quota.unlimited) {
-    return `${level} · 本等级免卡密激活不限数量，已用 ${quota.used} 个`
+    return t('kami.memberQuotaUnlimited', {
+      level,
+      used: quota.used,
+    })
   }
-  return `${level} · 本等级可免卡密激活 ${quota.quota} 个工具，已用 ${quota.used} 个，剩余 ${quota.remaining} 个`
+  return t('kami.memberQuotaLimited', {
+    level,
+    quota: quota.quota,
+    used: quota.used,
+    remaining: quota.remaining,
+  })
 })
 
 /** 后端 code → 可执行文案。未知 code 保留服务端 message，绝不吞掉 */
@@ -917,15 +943,17 @@ const MEMBER_ERROR_MESSAGES = {
 
 const memberErrorLinks = computed(() => {
   const code = memberError.value?.code
-  if (code === 'NOT_MEMBER') return [{ to: '/member/plans', label: '开通会员' }]
+  if (code === 'NOT_MEMBER') {
+    return [{ to: '/member/plans', label: t('kami.links.openMember') }]
+  }
   if (code === 'QUOTA_EXCEEDED') {
     return [
-      { to: '/member/plans', label: '升级会员' },
-      { to: '/tool', label: '购买卡密' },
+      { to: '/member/plans', label: t('kami.links.upgradeMember') },
+      { to: '/tool', label: t('kami.links.buyCard') },
     ]
   }
   if (code === 'TOOL_NOT_ELIGIBLE' || code === 'TOOL_NOT_FOUND') {
-    return [{ to: '/tool', label: '购买卡密' }]
+    return [{ to: '/tool', label: t('kami.links.buyCard') }]
   }
   return []
 })
@@ -934,7 +962,12 @@ const resolveMemberError = (error) => {
   const code = String(error?.code || '')
   return {
     code,
-    message: MEMBER_ERROR_MESSAGES[code] || error?.message || '激活失败，请稍后再试。',
+    message: code
+      ? translate(
+          `kami.memberErrors.${code}`,
+          MEMBER_ERROR_MESSAGES[code] || error?.message || translate('kami.memberErrorFallback')
+        )
+      : error?.message || translate('kami.memberErrorFallback'),
   }
 }
 
@@ -951,7 +984,7 @@ async function loadMemberQuota() {
       return true
     }
     memberQuota.value = null
-    memberQuotaError.value = '会员权益信息暂时不可用，请稍后重试。'
+    memberQuotaError.value = t('kami.memberQuotaUnavailableShort')
     memberQuotaUnavailable.value = false
     return false
   } catch (error) {
@@ -959,8 +992,8 @@ async function loadMemberQuota() {
     // 404 = 后端还没部署这个能力（契约先行），不弹错、只把卡片置为不可提交
     memberQuotaUnavailable.value = error?.status === 404
     memberQuotaError.value = memberQuotaUnavailable.value
-      ? '会员免卡密激活暂未开放，请稍后再试。'
-      : '会员权益信息读取失败，请稍后重试。'
+      ? t('kami.memberQuotaUnavailable')
+      : t('kami.memberQuotaReadFailed')
     return false
   } finally {
     memberQuotaLoading.value = false
@@ -1006,7 +1039,7 @@ async function runMemberActivate() {
       tool_name: getToolName(toolId),
       remaining: response.data?.remaining ?? memberQuota.value?.remaining,
     })
-    notify.success(response.message || '免卡密激活成功')
+    notify.success(response.message || t('kami.memberActivateSuccess'))
     // 一次性凭据已用掉：清空输入，避免同一串 UID 被重复提交
     resetForm()
     autoSelectedToolId = ''
@@ -1050,8 +1083,8 @@ const copyCardNo = async (card) => {
   const text = card.card_no || card.card_no_display
   if (!text) return
   const result = await copyText(text)
-  if (result?.ok) notify.success(TRADE.orderCardCopied)
-  else notify.error(result?.message || '复制失败，请手动选择复制')
+  if (result?.ok) notify.success(t('kami.copySuccess'))
+  else notify.error(result?.message || t('kami.copyFail'))
 }
 
 onMounted(async () => {

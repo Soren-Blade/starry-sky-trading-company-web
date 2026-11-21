@@ -1,7 +1,7 @@
 <template>
   <ToolPageShell :title="PAGE.title" :eyebrow="PAGE.eyebrow" :description="PAGE.description" :icon="PAGE.icon" :requires-card="PAGE.requiresCard">
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="video" aria-hidden="true" /><span>选择本地视频</span></h2>
+      <h2 class="tool-panel-title"><AppIcon name="video" aria-hidden="true" /><span>{{ t('videoProbe.selectTitle') }}</span></h2>
       <label
         class="tool-file-drop"
         :class="{ 'tool-file-drop--active': dragging }"
@@ -10,44 +10,44 @@
         @drop.prevent="handleDrop"
       >
         <span class="tool-file-icon"><AppIcon name="film" /></span>
-        <span class="tool-file-title">拖入视频文件，或点击选择</span>
-        <span class="tool-result-note">支持 mp4 / webm / mov / mkv 等浏览器能解码的格式，单文件上限 {{ formatBytes(MAX_FILE_BYTES) }}。</span>
+        <span class="tool-file-title">{{ t('videoProbe.dropTitle') }}</span>
+        <span class="tool-result-note">{{ t('videoProbe.dropHint', { size: formatBytes(MAX_FILE_BYTES) }) }}</span>
         <input ref="fileInput" class="tool-file-input" type="file" accept="video/*" @change="handleChange" />
       </label>
       <p v-if="fileError" class="u-field-error" role="alert">{{ fileError }}</p>
       <p v-if="fileName" class="tool-file-name"><AppIcon name="check-circle" aria-hidden="true" /><span>{{ fileName }}（{{ formatBytes(fileSize) }}）</span></p>
       <div class="tool-form">
         <div class="u-field">
-          <label class="u-field-label" for="vt-frame-time">抽帧时间点（秒）</label>
+          <label class="u-field-label" for="vt-frame-time">{{ t('videoProbe.frameLabel') }}</label>
           <input id="vt-frame-time" v-model="frameTime" class="u-input" type="number" min="0" step="0.5" />
-          <p class="u-field-hint">选择文件时会自动抽首帧；也可以改这个时间点再抽一帧。</p>
+          <p class="u-field-hint">{{ t('videoProbe.frameHint') }}</p>
         </div>
       </div>
       <div class="tool-actions">
         <button type="button" class="u-btn-primary" :disabled="!file || state === 'loading'" @click="run">
-          {{ state === 'loading' ? '读取中…' : '读取元信息' }}
+          {{ state === 'loading' ? t('videoProbe.reading') : t('videoProbe.readMeta') }}
         </button>
         <button type="button" class="u-btn-secondary" :disabled="state === 'loading'" @click="reset">{{ PAGE.reset }}</button>
       </div>
     </section>
 
     <section class="ui-card tool-panel">
-      <h2 class="tool-panel-title"><AppIcon name="clipboard" aria-hidden="true" /><span>文件分析结果</span></h2>
-      <ToolResultPane :state="state" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" :error="errorMessage" loading-text="正在解码视频元信息并抽帧…">
+      <h2 class="tool-panel-title"><AppIcon name="clipboard" aria-hidden="true" /><span>{{ t('videoProbe.resultTitle') }}</span></h2>
+      <ToolResultPane :state="state" :title="PAGE.emptyTitle" :description="PAGE.emptyDesc" :error="errorMessage" :loading-text="t('videoProbe.analyzing')">
         <div v-if="meta" class="tool-result-meta">
-          <span class="tool-result-meta-item"><span>时长</span><strong>{{ meta.durationText }}</strong></span>
-          <span class="tool-result-meta-item"><span>分辨率</span><strong>{{ meta.resolutionText }}</strong></span>
-          <span class="tool-result-meta-item"><span>文件大小</span><strong>{{ formatBytes(meta.size) }}</strong></span>
-          <span class="tool-result-meta-item"><span>估算码率</span><strong>{{ meta.bitrateText }}</strong></span>
-          <span class="tool-result-meta-item"><span>容器</span><strong>{{ meta.container }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ t('videoProbe.duration') }}</span><strong>{{ meta.durationText }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ t('videoProbe.resolution') }}</span><strong>{{ meta.resolutionText }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ t('videoProbe.fileSize') }}</span><strong>{{ formatBytes(meta.size) }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ t('videoProbe.bitrate') }}</span><strong>{{ meta.bitrateText }}</strong></span>
+          <span class="tool-result-meta-item"><span>{{ t('videoProbe.container') }}</span><strong>{{ meta.container }}</strong></span>
           <span class="tool-result-meta-item"><span>MIME</span><strong>{{ meta.mime }}</strong></span>
         </div>
-        <p v-if="meta" class="tool-result-note">码率按「文件字节数 × 8 ÷ 时长」估算，包含音轨和封装开销，不是流级别的精确值。</p>
+        <p v-if="meta" class="tool-result-note">{{ t('videoProbe.bitrateNote') }}</p>
         <div v-if="thumbUrl" class="tool-preview-media">
-          <img :src="thumbUrl" alt="视频抽帧缩略图" />
+          <img :src="thumbUrl" :alt="t('videoProbe.thumbAlt')" />
         </div>
         <template #actions>
-          <button v-if="thumbUrl" type="button" class="u-btn-primary" @click="downloadFrame">下载这一帧 PNG</button>
+          <button v-if="thumbUrl" type="button" class="u-btn-primary" @click="downloadFrame">{{ t('videoProbe.downloadFrame') }}</button>
         </template>
       </ToolResultPane>
     </section>
@@ -61,8 +61,8 @@
       </div>
       <div class="ui-card tool-aside-card">
         <h3 class="tool-aside-title"><span class="tool-aside-title-icon"><AppIcon name="alert-triangle" aria-hidden="true" /></span><span>{{ TOOL_PAGE.noticeTitle }}</span></h3>
-        <p class="tool-aside-note">解析第三方平台直链需要服务端代理与平台授权，本页只做本地文件分析。在线链接解析不在本页能力范围内，页面上也不会给出占位结果。</p>
-        <p class="tool-aside-note">转码、压缩、提取音轨需要视频编码器，浏览器没有通用编码能力，这些操作本页同样不提供。</p>
+        <p class="tool-aside-note">{{ t('videoProbe.asideProxy') }}</p>
+        <p class="tool-aside-note">{{ t('videoProbe.asideTranscode') }}</p>
       </div>
     </template>
   </ToolPageShell>
@@ -70,7 +70,8 @@
 
 <script setup>
 import { formatBytes, formatDuration } from '@/utils/format.js'
-import { onUnmounted, ref } from 'vue'
+import { onUnmounted, ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import ToolPageShell from '@/components/ToolPageShell.vue'
 import ToolResultPane from '@/components/ToolResultPane.vue'
@@ -79,9 +80,10 @@ import { useToolUsage } from '@/hooks/useToolUsage/index.js'
 
 const PAGE = TOOL_PAGES['/video/downloader']
 const usage = useToolUsage('/video/downloader')
+const { t, tm } = useI18n()
 
 // 常量表里的 asideItems / resultNote 还是「骨架阶段占位」口径，这里用页面内文案覆盖真实能力，不改 constants。
-const ASIDE_ITEMS = ['读取的是浏览器解码出的真实时长、分辨率与体积。', '视频文件不会被上传，只在本地 <video> 元素里解码。', '抽帧用 canvas drawImage，导出的 PNG 分辨率与视频一致。']
+const ASIDE_ITEMS = computed(() => tm('videoProbe.asideItems'))
 const MAX_FILE_BYTES = 500 * 1024 * 1024
 const METADATA_TIMEOUT_MS = 15000
 const CONTAINERS = {
@@ -104,7 +106,7 @@ const errorMessage = ref('')
 
 function guessContainer(name) {
   const extension = (name.split('.').pop() || '').toLowerCase()
-  return CONTAINERS[extension] || '未知容器'
+  return CONTAINERS[extension] || t('videoProbe.unknownContainer')
 }
 
 function releaseUrls() {
@@ -121,12 +123,12 @@ function acceptFile(next) {
   state.value = 'empty'
   if (!next) return
   if (!next.type.startsWith('video/')) {
-    fileError.value = '请选择视频文件；音频请到音视频信息页处理。'
+    fileError.value = t('videoProbe.errorType')
     usage.record({ ok: false, errorCode: 'VIDEO_FILE_INVALID_TYPE' })
     return
   }
   if (next.size > MAX_FILE_BYTES) {
-    fileError.value = `文件超过 ${formatBytes(MAX_FILE_BYTES)}，请先裁剪或压缩后再试。`
+    fileError.value = t('videoProbe.errorTooLarge', { size: formatBytes(MAX_FILE_BYTES) })
     usage.record({ ok: false, errorCode: 'VIDEO_FILE_TOO_LARGE', meta: { size: next.size } })
     return
   }
@@ -159,7 +161,7 @@ function waitForEvent(element, name) {
     }
     const onError = () => {
       cleanup()
-      reject(new Error('浏览器无法解码这个视频，可能是编码格式不受支持。'))
+      reject(new Error(t('videoProbe.errorDecode')))
     }
     element.addEventListener(name, onDone, { once: true })
     element.addEventListener('error', onError, { once: true })
@@ -174,7 +176,7 @@ async function analyse(source) {
   video.playsInline = true
   video.src = source
   const timeout = new Promise((_, reject) => {
-    window.setTimeout(() => reject(new Error('读取超时，请换一个体积更小或编码更常见的视频。')), METADATA_TIMEOUT_MS)
+    window.setTimeout(() => reject(new Error(t('videoProbe.errorTimeout'))), METADATA_TIMEOUT_MS)
   })
   await Promise.race([waitForEvent(video, 'loadedmetadata'), timeout])
   const duration = video.duration
@@ -187,7 +189,7 @@ async function analyse(source) {
   canvas.width = width || 640
   canvas.height = height || 360
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('当前浏览器不支持 canvas 2D，无法抽帧。')
+  if (!context) throw new Error(t('videoProbe.errorCanvas'))
   context.drawImage(video, 0, 0, canvas.width, canvas.height)
   const blob = await new Promise((resolve) => {
     canvas.toBlob(resolve, 'image/png')
@@ -195,11 +197,11 @@ async function analyse(source) {
   return {
     duration,
     durationText: formatDuration(duration),
-    resolutionText: width && height ? `${width} × ${height}` : '无视频轨',
+    resolutionText: width && height ? `${width} × ${height}` : t('videoProbe.noVideoTrack'),
     size: fileSize.value,
-    bitrateText: Number.isFinite(duration) && duration > 0 ? `${Math.round((fileSize.value * 8) / duration / 1000)} kbps` : '无法估算',
+    bitrateText: Number.isFinite(duration) && duration > 0 ? `${Math.round((fileSize.value * 8) / duration / 1000)} kbps` : t('videoProbe.cannotEstimate'),
     container: guessContainer(fileName.value),
-    mime: file.value.type || '未知',
+    mime: file.value.type || t('videoProbe.unknownMime'),
     frameTime: target,
     frameBlob: blob,
   }
@@ -220,7 +222,7 @@ async function run() {
     usage.record({ durationMs: performance.now() - startedAt, meta: { duration: Math.round(info.duration || 0), size: info.size } })
   } catch (error) {
     state.value = 'error'
-    errorMessage.value = error && error.message ? error.message : '读取失败，请换一个视频再试。'
+    errorMessage.value = error && error.message ? error.message : t('videoProbe.errorFailed')
     usage.record({ durationMs: performance.now() - startedAt, ok: false, errorCode: 'VIDEO_PROBE_FAILED' })
   }
 }

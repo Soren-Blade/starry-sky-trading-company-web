@@ -3,20 +3,20 @@
     <PageBreadcrumb :items="breadcrumbItems" />
 
     <header class="page-shell-head">
-      <h1 class="page-shell-title">开通会员</h1>
+      <h1 class="page-shell-title">{{ t('member.plansPage.title') }}</h1>
       <p class="page-shell-desc">
-        一次性 {{ activationPrice }} 元开通会员，永久有效；等级不售卖，由成长值决定（v1–v8）
+        {{ t('member.plansPage.description', { price: activationPrice }) }}
       </p>
     </header>
 
     <!-- 未登录：守卫会打开登录弹窗并回跳，但直达本页时仍要有落点 -->
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="star" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后即可查看套餐并开通会员</p>
+      <p class="u-mm-state-title">{{ t('member.plansPage.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('member.plansPage.loginDesc') }}</p>
       <div class="u-mm-state-actions">
-        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可开通会员')">
-          立即登录
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal(t('member.plansPage.loginPrompt'))">
+          {{ t('member.plansPage.loginCta') }}
         </button>
       </div>
     </div>
@@ -32,14 +32,14 @@
         <AppIcon name="alert-triangle" class="u-mm-state-icon" />
         <p class="u-mm-state-title">{{ memberStore.error }}</p>
         <div class="u-mm-state-actions">
-          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">{{ t('member.plansPage.retry') }}</button>
         </div>
       </div>
 
       <div v-else-if="!planList.length" class="ui-card u-mm-state">
         <AppIcon name="info" class="u-mm-state-icon" />
-        <p class="u-mm-state-title">暂时没有可开通的套餐</p>
-        <p class="u-mm-state-desc">请稍后再来，新套餐上架后会出现在这里</p>
+        <p class="u-mm-state-title">{{ t('member.plansPage.emptyTitle') }}</p>
+        <p class="u-mm-state-desc">{{ t('member.plansPage.emptyDesc') }}</p>
       </div>
 
       <template v-else>
@@ -54,28 +54,28 @@
           :growth-max="identityGrowthMax"
           :growth-hint="identityGrowthHint"
           :actions="identityActions"
-          note="会员资格一次开通永久有效；等级随成长值增长，不会因为不消费而降级"
+          :note="t('member.plansPage.vipNote')"
         />
 
         <!-- 会员开卡资格：全站唯一的可购买项。等级不售卖，只能花 10 元开卡后靠成长值升 -->
         <section v-if="activationPlan" class="plans-group plans-group--activation">
-          <h2 class="plans-group-title">会员开卡资格</h2>
+          <h2 class="plans-group-title">{{ t('member.plansPage.activationTitle') }}</h2>
           <!-- 卡外观沿用分片 §12 的 .u-mm-plan；整页只有一张，用页面级网格给它一个固定列宽 -->
           <div class="plans-activation-grid">
             <article class="u-mm-plan" :class="{ 'is-current': isPermanent }">
               <header class="u-mm-plan-head">
-                <span class="u-mm-plan-duration">一次开通</span>
-                <span class="u-tag u-tag--success">永久有效</span>
-                <span v-if="isPermanent" class="u-tag u-tag--accent">已开通</span>
+                <span class="u-mm-plan-duration">{{ t('member.plansPage.once') }}</span>
+                <span class="u-tag u-tag--success">{{ t('member.plansPage.permanent') }}</span>
+                <span v-if="isPermanent" class="u-tag u-tag--accent">{{ t('member.plansPage.active') }}</span>
               </header>
 
               <p class="u-mm-plan-price">¥{{ activationPlan.price }}</p>
-              <p class="u-mm-plan-perday">一次付费，不按天计费、不自动续费</p>
+              <p class="u-mm-plan-perday">{{ t('member.plansPage.perDay') }}</p>
 
               <ul class="u-mm-plan-facts">
-                <li class="plan-fact"><AppIcon name="star" /><span>等级不售卖，由成长值决定（v1–v8）</span></li>
-                <li class="plan-fact"><AppIcon name="wrench" /><span>免卡密激活额度随等级提高</span></li>
-                <li class="plan-fact"><AppIcon name="tag" /><span>消费折扣与积分倍率随等级生效</span></li>
+                <li class="plan-fact"><AppIcon name="star" /><span>{{ t('member.plansPage.factLevels') }}</span></li>
+                <li class="plan-fact"><AppIcon name="wrench" /><span>{{ t('member.plansPage.factQuota') }}</span></li>
+                <li class="plan-fact"><AppIcon name="tag" /><span>{{ t('member.plansPage.factRewards') }}</span></li>
               </ul>
 
               <button
@@ -85,9 +85,9 @@
                 :disabled="submitting === activationPlan.plan_id"
                 @click="openPlan(activationPlan)"
               >
-                {{ submitting === activationPlan.plan_id ? '提交中…' : `开通会员（¥${activationPlan.price}）` }}
+                {{ submitting === activationPlan.plan_id ? t('member.plansPage.submitting') : t('member.plansPage.openCta', { price: activationPlan.price }) }}
               </button>
-              <p v-else class="u-mm-plan-own">你已经是永久会员，无需重复开通</p>
+              <p v-else class="u-mm-plan-own">{{ t('member.plansPage.permanentNote') }}</p>
             </article>
           </div>
         </section>
@@ -95,19 +95,19 @@
         <!-- 成长值来源：这两条是数据库里真实存在的记账入口（order_growth_reward / card_growth_reward），
              不是营销话术，改口径要同时改库函数，所以只做说明不做计算 -->
         <section class="ui-card plans-growth-sources">
-          <h2 class="plans-section-title">成长值怎么涨</h2>
+          <h2 class="plans-section-title">{{ t('member.plansPage.growthTitle') }}</h2>
           <ul class="growth-source-list">
             <li class="growth-source">
               <AppIcon name="shopping-bag" />
-              <span>购买商品：订单完成后按实付金额累计成长值</span>
+              <span>{{ t('member.plansPage.growthSourceOrder') }}</span>
             </li>
             <li class="growth-source">
               <AppIcon name="key" />
-              <span>兑换卡密：卡密激活成功后按面值累计成长值</span>
+              <span>{{ t('member.plansPage.growthSourceCard') }}</span>
             </li>
           </ul>
           <p class="plans-notice-text">
-            成长值只增不减，达到下一档门槛自动升级；等级决定消费折扣、积分倍率与免卡密激活额度。
+            {{ t('member.plansPage.growthNotice') }}
           </p>
         </section>
 
@@ -119,17 +119,17 @@
              没有就不渲染那一块 —— 前端不自己编一套说法 -->
         <section v-if="memberStore.paymentNotice || memberStore.refundNotice" class="plans-notices">
           <div v-if="memberStore.paymentNotice" class="ui-card plans-notice">
-            <h2 class="plans-section-title">结算方式</h2>
+            <h2 class="plans-section-title">{{ t('member.plansPage.paymentTitle') }}</h2>
             <p class="plans-notice-text">{{ memberStore.paymentNotice }}</p>
           </div>
           <div v-if="memberStore.refundNotice" class="ui-card plans-notice">
-            <h2 class="plans-section-title">退款说明</h2>
+            <h2 class="plans-section-title">{{ t('member.plansPage.refundTitle') }}</h2>
             <p class="plans-notice-text">{{ memberStore.refundNotice }}</p>
           </div>
         </section>
 
         <p v-if="router.hasRoute('Member')" class="plans-foot">
-          <router-link :to="{ name: 'Member' }" class="u-btn-secondary">返回会员中心</router-link>
+          <router-link :to="{ name: 'Member' }" class="u-btn-secondary">{{ t('member.plansPage.backMember') }}</router-link>
         </p>
       </template>
     </template>
@@ -159,6 +159,7 @@
  * 前端把按钮换成静态文案，避免让用户白点一次。
  */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import api from '@/api/index'
@@ -166,6 +167,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
 import VipCard from '@/components/VipCard.vue'
+import { NAV_MENU } from '@/constants/content.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
 import { notify } from '@/hooks/useToast/index.js'
@@ -173,13 +175,14 @@ import { notify } from '@/hooks/useToast/index.js'
 const memberStore = useMemberStore()
 const userStore = useUserStore()
 const router = useRouter()
+const { t } = useI18n()
 
 /** 面包屑：会员开通是会员中心下的二级页 */
-const breadcrumbItems = [
-  { label: '首页', to: '/home' },
-  { label: '会员中心', to: '/member' },
-  { label: '开通会员' },
-]
+const breadcrumbItems = computed(() => [
+  { label: NAV_MENU[0]?.label || 'Home', to: '/home' },
+  { label: t('member.page.title'), to: '/member' },
+  { label: t('member.plansPage.title') },
+])
 
 /** 正在提交的 plan_id；同一时刻只允许一单在途 */
 const submitting = ref('')
@@ -212,12 +215,12 @@ const activationPlan = computed(
 const activationPrice = computed(() => activationPlan.value?.price || '10.00')
 
 const identityExpireAt = computed(() =>
-  isPermanent.value ? '永久有效' : overview.value.expires_at || ''
+  isPermanent.value ? t('member.page.permanent') : overview.value.expires_at || ''
 )
 
 const identityExpireHint = computed(() => {
-  if (isPermanent.value) return '无需续费'
-  return overview.value.days_left == null ? '' : `剩余 ${overview.value.days_left} 天`
+  if (isPermanent.value) return t('member.page.permanentHint')
+  return overview.value.days_left == null ? '' : t('member.page.daysLeft', { days: overview.value.days_left })
 })
 
 const identityGrowthMax = computed(() => {
@@ -229,13 +232,13 @@ const identityGrowthMax = computed(() => {
 const identityGrowthHint = computed(() => {
   const o = overview.value
   if (!memberStore.overview) return ''
-  if (o.next_level == null || o.growth_to_next == null) return '已达最高等级'
-  return `距 ${o.next_level_name || o.next_level}还差 ${o.growth_to_next}`
+  if (o.next_level == null || o.growth_to_next == null) return t('member.page.maxLevel')
+  return t('member.page.growthDistance', { name: o.next_level_name || o.next_level, toNext: o.growth_to_next })
 })
 
 const identityActions = computed(() =>
   router.hasRoute('MemberBenefits')
-    ? [{ label: '权益详解', to: { name: 'MemberBenefits' }, variant: 'secondary' }]
+    ? [{ label: t('member.page.actionBenefits'), to: { name: 'MemberBenefits' }, variant: 'secondary' }]
     : []
 )
 
@@ -256,19 +259,19 @@ async function openPlan(plan) {
     })
 
     if (!result?.success) {
-      notify.error(result?.message || '开通失败，请稍后重试')
+      notify.error(result?.message || t('member.plansPage.openFailed'))
       return
     }
 
     const orderNo = result.data?.order?.order_no
     // 结算口径（`payment_notice`）在订单详情页整块展示，这里只报「单已生成」，
     // 避免把一整句说明塞进 3 秒的浮层
-    notify.success('开通单已生成，请联系客服完成结算')
+    notify.success(t('member.plansPage.orderCreated'))
 
     if (orderNo) router.push({ name: 'OrderDetail', params: { orderNo } })
     else router.push({ name: 'Orders' })
   } catch (error) {
-    notify.error(error?.message || '开通失败，请稍后重试')
+    notify.error(error?.message || t('member.plansPage.openFailed'))
   } finally {
     submitting.value = ''
   }

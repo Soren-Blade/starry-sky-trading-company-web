@@ -12,6 +12,8 @@
  * 真正的裁决仍在服务端（前端判断只是为了避免让用户点了才知道不行）。
  */
 
+import { translate } from '../i18n/index.js'
+
 /** 补签失败码 → 用户可读的理由（服务端 message 优先，这里是兜底） */
 export const REPLENISH_ERROR_TEXT = {
   CHECKIN_DATE_INVALID: '只能补签本月已经过去的日子',
@@ -26,21 +28,33 @@ export const REPLENISH_ERROR_TEXT = {
  * 服务端对 `POINTS_NOT_ENOUGH` 会带 `details.shortage`，把它说出来比
  * 「积分不足」有用得多（用户知道还差多少）。
  */
-export function replenishErrorMessage(error, fallback = '补签失败，请稍后重试') {
+export function replenishErrorMessage(error, fallback = translate('checkin.replenish.failed', '补签失败，请稍后重试')) {
   const data = error?.response?.data
   const code = data?.code
   const shortage = Number(data?.details?.shortage ?? 0)
   if (code === 'POINTS_NOT_ENOUGH' && shortage > 0) {
-    return `积分不足，还差 ${shortage} 积分`
+    return translate('checkin.replenish.shortage', `积分不足，还差 ${shortage} 积分`, { shortage })
   }
   if (data?.message) return data.message
-  if (code && REPLENISH_ERROR_TEXT[code]) return REPLENISH_ERROR_TEXT[code]
+  if (code && REPLENISH_ERROR_TEXT[code]) {
+    const keys = {
+      CHECKIN_DATE_INVALID: 'checkin.replenish.invalid',
+      ALREADY_CHECKED: 'checkin.replenish.already',
+      REPLENISH_LIMIT: 'checkin.replenish.limit',
+      POINTS_NOT_ENOUGH: 'checkin.replenish.notEnough',
+    }
+    return translate(keys[code], REPLENISH_ERROR_TEXT[code])
+  }
   return error?.message || fallback
 }
 
 /** 规则区那一行文案：数值来自服务端常量，由调用方传入以免两处写死 */
 export function replenishRuleText(cost, limit) {
-  return `补签 ${cost} 积分/次，每月最多 ${limit} 次；补签不发签到分与成长值，但会重算连续天数`
+  return translate(
+    'checkin.replenish.rule',
+    `补签 ${cost} 积分/次，每月最多 ${limit} 次；补签不发签到分与成长值，但会重算连续天数`,
+    { cost, limit },
+  )
 }
 
 /**
@@ -51,22 +65,48 @@ export function replenishRuleText(cost, limit) {
  * @returns {{ok: boolean, reason: string}} `reason` 为置灰时的说明（ok 时为空串）
  */
 export function canReplenishDay(day, { replenishLeft = 0, points = 0, cost = 0 } = {}) {
-  if (!day || typeof day.date !== 'string') return { ok: false, reason: '这一天没有记录' }
-  if (day.checked) return { ok: false, reason: `${day.date} 已签到` }
-  if (day.future) return { ok: false, reason: `${day.date} 还没到` }
-  if (day.is_today) return { ok: false, reason: '今天直接签到即可，不用补签' }
-  if (Number(replenishLeft) <= 0) return { ok: false, reason: '本月的补签次数已用完' }
-  if (Number(points) < Number(cost)) return { ok: false, reason: `积分不足（补签需 ${cost} 积分）` }
+  if (!day || typeof day.date !== 'string') {
+    return { ok: false, reason: translate('checkin.reason.noRecord', '这一天没有记录') }
+  }
+  if (day.checked) {
+    return { ok: false, reason: translate('checkin.reason.checked', `${day.date} 已签到`, { date: day.date }) }
+  }
+  if (day.future) {
+    return { ok: false, reason: translate('checkin.reason.future', `${day.date} 还没到`, { date: day.date }) }
+  }
+  if (day.is_today) {
+    return { ok: false, reason: translate('checkin.reason.today', '今天直接签到即可，不用补签') }
+  }
+  if (Number(replenishLeft) <= 0) {
+    return { ok: false, reason: translate('checkin.reason.limit', '本月的补签次数已用完') }
+  }
+  if (Number(points) < Number(cost)) {
+    return {
+      ok: false,
+      reason: translate('checkin.reason.points', `积分不足（补签需 ${cost} 积分）`, { cost }),
+    }
+  }
   return { ok: true, reason: '' }
 }
 
 /** 单元格的 title：可补签的说清代价，不可补签的说清原因 */
 export function checkinCellTitle(day, { replenishLeft = 0, points = 0, cost = 0 } = {}) {
-  if (day.checked) return `${day.date} 已签到`
-  if (day.future) return `${day.date} 还没到`
-  if (day.is_today) return `${day.date} 今天，直接签到`
+  if (day.checked) {
+    return translate('checkin.cell.checked', `${day.date} 已签到`, { date: day.date })
+  }
+  if (day.future) {
+    return translate('checkin.cell.future', `${day.date} 还没到`, { date: day.date })
+  }
+  if (day.is_today) {
+    return translate('checkin.cell.today', `${day.date} 今天，直接签到`, { date: day.date })
+  }
   const { ok, reason } = canReplenishDay(day, { replenishLeft, points, cost })
-  return ok ? `${day.date} 未签到，点击补签（${cost} 积分）` : `${day.date} 未签到：${reason}`
+  return ok
+    ? translate('checkin.cell.replenish', `${day.date} 未签到，点击补签（${cost} 积分）`, {
+        date: day.date,
+        cost,
+      })
+    : translate('checkin.cell.blocked', `${day.date} 未签到：${reason}`, { date: day.date, reason })
 }
 
 /**

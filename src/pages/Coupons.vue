@@ -1,24 +1,24 @@
 <template>
   <div class="page-shell page-shell--narrow coupons-page">
     <header class="page-shell-head">
-      <h1 class="page-shell-title">我的优惠券</h1>
-      <p class="page-shell-desc">下单时可选用，注意门槛与有效期</p>
+      <h1 class="page-shell-title">{{ t('member.couponsPage.title') }}</h1>
+      <p class="page-shell-desc">{{ t('member.couponsPage.description') }}</p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="ticket" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后可查看你的优惠券</p>
+      <p class="u-mm-state-title">{{ t('member.couponsPage.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('member.couponsPage.loginDesc') }}</p>
       <div class="u-mm-state-actions">
-        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看优惠券')">
-          立即登录
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal(t('member.couponsPage.loginPrompt'))">
+          {{ t('member.couponsPage.loginCta') }}
         </button>
       </div>
     </div>
 
     <template v-else>
       <!-- 三态页签：角标来自服务端 counts（派生状态，前端不自己数） -->
-      <nav class="coupons-tabs" role="tablist">
+      <nav class="coupons-tabs" role="tablist" :aria-label="t('member.couponsPage.title')">
         <button
           v-for="tab in COUPON_STATUSES"
           :key="tab.value"
@@ -29,7 +29,7 @@
           :aria-selected="couponStore.status === tab.value"
           @click="switchTab(tab.value)"
         >
-          {{ tab.label }}
+          {{ tabLabel(tab.value) }}
           <span v-if="badgeOf(tab.value)" class="coupons-tab-badge">{{ badgeOf(tab.value) }}</span>
         </button>
       </nav>
@@ -43,7 +43,7 @@
         <AppIcon name="alert-triangle" class="u-mm-state-icon" />
         <p class="u-mm-state-title">{{ couponStore.error }}</p>
         <div class="u-mm-state-actions">
-          <button type="button" class="u-btn-secondary" @click="couponStore.fetchMine()">重试</button>
+          <button type="button" class="u-btn-secondary" @click="couponStore.fetchMine()">{{ t('member.couponsPage.retry') }}</button>
         </div>
       </div>
 
@@ -72,7 +72,7 @@
 
             <div class="u-mm-coupon-body">
               <div class="coupon-title-row">
-                <span class="u-mm-coupon-name">{{ item.name || '优惠券' }}</span>
+                <span class="u-mm-coupon-name">{{ item.name || t('member.couponsPage.unknownCoupon') }}</span>
                 <!-- 状态一律用服务端给的（派生状态），前端不拿时间自己判 -->
                 <span class="u-tag" :class="statusTagClass(item.status)">
                   {{ item.status_text }}
@@ -83,15 +83,15 @@
                    所以有效期与来源合成一行文字，而不是再排一个图标 + 右对齐的来源 -->
               <p class="u-mm-coupon-meta">{{ expiryText(item) }} · {{ item.source_text }}</p>
               <p v-if="item.status === 'used' && item.used_order_no" class="coupon-used">
-                已用于订单 {{ item.used_order_no }}
+                {{ t('member.couponsPage.usedOrder', { no: item.used_order_no }) }}
               </p>
-              <span v-if="item.expiring_soon" class="u-mm-coupon-flag">即将过期</span>
+              <span v-if="item.expiring_soon" class="u-mm-coupon-flag">{{ t('member.couponsPage.expiringSoon') }}</span>
             </div>
           </li>
         </ul>
 
         <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
-        <div v-if="couponStore.totalPages > 1" class="u-mm-pager">
+        <div v-if="couponStore.totalPages > 1" class="u-mm-pager" :aria-label="t('member.couponsPage.pagerAria')">
           <span class="u-mm-pager-info">{{ couponStore.page }} / {{ couponStore.totalPages }}</span>
           <div class="u-mm-pager-btns">
             <button
@@ -100,7 +100,7 @@
               :disabled="!couponStore.hasPrev"
               @click="goPage(couponStore.page - 1)"
             >
-              上一页
+              {{ t('member.couponsPage.prev') }}
             </button>
             <button
               type="button"
@@ -108,7 +108,7 @@
               :disabled="!couponStore.hasNext"
               @click="goPage(couponStore.page + 1)"
             >
-              下一页
+              {{ t('member.couponsPage.next') }}
             </button>
           </div>
         </div>
@@ -131,14 +131,26 @@
  *      用户需要「我的券去哪了」的答案，直接消失会变成客服咨询。
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import { useCouponStore } from '@/stores/coupon.js'
 import { useUserStore } from '@/stores/user.js'
 import { COUPON_STATUSES } from '@/constants/member.js'
 
+const { t } = useI18n()
 const couponStore = useCouponStore()
 const userStore = useUserStore()
+
+const TAB_KEYS = {
+  available: 'tabAvailable',
+  used: 'tabUsed',
+  expired: 'tabExpired',
+}
+
+function tabLabel(value) {
+  return t(`member.couponsPage.${TAB_KEYS[value] || 'tabAll'}`)
+}
 
 /** 页签角标：『全部』页签没有对应角标（三态互斥，加起来就是了） */
 function badgeOf(status) {
@@ -149,19 +161,21 @@ function badgeOf(status) {
 }
 
 const emptyTitle = computed(() => {
-  if (couponStore.status === 'used') return '还没有用过的券'
-  if (couponStore.status === 'expired') return '没有已过期的券'
-  return '还没有可用的优惠券'
+  if (couponStore.status === 'used') return t('member.couponsPage.emptyUsed')
+  if (couponStore.status === 'expired') return t('member.couponsPage.emptyExpired')
+  return t('member.couponsPage.emptyAvailable')
 })
 
 const emptyDesc = computed(() => {
-  if (couponStore.status === 'available') return '开通会员可获每月券包，领券中心也常有活动'
-  return '券的状态会随使用与时间变化，这里可以看到历史'
+  if (couponStore.status === 'available') return t('member.couponsPage.emptyAvailableDesc')
+  return t('member.couponsPage.emptyHistoryDesc')
 })
 
 function thresholdText(item) {
   const threshold = Number(item.threshold)
-  return threshold > 0 ? `满 ¥${item.threshold} 可用` : '无门槛'
+  return threshold > 0
+    ? t('member.couponsPage.threshold', { amount: item.threshold })
+    : t('member.couponsPage.noThreshold')
 }
 
 function statusTagClass(status) {
@@ -171,9 +185,9 @@ function statusTagClass(status) {
 
 function expiryText(item) {
   const date = formatDate(item.expires_at)
-  if (item.status === 'used') return `已于 ${date} 使用`
-  if (item.status === 'expired') return `已于 ${date} 过期`
-  return `有效期至 ${date}`
+  if (item.status === 'used') return t('member.couponsPage.usedAt', { date })
+  if (item.status === 'expired') return t('member.couponsPage.expiredAt', { date })
+  return t('member.couponsPage.validUntil', { date })
 }
 
 function formatDate(value) {

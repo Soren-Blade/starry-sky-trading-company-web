@@ -14,7 +14,7 @@
         <p class="open-desc">{{ PAGES.kami.description }}</p>
       </div>
       <p v-if="showKamiCount" class="open-count u-tag u-tag--accent">
-        共 {{ pagination.total }} 张卡密
+        {{ t('kami.count', { count: pagination.total }) }}
       </p>
     </header>
 
@@ -24,12 +24,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import KamiSection from '@/components/KamiSection.vue'
 import { PAGES } from '@/constants/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const kamiStore = useKamiStore()
 

@@ -3,43 +3,41 @@
     <PageBreadcrumb :items="breadcrumbItems" />
 
     <header class="page-shell-head">
-      <h1 class="page-shell-title">成长值</h1>
-      <p class="page-shell-desc">
-        消费、签到、开通会员与卡密兑奖都会攒成长值。成长值只升不降、不过期，攒够门槛就升级。
-      </p>
+      <h1 class="page-shell-title">{{ t('member.growthPage.title') }}</h1>
+      <p class="page-shell-desc">{{ t('member.growthPage.description') }}</p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="sparkles" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后可查看成长值明细与升级进度</p>
+      <p class="u-mm-state-title">{{ t('member.growthPage.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('member.growthPage.loginDesc') }}</p>
       <div class="u-mm-state-actions">
         <button
           type="button"
           class="u-btn-primary"
-          @click="userStore.openLoginModal('登录后可查看成长值明细与升级进度')"
+          @click="userStore.openLoginModal(t('member.growthPage.loginPrompt'))"
         >
-          立即登录
+          {{ t('member.growthPage.loginCta') }}
         </button>
       </div>
     </div>
 
     <template v-else>
       <!-- 汇总：三个数字直接来自服务端 `summary`，前端不做换算（卡面见 ui-kit-member.css §23） -->
-      <section class="u-mm-stat-grid" aria-label="成长值汇总">
+      <section class="u-mm-stat-grid" :aria-label="t('member.growthPage.summaryAria')">
         <div class="u-mm-stat">
-          <span class="u-mm-stat-label">累计成长值</span>
+          <span class="u-mm-stat-label">{{ t('member.growthPage.totalLabel') }}</span>
           <span class="u-mm-stat-num">{{ summary.growth }}</span>
-          <span class="growth-stat-hint">只升不降，不过期</span>
+          <span class="growth-stat-hint">{{ t('member.growthPage.totalHint') }}</span>
         </div>
         <div class="u-mm-stat">
-          <span class="u-mm-stat-label">成长值等级</span>
-          <span class="u-mm-stat-num">{{ summary.level_name || '——' }}</span>
-          <span class="growth-stat-hint">门槛 {{ summary.growth_threshold }}</span>
+          <span class="u-mm-stat-label">{{ t('member.growthPage.levelLabel') }}</span>
+          <span class="u-mm-stat-num">{{ levelLabel(summary.level, summary.level_name) }}</span>
+          <span class="growth-stat-hint">{{ t('member.growthPage.threshold', { threshold: summary.growth_threshold }) }}</span>
         </div>
         <div class="u-mm-stat">
-          <span class="u-mm-stat-label">当前生效等级</span>
-          <span class="u-mm-stat-num">{{ summary.effective_level_name || '未开通' }}</span>
+          <span class="u-mm-stat-label">{{ t('member.growthPage.effectiveLabel') }}</span>
+          <span class="u-mm-stat-num">{{ summary.effective_level_name || t('member.growthPage.notJoined') }}</span>
           <span class="growth-stat-hint">{{ effectiveHint }}</span>
         </div>
       </section>
@@ -47,11 +45,8 @@
       <!-- 升级进度：满级（V8）时后端不下发下一档那四个键，整块不渲染（几何见 §8） -->
       <section v-if="hasNext" class="ui-card u-mm-growth">
         <p class="u-mm-growth-head">
-          <span>
-            再攒 <strong class="u-mm-growth-num">{{ summary.growth_to_next }}</strong> 成长值升到
-            {{ summary.next_level_name }}
-          </span>
-          <span class="u-mm-growth-hint">（{{ summary.next_level_name }} 门槛 {{ summary.next_level_threshold }}）</span>
+          <span>{{ t('member.growthPage.nextLine', { toNext: summary.growth_to_next, name: levelLabel(summary.next_level, summary.next_level_name) }) }}</span>
+          <span class="u-mm-growth-hint">{{ t('member.growthPage.nextHint', { name: levelLabel(summary.next_level, summary.next_level_name), threshold: summary.next_level_threshold }) }}</span>
         </p>
         <div
           class="u-mm-growth-track"
@@ -59,7 +54,7 @@
           :aria-valuemin="0"
           :aria-valuemax="100"
           :aria-valuenow="progressPercent"
-          :aria-valuetext="`已攒 ${summary.growth}，还差 ${summary.growth_to_next}`"
+          :aria-valuetext="t('member.growthPage.progressAria', { growth: summary.growth, toNext: summary.growth_to_next })"
         >
           <div class="u-mm-growth-fill" :style="{ width: progressPercent + '%' }"></div>
         </div>
@@ -67,13 +62,13 @@
 
       <!-- 来源说明：文案由服务端下发（「签到 5 点」「卡密 ×10」这些数字只在服务端有一份） -->
       <section class="growth-rules" aria-labelledby="growth-rules-title">
-        <h2 id="growth-rules-title" class="growth-section-title">怎么攒成长值</h2>
+        <h2 id="growth-rules-title" class="growth-section-title">{{ t('member.growthPage.rulesTitle') }}</h2>
         <ul class="growth-rules-list">
           <li v-for="rule in rules" :key="rule.key" class="ui-card growth-rule">
             <AppIcon :name="ruleIcon(rule.key)" class="growth-rule-icon" />
             <div class="growth-rule-text">
-              <p class="growth-rule-name">{{ rule.name }}</p>
-              <p class="growth-rule-desc">{{ rule.desc }}</p>
+              <p class="growth-rule-name">{{ t(`member.growthPage.rules.${rule.key}.name`, rule.name) }}</p>
+              <p class="growth-rule-desc">{{ t(`member.growthPage.rules.${rule.key}.desc`, rule.desc) }}</p>
             </div>
           </li>
         </ul>
@@ -83,22 +78,22 @@
       <MemberLevelLadder
         :levels="thresholds"
         :current-level="summary.level"
-        title="等级门槛"
-        description="成长值决定「成长值等级」；实际权益档位取会员等级与成长值等级里更高的一档。"
+        :title="t('member.growthPage.ladderTitle')"
+        :description="t('member.growthPage.ladderDesc')"
         :show-rewards="false"
       />
 
       <!-- 逐档对照：阈值表的六列（v1.4.0 新增）+ 折扣/加速，回答「升上去多拿什么」。
            门槛表只放门槛，权益数值放这里 —— 两处职责分开，避免一张表塞十列。 -->
       <section class="growth-matrix" aria-labelledby="growth-matrix-title">
-        <h2 id="growth-matrix-title" class="growth-section-title">升到各档多拿什么</h2>
+        <h2 id="growth-matrix-title" class="growth-section-title">{{ t('member.growthPage.matrixTitle') }}</h2>
         <div class="u-table-wrap">
           <table class="u-table u-table--zebra u-mm-ladder u-mm-matrix-table">
-            <caption class="visually-hidden">各等级档位的权益数值对照</caption>
+            <caption class="visually-hidden">{{ t('member.growthPage.matrixCaption') }}</caption>
             <thead>
               <tr>
-                <th scope="col">等级</th>
-                <th scope="col">成长值门槛</th>
+                <th scope="col">{{ t('member.growthPage.colLevel') }}</th>
+                <th scope="col">{{ t('member.growthPage.colThreshold') }}</th>
                 <th v-for="column in matrixColumns" :key="column.key" scope="col">
                   {{ column.label }}
                 </th>
@@ -110,7 +105,7 @@
                 :key="level.level"
                 :class="{ 'is-current': level.level === summary.level }"
               >
-                <th scope="row">{{ level.name || level.level }}</th>
+                <th scope="row">{{ levelLabel(level.level, level.name) }}</th>
                 <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
                 <td v-for="column in matrixColumns" :key="column.key" class="u-mm-matrix-cell">
                   {{ thresholdCell(level, column) || '—' }}
@@ -122,7 +117,7 @@
       </section>
 
       <section class="growth-history" aria-labelledby="growth-history-title">
-        <h2 id="growth-history-title" class="growth-section-title">成长值明细</h2>
+        <h2 id="growth-history-title" class="growth-section-title">{{ t('member.growthPage.historyTitle') }}</h2>
 
         <div v-if="memberStore.loadingGrowth && !memberStore.growth.length" class="ui-card growth-skeleton">
           <span v-for="n in 3" :key="n" class="u-skeleton growth-skeleton-line"></span>
@@ -133,14 +128,14 @@
           <AppIcon name="alert-triangle" class="u-mm-state-icon" />
           <p class="u-mm-state-title">{{ memberStore.error }}</p>
           <div class="u-mm-state-actions">
-            <button type="button" class="u-btn-secondary" @click="memberStore.fetchGrowthHistory()">重试</button>
+            <button type="button" class="u-btn-secondary" @click="memberStore.fetchGrowthHistory()">{{ t('member.growthPage.retry') }}</button>
           </div>
         </div>
 
         <div v-else-if="!memberStore.growth.length" class="ui-card u-mm-state">
           <AppIcon name="file" class="u-mm-state-icon" />
-          <p class="u-mm-state-title">还没有成长值记录</p>
-          <p class="u-mm-state-desc">下单、签到、开通会员都会在这里留下记录</p>
+          <p class="u-mm-state-title">{{ t('member.growthPage.emptyTitle') }}</p>
+          <p class="u-mm-state-desc">{{ t('member.growthPage.emptyDesc') }}</p>
         </div>
 
         <template v-else>
@@ -152,7 +147,7 @@
                   <span>{{ formatTime(row.created_at) }}</span>
                   <span v-if="row.remark">{{ row.remark }}</span>
                   <!-- 关联单号：客服核对时要能定位到具体订单，与积分明细同一做法 -->
-                  <span v-if="row.ref_order_no" class="u-mm-ledger-ref">单号 {{ row.ref_order_no }}</span>
+                  <span v-if="row.ref_order_no" class="u-mm-ledger-ref">{{ t('member.growthPage.refOrder', { no: row.ref_order_no }) }}</span>
                 </span>
               </div>
               <div class="u-mm-ledger-right">
@@ -162,15 +157,15 @@
                 >
                   {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
                 </span>
-                <span class="u-mm-ledger-balance">累计 {{ row.growth_after }}</span>
+                <span class="u-mm-ledger-balance">{{ t('member.growthPage.balance', { value: row.growth_after }) }}</span>
               </div>
             </li>
           </ul>
 
           <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
-          <nav v-if="memberStore.growthTotalPages > 1" class="u-mm-pager" aria-label="成长值明细分页">
+          <nav v-if="memberStore.growthTotalPages > 1" class="u-mm-pager" :aria-label="t('member.growthPage.pagerAria')">
             <span class="u-mm-pager-info">
-              {{ memberStore.growthPage }} / {{ memberStore.growthTotalPages }}（共 {{ memberStore.growthTotal }} 条）
+              {{ t('member.growthPage.pagerInfo', { page: memberStore.growthPage, total: memberStore.growthTotalPages, count: memberStore.growthTotal }) }}
             </span>
             <div class="u-mm-pager-btns">
               <button
@@ -179,7 +174,7 @@
                 :disabled="!memberStore.growthHasPrev"
                 @click="goPage(memberStore.growthPage - 1)"
               >
-                上一页
+                {{ t('member.growthPage.prev') }}
               </button>
               <button
                 type="button"
@@ -187,7 +182,7 @@
                 :disabled="!memberStore.growthHasNext"
                 @click="goPage(memberStore.growthPage + 1)"
               >
-                下一页
+                {{ t('member.growthPage.next') }}
               </button>
             </div>
           </nav>
@@ -222,21 +217,31 @@
  *   4. 时间格式化用项目既有的 `formatISOTime`，不再抄第三份 `formatTime`。
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import MemberLevelLadder from '@/components/MemberLevelLadder.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
-import { MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
+import { NAV_MENU } from '@/constants/content.js'
+import {
+  MEMBER_BENEFIT_MAP,
+  formatBenefitValue,
+  memberBenefitName,
+  memberLevelLabel,
+  memberMatrixColumns,
+} from '@/constants/member.js'
 import { formatISOTime } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useMemberStore } from '@/stores/member.js'
 import { useUserStore } from '@/stores/user.js'
 
+const { t } = useI18n()
+
 /** 面包屑：成长值是会员中心下的二级页（原来是页眉里一个「会员中心」回链） */
-const breadcrumbItems = [
-  { label: '首页', to: '/home' },
-  { label: '会员中心', to: '/member' },
-  { label: '成长值' },
-]
+const breadcrumbItems = computed(() => [
+  { label: NAV_MENU[0]?.label || 'Home', to: '/home' },
+  { label: t('member.page.title'), to: '/member' },
+  { label: t('member.growthPage.title') },
+])
 
 const memberStore = useMemberStore()
 const userStore = useUserStore()
@@ -266,7 +271,12 @@ const MATRIX_COLUMNS = memberMatrixColumns({
   points_deduct: '抵扣上限',
 })
 
-const matrixColumns = computed(() => MATRIX_COLUMNS)
+const matrixColumns = computed(() =>
+  MATRIX_COLUMNS.map((column) => ({
+    ...column,
+    label: memberBenefitName(column.key, column.label),
+  }))
+)
 
 /** 单格文案：类型与翻译表都来自 constants，数值来自服务端；缺数据给空串（由模板兜 '—'） */
 function thresholdCell(level, column) {
@@ -287,10 +297,15 @@ const progressPercent = computed(() => {
 })
 
 const effectiveHint = computed(() => {
-  if (!summary.value.effective_level_name) return '开通会员或攒成长值都会提升'
-  if (summary.value.effective_level === summary.value.level) return '与成长值等级一致'
-  return '会员等级更高，按更高的一档算'
+  if (!summary.value.effective_level_name) return t('member.growthPage.effectiveNoneHint')
+  if (summary.value.effective_level === summary.value.level) return t('member.growthPage.effectiveSameHint')
+  return t('member.growthPage.effectiveHigherHint')
 })
+
+function levelLabel(level, fallback) {
+  if (!level || level === 'none') return fallback || t('member.growthPage.notJoined')
+  return memberLevelLabel(level) || fallback || level
+}
 
 /** 来源 → 图标（图标名来自 `AppIcon` 的图标集，没有 emoji） */
 const RULE_ICONS = {

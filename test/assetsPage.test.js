@@ -114,15 +114,18 @@ test('数据来源：卡密走 kamiStore、授权走 myEntitlements，且互不�
 test('已激活工具：来源映射（member → 会员额度）跟着搬到资产页', () => {
   assert.match(
     assetsPage,
-    /grant_source === 'member' \? '会员额度' : '卡密'/,
+    /grant_source === 'member' \? t\('member\.assetsPage\.sourceMember'\) : t\('member\.assetsPage\.sourceCard'\)/,
     '授权来源的语义在资产页保留'
   )
-  assert.match(assetsPage, /is_valid \? '有效' : '已过期'/)
+  assert.match(
+    assetsPage,
+    /item\.is_valid \? t\('member\.assetsPage\.valid'\) : t\('member\.assetsPage\.expired'\)/
+  )
   assert.match(assetsPage, /is_permanent/, '永久授权要单独处理')
 })
 
 test('卡密页与订单页：只留指路，不再各画一遍', () => {
-  assert.match(kamiSection, /已激活的工具在「我的资产」查看/)
+  assert.match(kamiSection, /t\('kami\.assetsLink'\)/)
   assert.match(ordersSource, /class="orders-assets-link"/, '订单页要有指路条')
   assert.match(ordersSource, /<router-link to="\/user\/assets">\{\{ TRADE\.ordersAssetsLink \}\}<\/router-link>/)
   assert.match(

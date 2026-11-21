@@ -2,21 +2,21 @@
   <div class="page-shell page-shell--narrow checkin-page">
     <header class="page-shell-head">
       <p class="page-shell-eyebrow">
-        <router-link class="checkin-back" :to="{ name: 'Profile' }">个人中心</router-link>
+        <router-link class="checkin-back" :to="{ name: 'Profile' }">{{ t('checkin.back') }}</router-link>
       </p>
-      <h1 class="page-shell-title">签到日历</h1>
+      <h1 class="page-shell-title">{{ t('checkin.title') }}</h1>
       <p class="page-shell-desc">
-        连续签到积分更多：3 天起 15 分、7 天起 20 分；会员等级倍率对签到积分同样生效
+        {{ t('checkin.description') }}
       </p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="check-circle" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后即可每日签到赚积分</p>
+      <p class="u-mm-state-title">{{ t('checkin.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('checkin.loginDesc') }}</p>
       <div class="u-mm-state-actions">
-        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后即可签到')">
-          立即登录
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal(t('checkin.loginPrompt'))">
+          {{ t('checkin.loginCta') }}
         </button>
       </div>
     </div>
@@ -49,16 +49,16 @@
           <div class="checkin-hero-main">
             <p class="checkin-today">
               <AppIcon :name="pointsStore.todayChecked ? 'check-circle' : 'clock'" />
-              <span>{{ pointsStore.todayChecked ? '今天已签到' : '今天还没签到' }}</span>
+              <span>{{ pointsStore.todayChecked ? t('checkin.todayChecked') : t('checkin.todayPending') }}</span>
             </p>
             <p class="checkin-streak">
               <strong>{{ pointsStore.streak }}</strong>
-              <span>天连续签到</span>
+              <span>{{ t('checkin.streakUnit') }}</span>
             </p>
             <p class="checkin-tier-now">
-              当前每天 <b>{{ tierPoints }}</b> 积分
+              {{ t('checkin.tierNow', { points: tierPoints }) }}
               <span v-if="pointsStore.points > 0" class="checkin-balance">
-                · 账户 {{ pointsStore.points }} 积分（可抵 ¥{{ pointsValueText }}）
+                {{ t('checkin.balanceLine', { points: pointsStore.points, value: pointsValueText }) }}
               </span>
             </p>
           </div>
@@ -72,7 +72,7 @@
             >
               {{ checkinButtonText }}
             </button>
-            <router-link class="checkin-detail-link" :to="{ name: 'Points' }">积分明细</router-link>
+            <router-link class="checkin-detail-link" :to="{ name: 'Points' }">{{ t('checkin.pointsDetail') }}</router-link>
           </div>
         </template>
       </section>
@@ -84,9 +84,9 @@
             <h2 id="checkin-cal-title" class="checkin-section-title">{{ calendarTitle }}</h2>
             <span class="checkin-section-hint">
               <template v-if="calendar">
-                本月已签 {{ monthCount }} 天 · 剩余补签 {{ calendar.replenish_left }} 次
-                <template v-if="isFutureMonth"> · 未来月份，仅预览</template>
-                <template v-if="calendarFilter !== 'all'"> · 筛选命中 {{ filteredCount }} 天</template>
+                {{ t('checkin.monthChecked', { days: monthCount }) }} · {{ t('checkin.replenishLeft', { count: calendar.replenish_left }) }}
+                <template v-if="isFutureMonth"> · {{ t('checkin.futurePreview') }}</template>
+                <template v-if="calendarFilter !== 'all'"> · {{ t('checkin.filterHit', { count: filteredCount }) }}</template>
               </template>
             </span>
           </div>
@@ -107,7 +107,7 @@
                 type="button"
                 class="checkin-nav-btn"
                 :disabled="!calendar || pointsStore.calendarLoading"
-                aria-label="上一个月"
+                :aria-label="t('checkin.prevMonth')"
                 @click="goMonth(-1)"
               >
                 <AppIcon name="chevron-left" />
@@ -118,13 +118,13 @@
                 :disabled="isCurrentMonth && !selectedOffToday"
                 @click="goToday"
               >
-                回到今天
+                {{ t('checkin.backToday') }}
               </button>
               <button
                 type="button"
                 class="checkin-nav-btn"
                 :disabled="!calendar || pointsStore.calendarLoading"
-                aria-label="下一个月"
+                :aria-label="t('checkin.nextMonth')"
                 @click="goMonth(1)"
               >
                 <AppIcon name="chevron-right" />
@@ -136,7 +136,7 @@
               v-model="calendarFilter"
               class="checkin-cal-filter"
               :options="CALENDAR_FILTERS"
-              aria-label="筛选日期显示"
+              :aria-label="t('checkin.filterAria')"
             />
           </div>
         </div>
@@ -152,7 +152,7 @@
               v-if="!calendar"
               class="checkin-skeleton"
               role="status"
-              aria-label="正在加载签到日历"
+              :aria-label="t('checkin.loading')"
             >
               <ul class="checkin-weekdays" aria-hidden="true">
                 <li v-for="label in WEEKDAYS" :key="`sk-${label}`">{{ label }}</li>
@@ -223,7 +223,7 @@
             与左边的月历是同一件事的两个面，分成两张卡会把视线拉成 Z 字。
             档位数值与后端 sstc.checkin_base_points 一致，改一处必须改另一处。
           -->
-          <aside class="checkin-cal-side" aria-label="签到详情">
+          <aside class="checkin-cal-side" :aria-label="t('checkin.sideAria')">
             <!--
               3.2.0 骨架屏：右栏四个数字（档位 / 已签 / 最长连签 / 剩余补签）全来自日历接口，
               首屏没数据时渲染成 0，看起来像「这个月什么都没签」。用骨架块占位更诚实。
@@ -275,7 +275,7 @@
                   :disabled="actionBusy"
                   @click="actOnSelected"
                 >
-                  {{ selectedStatus.action === 'checkin' ? checkinButtonText : '补签这一天' }}
+                  {{ selectedStatus.action === 'checkin' ? checkinButtonText : t('checkin.replenishAction') }}
                 </button>
               </template>
               <template v-else>
@@ -283,7 +283,7 @@
                 <p class="checkin-side-sub">{{ monthOverviewSubtitle }}</p>
                 <p class="checkin-side-status is-idle">
                   <AppIcon name="clock" />
-                  <span>点日历上的任意一天查看当天情况</span>
+                  <span>{{ t('checkin.tapHint') }}</span>
                 </p>
               </template>
             </div>
@@ -293,10 +293,10 @@
               三段共用一条左对齐轴与全宽分隔线，读起来是一个侧栏而不是四张卡。
             -->
             <div class="checkin-side-block">
-              <h3 id="checkin-tiers-title" class="checkin-side-title">每日积分档位</h3>
+              <h3 id="checkin-tiers-title" class="checkin-side-title">{{ t('checkin.tiersTitle') }}</h3>
               <p class="checkin-side-points">
                 <strong>{{ tierPoints }}</strong>
-                <span class="checkin-side-unit">积分 / 天</span>
+                <span class="checkin-side-unit">{{ t('checkin.pointsPerDay') }}</span>
               </p>
               <div
                 class="checkin-side-progress"
@@ -310,7 +310,7 @@
 
             <!-- ②-2 三档阶梯：已达成/当前用边框与底色区分，不填实色（竖排填色会压沉卡片） -->
             <div class="checkin-side-block">
-              <h3 class="checkin-side-title">连签里程碑</h3>
+              <h3 class="checkin-side-title">{{ t('checkin.milestoneTitle') }}</h3>
               <ol class="checkin-tier-rail">
                 <li
                   v-for="tier in TIERS"
@@ -324,8 +324,8 @@
                   <span class="checkin-tier-dot" aria-hidden="true">
                     <AppIcon v-if="pointsStore.streak >= tier.days" name="check-circle" />
                   </span>
-                  <span class="checkin-tier-days">连签 {{ tier.days }}+ 天</span>
-                  <span class="checkin-tier-points">{{ tier.points }} 积分/天</span>
+                  <span class="checkin-tier-days">{{ t('checkin.tierDays', { days: tier.days }) }}</span>
+                  <span class="checkin-tier-points">{{ t('checkin.tierPoints', { points: tier.points }) }}</span>
                 </li>
               </ol>
             </div>
@@ -339,15 +339,15 @@
               <div class="checkin-side-figures">
                 <div class="checkin-side-figure">
                   <span class="checkin-side-figure-value">{{ monthCount }}</span>
-                  <span class="checkin-side-figure-label">已签天数</span>
+                  <span class="checkin-side-figure-label">{{ t('checkin.checkedDays') }}</span>
                 </div>
                 <div class="checkin-side-figure">
                   <span class="checkin-side-figure-value">{{ monthLongestStreak }}</span>
-                  <span class="checkin-side-figure-label">最长连签</span>
+                  <span class="checkin-side-figure-label">{{ t('checkin.longest') }}</span>
                 </div>
                 <div class="checkin-side-figure">
                   <span class="checkin-side-figure-value">{{ replenishLeft }}</span>
-                  <span class="checkin-side-figure-label">剩余补签</span>
+                  <span class="checkin-side-figure-label">{{ t('checkin.replenishShort') }}</span>
                 </div>
               </div>
             </div>
@@ -361,7 +361,7 @@
         因此收进 details（默认折叠），标题上写清里面有什么。
       -->
       <details class="ui-card checkin-rules">
-        <summary class="checkin-rules-summary">签到规则与补签说明</summary>
+        <summary class="checkin-rules-summary">{{ t('checkin.rulesTitle') }}</summary>
         <ul class="checkin-rules-list">
           <li v-for="rule in rules" :key="rule.text" class="checkin-rule">
             <AppIcon :name="rule.icon" />
@@ -393,17 +393,18 @@
  *   3. **余额用服务端返回的快照**（store 里已处理），不本地 +10。
  */
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import SelectField from '@/components/SelectField.vue'
+import { getLocale } from '@/i18n/index.js'
 import { notify } from '@/hooks/useToast/index.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
 import { usePointsStore } from '@/stores/points.js'
 import { useUserStore } from '@/stores/user.js'
-import { formatPointsValue, REPLENISH_COST, REPLENISH_MONTHLY_LIMIT } from '@/constants/member.js'
+import { formatPointsValue, REPLENISH_COST } from '@/constants/member.js'
 import {
   buildCalendarCells,
-  formatDayTitle,
   resolveDayBadge,
   resolveDayStatus,
   resolveDaySubLabel,
@@ -414,8 +415,9 @@ import {
   checkinCellTitle,
   checkinTierProgress,
   replenishErrorMessage,
-  replenishRuleText,
 } from '@/utils/checkinDisplay.js'
+
+const { t, tm } = useI18n()
 
 const pointsStore = usePointsStore()
 const userStore = useUserStore()
@@ -428,7 +430,7 @@ const TIERS = [
 ]
 
 /** 周一为一周之始，与服务端「本周」口径一致（`date_trunc('week')` 在 PG 里也是周一） */
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+const WEEKDAYS = computed(() => tm('checkin.weekdays'))
 
 const calendar = computed(() => pointsStore.calendar)
 const monthCount = computed(() => calendar.value?.month_count ?? 0)
@@ -449,9 +451,9 @@ const nextTier = computed(() => TIERS.find((tier) => tier.days > (pointsStore.st
 
 const tierHint = computed(() => {
   const next = nextTier.value
-  if (!next) return '已在最高档：每天 20 积分'
+  if (!next) return t('checkin.tierHintMax', { points: currentTier.value.points })
   const gap = next.days - (pointsStore.streak || 0)
-  return `再连签 ${gap} 天升到 ${next.points} 积分/天`
+  return t('checkin.tierHintNext', { gap, points: next.points })
 })
 
 /**
@@ -486,21 +488,30 @@ const tierProgressPercent = computed(
 
 const tierProgressLabel = computed(() => {
   const next = nextTier.value
-  if (!next) return `连续签到 ${pointsStore.streak} 天，已在最高档`
+  if (!next) {
+    return t('checkin.progressMax', { streak: pointsStore.streak })
+  }
   const gap = next.days - (pointsStore.streak || 0)
-  return `连续签到 ${pointsStore.streak} 天，再连签 ${gap} 天升到每天 ${next.points} 积分`
+  return t('checkin.progressNext', { streak: pointsStore.streak, gap, points: next.points })
 })
+
+function formatMonthTitle(month) {
+  const [y, m] = String(month).split('-')
+  if (!y || !m) return ''
+  return new Intl.DateTimeFormat(getLocale(), { year: 'numeric', month: 'long' }).format(
+    new Date(Number(y), Number(m) - 1, 1),
+  )
+}
 
 const calendarTitle = computed(() => {
   const month = calendar.value?.month
-  if (!month) return '本月签到'
-  const [y, m] = month.split('-')
-  return `${y} 年 ${Number(m)} 月`
+  if (!month) return t('checkin.monthFallback')
+  return formatMonthTitle(month)
 })
 
 const checkinButtonText = computed(() => {
-  if (pointsStore.checkingIn) return '签到中…'
-  return pointsStore.todayChecked ? '今天已签到' : '立即签到'
+  if (pointsStore.checkingIn) return t('checkin.checkingIn')
+  return pointsStore.todayChecked ? t('checkin.todayChecked') : t('checkin.checkinNow')
 })
 
 /**
@@ -521,17 +532,20 @@ const viewingMonth = computed(() => currentMonth.value || calendar.value?.month 
  */
 const viewingMonthLabel = computed(() => {
   const month = viewingMonth.value
-  if (!month) return '本月'
-  const [y, m] = String(month).split('-')
-  return `${y} 年 ${Number(m)} 月`
+  if (!month) return t('checkin.thisMonth')
+  return formatMonthTitle(month)
 })
 
 const monthOverviewSubtitle = computed(() => {
   const left = calendar.value?.replenish_left ?? 0
   const longest = monthLongestStreak.value
-  const parts = [`已签 ${monthCount.value} 天`]
-  if (longest) parts.push(`最长连签 ${longest} 天`)
-  parts.push(left > 0 ? `剩余补签 ${left} 次` : '本月补签次数已用完')
+  const parts = [t('checkin.monthChecked', { days: monthCount.value })]
+  if (longest) parts.push(t('checkin.monthLongest', { days: longest }))
+  parts.push(
+    left > 0
+      ? t('checkin.replenishLeft', { count: left })
+      : t('checkin.replenishUsedUp'),
+  )
   return parts.join(' · ')
 })
 
@@ -580,7 +594,15 @@ const selectedStatus = computed(() =>
   }),
 )
 
-const selectedTitle = computed(() => formatDayTitle(selectedDay.value?.date || ''))
+const selectedTitle = computed(() => {
+  const iso = selectedDay.value?.date || ''
+  if (!iso) return ''
+  return new Intl.DateTimeFormat(getLocale(), {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(new Date(`${iso}T00:00:00`))
+})
 
 /*
  * 选中日的副标题：**节日/节气放前面**，农历垫后。
@@ -596,7 +618,8 @@ const selectedSubtitle = computed(() => {
   if (day.solarTerm) parts.push(day.solarTerm)
   if (day.lunarMonth) {
     // 初一只写月名（「农历 九月」），其余写「农历 八月廿八」
-    parts.push(`农历 ${day.lunarMonth}${Number(day.lunarDay) === 1 ? '' : day.lunar || ''}`)
+    const lunar = `${day.lunarMonth}${Number(day.lunarDay) === 1 ? '' : day.lunar || ''}`
+    parts.push(t('checkin.lunarDate', { lunar }))
   }
   return parts.join(' · ')
 })
@@ -677,12 +700,12 @@ async function refreshCalendar() {
   await pointsStore.fetchCalendar(currentMonth.value ? { month: currentMonth.value } : undefined)
 }
 
-const legend = [
-  { label: '已签到', mark: 'is-checked' },
-  { label: '今天', mark: 'is-today' },
-  { label: `可补签（${REPLENISH_COST} 积分）`, mark: 'is-replenishable' },
-  { label: '还没到', mark: 'is-future' },
-]
+const legend = computed(() => [
+  { label: t('checkin.status.checked'), mark: 'is-checked' },
+  { label: t('checkin.legendToday'), mark: 'is-today' },
+  { label: t('checkin.legendReplenishable', { cost: REPLENISH_COST }), mark: 'is-replenishable' },
+  { label: t('checkin.status.future'), mark: 'is-future' },
+])
 
 /**
  * 1.1 日期显示筛选。
@@ -690,12 +713,12 @@ const legend = [
  * 只筛「显示」，不改统计：`本月已签 N 天` 与 `剩余补签 N 次` 始终是整月的真实值 ——
  * 筛完让数字跟着变，用户会以为数据丢了。被筛掉的格子留空占位，网格因此不会塌行。
  */
-const CALENDAR_FILTERS = [
-  { value: 'all', label: '全部日期' },
-  { value: 'checked', label: '只看已签到' },
-  { value: 'pending', label: '只看待签到' },
-  { value: 'replenishable', label: '只看可补签' },
-]
+const CALENDAR_FILTERS = computed(() => [
+  { value: 'all', label: t('checkin.filters.all') },
+  { value: 'checked', label: t('checkin.filters.checked') },
+  { value: 'pending', label: t('checkin.filters.pending') },
+  { value: 'replenishable', label: t('checkin.filters.replenishable') },
+])
 
 const calendarFilter = ref('all')
 
@@ -747,7 +770,11 @@ async function handleReplenish(day) {
     const result = await pointsStore.doReplenish(day.date)
     if (!result) return
     notify.success(
-      `已补签 ${day.date}（消耗 ${result.cost} 积分，本月还可补签 ${result.replenish_left} 次）`,
+      t('checkin.toastReplenished', {
+        date: day.date,
+        cost: result.cost,
+        left: result.replenish_left,
+      }),
     )
     // 补签会改「已签 / 剩余次数 / 连签」，留在当前翻到的月份上刷新
     await refreshCalendar()
@@ -759,24 +786,25 @@ async function handleReplenish(day) {
   }
 }
 
-const rules = [
-  { icon: 'check-circle', text: `连续签到 1-2 天：每天 10 积分` },
-  { icon: 'check-circle', text: `连续签到 3-6 天：每天 15 积分` },
-  { icon: 'check-circle', text: `连续签到 7 天以上：每天 20 积分` },
-  { icon: 'landmark', text: `会员等级倍率对每天的基础积分同样生效；成长值固定 +5（100 积分 = ¥1）` },
-  { icon: 'clock', text: `断签后连续天数从头计算；积分有效期 12 个月` },
-  // 补签的数值与后端 `replenish_cost()` / `replenish_monthly_limit()` 必须一致
-  { icon: 'clipboard', text: replenishRuleText(REPLENISH_COST, REPLENISH_MONTHLY_LIMIT) },
-]
+const RULE_ICONS = ['check-circle', 'check-circle', 'check-circle', 'landmark', 'clock', 'clipboard']
+
+const rules = computed(() => {
+  const texts = tm('checkin.rules')
+  const list = Array.isArray(texts) ? texts : []
+  return list.map((text, index) => ({
+    icon: RULE_ICONS[index] || 'info',
+    text: String(text),
+  }))
+})
 
 async function handleCheckin() {
   try {
     const result = await pointsStore.doCheckin()
     if (!result) return
     if (result.already) {
-      notify.info('今天已经签过到了')
+      notify.info(t('checkin.toastAlready'))
     } else {
-      notify.success(`签到成功，获得 ${result.awarded} 积分（连签 ${result.streak} 天）`)
+      notify.success(t('checkin.toastSuccess', { points: result.awarded, streak: result.streak }))
     }
     // 日历里的连签与今日状态由服务端维护，签完重新拉一次保证一致；
     // 同时把视图拉回当月 —— 停在旧月份会看不到刚签的那一天
@@ -785,7 +813,7 @@ async function handleCheckin() {
     await pointsStore.fetchCalendar()
   } catch (error) {
     // 服务端不可达与业务失败都给同一句提示：用户能做的动作只有重试
-    notify.error(error?.response?.data?.message || '签到失败，请稍后重试')
+    notify.error(error?.response?.data?.message || t('checkin.toastFailed'))
   }
 }
 

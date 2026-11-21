@@ -4,23 +4,23 @@
     <div class="card-header">
       <span class="u-tag source-badge">{{ source }}</span>
       <span class="u-tag status-indicator" :class="getStatusClass(appleId)">
-        {{ appleId.status || '未知' }}
+        {{ appleId.status || t('appleId.card.unknown') }}
       </span>
     </div>
 
     <div class="card-body">
       <div class="id-info">
-        <div class="id-label">账号</div>
-        <div class="id-value">{{ appleId.apple_id || '未知' }}</div>
+        <div class="id-label">{{ t('appleId.card.account') }}</div>
+        <div class="id-value">{{ appleId.apple_id || t('appleId.card.unknown') }}</div>
       </div>
 
       <div v-if="appleId.password" class="id-info">
-        <div class="id-label">密码</div>
+        <div class="id-label">{{ t('appleId.card.password') }}</div>
         <div class="id-value password-field">
           <span :class="{ 'masked': !showPassword }">{{ showPassword ? appleId.password : '••••••••' }}</span>
           <button
             class="toggle-password"
-            :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+            :aria-label="showPassword ? t('appleId.card.hidePassword') : t('appleId.card.showPassword')"
             :aria-pressed="showPassword"
             @click.stop="togglePasswordVisibility"
           >
@@ -30,12 +30,12 @@
       </div>
 
       <div v-if="appleId.country" class="id-info">
-        <div class="id-label">地区</div>
+        <div class="id-label">{{ t('appleId.card.region') }}</div>
         <div class="id-value">{{ appleId.country }}</div>
       </div>
 
       <div v-if="appleId.create_time" class="id-info">
-        <div class="id-label">更新时间</div>
+        <div class="id-label">{{ t('appleId.card.updatedAt') }}</div>
         <div class="id-value">{{ formatDate(appleId.create_time) }}</div>
       </div>
     </div>
@@ -43,18 +43,18 @@
     <div class="card-actions">
       <button
         class="action-btn u-btn-primary"
-        :aria-label="`复制账号 ${appleId.apple_id || ''}`"
+        :aria-label="t('appleId.card.copyAccount', { account: appleId.apple_id || '' })"
         @click.stop="copyToClipboard(appleId.apple_id)"
       >
-        <AppIcon name="clipboard" /> 复制账号
+        <AppIcon name="clipboard" /> {{ t('appleId.card.copyAccountShort') }}
       </button>
       <button
         v-if="appleId.password"
         class="action-btn u-btn-primary"
-        aria-label="复制密码"
+        :aria-label="t('appleId.card.copyPassword')"
         @click.stop="copyToClipboard(appleId.password)"
       >
-        <AppIcon name="key" /> 复制密码
+        <AppIcon name="key" /> {{ t('appleId.card.copyPasswordShort') }}
       </button>
     </div>
   </div>
@@ -62,8 +62,12 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AppIcon from '@/components/AppIcon.vue'
 import { notify } from '@/hooks/useToast/index.js'
+import { getLocale } from '@/i18n/index.js'
+
+const { t } = useI18n()
 
 const props = defineProps({
   appleId: {
@@ -95,10 +99,10 @@ const getStatusClass = (id) => {
 
 // 格式化日期
 const formatDate = (dateStr) => {
-  if (!dateStr) return '未知'
+  if (!dateStr) return t('appleId.card.unknown')
   try {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleDateString(getLocale(), {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -115,7 +119,7 @@ const formatDate = (dateStr) => {
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(text)
-    notify.success('已复制到剪贴板')
+    notify.success(t('appleId.card.copied'))
   } catch (err) {
     // 降级方案
     const textArea = document.createElement('textarea')
@@ -124,7 +128,7 @@ const copyToClipboard = async (text) => {
     textArea.select()
     document.execCommand('copy')
     document.body.removeChild(textArea)
-    notify.success('已复制到剪贴板')
+    notify.success(t('appleId.card.copied'))
   }
 }
 </script>

@@ -20,6 +20,42 @@
  * 一个中文字符都没有，翻译由本文件的 `formatBenefitValue()` 负责）。
  */
 
+import { translate } from '../i18n/index.js'
+
+/**
+ * 权益名称 / 描述 / 规则（按 key 取 i18n 文案，缺失时回落常量里的中文）
+ */
+export function memberBenefitName(key, fallback = '') {
+  return translate(`member.benefits.${key}.name`, fallback)
+}
+
+export function memberBenefitDesc(key, fallback = '') {
+  return translate(`member.benefits.${key}.desc`, fallback)
+}
+
+export function memberBenefitDetail(key, fallback = '') {
+  return translate(`member.benefits.${key}.detail`, fallback)
+}
+
+export function memberLevelLabel(level) {
+  return translate(`member.levels.${level}`, MEMBER_LEVELS[level]?.label || '')
+}
+
+export function supportTierLabel(value) {
+  return translate(`member.tiers.support.${value}`, SUPPORT_TIER_LABELS[value] || '')
+}
+
+export function identityTierLabel(value) {
+  return translate(`member.tiers.identity.${value}`, IDENTITY_TIER_LABELS[value] || '')
+}
+
+export function pointsTypeLabel(value) {
+  return translate(
+    `member.pointsPage.types.${value}`,
+    POINTS_LEDGER_TYPES.find((item) => item.value === value)?.label || value
+  )
+}
+
 /**
  * 会员等级（与后端 `member_levels.level` 对齐，v1.2.0 起为八档 `v1`–`v8`）
  *
@@ -52,9 +88,7 @@ export const IDENTITY_TIER_LABELS = {
   badge: '会员徽章',
   title: '专属称号',
   limited: '限定标识',
-}
-
-/**
+}/**
  * 八项权益 —— 顺序即展示顺序，后端 `benefits` 数组也按这个顺序下发。
  *
  * `requiredLevel` 与后端 `sstc.get_member_snapshot` 里的映射**必须一致**：
@@ -278,11 +312,6 @@ export function discountLabel(rate) {
   if (!Number.isFinite(value) || value <= 0 || value >= 1) return '无折扣'
   const tenths = Math.round(value * 1000) / 10
   return tenths % 10 === 0 ? `${tenths / 10} 折` : `${tenths} 折`
-}
-
-/** 等级 → 徽章文案（非会员给空串，页面据此不渲染徽章） */
-export function memberLevelLabel(level) {
-  return MEMBER_LEVELS[level]?.label || ''
 }
 
 /** 等级 → 中文名 */

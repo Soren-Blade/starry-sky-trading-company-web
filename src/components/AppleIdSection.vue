@@ -10,21 +10,21 @@
           滚出视口，而左轨 sticky 能一直看到。它与「使用说明」同属操作前提，
           因此放在折叠块之前。
         -->
-        <aside class="rail" aria-label="使用提示与线路目录">
+        <aside class="rail" :aria-label="t('appleId.sectionAria')">
           <!-- 风险提示：语义色各取一份（--danger / --warning），标签走 .u-tag 语义变体 -->
           <div class="risk-warning">
             <div class="warning-item critical u-enter" :style="{ '--i': 0 }">
-              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />高风险</span>
+              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />{{ t('appleId.riskBadge') }}</span>
               <div class="warning-content">
-                <p class="warning-title">只登 App Store</p>
-                <p class="warning-text">切勿登录 iCloud，否则可能锁机或泄露隐私。</p>
+                <p class="warning-title">{{ t('appleId.riskTitle') }}</p>
+                <p class="warning-text">{{ t('appleId.riskText') }}</p>
               </div>
             </div>
             <div class="warning-item scam u-enter" :style="{ '--i': 1 }">
-              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />防诈骗</span>
+              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />{{ t('appleId.scamBadge') }}</span>
               <div class="warning-content">
-                <p class="warning-title">本站不收解锁费</p>
-                <p class="warning-text">遇到收费解锁或索要个人信息，一律是诈骗。</p>
+                <p class="warning-title">{{ t('appleId.scamTitle') }}</p>
+                <p class="warning-text">{{ t('appleId.scamText') }}</p>
               </div>
             </div>
           </div>
@@ -39,38 +39,23 @@
               @click="showGuide = !showGuide"
             >
               <span class="toggle-icon" aria-hidden="true"><AppIcon name="chevron-right" /></span>
-              <span class="toggle-text"><AppIcon name="book-open" /> 使用说明（新手必看）</span>
+              <span class="toggle-text"><AppIcon name="book-open" /> {{ t('appleId.guideToggle') }}</span>
             </button>
 
             <!-- 展开内容留在左轨内部：窄栏排版（有序列表 + --fs-sm + --leading-body） -->
             <div v-if="showGuide" id="apple-id-guide" class="guide-content u-enter">
               <div class="guide-item tutorial">
-                <h4 class="guide-subtitle">使用教程</h4>
+                <h4 class="guide-subtitle">{{ t('appleId.guideTutorial') }}</h4>
                 <ol class="guide-list">
-                  <li>打开 App Store，退出当前 Apple ID。</li>
-                  <li>用下方账号密码登录，弹窗选「其他选项 → 不升级 → 以后」。</li>
-                  <li>下载完成后立即退出共享 ID，换回自己的账号。</li>
-                  <li>若提示安装失败，先卸载旧版本再重装。</li>
+                  <li v-for="step in tm('appleId.guideSteps')" :key="step">{{ step }}</li>
                 </ol>
               </div>
 
               <div class="guide-item tips">
-                <h4 class="guide-subtitle">注意事项</h4>
+                <h4 class="guide-subtitle">{{ t('appleId.guideNotes') }}</h4>
                 <ul class="guide-tips-list">
-                  <li>
-                    <strong>密码更新：</strong>约 30 分钟一换，旧密码已失效，回本站重取。
-                  </li>
-                  <li>
-                    <strong>账号锁定：</strong>提示锁定后等约 40 分钟，再取新号。
-                  </li>
-                  <li>
-                    <strong>双重验证：</strong>弹出双重认证说明号已被他人用过，换一个。
-                  </li>
-                  <li>
-                    <strong>账号用途：</strong>只下载已购应用，勿改密码或绑支付。
-                  </li>
-                  <li>
-                    <strong>责任声明：</strong>未按步骤操作导致的问题，本站不负责。
+                  <li v-for="item in NOTE_ITEMS" :key="item.label">
+                    <strong>{{ item.label }}</strong>{{ item.text }}
                   </li>
                 </ul>
               </div>
@@ -78,18 +63,18 @@
           </div>
 
           <!-- 线路锚点：纯 <a href="#id">，靠目标区块的 id 跳转，不写 JS -->
-          <nav class="rail-block rail-nav" aria-label="线路目录">
-            <p class="rail-title">线路</p>
+          <nav class="rail-block rail-nav" :aria-label="t('appleId.lanesAria')">
+            <p class="rail-title">{{ t('appleId.lanesTitle') }}</p>
             <ul class="lane-list">
               <li>
                 <a class="lane-link" href="#nano-cloud">
-                  <span class="lane-name">主线路</span>
+                  <span class="lane-name">{{ t('appleId.mainLane') }}</span>
                   <span class="u-tag u-tag--accent">{{ nanoCloudIds.length }}</span>
                 </a>
               </li>
               <li>
                 <a class="lane-link" href="#fang-qiang-nan">
-                  <span class="lane-name">副线路</span>
+                  <span class="lane-name">{{ t('appleId.backupLane') }}</span>
                   <span class="u-tag">{{ fangQiangNanIds.length }}</span>
                 </a>
               </li>
@@ -115,13 +100,13 @@
                原先自绘的渐变圆环与三点跳动动效不属于规范动效，已删除 -->
           <div v-else-if="loading" class="u-loading-block" role="status">
             <span class="u-spinner" aria-hidden="true"></span>
-            <p class="loading-text">正在加载苹果ID列表</p>
+            <p class="loading-text">{{ t('appleId.loading') }}</p>
           </div>
 
           <!-- 错误状态 -->
           <div v-else-if="error" class="error-container">
             <p class="error-message">{{ error }}</p>
-            <button class="u-btn-primary" type="button" @click="fetchAppleIds">重试</button>
+            <button class="u-btn-primary" type="button" @click="fetchAppleIds">{{ t('appleId.retry') }}</button>
           </div>
 
           <!-- 账号目录：两个数据源区块各带 id，供左轨锚点跳转（tabindex 让跳转能落焦） -->
@@ -134,8 +119,8 @@
               tabindex="-1"
             >
               <div class="source-head">
-                <h3 class="source-title">主线路</h3>
-                <span class="u-tag u-tag--accent">{{ nanoCloudIds.length }} 个账号</span>
+                <h3 class="source-title">{{ t('appleId.mainLane') }}</h3>
+                <span class="u-tag u-tag--accent">{{ t('appleId.count', { count: nanoCloudIds.length }) }}</span>
               </div>
               <div class="ids-grid">
                 <AppleIdCard
@@ -155,8 +140,8 @@
               tabindex="-1"
             >
               <div class="source-head">
-                <h3 class="source-title">副线路</h3>
-                <span class="u-tag">{{ fangQiangNanIds.length }} 个账号</span>
+                <h3 class="source-title">{{ t('appleId.backupLane') }}</h3>
+                <span class="u-tag">{{ t('appleId.count', { count: fangQiangNanIds.length }) }}</span>
               </div>
               <div class="ids-grid">
                 <AppleIdCard
@@ -173,8 +158,8 @@
               v-if="nanoCloudIds.length === 0 && fangQiangNanIds.length === 0"
               class="empty-note"
             >
-              <p>暂无可用的苹果ID</p>
-              <p>请稍后再试，或者联系客服获取帮助</p>
+              <p>{{ t('appleId.emptyTitle') }}</p>
+              <p>{{ t('appleId.emptyDesc') }}</p>
             </div>
           </div>
         </div>
@@ -185,6 +170,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
 import { useUserStore } from '@/stores/user'
@@ -192,6 +178,7 @@ import AppleIdCard from '@/components/AppleIdCard.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { AUTH } from '@/constants/index.js'
 
+const { t, tm } = useI18n()
 const toolStore = useToolStore()
 const userStore = useUserStore()
 // loading / error 统一由 store 提供：原先组件内的 error 永远不会被赋值
@@ -203,6 +190,9 @@ const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs
 const hasIdentity = computed(() => Boolean(userStore.userId))
 
 const showGuide = ref(false)
+
+/** 注意事项：文案随语言切换，label 与 text 分开以保留加粗前缀 */
+const NOTE_ITEMS = computed(() => tm('appleId.guideNoteItems') || [])
 
 // 计算不同数据源的ID
 const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || [])
@@ -750,6 +740,16 @@ onMounted(() => {
 @media (max-width: 575px) {
   .section-container {
     padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  /* 窄屏：标签移到正文上方，避免语义标签挤占一半宽度把提示折成窄柱 */
+  .warning-item {
+    flex-direction: column;
+    gap: var(--space-unit);
+  }
+
+  .warning-item > .u-tag {
+    align-self: flex-start;
   }
 }
 </style>

@@ -1,12 +1,9 @@
 <template>
   <div class="page-shell page-shell--narrow mail-page">
     <header class="page-shell-head">
-      <p class="page-shell-eyebrow">账号</p>
-      <h1 class="page-shell-title">消息中心</h1>
-      <p class="page-shell-desc">
-        订单、会员、积分与客服的动态都记在这里。邮件只是同一批通知的另一条投递通道，
-        关掉它不会影响这里的记录。
-      </p>
+      <p class="page-shell-eyebrow">{{ t('mail.eyebrow') }}</p>
+      <h1 class="page-shell-title">{{ t('mail.title') }}</h1>
+      <p class="page-shell-desc">{{ t('mail.description') }}</p>
     </header>
 
     <!--
@@ -16,18 +13,15 @@
     -->
     <section v-if="!userStore.isLoggedIn" class="u-empty mail-guest">
       <span class="u-empty-icon"><AppIcon name="mail" /></span>
-      <p class="u-empty-title">消息中心只对注册用户开放</p>
-      <p class="u-empty-desc">
-        游客可以浏览、可以提交反馈并和客服对话，但不会收到任何通知邮件。
-        登录后这里会显示订单、会员、积分的动态。
-      </p>
+      <p class="u-empty-title">{{ t('mail.guestTitle') }}</p>
+      <p class="u-empty-desc">{{ t('mail.guestDesc') }}</p>
       <div class="u-empty-actions">
         <button
           type="button"
           class="u-btn-primary"
-          @click="userStore.openLoginModal('登录后可以查看消息中心')"
+          @click="userStore.openLoginModal(t('mail.guestLoginPrompt'))"
         >
-          登录 / 注册
+          {{ t('mail.loginCta') }}
         </button>
       </div>
     </section>
@@ -35,7 +29,7 @@
     <template v-else>
       <!-- 分区页签直接用设计系统的 `.ec-tabs`：选中态由 aria-selected 驱动，
            不再需要 `u-tab--active` 这个类名分支 -->
-      <div class="ec-tabs" role="tablist" aria-label="消息中心分区">
+      <div class="ec-tabs" role="tablist" :aria-label="t('mail.tabsAria')">
         <button
           v-for="item in MAIL_TABS"
           :key="item.value"
@@ -45,7 +39,7 @@
           :aria-selected="tab === item.value ? 'true' : 'false'"
           @click="tab = item.value"
         >
-          {{ item.label }}
+          {{ mailTabLabel(item.value) }}
           <span
             v-if="item.value === 'messages' && mailStore.hasUnread"
             class="mail-tab-badge"
@@ -60,8 +54,8 @@
       <section v-if="tab === 'messages'" class="u-tabs-content mail-panel">
         <div class="mail-panel-head">
           <p class="mail-panel-count">
-            共 {{ mailStore.total }} 条
-            <span v-if="mailStore.hasUnread">，其中 {{ mailStore.unreadCount }} 条未读</span>
+            {{ t('mail.count', { count: mailStore.total }) }}
+            <span v-if="mailStore.hasUnread">{{ t('mail.countUnread', { count: mailStore.unreadCount }) }}</span>
           </p>
           <button
             type="button"
@@ -69,7 +63,7 @@
             :disabled="!mailStore.hasUnread || mailStore.marking"
             @click="markAll"
           >
-            {{ mailStore.marking ? '处理中…' : '全部标为已读' }}
+            {{ mailStore.marking ? t('mail.marking') : t('mail.markAll') }}
           </button>
         </div>
 
@@ -77,7 +71,7 @@
           {{ mailStore.messagesError }}
         </p>
 
-        <div v-if="mailStore.loadingMessages" class="mail-skeleton" role="status" aria-label="正在加载">
+        <div v-if="mailStore.loadingMessages" class="mail-skeleton" role="status" :aria-label="t('mail.loading')">
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
@@ -85,8 +79,8 @@
 
         <div v-else-if="!mailStore.hasMessages" class="u-empty">
           <span class="u-empty-icon"><AppIcon name="mail" /></span>
-          <p class="u-empty-title">还没有通知</p>
-          <p class="u-empty-desc">下单、开通会员、签到之后，这里会出现对应的记录。</p>
+          <p class="u-empty-title">{{ t('mail.emptyTitle') }}</p>
+          <p class="u-empty-desc">{{ t('mail.emptyDesc') }}</p>
         </div>
 
         <ul v-else class="u-mm-mail-list">
@@ -112,7 +106,7 @@
 
             <div class="u-mm-mail-foot">
               <router-link v-if="item.link" class="u-mm-mail-link" :to="item.link">
-                查看详情
+                {{ t('mail.viewDetail') }}
               </router-link>
               <button
                 v-if="!item.is_read"
@@ -121,15 +115,15 @@
                 :disabled="mailStore.marking"
                 @click="markOne(item.id)"
               >
-                标为已读
+                {{ t('mail.markRead') }}
               </button>
             </div>
           </li>
         </ul>
 
-        <nav v-if="mailStore.totalPages > 1" class="u-mm-pager" aria-label="通知分页">
+        <nav v-if="mailStore.totalPages > 1" class="u-mm-pager" :aria-label="t('mail.messagesPagerAria')">
           <span class="u-mm-pager-info">
-            第 {{ mailStore.page }} / {{ mailStore.totalPages }} 页
+            {{ t('mail.pageOf', { page: mailStore.page, total: mailStore.totalPages }) }}
           </span>
           <div class="u-mm-pager-btns">
             <button
@@ -138,7 +132,7 @@
               :disabled="!mailStore.hasPrev || mailStore.loadingMessages"
               @click="goMessagesPage(mailStore.page - 1)"
             >
-              上一页
+              {{ t('mail.prev') }}
             </button>
             <button
               type="button"
@@ -146,7 +140,7 @@
               :disabled="!mailStore.hasNext || mailStore.loadingMessages"
               @click="goMessagesPage(mailStore.page + 1)"
             >
-              下一页
+              {{ t('mail.next') }}
             </button>
           </div>
         </nav>
@@ -155,38 +149,36 @@
       <!-- ── 通知偏好 ─────────────────────────────────────────── -->
       <section v-else-if="tab === 'preferences'" class="u-tabs-content mail-panel">
         <p class="mail-panel-lead">
-          邮件只用于<strong>通知、反馈回执与客服回复</strong>。
-          登录验证、密码重置这类安全邮件不在本页控制 ——
-          平台目前也不通过邮件提供找回账号的能力。
+          {{ t('mail.preferencesLeadBefore') }}<strong>{{ t('mail.preferencesLeadStrong') }}</strong>{{ t('mail.preferencesLeadAfter') }}
         </p>
 
         <div class="u-mm-account">
           <div class="u-mm-account-main">
-            <span class="u-mm-account-label">通知邮箱</span>
+            <span class="u-mm-account-label">{{ t('mail.emailLabel') }}</span>
             <span v-if="mailStore.emailConfigured" class="u-mm-account-value">
               {{ mailStore.emailMasked }}
             </span>
             <span v-else class="u-mm-account-value u-mm-account-value--missing">
-              还没有填邮箱，邮件通知无法送达（站内通知不受影响）
+              {{ t('mail.emailMissing') }}
             </span>
           </div>
-          <router-link :to="{ name: 'Profile' }" class="u-btn-secondary">去填写</router-link>
+          <router-link :to="{ name: 'Profile' }" class="u-btn-secondary">{{ t('mail.goFill') }}</router-link>
         </div>
 
-        <p class="mail-panel-hint">站内通知始终保留，不受下面的开关影响。</p>
+        <p class="mail-panel-hint">{{ t('mail.preferencesHint') }}</p>
 
         <p v-if="mailStore.preferencesError" class="mail-error" role="alert">
           {{ mailStore.preferencesError }}
         </p>
 
-        <div v-if="mailStore.loadingPreferences" class="mail-skeleton" role="status" aria-label="正在加载">
+        <div v-if="mailStore.loadingPreferences" class="mail-skeleton" role="status" :aria-label="t('mail.loading')">
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
         </div>
 
         <ul v-else class="u-mm-pref-list">
           <li
-            v-for="item in PREFERENCE_ITEMS"
+            v-for="item in preferenceItems"
             :key="item.key"
             class="u-mm-pref"
             :class="{ 'mail-pref--master': item.master }"
@@ -214,56 +206,56 @@
             :disabled="!preferencesDirty || mailStore.savingPreferences"
             @click="savePreferences"
           >
-            {{ mailStore.savingPreferences ? '保存中…' : '保存偏好' }}
+            {{ mailStore.savingPreferences ? t('mail.saving') : t('mail.save') }}
           </button>
-          <span v-if="mailStore.savingPreferences" class="mail-foot-hint">正在提交…</span>
-          <span v-else-if="preferencesDirty" class="mail-foot-hint">有未保存的修改</span>
-          <span v-else class="mail-foot-hint mail-foot-hint--muted">已与账号同步</span>
+          <span v-if="mailStore.savingPreferences" class="mail-foot-hint">{{ t('mail.submitting') }}</span>
+          <span v-else-if="preferencesDirty" class="mail-foot-hint">{{ t('mail.dirty') }}</span>
+          <span v-else class="mail-foot-hint mail-foot-hint--muted">{{ t('mail.synced') }}</span>
         </div>
       </section>
 
       <!-- ── 邮件记录 ─────────────────────────────────────────── -->
       <section v-else class="u-tabs-content mail-panel">
         <p class="mail-panel-lead">
-          这里记录系统发给你的每一封邮件。只有状态与时间，没有正文，也没有收件地址。
+          {{ t('mail.logLead') }}
         </p>
 
         <div class="u-mm-stat-grid">
           <div class="u-mm-stat">
             <span class="u-mm-stat-num">{{ mailStore.logStats.queued }}</span>
-            <span class="u-mm-stat-label">排队中</span>
+            <span class="u-mm-stat-label">{{ t('mail.queued') }}</span>
           </div>
           <div class="u-mm-stat u-mm-stat--success">
             <span class="u-mm-stat-num">{{ mailStore.logStats.sent }}</span>
-            <span class="u-mm-stat-label">已发送</span>
+            <span class="u-mm-stat-label">{{ t('mail.sent') }}</span>
           </div>
           <div class="u-mm-stat u-mm-stat--danger">
             <span class="u-mm-stat-num">{{ mailStore.logStats.failed }}</span>
-            <span class="u-mm-stat-label">发送失败</span>
+            <span class="u-mm-stat-label">{{ t('mail.failed') }}</span>
           </div>
         </div>
 
         <p v-if="mailStore.logError" class="mail-error" role="alert">{{ mailStore.logError }}</p>
 
-        <div v-if="mailStore.loadingLog" class="mail-skeleton" role="status" aria-label="正在加载">
+        <div v-if="mailStore.loadingLog" class="mail-skeleton" role="status" :aria-label="t('mail.loading')">
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
         </div>
 
         <div v-else-if="!mailStore.log.length" class="u-empty">
           <span class="u-empty-icon"><AppIcon name="mail" /></span>
-          <p class="u-empty-title">还没有发出过邮件</p>
-          <p class="u-empty-desc">开启邮件通知后，下单、开通会员等操作都会在这里留下一条记录。</p>
+          <p class="u-empty-title">{{ t('mail.logEmptyTitle') }}</p>
+          <p class="u-empty-desc">{{ t('mail.logEmptyDesc') }}</p>
         </div>
 
         <table v-else class="mail-log">
-          <caption class="mail-log-caption">共 {{ mailStore.logTotal }} 封</caption>
+          <caption class="mail-log-caption">{{ t('mail.logCaption', { count: mailStore.logTotal }) }}</caption>
           <thead>
             <tr>
-              <th scope="col">邮件</th>
-              <th scope="col">状态</th>
-              <th scope="col">尝试</th>
-              <th scope="col">时间</th>
+              <th scope="col">{{ t('mail.colMail') }}</th>
+              <th scope="col">{{ t('mail.colStatus') }}</th>
+              <th scope="col">{{ t('mail.colAttempts') }}</th>
+              <th scope="col">{{ t('mail.colTime') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -282,9 +274,9 @@
           </tbody>
         </table>
 
-        <nav v-if="mailStore.logTotalPages > 1" class="u-mm-pager" aria-label="邮件记录分页">
+        <nav v-if="mailStore.logTotalPages > 1" class="u-mm-pager" :aria-label="t('mail.logPagerAria')">
           <span class="u-mm-pager-info">
-            第 {{ mailStore.logPage }} / {{ mailStore.logTotalPages }} 页
+            {{ t('mail.pageOf', { page: mailStore.logPage, total: mailStore.logTotalPages }) }}
           </span>
           <div class="u-mm-pager-btns">
             <button
@@ -293,7 +285,7 @@
               :disabled="!mailStore.hasLogPrev || mailStore.loadingLog"
               @click="goLogPage(mailStore.logPage - 1)"
             >
-              上一页
+              {{ t('mail.prev') }}
             </button>
             <button
               type="button"
@@ -301,7 +293,7 @@
               :disabled="!mailStore.hasLogNext || mailStore.loadingLog"
               @click="goLogPage(mailStore.logPage + 1)"
             >
-              下一页
+              {{ t('mail.next') }}
             </button>
           </div>
         </nav>
@@ -312,20 +304,25 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import { useMailStore } from '@/stores/mail'
 import { useUserStore } from '@/stores/user'
+import { getLocale } from '@/i18n/index.js'
 import {
   MAIL_TABS,
-  NOTIFICATION_LEVELS,
   PREFERENCE_ITEMS,
   PREFERENCE_KEYS,
   mailLogStatusLabel,
   mailLogStatusTag,
+  mailTabLabel,
+  notificationLevelLabel,
+  notificationLevelTag,
   notificationTypeLabel,
 } from '@/constants/mail.js'
 
+const { t } = useI18n()
 const mailStore = useMailStore()
 const userStore = useUserStore()
 
@@ -360,14 +357,23 @@ function syncDraft() {
   }
 }
 
+/** 偏好文案随语言切换；键与顺序仍来自常量 */
+const preferenceItems = computed(() =>
+  PREFERENCE_ITEMS.map((item) => ({
+    ...item,
+    label: t(`mail.preferences.${item.key}.label`, item.label),
+    desc: t(`mail.preferences.${item.key}.desc`, item.desc),
+  }))
+)
+
 /** 级别 → 标签文案；认不出的级别落回「提示」，不显示英文键 */
 function levelLabel(level) {
-  return NOTIFICATION_LEVELS[level]?.label || NOTIFICATION_LEVELS.info.label
+  return notificationLevelLabel(level)
 }
 
 /** 级别 → `.u-tag--*` 变体；认不出的级别落回 info（该变体在共享样式里有定义） */
 function levelTag(level) {
-  return NOTIFICATION_LEVELS[level]?.tag || NOTIFICATION_LEVELS.info.tag
+  return notificationLevelTag(level)
 }
 
 function typeLabel(type) {
@@ -392,7 +398,7 @@ function formatTime(value) {
   if (!value) return ''
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(getLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

@@ -31,18 +31,21 @@ test('等级阶梯：数值列表头带 u-mm-ladder-num 类', () => {
   assert.ok(numericHeaders.length >= 1, '成长值门槛表头必须带 u-mm-ladder-num')
 
   // 门槛、折扣、倍率三列都是数值列
-  assert.match(LADDER, /<th scope="col" class="u-mm-ladder-num">成长值门槛<\/th>/)
+  assert.match(
+    LADDER,
+    /<th scope="col" class="u-mm-ladder-num">\{\{ t\('member\.levelLadder\.threshold'\) \}\}<\/th>/
+  )
   const cells = LADDER.match(/<td[^>]*class="u-mm-ladder-num"/g) || []
   assert.ok(cells.length >= 1, '数值单元格仍需 u-mm-ladder-num')
 })
 
 test('权益矩阵：数值列表头带 u-mm-matrix-cell 类', () => {
-  assert.match(BENEFITS, /<th scope="col" class="u-mm-ladder-num">成长值门槛<\/th>/)
+  assert.match(BENEFITS, /<th scope="col" class="u-mm-ladder-num">\{\{ t\('member\.benefitsPage\.colThreshold'\) \}\}<\/th>/)
   assert.match(BENEFITS, /class="u-mm-matrix-cell"/)
 
   // 矩阵的列头与单元格必须用同一个类，否则两边的 text-align 会分叉
   const headerBlock = BENEFITS.slice(
-    BENEFITS.indexOf('八档会员等级与八项权益对照表'),
+    BENEFITS.indexOf('<thead>'),
     BENEFITS.indexOf('</thead>')
   )
   assert.ok(headerBlock.includes('u-mm-matrix-cell'), '矩阵表头必须带 u-mm-matrix-cell')

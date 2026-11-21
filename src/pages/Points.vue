@@ -1,17 +1,17 @@
 <template>
   <div class="page-shell page-shell--narrow points-page">
     <header class="page-shell-head">
-      <h1 class="page-shell-title">积分中心</h1>
-      <p class="page-shell-desc">签到、消费与任务都能获得积分，100 积分可抵 ¥1</p>
+      <h1 class="page-shell-title">{{ t('member.pointsPage.title') }}</h1>
+      <p class="page-shell-desc">{{ t('member.pointsPage.description') }}</p>
     </header>
 
     <div v-if="!userStore.isLoggedIn" class="ui-card u-mm-state u-mm-state--locked">
       <AppIcon name="landmark" class="u-mm-state-icon" />
-      <p class="u-mm-state-title">请先登录账号</p>
-      <p class="u-mm-state-desc">登录后可查看积分余额与明细</p>
+      <p class="u-mm-state-title">{{ t('member.pointsPage.loginTitle') }}</p>
+      <p class="u-mm-state-desc">{{ t('member.pointsPage.loginDesc') }}</p>
       <div class="u-mm-state-actions">
-        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal('登录后可查看积分')">
-          立即登录
+        <button type="button" class="u-btn-primary" @click="userStore.openLoginModal(t('member.pointsPage.loginPrompt'))">
+          {{ t('member.pointsPage.loginCta') }}
         </button>
       </div>
     </div>
@@ -31,14 +31,14 @@
         <AppIcon name="alert-triangle" class="u-mm-state-icon" />
         <p class="u-mm-state-title">{{ pointsStore.error }}</p>
         <div class="u-mm-state-actions">
-          <button type="button" class="u-btn-secondary" @click="pointsStore.fetchAccount()">重试</button>
+          <button type="button" class="u-btn-secondary" @click="pointsStore.fetchAccount()">{{ t('member.pointsPage.retry') }}</button>
         </div>
       </div>
 
       <template v-else>
         <!-- 分段：概览（余额 / 构成 / 入口）与流水（可筛选、可翻页的明细）
              —— M2 起 `/points/history` 并入本页，旧地址在路由里重定向过来 -->
-        <div class="ec-tabs points-tabs" role="tablist" aria-label="积分中心分区">
+        <div class="ec-tabs points-tabs" role="tablist" :aria-label="t('member.pointsPage.tabsAria')">
           <button
             v-for="item in TABS"
             :key="item.value"
@@ -48,11 +48,11 @@
             :aria-selected="tab === item.value ? 'true' : 'false'"
             @click="switchTab(item.value)"
           >
-            {{ item.label }}
+            {{ t(`member.pointsPage.tab${item.labelKey}`) }}
           </button>
         </div>
 
-        <section v-if="tab === 'overview'" class="u-tabs-content points-panel" aria-label="积分概览">
+        <section v-if="tab === 'overview'" class="u-tabs-content points-panel" :aria-label="t('member.pointsPage.overviewAria')">
           <!-- ① 余额大字。0 分时不显示「0 积分」，而是给获取路径 ——
                「暂无数据 ≠ 加载中」，也不该是「你有 0 元」这种没有信息量的陈述。
                有余额走分片的余额块（§15），没余额走四态容器（§2）——
@@ -60,18 +60,18 @@
           <section v-if="pointsStore.points > 0" class="ui-card u-mm-balance">
             <p class="u-mm-balance-num">
               {{ pointsStore.points }}
-              <span class="u-mm-balance-unit">积分</span>
+              <span class="u-mm-balance-unit">{{ t('member.pointsPage.pointsUnit') }}</span>
             </p>
-            <p class="u-mm-balance-desc">可抵扣 ¥{{ formatPointsValue(pointsStore.points) }}</p>
+            <p class="u-mm-balance-desc">{{ t('member.pointsPage.balanceDesc', { value: formatPointsValue(pointsStore.points) }) }}</p>
           </section>
           <section v-else class="ui-card u-mm-state">
-            <p class="u-mm-state-title">还没有积分</p>
-            <p class="u-mm-state-desc">去签到或下单即可获得积分</p>
+            <p class="u-mm-state-title">{{ t('member.pointsPage.emptyTitle') }}</p>
+            <p class="u-mm-state-desc">{{ t('member.pointsPage.emptyDesc') }}</p>
             <div class="u-mm-state-actions">
               <button v-if="checkinAvailable" type="button" class="u-btn-primary" @click="goCheckin">
-                去签到
+                {{ t('member.pointsPage.goCheckin') }}
               </button>
-              <router-link v-else :to="{ name: 'Home' }" class="u-btn-secondary">去逛逛商品</router-link>
+              <router-link v-else :to="{ name: 'Home' }" class="u-btn-secondary">{{ t('member.pointsPage.goShop') }}</router-link>
             </div>
           </section>
 
@@ -79,25 +79,24 @@
           <section v-if="pointsStore.expireSoon" class="ui-card points-expiring">
             <AppIcon name="clock" />
             <span>
-              <strong>{{ pointsStore.expireSoon.points }}</strong> 积分将于
-              {{ formatDate(pointsStore.expireSoon.expire_at) }} 到期，请尽快使用
+              {{ t('member.pointsPage.expiring', { points: pointsStore.expireSoon.points, date: formatDate(pointsStore.expireSoon.expire_at) }) }}
             </span>
           </section>
 
           <!-- ③ 构成与倍率 -->
           <section class="points-stats">
             <div class="ui-card points-stat">
-              <span class="points-stat-label">本年度获得</span>
+              <span class="points-stat-label">{{ t('member.pointsPage.statsEarned') }}</span>
               <span class="points-stat-value">{{ summaryEarned }}</span>
             </div>
             <div class="ui-card points-stat">
-              <span class="points-stat-label">本年度消耗</span>
+              <span class="points-stat-label">{{ t('member.pointsPage.statsSpent') }}</span>
               <span class="points-stat-value">{{ summarySpent }}</span>
             </div>
             <div class="ui-card points-stat">
-              <span class="points-stat-label">积分倍率</span>
+              <span class="points-stat-label">{{ t('member.pointsPage.statsMultiplier') }}</span>
               <span class="points-stat-value">×{{ pointsStore.multiplier }}</span>
-              <span class="points-stat-hint">{{ pointsStore.isMember ? '会员加成生效中' : '开通会员，消费积分 ×2' }}</span>
+              <span class="points-stat-hint">{{ pointsStore.isMember ? t('member.pointsPage.memberBonus') : t('member.pointsPage.memberHint') }}</span>
             </div>
           </section>
 
@@ -111,15 +110,15 @@
               <span v-else class="ui-card points-shortcut is-disabled" aria-disabled="true">
                 <AppIcon :name="entry.icon" />
                 <span>{{ entry.label }}</span>
-                <span class="points-shortcut-soon">即将上线</span>
+                <span class="points-shortcut-soon">{{ t('member.pointsPage.comingSoon') }}</span>
               </span>
             </template>
           </nav>
         </section>
 
-        <section v-else-if="tab === 'history'" class="u-tabs-content points-panel" aria-label="积分流水">
+        <section v-else-if="tab === 'history'" class="u-tabs-content points-panel" :aria-label="t('member.pointsPage.historyAria')">
           <!-- 类型筛选：选项来自 constants，与后端 type 取值一一对应 -->
-          <nav class="history-filter" aria-label="流水类型筛选">
+          <nav class="history-filter" :aria-label="t('member.pointsPage.filterAria')">
             <button
               v-for="option in POINTS_LEDGER_TYPES"
               :key="option.value"
@@ -129,7 +128,7 @@
               :aria-pressed="pointsStore.historyType === option.value"
               @click="switchType(option.value)"
             >
-              {{ option.label }}
+              {{ pointsTypeLabel(option.value) }}
             </button>
           </nav>
 
@@ -141,14 +140,14 @@
             <AppIcon name="alert-triangle" class="u-mm-state-icon" />
             <p class="u-mm-state-title">{{ pointsStore.error }}</p>
             <div class="u-mm-state-actions">
-              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchHistory()">重试</button>
+              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchHistory()">{{ t('member.pointsPage.retry') }}</button>
             </div>
           </div>
 
           <div v-else-if="!pointsStore.history.length" class="ui-card u-mm-state">
             <AppIcon name="file" class="u-mm-state-icon" />
             <p class="u-mm-state-title">{{ emptyTitle }}</p>
-            <p class="u-mm-state-desc">签到、下单与任务都会在这里留下记录</p>
+            <p class="u-mm-state-desc">{{ t('member.pointsPage.historyEmptyDesc') }}</p>
           </div>
 
           <template v-else>
@@ -161,7 +160,7 @@
                     <span>{{ formatTime(row.created_at) }}</span>
                     <span v-if="row.remark">{{ row.remark }}</span>
                     <!-- 关联单号：客服核对时要能定位到具体订单 -->
-                    <span v-if="row.ref_order_no" class="u-mm-ledger-ref">单号 {{ row.ref_order_no }}</span>
+                    <span v-if="row.ref_order_no" class="u-mm-ledger-ref">{{ t('member.pointsPage.refOrder', { no: row.ref_order_no }) }}</span>
                   </span>
                 </div>
                 <div class="u-mm-ledger-right">
@@ -171,7 +170,7 @@
                   >
                     {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
                   </span>
-                  <span class="u-mm-ledger-balance">余额 {{ row.balance_after }}</span>
+                  <span class="u-mm-ledger-balance">{{ t('member.pointsPage.balance', { value: row.balance_after }) }}</span>
                 </div>
               </li>
             </ul>
@@ -179,7 +178,7 @@
             <!-- 分页：只有一页时不渲染控件（避免出现点不动的按钮） -->
             <div v-if="pointsStore.totalPages > 1" class="u-mm-pager">
               <span class="u-mm-pager-info">
-                {{ pointsStore.page }} / {{ pointsStore.totalPages }}（共 {{ pointsStore.total }} 条）
+                {{ t('member.pointsPage.pagerInfo', { page: pointsStore.page, total: pointsStore.totalPages, count: pointsStore.total }) }}
               </span>
               <div class="u-mm-pager-btns">
                 <button
@@ -188,7 +187,7 @@
                   :disabled="!pointsStore.hasPrev"
                   @click="goPage(pointsStore.page - 1)"
                 >
-                  上一页
+                  {{ t('member.pointsPage.prev') }}
                 </button>
                 <button
                   type="button"
@@ -196,7 +195,7 @@
                   :disabled="!pointsStore.hasNext"
                   @click="goPage(pointsStore.page + 1)"
                 >
-                  下一页
+                  {{ t('member.pointsPage.next') }}
                 </button>
               </div>
             </div>
@@ -205,9 +204,9 @@
 
         <!-- 商城（1.5.0 M3 的服务端清单）：库存一律显示服务端实时值，
              `null` 是「不限量」而不是「没有」——两者的文案必须不一样 -->
-        <section v-else-if="tab === 'mall'" class="u-tabs-content points-panel" aria-label="积分商城">
+        <section v-else-if="tab === 'mall'" class="u-tabs-content points-panel" :aria-label="t('member.pointsPage.mallAria')">
           <p class="points-panel-desc">
-            兑换即扣分：券类立刻进「我的优惠券」，实物类生成 0 元兑换单（在订单里发货）。
+            {{ t('member.pointsPage.mallDesc') }}
           </p>
 
           <div v-if="pointsStore.loadingMall && !pointsStore.hasMallItems" class="ui-card history-skeleton">
@@ -222,14 +221,14 @@
             <AppIcon name="alert-triangle" class="u-mm-state-icon" />
             <p class="u-mm-state-title">{{ pointsStore.error }}</p>
             <div class="u-mm-state-actions">
-              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchMall()">重试</button>
+              <button type="button" class="u-btn-secondary" @click="pointsStore.fetchMall()">{{ t('member.pointsPage.retry') }}</button>
             </div>
           </div>
 
           <div v-else-if="!pointsStore.hasMallItems" class="ui-card u-mm-state">
             <AppIcon name="ticket" class="u-mm-state-icon" />
-            <p class="u-mm-state-title">商城暂时没有可兑换的条目</p>
-            <p class="u-mm-state-desc">上新后会出现在这里</p>
+            <p class="u-mm-state-title">{{ t('member.pointsPage.mallEmptyTitle') }}</p>
+            <p class="u-mm-state-desc">{{ t('member.pointsPage.mallEmptyDesc') }}</p>
           </div>
 
           <ul v-else class="u-mm-mall-list">
@@ -238,12 +237,12 @@
                 <p class="u-mm-mall-head">
                   <AppIcon :name="item.icon" class="u-mm-mall-icon" aria-hidden="true" />
                   <span class="u-mm-mall-name">{{ item.name }}</span>
-                  <span v-if="item.member_only" class="mall-tag">会员专属</span>
+                  <span v-if="item.member_only" class="mall-tag">{{ t('member.pointsPage.mallMemberOnly') }}</span>
                 </p>
                 <p class="u-mm-mall-desc">{{ item.desc }}</p>
                 <p class="u-mm-mall-hint">{{ mallStockText(item) }}</p>
                 <p class="u-mm-mall-cost">
-                  {{ item.cost }}<span class="u-mm-mall-cost-unit">积分</span>
+                  {{ item.cost }}<span class="u-mm-mall-cost-unit">{{ t('member.pointsPage.mallCostUnit') }}</span>
                 </p>
                 <p v-if="redeemState(item).reason" class="u-mm-mall-hint u-mm-mall-hint--warn">
                   {{ redeemState(item).reason }}
@@ -255,7 +254,7 @@
                 :disabled="!redeemState(item).ok || Boolean(pointsStore.redeemingId)"
                 @click="doRedeem(item)"
               >
-                {{ pointsStore.redeemingId === item.item_id ? '兑换中…' : '兑换' }}
+                {{ pointsStore.redeemingId === item.item_id ? t('member.pointsPage.redeeming') : t('member.pointsPage.redeem') }}
               </button>
             </li>
           </ul>
@@ -263,11 +262,11 @@
 
         <!-- 任务（1.5.0 M5）：进度由服务端每次现算，前端不累加；
              签到任务只展示状态（奖励由签到接口发），按钮给「已领」而不是藏起来 -->
-        <section v-else class="u-tabs-content points-panel" aria-label="任务中心">
+        <section v-else class="u-tabs-content points-panel" :aria-label="t('member.pointsPage.tasksAria')">
           <div class="tasks-head">
-            <p class="points-panel-desc">每日与每月任务，完成后领积分奖励。</p>
+            <p class="points-panel-desc">{{ t('member.pointsPage.tasksDesc') }}</p>
             <p v-if="taskStore.claimablePoints > 0" class="tasks-claimable">
-              可领 <strong>{{ taskStore.claimablePoints }}</strong> 积分
+              {{ t('member.pointsPage.tasksClaimable', { points: taskStore.claimablePoints }) }}
             </p>
           </div>
 
@@ -283,14 +282,14 @@
             <AppIcon name="alert-triangle" class="u-mm-state-icon" />
             <p class="u-mm-state-title">{{ taskStore.error }}</p>
             <div class="u-mm-state-actions">
-              <button type="button" class="u-btn-secondary" @click="taskStore.fetchTasks()">重试</button>
+              <button type="button" class="u-btn-secondary" @click="taskStore.fetchTasks()">{{ t('member.pointsPage.retry') }}</button>
             </div>
           </div>
 
           <div v-else-if="!taskStore.hasTasks" class="ui-card u-mm-state">
             <AppIcon name="clipboard" class="u-mm-state-icon" />
-            <p class="u-mm-state-title">暂时没有任务</p>
-            <p class="u-mm-state-desc">活动上线后会出现在这里</p>
+            <p class="u-mm-state-title">{{ t('member.pointsPage.tasksEmptyTitle') }}</p>
+            <p class="u-mm-state-desc">{{ t('member.pointsPage.tasksEmptyDesc') }}</p>
           </div>
 
           <ul v-else class="u-mm-task-list">
@@ -315,7 +314,7 @@
                     ></span>
                   </span>
                   <span class="task-progress-text">{{ task.progress }} / {{ task.target }}</span>
-                  <span class="u-mm-task-reward">+{{ task.reward_points }} 积分</span>
+                  <span class="u-mm-task-reward">{{ t('member.pointsPage.taskReward', { points: task.reward_points }) }}</span>
                 </p>
               </div>
               <button
@@ -353,6 +352,7 @@
  *      两处说法来自同一份定义。
  */
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppIcon from '@/components/AppIcon.vue'
@@ -360,7 +360,7 @@ import { usePointsStore } from '@/stores/points.js'
 import { useTaskStore } from '@/stores/task.js'
 import { useToastStore } from '@/stores/toast.js'
 import { useUserStore } from '@/stores/user.js'
-import { POINTS_LEDGER_TYPES, formatPointsValue } from '@/constants/member.js'
+import { POINTS_LEDGER_TYPES, formatPointsValue, pointsTypeLabel } from '@/constants/member.js'
 import {
   canClaimTask,
   mallRedeemState,
@@ -371,6 +371,7 @@ import {
   taskButtonLabel,
 } from '@/utils/taskDisplay.js'
 
+const { t } = useI18n()
 const pointsStore = usePointsStore()
 const taskStore = useTaskStore()
 const toastStore = useToastStore()
@@ -380,10 +381,10 @@ const router = useRouter()
 
 /** 分段与 URL 同形：`/points?tab=history` 可以直接分享，浏览器后退也能回到上一段 */
 const TABS = [
-  { value: 'overview', label: '概览' },
-  { value: 'history', label: '流水' },
-  { value: 'mall', label: '商城' },
-  { value: 'tasks', label: '任务' },
+  { value: 'overview', label: '概览', labelKey: 'Overview' },
+  { value: 'history', label: '流水', labelKey: 'History' },
+  { value: 'mall', label: '商城', labelKey: 'Mall' },
+  { value: 'tasks', label: '任务', labelKey: 'Tasks' },
 ]
 
 const TAB_VALUES = TABS.map((item) => item.value)
@@ -403,7 +404,9 @@ const summarySpent = computed(() => pointsStore.summary?.spent ?? 0)
 const checkinAvailable = computed(() => !pointsStore.todayChecked)
 
 const emptyTitle = computed(() =>
-  pointsStore.historyType === 'all' ? '还没有积分记录' : '该类型下没有记录'
+  pointsStore.historyType === 'all'
+    ? t('member.pointsPage.historyEmptyAll')
+    : t('member.pointsPage.historyEmptyType')
 )
 
 function formatDate(value) {
@@ -466,16 +469,20 @@ function goPage(page) {
 
 /** 可用性由路由表推断，不手写布尔（手写会忘了改，入口永远停在「即将上线」） */
 const SHORTCUTS = [
-  { name: 'UserCheckin', label: '每日签到', icon: 'check-circle' },
-  { name: 'Coupons', label: '我的优惠券', icon: 'ticket' },
+  { name: 'UserCheckin', label: '每日签到', labelKey: 'shortcutCheckin', icon: 'check-circle' },
+  { name: 'Coupons', label: '我的优惠券', labelKey: 'shortcutCoupons', icon: 'ticket' },
   // 邀请中心（1.6.0）：奖励也是积分来源，放在积分中心最短路径上
-  { name: 'Invite', label: '邀请有礼', icon: 'users' },
-  { name: 'Member', label: '会员中心', icon: 'star' },
-  { name: 'MemberBenefits', label: '权益详解', icon: 'crown' },
+  { name: 'Invite', label: '邀请有礼', labelKey: 'shortcutInvite', icon: 'users' },
+  { name: 'Member', label: '会员中心', labelKey: 'shortcutMember', icon: 'star' },
+  { name: 'MemberBenefits', label: '权益详解', labelKey: 'shortcutBenefits', icon: 'crown' },
 ]
 
 const shortcuts = computed(() =>
-  SHORTCUTS.map((entry) => ({ ...entry, available: router.hasRoute(entry.name) }))
+  SHORTCUTS.map((entry) => ({
+    ...entry,
+    label: t(`member.pointsPage.${entry.labelKey}`, entry.label),
+    available: router.hasRoute(entry.name),
+  }))
 )
 
 // ── 商城（契约 §4.10–§4.11）─────────────────────────────────────────
@@ -497,14 +504,14 @@ async function doRedeem(item) {
     if (!data) return
     // 券类即时到账、实物类生成兑换单 —— 提示语要说清「东西去哪了」
     if (data.coupon) {
-      toastStore.success(`兑换成功：「${item.name}」已放进我的优惠券`)
+      toastStore.success(t('member.pointsPage.redeemCoupon', { name: item.name }))
     } else if (data.order_no) {
-      toastStore.success(`兑换成功：兑换单 ${data.order_no} 已生成，可在订单里查看`)
+      toastStore.success(t('member.pointsPage.redeemOrder', { no: data.order_no }))
     } else {
-      toastStore.success('兑换成功')
+      toastStore.success(t('member.pointsPage.redeemSuccess'))
     }
   } catch (error) {
-    toastStore.error(error?.response?.data?.message || '兑换失败，请稍后重试')
+    toastStore.error(error?.response?.data?.message || t('member.pointsPage.redeemFailed'))
   }
 }
 
@@ -519,9 +526,9 @@ async function doClaim(task) {
     if (!data) return
     // 余额用服务端返回的整份快照，与签到的处理一致（不做本地 +N）
     pointsStore.applyBalance(data)
-    toastStore.success(`领取成功，+${data.awarded} 积分`)
+    toastStore.success(t('member.pointsPage.claimSuccess', { points: data.awarded }))
   } catch (error) {
-    toastStore.error(error?.response?.data?.message || '领取失败，请稍后重试')
+    toastStore.error(error?.response?.data?.message || t('member.pointsPage.claimFailed'))
   }
 }
 

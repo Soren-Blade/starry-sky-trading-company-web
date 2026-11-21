@@ -210,7 +210,7 @@ test('首屏骨架屏：三处都按 `!calendar` 分支', () => {
   // hero
   assert.match(PAGE, /<template v-if="!calendar">[\s\S]{0,600}?checkin-skeleton-line/)
   // 月历：真表头 + 42 个格子占位
-  assert.match(PAGE, /role="status"[\s\S]{0,200}?aria-label="正在加载签到日历"/)
+  assert.match(PAGE, /role="status"[\s\S]{0,200}?:aria-label="t\('checkin\.loading'\)"/)
   assert.match(PAGE, /v-for="n in 42"[\s\S]{0,200}?checkin-skeleton-cell/)
   // 右栏
   assert.match(PAGE, /3\.2\.0 骨架屏：右栏四个数字/)

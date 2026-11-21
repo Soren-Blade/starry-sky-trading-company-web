@@ -65,8 +65,8 @@ test('右栏由四段组成：选中日详情 / 今日档位 / 连签里程碑 /
   assert.match(aside, /selectedTitle/)
   assert.match(aside, /selectedStatus\.action === 'checkin'/)
   assert.match(aside, /id="checkin-tiers-title"/)
-  assert.match(aside, /连签里程碑/)
-  assert.match(aside, /已签天数[\s\S]*最长连签[\s\S]*剩余补签/)
+  assert.match(aside, /t\('checkin\.milestoneTitle'\)/)
+  assert.match(aside, /t\('checkin\.checkedDays'\)[\s\S]*t\('checkin\.longest'\)[\s\S]*t\('checkin\.replenishShort'\)/)
 
   // 进度条必须由纯函数算出，且带可读的 aria-label
   assert.match(PAGE, /checkinTierProgress\(pointsStore\.streak \|\| 0, TIERS\)/)

@@ -139,17 +139,17 @@ test('合并面板：只留一个输入框、一个工具下拉、一个提交�
 })
 
 test('输入框文案：卡密 / 用户 UID 双语义，placeholder 与 aria-label 同步', () => {
-  assert.match(kamiSection, /placeholder="粘贴卡密 \/ 用户 UID"/)
-  assert.match(kamiSection, /aria-label="卡密或用户 UID"/)
-  assert.match(kamiSection, /请输入卡密或用户 UID/, '未识别时要有明确提示')
+  assert.match(kamiSection, /:placeholder="t\('kami\.codePlaceholder'\)"/)
+  assert.match(kamiSection, /:aria-label="t\('kami\.codeAria'\)"/)
+  assert.match(kamiSection, /t\('kami\.credential\.unknown'\)/, '未识别时要有明确提示')
 })
 
 test('按钮文案跟识别结果走：UID → 免卡密激活，其余 → 激活', () => {
   assert.match(
     kamiSection,
-    /const submitLabel = computed\(\(\) =>\n\s*credentialType\.value === CREDENTIAL_TYPES\.UID \? '免卡密激活' : '激活'\n\)/
+    /const submitLabel = computed\(\(\) =>\n\s*credentialType\.value === CREDENTIAL_TYPES\.UID \? t\('kami\.memberActivate'\) : t\('kami\.activate'\)\n\)/
   )
-  assert.match(kamiSection, /\{\{ submitting \? '激活中\.\.\.' : submitLabel \}\}/)
+  assert.match(kamiSection, /\{\{ submitting \? t\('kami\.submitting'\) : submitLabel \}\}/)
   assert.match(kamiSection, /:aria-busy="submitting"/)
 })
 
@@ -220,10 +220,10 @@ test('自动识别成功：精确命中 toolOptions、选中并轻提示，且�
     '必须按 toolOptions 的字符串值比对，避免 number/string 混用漏选'
   )
   assert.match(kamiSection, /selectedToolId\.value = option\.value/, '命中后写回同一个 v-model')
-  assert.match(kamiSection, /notify\.success\('已自动选择该卡密对应的工具'\)/)
+  assert.match(kamiSection, /notify\.success\(t\('kami\.toolSelected'\)\)/)
   assert.match(
     kamiSection,
-    /notify\.error\('该卡密绑定的工具已下架'\)/,
+    /notify\.error\(t\('kami\.toolMissing'\)\)/,
     '卡密存在但工具不在可选列表时要明确提示，不能静默'
   )
   // 用户手选的工具不能被自动结果覆盖
@@ -276,37 +276,34 @@ test('说明框：面板之后、四条指引齐全', () => {
 
   const aside = kamiSection.slice(asideIndex, kamiSection.indexOf('</aside>', asideIndex))
   assert.equal(countOf(aside, '<li>'), 4, '四条指引')
-  assert.match(aside, /有卡密：把卡密粘贴到输入框，系统会自动识别它绑定的工具并选好，点「激活」即可。/)
-  assert.match(
-    aside,
-    /是会员：粘贴自己的用户 UID（留空则按当前登录账号校验），选好工具后点「免卡密激活」。/
-  )
-  assert.match(aside, /会员额度：/, '第三条是额度说明')
-  assert.match(aside, /额度用尽或不是会员：/)
-  assert.match(aside, /to="\/member\/plans"[\s\S]{0,40}升级会员/, '要有升级会员出口')
-  assert.match(aside, /to="\/tool"[\s\S]{0,40}购买卡密/, '要有购买卡密出口')
+  assert.match(aside, /t\('kami\.noteCard'\)/)
+  assert.match(aside, /t\('kami\.noteMember'\)/)
+  assert.match(aside, /t\('kami\.noteQuota'\)/, '第三条是额度说明')
+  assert.match(aside, /t\('kami\.exhausted'\)/)
+  assert.match(aside, /to="\/member\/plans"[\s\S]{0,60}t\('kami\.upgradeMember'\)/, '要有升级会员出口')
+  assert.match(aside, /to="\/tool"[\s\S]{0,60}t\('kami\.buyCard'\)/, '要有购买卡密出口')
 })
 
 test('说明框接管原会员卡文案：额度档位 + 有效期 + 非会员提示', () => {
   assert.match(
     kamiSection,
-    /本等级可免卡密激活 \$\{quota\.quota\} 个工具，已用 \$\{quota\.used\} 个，剩余 \$\{quota\.remaining\} 个/,
+    /t\('kami\.memberQuotaLimited', \{\s*level,\s*quota: quota\.quota,\s*used: quota\.used,\s*remaining: quota\.remaining,?\s*\}\)/,
     '文案必须同时含 quota / used / remaining'
   )
-  assert.match(kamiSection, /quota\.unlimited[\s\S]*?不限数量/, 'unlimited 会员不能显示具体数字额度')
-  assert.match(kamiSection, /还不是会员 · 开通会员可免卡密使用工具/)
+  assert.match(kamiSection, /quota\.unlimited[\s\S]*?t\('kami\.memberQuotaUnlimited'/, 'unlimited 会员不能显示具体数字额度')
+  assert.match(kamiSection, /t\('kami\.notMember'\)/)
   assert.match(
     kamiSection,
-    /v-if="memberQuota\?\.is_member && memberQuota\.expires_at"[\s\S]{0,120}权益有效期至 \{\{ formatDate\(memberQuota\.expires_at\) \}\}/,
+    /v-if="memberQuota\?\.is_member && memberQuota\.expires_at"[\s\S]{0,120}t\('kami\.expiresAt', \{ date: formatDate\(memberQuota\.expires_at\) \}\)/,
     'member-expire 文案搬到说明框，仍然只在会员态显示'
   )
   // 搬走文案后不能留空容器：额度行必须有可见文案分支
   const quotaLi = kamiSection.slice(
-    kamiSection.indexOf('会员额度：'),
-    kamiSection.indexOf('额度用尽或不是会员')
+    kamiSection.indexOf("t('kami.noteQuota')"),
+    kamiSection.indexOf("t('kami.exhausted')")
   )
   assert.match(quotaLi, /class="member-identity"/, '额度行保留 member-identity 钩子')
-  assert.match(quotaLi, /正在读取会员权益…/, '额度未到时也要有文案，不留空')
+  assert.match(quotaLi, /t\('kami\.readingQuota'\)/, '额度未到时也要有文案，不留空')
 })
 
 // ── 六、会员免卡密激活的提交与失败分流 ───────────────────────
@@ -320,7 +317,7 @@ test('提交：tool_id 必传、user_uuid 来自同一个输入框且不传空�
   )
   assert.match(kamiSection, /if \(typedUid\) payload\.user_uuid = typedUid/, '留空时不得下发空字符串')
   assert.match(kamiSection, /api\.activateByMember\(payload\)/)
-  assert.match(kamiSection, /notify\.success\(response\.message \|\| '免卡密激活成功'\)/)
+  assert.match(kamiSection, /notify\.success\(response\.message \|\| t\('kami\.memberActivateSuccess'\)\)/)
   assert.match(
     kamiSection,
     /await Promise\.all\(\[loadMemberQuota\(\), reload\(1\)\]\)/,
@@ -343,12 +340,12 @@ test('失败按 code 分流：文案与入口按钮齐全', () => {
 
   assert.match(
     kamiSection,
-    /code === 'QUOTA_EXCEEDED'[\s\S]*?to: '\/member\/plans'[\s\S]*?to: '\/tool'/,
+    /code === 'QUOTA_EXCEEDED'\) \{[\s\S]*?to: '\/member\/plans', label: t\('kami\.links\.upgradeMember'\)[\s\S]*?to: '\/tool', label: t\('kami\.links\.buyCard'\)/,
     '额度用满要给「升级会员」和「购买卡密」两个入口'
   )
   assert.match(
     kamiSection,
-    /code === 'NOT_MEMBER'\) return \[\{ to: '\/member\/plans'/,
+    /code === 'NOT_MEMBER'\) \{[\s\S]*?to: '\/member\/plans', label: t\('kami\.links\.openMember'\)/,
     '非会员只给开通会员入口'
   )
   assert.match(kamiSection, /role="alert"/, '失败文案要进入 live region')
@@ -357,7 +354,7 @@ test('失败按 code 分流：文案与入口按钮齐全', () => {
 test('额度取数与兜底：404 视为「未开放」，退出登录清干净', () => {
   assert.match(kamiSection, /api\.getMemberQuota\(\)/)
   assert.match(kamiSection, /error\?\.status === 404/, '404 单独识别')
-  assert.match(kamiSection, /会员免卡密激活暂未开放，请稍后再试。/)
+  assert.match(kamiSection, /t\('kami\.memberQuotaUnavailable'\)/)
   assert.match(kamiSection, /memberQuotaUnavailable/, '404 与真实错误要共享同一份状态')
   assert.match(
     kamiSection,
@@ -397,10 +394,10 @@ test('已激活工具：卡密页只留出口，表格整体搬去「我的资�
     /<router-link class="u-btn-secondary" to="\/user\/assets">/,
     '出口指向 /user/assets'
   )
-  assert.match(kamiSection, /已激活的工具在「我的资产」查看/)
+  assert.match(kamiSection, /t\('kami\.assetsLink'\)/)
 
   // 成功模板的主动作也要跳过去，而不是滚动
-  assert.match(kamiSection, /label: '查看我的资产'/)
+  assert.match(kamiSection, /label: tr\('kami\.result\.viewAssets'\)/)
   assert.match(
     kamiSection,
     /if \(action === 'show-entitlements'\) \{\s*\/\/[^\n]*\n\s*router\.push\('\/user\/assets'\)/,

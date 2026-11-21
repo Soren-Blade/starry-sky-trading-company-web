@@ -48,7 +48,7 @@ test('selectedDay 只有在「点过某天」或「本月今天」时才返回�
 
 test('右栏必须有「未选日期」的空态分支，且与详情共用同一个区块容器', () => {
   assert.match(SOURCE, /<template v-if="selectedDay">/, '详情块要以 selectedDay 为条件');
-  assert.match(SOURCE, /点日历上的任意一天查看当天情况/, '空态要给出引导文案');
+  assert.match(SOURCE, /t\('checkin\.tapHint'\)/, '空态要给出引导文案');
 
   // 右栏是老守卫的四段结构：空态不能另起一个 .checkin-side-block，
   // 否则右栏会变成五段（test/checkinSideRail.test.js 断言 blocks.length === 4）。

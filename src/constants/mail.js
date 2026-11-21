@@ -21,11 +21,19 @@
  * 「邮件记录」是自查用的：用户问「为什么我没收到邮件」时，
  * 他能自己看到那封信是排队中、已发送还是失败重试中。
  */
+
+import { translate } from '../i18n/index.js'
+
 export const MAIL_TABS = [
   { value: 'messages', label: '通知' },
   { value: 'preferences', label: '通知偏好' },
   { value: 'log', label: '邮件记录' },
 ]
+
+/** 页签文案（中文原文保留在常量里，供旧测试与 zh 回退） */
+export function mailTabLabel(value) {
+  return translate(`mail.tabs.${value}`, MAIL_TABS.find((item) => item.value === value)?.label || '')
+}
 
 /**
  * 通知级别 → 标签文案与样式变体。
@@ -39,6 +47,17 @@ export const NOTIFICATION_LEVELS = {
   success: { label: '成功', tag: 'u-tag--success' },
   warning: { label: '提醒', tag: 'u-tag--warning' },
   danger: { label: '重要', tag: 'u-tag--danger' },
+}
+
+/** 级别 → 当前语言下的标签文案 */
+export function notificationLevelLabel(level) {
+  const meta = NOTIFICATION_LEVELS[level] || NOTIFICATION_LEVELS.info
+  return translate(`mail.levels.${level in NOTIFICATION_LEVELS ? level : 'info'}`, meta.label)
+}
+
+/** 级别 → 标签样式变体 */
+export function notificationLevelTag(level) {
+  return NOTIFICATION_LEVELS[level]?.tag || NOTIFICATION_LEVELS.info.tag
 }
 
 /**
@@ -77,10 +96,28 @@ const TYPE_PREFIXES = [
  * @returns {string} 中文分组名；认不出来时给「系统」而不是空串
  */
 export function notificationTypeLabel(type) {
-  if (!type) return '系统'
-  if (TYPE_LABELS[type]) return TYPE_LABELS[type]
+  if (!type) return translate('mail.types.system', '系统')
+  if (TYPE_LABELS[type]) {
+    const group = TYPE_LABELS[type]
+    return translate(`mail.types.${typeToKey(group)}`, group)
+  }
   const hit = TYPE_PREFIXES.find(([prefix]) => type.startsWith(prefix))
-  return hit ? hit[1] : '系统'
+  return hit ? translate(`mail.types.${typeToKey(hit[1])}`, hit[1]) : translate('mail.types.system', '系统')
+}
+
+/** 中文分组名 → 词典键（词典里没有对应项时用 system） */
+function typeToKey(group) {
+  return (
+    {
+      订单: 'order',
+      会员: 'member',
+      积分: 'points',
+      签到: 'checkin',
+      优惠券: 'coupon',
+      客服: 'support',
+      系统: 'system',
+    }[group] || 'system'
+  )
 }
 
 /**
@@ -104,7 +141,7 @@ const LOG_STATUS_LABELS = {
  * @returns {string}
  */
 export function mailLogStatusLabel(status) {
-  return LOG_STATUS_LABELS[status] || '未知'
+  return translate(`mail.statuses.${status || 'unknown'}`, LOG_STATUS_LABELS[status] || '未知')
 }
 
 /**

@@ -3,28 +3,26 @@
     <PageBreadcrumb :items="breadcrumbItems" />
 
     <header class="page-shell-head">
-      <h1 class="page-shell-title">会员权益详解</h1>
-      <p class="page-shell-desc">
-        八项权益的逐档数值、解锁条件与常见问题。文案来自服务端（取不到时用内置的同一份），数值全部来自服务端，页面上不写死任何折扣或倍率。
-      </p>
+      <h1 class="page-shell-title">{{ t('member.benefitsPage.title') }}</h1>
+      <p class="page-shell-desc">{{ t('member.benefitsPage.description') }}</p>
     </header>
 
     <!-- 页内锚点：与路由 scrollBehavior 配合，跳到标题下方而不是被顶栏盖住 -->
-    <nav class="benefits-anchors" aria-label="页内导航">
+    <nav class="benefits-anchors" :aria-label="t('member.benefitsPage.anchorsAria')">
       <router-link class="u-tag benefits-anchor" :to="{ name: 'MemberBenefits', hash: '#benefits' }">
-        权益说明
+        {{ t('member.benefitsPage.anchorBenefits') }}
       </router-link>
       <router-link class="u-tag benefits-anchor" :to="{ name: 'MemberBenefits', hash: '#levels' }">
-        等级权益对照
+        {{ t('member.benefitsPage.anchorLevels') }}
       </router-link>
       <router-link class="u-tag benefits-anchor" :to="{ name: 'MemberBenefits', hash: '#rules' }">
-        规则与常见问题
+        {{ t('member.benefitsPage.anchorRules') }}
       </router-link>
     </nav>
 
     <!-- ① 八项权益逐条说明：名称/描述/图标/详情来自 getBenefits（未取到时回落 constants），数值来自 overview.benefits -->
     <section id="benefits" class="benefits-section" aria-labelledby="benefits-title">
-      <h2 id="benefits-title" class="benefits-section-title">八项权益</h2>
+      <h2 id="benefits-title" class="benefits-section-title">{{ t('member.benefitsPage.benefitsTitle') }}</h2>
       <ul class="benefits-list">
         <li v-for="item in benefitDetails" :key="item.key" class="ui-card benefits-item">
           <div class="benefits-item-head">
@@ -44,9 +42,9 @@
 
     <!-- ② 8 档 × 8 项完整矩阵：数据来自 getPlans 的 levels[]（八列含 v1.4.0 新增六列） -->
     <section id="levels" class="benefits-section" aria-labelledby="levels-title">
-      <h2 id="levels-title" class="benefits-section-title">等级权益对照</h2>
+      <h2 id="levels-title" class="benefits-section-title">{{ t('member.benefitsPage.levelsTitle') }}</h2>
       <p class="benefits-section-desc">
-        每一档都能看到具体数值；横向可滚动查看全部八项权益。
+        {{ t('member.benefitsPage.levelsDesc') }}
       </p>
 
       <div v-if="levelsLoading && !matrixLevels.length" class="ui-card benefits-skeleton">
@@ -55,10 +53,10 @@
 
       <div v-else-if="!matrixLevels.length" class="ui-card u-mm-state u-mm-state--error" role="alert">
         <AppIcon name="alert-triangle" class="u-mm-state-icon" aria-hidden="true" />
-        <p class="u-mm-state-title">对照表暂时取不到</p>
-        <p class="u-mm-state-desc">请稍后重试，或先返回会员中心查看成长值等级。</p>
+        <p class="u-mm-state-title">{{ t('member.benefitsPage.levelsErrorTitle') }}</p>
+        <p class="u-mm-state-desc">{{ t('member.benefitsPage.levelsErrorDesc') }}</p>
         <div class="u-mm-state-actions">
-          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">重试</button>
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchPlans()">{{ t('member.benefitsPage.retry') }}</button>
         </div>
       </div>
 
@@ -66,11 +64,11 @@
         <!-- 桌面/平板：宽表横向滚动（§26 在 767 断点隐藏 .u-mm-matrix、显示下面的卡片降级） -->
         <div class="u-table-wrap u-mm-matrix">
           <table class="u-table u-mm-ladder u-mm-matrix-table">
-            <caption class="visually-hidden">八档会员等级与八项权益对照表</caption>
+            <caption class="visually-hidden">{{ t('member.benefitsPage.tableCaption') }}</caption>
             <thead>
               <tr>
-                <th scope="col">等级</th>
-                <th scope="col" class="u-mm-ladder-num">成长值门槛</th>
+                <th scope="col">{{ t('member.benefitsPage.colLevel') }}</th>
+                <th scope="col" class="u-mm-ladder-num">{{ t('member.benefitsPage.colThreshold') }}</th>
                 <th
                   v-for="column in matrixColumns"
                   :key="column.key"
@@ -86,8 +84,8 @@
                 :class="{ 'is-current': level.level === currentLevel }"
               >
                 <th scope="row">
-                  <span>{{ level.name || level.level }}</span>
-                  <span v-if="level.level === currentLevel" class="u-tag u-tag--accent benefits-matrix-current">当前</span>
+                  <span>{{ levelLabel(level) }}</span>
+                  <span v-if="level.level === currentLevel" class="u-tag u-tag--accent benefits-matrix-current">{{ t('member.benefitsPage.current') }}</span>
                 </th>
                 <td class="u-mm-ladder-num">{{ level.growth_threshold }}</td>
                 <td v-for="column in matrixColumns" :key="column.key" class="u-mm-matrix-cell">
@@ -107,9 +105,9 @@
             :class="{ 'is-current': level.level === currentLevel }"
           >
             <p class="benefits-card-head">
-              <span class="benefits-card-name">{{ level.name || level.level }}</span>
-              <span class="benefits-card-threshold">门槛 {{ level.growth_threshold }}</span>
-              <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">当前</span>
+              <span class="benefits-card-name">{{ levelLabel(level) }}</span>
+              <span class="benefits-card-threshold">{{ t('member.benefitsPage.cardThreshold', { threshold: level.growth_threshold }) }}</span>
+              <span v-if="level.level === currentLevel" class="u-tag u-tag--accent">{{ t('member.benefitsPage.current') }}</span>
             </p>
             <dl class="benefits-card-list">
               <template v-for="column in matrixColumns" :key="column.key">
@@ -124,32 +122,32 @@
 
     <!-- ③ 规则与常见问题 -->
     <section id="rules" class="benefits-section" aria-labelledby="rules-title">
-      <h2 id="rules-title" class="benefits-section-title">规则与常见问题</h2>
+      <h2 id="rules-title" class="benefits-section-title">{{ t('member.benefitsPage.rulesTitle') }}</h2>
 
       <ul class="rules-list">
-        <li v-for="rule in RULES" :key="rule.title" class="ui-card rules-item">
+        <li v-for="(rule, index) in RULES" :key="rule.title" class="ui-card rules-item">
           <AppIcon :name="rule.icon" class="rules-item-icon" aria-hidden="true" />
           <div class="rules-item-text">
-            <p class="rules-item-title">{{ rule.title }}</p>
-            <p class="rules-item-desc">{{ rule.desc }}</p>
+            <p class="rules-item-title">{{ t(`member.benefitsPage.rules.${index}.title`, rule.title) }}</p>
+            <p class="rules-item-desc">{{ t(`member.benefitsPage.rules.${index}.desc`, rule.desc) }}</p>
           </div>
         </li>
       </ul>
 
       <dl class="faq-list">
-        <div v-for="item in faqList" :key="item.q" class="ui-card faq-item">
-          <dt class="faq-question">{{ item.q }}</dt>
-          <dd class="faq-answer">{{ item.a }}</dd>
+        <div v-for="(item, index) in faqList" :key="item.q" class="ui-card faq-item">
+          <dt class="faq-question">{{ t(`member.benefitsPage.faq.${index}.q`, item.q) }}</dt>
+          <dd class="faq-answer">{{ t(`member.benefitsPage.faq.${index}.a`, item.a) }}</dd>
         </div>
       </dl>
     </section>
 
     <p class="page-note">
-      还没开通会员？
-      <router-link :to="{ name: 'MemberPlans' }">查看套餐对比</router-link>
-      ，或返回
-      <router-link :to="{ name: 'Member' }">会员中心</router-link>
-      查看你的成长值等级。
+      {{ t('member.benefitsPage.footnoteBefore') }}
+      <router-link :to="{ name: 'MemberPlans' }">{{ t('member.benefitsPage.footnotePlans') }}</router-link>
+      {{ t('member.benefitsPage.footnoteOr') }}
+      <router-link :to="{ name: 'Member' }">{{ t('member.benefitsPage.footnoteMember') }}</router-link>
+      {{ t('member.benefitsPage.footnoteAfter') }}
     </p>
   </div>
 </template>
@@ -168,20 +166,33 @@
  *   3. **未解锁 ≠ 0**：`value` 键缺席时显示「V{n} 解锁」，由 `formatBenefitValue` 兜底。
  */
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import AppIcon from '@/components/AppIcon.vue'
 import PageBreadcrumb from '@/components/PageBreadcrumb.vue'
-import { MEMBER_BENEFITS, MEMBER_BENEFIT_MAP, formatBenefitValue, memberMatrixColumns } from '@/constants/member.js'
+import { NAV_MENU } from '@/constants/content.js'
+import {
+  MEMBER_BENEFITS,
+  MEMBER_BENEFIT_MAP,
+  formatBenefitValue,
+  memberBenefitDesc,
+  memberBenefitDetail,
+  memberBenefitName,
+  memberLevelLabel,
+  memberMatrixColumns,
+} from '@/constants/member.js'
+import { isEnglish } from '@/i18n/index.js'
 import { useMemberStore } from '@/stores/member.js'
 
 const memberStore = useMemberStore()
+const { t } = useI18n()
 
 /** 面包屑：权益详解是会员中心下的二级页 */
-const breadcrumbItems = [
-  { label: '首页', to: '/home' },
-  { label: '会员中心', to: '/member' },
-  { label: '会员权益' },
-]
+const breadcrumbItems = computed(() => [
+  { label: NAV_MENU[0]?.label || 'Home', to: '/home' },
+  { label: t('member.page.title'), to: '/member' },
+  { label: t('member.benefitsPage.title') },
+])
 
 /** 八项权益 → 矩阵列（列顺序与字段名的唯一实例在 `constants/member.js`） */
 const MATRIX_COLUMNS = memberMatrixColumns()
@@ -292,13 +303,17 @@ const benefitDetails = computed(() =>
     const meta = MEMBER_BENEFIT_MAP[remote.key] || {}
     const served = servedBenefitMap.value?.[remote.key] || {}
     const rawDetail = served.detail ?? meta.detail
-    const detailLines = Array.isArray(rawDetail)
-      ? rawDetail.filter((line) => Boolean(line))
-      : (rawDetail ? [rawDetail] : [])
+    const plainDetail = Array.isArray(rawDetail) ? rawDetail.join('\n') : (rawDetail || '')
+    const localizedDetail = memberBenefitDetail(remote.key, plainDetail)
+    const detailLines = isEnglish() && localizedDetail && localizedDetail !== plainDetail
+      ? localizedDetail.split('\n').filter((line) => Boolean(line))
+      : (Array.isArray(rawDetail)
+        ? rawDetail.filter((line) => Boolean(line))
+        : (rawDetail ? [rawDetail] : []))
     return {
       key: remote.key,
-      name: served.name || meta.name || remote.key,
-      desc: served.desc || meta.desc || '',
+      name: memberBenefitName(remote.key, served.name || meta.name || remote.key),
+      desc: memberBenefitDesc(remote.key, served.desc || meta.desc || ''),
       detailLines,
       icon: served.icon || meta.icon || 'info',
       valueText: formatBenefitValue(remote.value, meta.tierLabels),
@@ -320,7 +335,12 @@ const matrixLevels = computed(() =>
 /** 对照表在等数据：两个来源（权益页 / 套餐页）任一在途都算 */
 const levelsLoading = computed(() => memberStore.loadingBenefits || memberStore.loadingPlans)
 
-const matrixColumns = computed(() => MATRIX_COLUMNS)
+const matrixColumns = computed(() =>
+  MATRIX_COLUMNS.map((column) => ({
+    ...column,
+    label: memberBenefitName(column.key, column.label),
+  }))
+)
 
 /** 当前生效等级：非会员是 'none'，此时不高亮任何一行 */
 const currentLevel = computed(() => memberStore.level || 'none')
@@ -333,8 +353,12 @@ function cellText(level, column) {
 }
 
 function requiredLabel(level) {
-  if (!level || level === 'none') return '未解锁'
-  return `V${String(level).replace(/^v/i, '')} 解锁`
+  if (!level || level === 'none') return t('member.page.locked')
+  return t('member.page.unlockAt', { level: String(level).replace(/^v/i, '') })
+}
+
+function levelLabel(level) {
+  return memberLevelLabel(level.level) || level.name || level.level
 }
 
 onMounted(() => {

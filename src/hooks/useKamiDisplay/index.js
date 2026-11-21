@@ -1,5 +1,6 @@
 import { formatISOTime } from '@/hooks/useSimpleTimeFormatter'
 import { lookupOr, lookup } from '@/utils/safeLookup.js'
+import { translate } from '@/i18n/index.js'
 
 /**
  * 卡密的展示层逻辑：状态文案/配色、工具名解析、日期格式化。
@@ -50,7 +51,20 @@ export const STATUS_FILTER_OPTIONS = [
  * @returns {string} 未识别时原样返回 status；空值返回「未知」
  */
 export function getStatusText(status) {
-  return lookupOr(STATUS_TEXT, status, status || '未知')
+  const fallback = lookupOr(STATUS_TEXT, status, status || translate('kami.statuses.unknown', '未知'))
+  return translate(`kami.statuses.${status}`, fallback)
+}
+
+/** 状态筛选下拉的本地化文案。 */
+export function getStatusFilterLabel(value) {
+  const option = STATUS_FILTER_OPTIONS.find((item) => item.value === value)
+  return translate(`kami.statusFilter.${value}`, option?.label || value)
+}
+
+/** 表格列标题的本地化文案。 */
+export function getKamiColumnTitle(key) {
+  const column = KAMI_TABLE_COLUMNS.find((item) => item.key === key)
+  return translate(`kami.columns.${key}`, column?.title || key)
 }
 
 /**

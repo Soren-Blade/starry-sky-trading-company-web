@@ -6,6 +6,8 @@
  * 全部是纯函数，便于 `test/checkinCalendar.test.js` 直接断言，不用挂 DOM。
  */
 
+import { translate } from '../i18n/index.js';
+
 /** 星期表头：服务端按自然月给日期，但周几要自己算（按 Asia/Shanghai 口径的纯日期字符串） */
 export const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -76,8 +78,8 @@ export function resolveDaySubLabel(day) {
  */
 export function resolveDayBadge(day) {
     if (!day) return null;
-    if (day.dayType === 'holiday') return '休';
-    if (day.dayType === 'workday') return '班';
+    if (day.dayType === 'holiday') return translate('checkin.badge.holiday', '休');
+    if (day.dayType === 'workday') return translate('checkin.badge.workday', '班');
     return null;
 }
 
@@ -98,21 +100,29 @@ export function resolveDayBadge(day) {
  * @returns {{ key: 'checked'|'today-pending'|'missed'|'future'|'none', label: string, action: 'checkin'|'replenish'|null }}
  */
 export function resolveDayStatus(day, today = '', options = {}) {
-    if (!day) return { key: 'none', label: '还没有选中日期', action: null };
-    if (day.checked) return { key: 'checked', label: '已签到', action: null };
+    if (!day) return { key: 'none', label: translate('checkin.status.none', '还没有选中日期'), action: null };
+    if (day.checked) return { key: 'checked', label: translate('checkin.status.checked', '已签到'), action: null };
 
     const isToday = day.is_today === undefined ? day.date === today : Boolean(day.is_today);
-    if (isToday) return { key: 'today-pending', label: '今天还没签到', action: 'checkin' };
-    if (day.future) return { key: 'future', label: '还没到这一天', action: null };
+    if (isToday) {
+        return { key: 'today-pending', label: translate('checkin.status.todayPending', '今天还没签到'), action: 'checkin' };
+    }
+    if (day.future) return { key: 'future', label: translate('checkin.status.future', '还没到这一天'), action: null };
 
     const canReplenish = options.canReplenish === undefined
         ? Boolean(day.replenishable)
         : Boolean(options.canReplenish);
-    if (canReplenish) return { key: 'missed', label: '漏签，可补签', action: 'replenish' };
-    if (day.replenishable) {
-        return { key: 'missed', label: '漏签，但补签次数或积分不足', action: null };
+    if (canReplenish) {
+        return { key: 'missed', label: translate('checkin.status.missedReplenish', '漏签，可补签'), action: 'replenish' };
     }
-    return { key: 'none', label: '不可签到', action: null };
+    if (day.replenishable) {
+        return {
+            key: 'missed',
+            label: translate('checkin.status.missedShort', '漏签，但补签次数或积分不足'),
+            action: null,
+        };
+    }
+    return { key: 'none', label: translate('checkin.status.unavailable', '不可签到'), action: null };
 }
 
 /**
