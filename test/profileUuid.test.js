@@ -224,7 +224,7 @@ test('模板契约：aria-pressed / aria-label 跟随 uuidRevealed 切换，卸�
     'aria-pressed 必须与明文状态同步'
   )
   assert.ok(
-    source.includes(':aria-label="uuidRevealed ? \'隐藏用户 UID\' : \'显示用户 UID\'"'),
+    source.includes(':aria-label="uuidRevealed ? PAGES.profile.uidHide : PAGES.profile.uidShow"'),
     'aria-label 必须在「显示/隐藏」之间切换'
   )
   assert.ok(source.includes('onBeforeUnmount('), '组件卸载时必须有清理钩子')

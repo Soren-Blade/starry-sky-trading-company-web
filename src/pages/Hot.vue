@@ -17,8 +17,8 @@
         <!-- 计数：大字做视觉重音，下面只跟一个量词标签（不再重复「共 N 件」） -->
         <p class="rank-total" role="status">
           <span class="rank-total-value" aria-hidden="true">{{ hitCount }}</span>
-          <span class="rank-total-label">件在榜</span>
-          <span class="visually-hidden">共 {{ hitCount }} 件商品在榜</span>
+          <span class="rank-total-label">{{ PAGES.hot.onBoard }}</span>
+          <span class="visually-hidden">{{ translate('pages.hot.totalAria', PAGES.hot.totalAria, { count: hitCount }) }}</span>
         </p>
       </div>
     </header>
@@ -39,6 +39,7 @@ import HotToolsSection from '@/components/HotToolsSection.vue'
 import { useShopStore } from '@/stores/shop'
 // 开场文案集中在 constants，改文案只碰一个文件
 import { PAGES } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 
 const shopStore = useShopStore()
 const { shopInfo } = storeToRefs(shopStore)

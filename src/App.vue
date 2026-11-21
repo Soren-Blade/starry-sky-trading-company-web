@@ -5,6 +5,12 @@
   -->
   <div class="app-container" :inert="booting">
     <!--
+      键盘用户的第一个落点：跳过顶栏与重复导航，直接进入主内容。
+      只在聚焦时出现，不在视觉上占用空间。
+    -->
+    <a class="skip-link" href="#main-content">{{ t('a11y.skipToContent') }}</a>
+
+    <!--
       路由切换进度条：细窄一条钉在顶部，不遮挡内容。
       覆盖的是「点了导航但界面还没换」的那段窗口 —— 分包懒加载时旧页面会多停留
       一会儿，没有这条线的话用户会以为没点上。
@@ -21,20 +27,23 @@
     <!-- 顶部导航（position: sticky，参与文档流，因此主内容不再需要顶栏占位） -->
     <Navbar />
 
-    <!-- 主内容 -->
-    <main class="main-content">
+    <!-- 主内容；tabindex=-1 让 skip-link 能把焦点真正移进来 -->
+    <main id="main-content" class="main-content" tabindex="-1">
       <router-view />
     </main>
 
     <!-- 页脚 -->
     <Footer />
 
+    <!-- 移动端底部悬浮导航（桌面端由组件自身 display:none 隐藏） -->
+    <BottomNav />
+
     <!-- 回到顶部 -->
     <button
       v-if="showScrollTop"
       type="button"
       class="u-icon-btn scroll-to-top"
-      aria-label="回到顶部"
+      :aria-label="t('a11y.backToTop')"
       @click="scrollToTop"
     >
       <span aria-hidden="true">↑</span>
@@ -79,9 +88,11 @@
 <script setup>
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { throttle } from '@/utils/index.js'
 import Navbar from '@/components/Navbar.vue'
 import Footer from '@/components/Footer.vue'
+import BottomNav from '@/components/BottomNav.vue'
 import ToastHost from '@/components/ToastHost.vue'
 import LoginModal from '@/components/LoginModal.vue'
 // 全局状态
@@ -118,6 +129,7 @@ const inviteStore = useInviteStore()
 const heroStore = useHeroStore()
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 /** 启动阶段（身份 + 首次路由就位之前），整个应用壳 inert */
 const booting = ref(true)
@@ -258,6 +270,30 @@ onUnmounted(() => {
   width: 100%;
 }
 
+/* 跳转链接：默认移出视口，键盘聚焦时回到左上角。
+ * 不要用 display:none/visibility:hidden —— 那样键盘也聚焦不到。 */
+.skip-link {
+  position: fixed;
+  top: calc(var(--space-unit) * 1);
+  left: calc(var(--space-unit) * 1);
+  z-index: calc(var(--z-sticky) + 1);
+  padding: calc(var(--space-unit) * 1) calc(var(--space-unit) * 2);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-input);
+  color: var(--text-primary);
+  font-weight: var(--fw-label);
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--transition-interactive);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* 悬浮在内容之上，但不遮挡弹窗（modal 400 / toast 500） */
 .scroll-to-top {
   position: fixed;
@@ -380,9 +416,19 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
+  /* 底部导航是 fixed 的，必须在文档流里给它留出等量空间：
+   * 64px 导航 + 12px 悬浮间距 + 安全区 + 一点呼吸位，避免遮住页脚最后一行。 */
+  .app-container {
+    padding-bottom: calc(
+      var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px) + var(--space-unit) * 2
+    );
+  }
+
   .scroll-to-top {
     right: calc(var(--space-unit) * 2);
-    bottom: calc(var(--space-unit) * 2);
+    bottom: calc(
+      var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom, 0px) + var(--space-unit) * 2
+    );
   }
 }
 </style>

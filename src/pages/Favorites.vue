@@ -7,12 +7,12 @@
         <p class="page-shell-desc">{{ PAGES.favorites.description }}</p>
       </div>
       <span class="u-tag u-tag--accent">
-        商品 {{ favoriteStore.productCount }} · 工具 {{ favoriteStore.toolCount }}
+        {{ translate('trade.favoritesCount', TRADE.favoritesCount, { products: favoriteStore.productCount, tools: favoriteStore.toolCount }) }}
       </span>
     </header>
 
     <!-- 两个页签：商品收藏与工具收藏是两种完全不同的卡片，不混在一个列表里 -->
-    <div class="favorites-tabs" role="tablist" aria-label="收藏类型">
+    <div class="favorites-tabs" role="tablist" :aria-label="TRADE.favoritesTabsAria">
       <button
         v-for="tabItem in tabs"
         :key="tabItem.key"
@@ -37,7 +37,7 @@
     >
       <div v-if="favoriteStore.loading && !favoriteStore.loadedForUserId" class="u-loading-block" role="status">
         <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
-        <span>正在加载收藏…</span>
+        <span>{{ TRADE.favoritesLoading }}</span>
       </div>
 
       <!-- 商品收藏 -->
@@ -60,7 +60,7 @@
             <div v-else class="page-empty favorites-missing">
               <p class="page-empty-title">{{ TRADE.favoritesMissing }}</p>
               <button type="button" class="u-btn-secondary" @click="removeEntry(entry, 'product')">
-                从收藏中移除
+                 {{ TRADE.favoritesRemoveMissing }}
               </button>
             </div>
             <button
@@ -69,7 +69,7 @@
               class="u-btn-secondary favorites-remove"
               @click="removeEntry(entry, 'product')"
             >
-              取消收藏
+              {{ TRADE.favoritesRemove }}
             </button>
           </li>
         </ul>
@@ -78,7 +78,7 @@
           <p class="page-empty-title">{{ TRADE.favoritesEmpty }}</p>
           <p class="page-empty-hint">{{ TRADE.favoritesEmptyHint }}</p>
           <div class="page-actions favorites-empty-actions">
-            <router-link to="/hot" class="u-btn-primary">去看热门推荐</router-link>
+            <router-link to="/hot" class="u-btn-primary">{{ TRADE.favoritesBrowseHot }}</router-link>
           </div>
         </div>
       </template>
@@ -98,7 +98,7 @@
             <div v-else class="page-empty favorites-missing">
               <p class="page-empty-title">{{ TRADE.favoritesMissing }}</p>
               <button type="button" class="u-btn-secondary" @click="removeEntry(entry, 'tool')">
-                从收藏中移除
+                 {{ TRADE.favoritesRemoveMissing }}
               </button>
             </div>
           </li>
@@ -108,7 +108,7 @@
           <p class="page-empty-title">{{ TRADE.favoritesEmpty }}</p>
           <p class="page-empty-hint">{{ TRADE.favoritesEmptyHint }}</p>
           <div class="page-actions favorites-empty-actions">
-            <router-link to="/tool" class="u-btn-primary">去工具工作台</router-link>
+            <router-link to="/tool" class="u-btn-primary">{{ TRADE.favoritesBrowseTools }}</router-link>
           </div>
         </div>
       </template>
@@ -132,6 +132,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import ProductCard from '@/components/ProductCard.vue'
 import ToolCard from '@/components/ToolCard.vue'
 import { PAGES, TRADE } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 
 const favoriteStore = useFavoriteStore()
 const { goDetail, addToCart } = useProductActions()

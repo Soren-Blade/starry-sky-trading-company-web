@@ -12,11 +12,11 @@
         <h1 class="about-title">{{ PAGES.about.title }}</h1>
         <p class="about-lead">{{ PAGES.about.description }}</p>
 
-        <nav class="about-nav" aria-label="本页目录">
+        <nav class="about-nav" :aria-label="PAGES.about.navAria">
           <ul class="about-nav-list">
-            <li><a href="#about-vision">我们的愿景</a></li>
-            <li><a href="#about-values">我们的核心价值</a></li>
-            <li><a href="#about-contact">联系我们</a></li>
+            <li><a href="#about-vision">{{ PAGES.about.visionTitle }}</a></li>
+            <li><a href="#about-values">{{ PAGES.about.valuesTitle }}</a></li>
+            <li><a href="#about-contact">{{ PAGES.about.contactTitle }}</a></li>
           </ul>
         </nav>
       </aside>
@@ -24,42 +24,29 @@
       <!-- 右栏：三段正文，段间用 --divider 分隔 -->
       <div class="about-body">
         <section id="about-vision" class="about-section u-enter" :style="{ '--i': 1 }">
-          <h2>我们的愿景</h2>
-          <p>
-            星辰商行致力于为用户带来精选商品和优质服务。我们相信，每一件商品都承载着独特的故事和品质，
-            我们的使命是让消费者在享受便利购物的同时，感受到生活的美好。
-          </p>
+          <h2>{{ PAGES.about.visionTitle }}</h2>
+          <p>{{ PAGES.about.visionBody }}</p>
         </section>
 
         <section id="about-values" class="about-section u-enter" :style="{ '--i': 2 }">
-          <h2>我们的核心价值</h2>
+          <h2>{{ PAGES.about.valuesTitle }}</h2>
           <!-- 编号列表：等宽的 01/02/03/04 替代主页那种卡片网格，与首页拉开观感 -->
           <ol class="value-list">
-            <li class="value-item u-enter" :style="{ '--i': 3 }">
-              <span class="value-index" aria-hidden="true">01</span>
-              <h3 class="value-title">品质优先</h3>
-              <p class="value-text">每一件商品都经过严格筛选，确保品质与美学的完美结合</p>
-            </li>
-            <li class="value-item u-enter" :style="{ '--i': 4 }">
-              <span class="value-index" aria-hidden="true">02</span>
-              <h3 class="value-title">高效服务</h3>
-              <p class="value-text">快速配送、贴心售后，让您的购物体验更加轻松</p>
-            </li>
-            <li class="value-item u-enter" :style="{ '--i': 5 }">
-              <span class="value-index" aria-hidden="true">03</span>
-              <h3 class="value-title">创新体验</h3>
-              <p class="value-text">不断创新购物方式，为用户提供更好的体验</p>
-            </li>
-            <li class="value-item u-enter" :style="{ '--i': 6 }">
-              <span class="value-index" aria-hidden="true">04</span>
-              <h3 class="value-title">用户至上</h3>
-              <p class="value-text">以用户需求为中心，打造温暖的购物社区</p>
+            <li
+              v-for="(value, index) in PAGES.about.values"
+              :key="value.title"
+              class="value-item u-enter"
+              :style="{ '--i': 3 + index }"
+            >
+              <span class="value-index" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+              <h3 class="value-title">{{ value.title }}</h3>
+              <p class="value-text">{{ value.text }}</p>
             </li>
           </ol>
         </section>
 
         <section id="about-contact" class="about-section u-enter" :style="{ '--i': 7 }">
-          <h2>联系我们</h2>
+          <h2>{{ PAGES.about.contactTitle }}</h2>
           <!--
             联系方式做成「标签 + 值」对照表，值用等宽字体。
             取值来自 constants/CONTACT —— 页脚的「联系方式」行与
@@ -68,23 +55,23 @@
           -->
           <dl class="contact-table">
             <div class="contact-row">
-              <dt class="contact-label"><AppIcon name="map-pin" /> 地址</dt>
+              <dt class="contact-label"><AppIcon name="map-pin" /> {{ PAGES.about.addressLabel }}</dt>
               <dd class="contact-value">{{ CONTACT.address }}</dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><AppIcon name="phone" /> 电话</dt>
+              <dt class="contact-label"><AppIcon name="phone" /> {{ PAGES.about.phoneLabel }}</dt>
               <dd class="contact-value">
                 <a :href="CONTACT.telHref">{{ CONTACT.phone }}</a>
               </dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><AppIcon name="mail" /> 邮箱</dt>
+              <dt class="contact-label"><AppIcon name="mail" /> {{ PAGES.about.emailLabel }}</dt>
               <dd class="contact-value">
                 <a :href="CONTACT.mailtoHref">{{ CONTACT.email }}</a>
               </dd>
             </div>
             <div class="contact-row">
-              <dt class="contact-label"><AppIcon name="clock" /> 服务时间</dt>
+              <dt class="contact-label"><AppIcon name="clock" /> {{ PAGES.about.hoursLabel }}</dt>
               <dd class="contact-value">{{ CONTACT.hours }}</dd>
             </div>
           </dl>
@@ -346,8 +333,36 @@ import { PAGES, CONTACT } from '@/constants/index.js'
   }
 
   .about-shell {
-    gap: calc(var(--section-gap) * var(--mobile-section-scale));
+    gap: calc(var(--space-unit) * 2.5);
     padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
+  }
+
+  /* 窄屏把目录收成一行横滑标签：竖排目录会先占掉半屏，正文要滚很久才出现 */
+  .about-nav {
+    margin-top: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .about-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .about-nav-list {
+    flex-direction: row;
+    gap: var(--space-unit);
+    width: max-content;
+  }
+
+  .about-nav-list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 calc(var(--space-unit) * 1.5);
+    border: var(--stroke-width) solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--bg-surface);
+    white-space: nowrap;
   }
 
   /* 本页开场标题是 --fs-h1，正文小标题是 --fs-h2，移动端各乘 0.7 后层级仍成立 */
@@ -370,10 +385,6 @@ import { PAGES, CONTACT } from '@/constants/index.js'
   .about-section p,
   .about-lead {
     font-size: calc(var(--fs-body) * var(--mobile-body-scale));
-  }
-
-  .about-nav-list a {
-    padding: var(--space-unit) 0;
   }
 }
 </style>

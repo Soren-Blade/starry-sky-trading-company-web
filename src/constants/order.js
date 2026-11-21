@@ -9,6 +9,8 @@
  * **必须逐项一致**（`test/orderStatus.test.js` 会比对两边的键集合）。
  */
 
+import { translate } from '../i18n/index.js'
+
 /** 状态值：顺序即业务流转顺序 */
 export const ORDER_STATUSES = ['pending', 'paid', 'completed', 'cancelled', 'refunded']
 
@@ -36,7 +38,8 @@ export const ORDER_STATUS_TABS = ['all', ...ORDER_STATUSES]
 /** 未知状态原样返回，避免历史数据/新状态把界面渲染成空白 */
 export function orderStatusLabel(value) {
   const meta = ORDER_STATUS_META[value]
-  return meta ? meta.label : value || ''
+  if (!meta) return value || ''
+  return translate(`orderStatus.labels.${value}`, meta.label)
 }
 
 /**
@@ -51,7 +54,7 @@ export function orderStatusTagClass(value) {
 }
 
 export function orderStatusDesc(value) {
-  return ORDER_STATUS_DESC[value] || ''
+  return translate(`orderStatus.descriptions.${value}`, ORDER_STATUS_DESC[value] || '')
 }
 
 /** 只有这两种状态允许用户「确认完成」（已付款或线下结算的待处理单） */

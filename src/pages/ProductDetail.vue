@@ -10,7 +10,7 @@
     <div v-else-if="error" class="page-empty">
       <p class="page-empty-title">{{ error }}</p>
       <div class="page-actions product-fallback">
-        <router-link to="/hot" class="u-btn-primary">去看热门推荐</router-link>
+        <router-link to="/hot" class="u-btn-primary">{{ PRODUCT_GRID.fallbackHot }}</router-link>
         <button type="button" class="u-btn-secondary" @click="goBack">
           {{ PRODUCT_GRID.detailBack }}
         </button>
@@ -96,12 +96,12 @@
 
           <!-- 数量：控件是真 <input type="number">，桌面可键盘输入、移动端唤起数字键盘 -->
           <div class="u-field product-quantity">
-            <label class="u-field-label" for="product-quantity">数量</label>
+            <label class="u-field-label" for="product-quantity">{{ PRODUCT_GRID.quantity }}</label>
             <div class="quantity-control">
               <button
                 type="button"
                 class="u-btn-secondary quantity-step"
-                aria-label="减少数量"
+                :aria-label="PRODUCT_GRID.decreaseQty"
                 :disabled="quantity <= 1"
                 @click="setQuantity(quantity - 1)"
               >
@@ -120,7 +120,7 @@
               <button
                 type="button"
                 class="u-btn-secondary quantity-step"
-                aria-label="增加数量"
+                :aria-label="PRODUCT_GRID.increaseQty"
                 :disabled="quantity >= maxQuantity"
                 @click="setQuantity(quantity + 1)"
               >
@@ -128,7 +128,7 @@
               </button>
             </div>
             <span class="u-field-hint">
-              库存 {{ product.stock_quantity }} 件，单笔最多 {{ maxQuantity }} 件
+              {{ translate('productGrid.stockLine', PRODUCT_GRID.stockLine, { stock: product.stock_quantity, max: maxQuantity }) }}
             </span>
           </div>
 
@@ -161,7 +161,9 @@
               class="u-icon-btn product-favorite"
               :class="{ active: isFavorited }"
               :aria-pressed="isFavorited"
-              :aria-label="isFavorited ? `取消收藏 ${title}` : `收藏 ${title}`"
+              :aria-label="isFavorited
+                ? translate('productGrid.unfavorite', PRODUCT_GRID.unfavorite, { title })
+                : translate('productGrid.favorite', PRODUCT_GRID.favorite, { title })"
               @click="handleToggleFavorite"
             >
               <!-- 实心/空心表达选中状态；颜色仍走 currentColor，因此仍是单色并随主题变化 -->
@@ -170,20 +172,20 @@
           </div>
 
           <p v-if="!userStore.isLoggedIn" class="page-note">
-            加入购物车与下单需要登录账号；游客可以先浏览商品。
+            {{ PRODUCT_GRID.loginHint }}
           </p>
         </div>
       </div>
 
       <!-- 描述：单独一块，长文本不挤压信息区 -->
       <section v-if="product.description" class="page-panel product-description">
-        <h2 class="page-panel-head">商品详情</h2>
+        <h2 class="page-panel-head">{{ PRODUCT_GRID.descriptionTitle }}</h2>
         <p class="product-description-text">{{ product.description }}</p>
       </section>
 
       <!-- 同类推荐：只取该分类下除自己以外的商品，空则不渲染整块 -->
       <section v-if="related.length" class="related">
-        <h2 class="related-title">同类商品</h2>
+        <h2 class="related-title">{{ PRODUCT_GRID.relatedTitle }}</h2>
         <ul class="related-grid">
           <li v-for="(item, index) in related" :key="item.id" class="related-cell">
             <ProductCard :product="item" :style="{ '--i': index }" @go-detail="goDetail" @add-to-cart="addToCart" />
@@ -221,6 +223,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { formatUtils } from '@/utils/index.js'
 import { buildDeliveryNote } from '@/utils/goodsType.js'
 import { PAGES, PRODUCT_GRID, CARD_PRODUCT } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 
 const route = useRoute()
 const router = useRouter()

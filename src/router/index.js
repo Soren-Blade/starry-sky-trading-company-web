@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { markRouteLoaded, markRouteLoading } from '@/hooks/useRouteLoading'
+import { applyRouteTitle } from '@/i18n/title.js'
+import { translate } from '@/i18n/index.js'
 
 const routes = [
   {
@@ -331,7 +333,7 @@ const router = createRouter({
 
 // 路由守卫 - 更新页面标题，并收起「导航中」进度条
 router.afterEach((to) => {
-  document.title = to.meta.title || '星辰商行'
+  applyRouteTitle(to)
   markRouteLoaded()
 })
 
@@ -368,7 +370,7 @@ router.beforeEach(async (to) => {
 
   // 不只弹提示：直接**把登录弹窗打开**，并把原目标记在 query 里。
   // 只提示不打开弹窗的话，用户还得自己找到右上角的登录入口。
-  userStore.openLoginModal('请先登录账号后再访问该页面')
+  userStore.openLoginModal(translate('auth.loginRequired', '请先登录账号后再访问该页面'))
 
   // 重定向会再触发一次 beforeEach，那次同样会 markRouteLoading ——
   // 因此这里用的是开关而不是计数器，不会只增不减地漂移

@@ -9,14 +9,14 @@
 
     <!-- 工作台两栏：左侧竖排筛选轨 + 右侧工具区 -->
     <div class="workspace-body">
-      <aside class="workspace-rail" aria-label="工具筛选">
+      <aside class="workspace-rail" :aria-label="TOOL_PAGE.filtersAria">
         <!--
           使用方式：与「分类」是**两根轴** —— 分类说的是主题（视频/开发/图片/其他），
           这里说的是要不要卡密。轨是单选的，因此两者不会叠加，
           选了一个就只看这一组的工具，不会出现「视频 + 免费」这种组合态。
         -->
         <div class="rail-group">
-          <p class="rail-label">使用方式</p>
+          <p class="rail-label">{{ TOOL_PAGE.usageLabel }}</p>
           <div class="rail-list">
             <button
               v-for="entry in accessEntries"
@@ -37,7 +37,7 @@
         </div>
 
         <div class="rail-group">
-          <p class="rail-label">分类</p>
+          <p class="rail-label">{{ TOOL_PAGE.categoryLabel }}</p>
           <div class="rail-list">
             <!--
               「全部」不再手写：classifyToolsByClass 已经合成了一条 class:'all'、
@@ -78,7 +78,7 @@
         <div class="workspace-toolbar">
           <!-- 搜索框：图标定位与输入区让位来自共享类 .u-search / .u-search-icon -->
           <div class="u-search toolbar-search">
-            <label class="visually-hidden" for="tool-search">搜索工具</label>
+            <label class="visually-hidden" for="tool-search">{{ TOOL_PAGE.searchPlaceholder }}</label>
             <span class="u-search-icon" aria-hidden="true"><AppIcon name="search" /></span>
             <input
               id="tool-search"
@@ -93,7 +93,7 @@
             <template v-if="showFavorites">
               {{ TOOL_PAGE.favorites }} · {{ filteredTools.length }}
             </template>
-            <template v-else>共 {{ filteredTools.length }} 个工具</template>
+            <template v-else>{{ translate('toolPage.totalLabel', '共 {count} 个工具', { count: filteredTools.length }) }}</template>
           </p>
         </div>
 
@@ -144,6 +144,7 @@ import { useOpenTool } from '@/hooks/useOpenTool'
 import { notify } from '@/hooks/useToast/index.js'
 // 页面文案集中在 constants，改文案只碰一个文件
 import { AUTH, PAGES, TOOL_PAGE } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 import { toolTagsOf } from '@/constants/toolTags.js'
 
 const toolStore = useToolStore()

@@ -218,7 +218,12 @@ test('个人中心下拉：可见的分组标题已删除，组名只留给读�
   assert.deepEqual(scanSrc(/dropdown-group-label/), [], 'src 里还有别处在用这个 class')
 
   // 分组标题删了，但 role="menu" 仍需要分组上下文：组名以视觉隐藏的形式保留
-  assert.match(NAVBAR, /<p class="visually-hidden">账号资产<\/p>/)
+  assert.match(NAVBAR, /<p class="visually-hidden">\{\{ t\('navbar\.assetsGroup'\) \}\}<\/p>/)
+  assert.match(
+    read('src/i18n/locales/zh-CN.js'),
+    /assetsGroup:\s*'账号资产'/,
+    '中文词条丢失',
+  )
 
   // 原来那行标题自带 12px 上内边距 + 4px 下内边距，删掉后首项不能直接贴线
   assert.match(NAVBAR, /class="u-dropdown-item user-menu-first-item"/)

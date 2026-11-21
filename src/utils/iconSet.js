@@ -34,6 +34,9 @@ export const ICON_STROKE_WIDTH = 2.5
  */
 export const ICONS = {
     // ── 功能 ──────────────────────────────────────────────
+    home: {
+        paths: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5', 'M9.5 21v-6.5h5V21'],
+    },
     search: {
         circles: [[11, 11, 8]],
         paths: ['m21 21-4.35-4.35'],

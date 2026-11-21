@@ -190,7 +190,12 @@ test('ThemeSwitch 使用 EC theme-switch 结构（data-set-theme / aria-pressed 
 
 test('ThemeSwitch 三档来自 THEME_SWITCH 常量，且图标齐备', () => {
   const content = read(path.join(SRC, 'constants', 'content.js'))
-  assert.match(content, /export const THEME_SWITCH = \{/)
+  assert.match(content, /const THEME_SWITCH_RAW = \{/)
+  assert.match(
+    content,
+    /export const THEME_SWITCH = localizeNamespace\('themeSwitch', THEME_SWITCH_RAW\)/,
+    'THEME_SWITCH 必须走 i18n 代理导出'
+  )
   for (const mode of ['light', 'dark', 'auto']) {
     assert.match(content, new RegExp(`mode: '${mode}'`), `缺少 ${mode} 档`)
   }

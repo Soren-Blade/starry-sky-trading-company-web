@@ -8,12 +8,12 @@
         <h1 class="page-shell-title">{{ PAGES.orders.title }}</h1>
         <p class="page-shell-desc">{{ PAGES.orders.description }}</p>
       </div>
-      <span class="u-tag u-tag--accent">{{ pagination.total }} 笔</span>
+      <span class="u-tag u-tag--accent">{{ translate('trade.ordersCount', TRADE.ordersCount, { count: pagination.total }) }}</span>
     </header>
 
     <!-- 状态筛选：胶囊页签，与收藏页同构；右侧固定一个搜索框（订单号或商品名） -->
     <div class="orders-toolbar">
-      <div class="orders-tabs" role="tablist" aria-label="订单状态">
+      <div class="orders-tabs" role="tablist" :aria-label="TRADE.ordersFilterAria">
         <button
           v-for="tabItem in statusTabs"
           :key="tabItem.value"
@@ -31,8 +31,8 @@
       <div class="orders-search">
         <SearchBar
           v-model="keywordInput"
-          label="搜索订单号或商品名"
-          placeholder="搜索订单号或商品名"
+          :label="TRADE.ordersSearchLabel"
+          :placeholder="TRADE.ordersSearchLabel"
           :show-submit="false"
         />
       </div>
@@ -40,7 +40,7 @@
 
     <div v-if="loading" class="u-loading-block" role="status">
       <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
-      <span>正在加载订单…</span>
+      <span>{{ TRADE.ordersLoading }}</span>
     </div>
 
     <p v-else-if="error" class="page-note page-note--error" role="alert">{{ error }}</p>
@@ -49,7 +49,7 @@
       <p class="page-empty-title">{{ TRADE.ordersEmpty }}</p>
       <p class="page-empty-hint">{{ TRADE.ordersEmptyHint }}</p>
       <div class="page-actions orders-empty-actions">
-        <router-link to="/hot" class="u-btn-primary">去看热门推荐</router-link>
+        <router-link to="/hot" class="u-btn-primary">{{ TRADE.ordersBrowseHot }}</router-link>
       </div>
     </div>
 
@@ -59,9 +59,9 @@
       <!-- 订单管「交易过程」，资产管「买到了什么」；两者分工不同所以都在，
            这里只做一次指路，避免用户以为数字商品丢了。 -->
       <p class="orders-assets-link">
-        数字商品与卡密已汇总到
-        <router-link to="/user/assets">我的资产</router-link>
-        ，实物商品的物流信息仍在本页订单里。
+        {{ TRADE.ordersAssetsBefore }}
+        <router-link to="/user/assets">{{ TRADE.ordersAssetsLink }}</router-link>
+        {{ TRADE.ordersAssetsAfter }}
       </p>
 
       <ul class="orders-list">
@@ -121,7 +121,7 @@
                 :to="`/user/orders/${order.order_no}`"
                 class="u-btn-primary"
               >
-                去支付
+                {{ TRADE.orderPay }}
               </router-link>
               <button
                 v-if="canCancel(order.status)"
@@ -163,7 +163,7 @@
       <!-- 分页：只有一页时不渲染，避免出现一个孤零零的「1」。
            版式统一走共享的 .u-mm-pager（左信息 / 右按钮 + 顶部分隔线），
            与邮件、优惠券、积分等页的分页同一套观感。 -->
-      <nav v-if="pagination.total_pages > 1" class="u-mm-pager" aria-label="订单分页">
+      <nav v-if="pagination.total_pages > 1" class="u-mm-pager" :aria-label="TRADE.ordersPaginationAria">
         <span class="u-mm-pager-info">
           {{ pagination.page }} / {{ pagination.total_pages }}
         </span>
@@ -174,7 +174,7 @@
             :disabled="!pagination.has_prev || loading"
             @click="goPage(pagination.page - 1)"
           >
-            上一页
+            {{ TRADE.ordersPrev }}
           </button>
           <button
             type="button"
@@ -182,7 +182,7 @@
             :disabled="!pagination.has_next || loading"
             @click="goPage(pagination.page + 1)"
           >
-            下一页
+            {{ TRADE.ordersNext }}
           </button>
         </div>
       </nav>
@@ -214,6 +214,7 @@ import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useThemeStore } from '@/stores/theme'
 import { formatUtils } from '@/utils/index.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 import {
   ORDER_STATUS_TABS,
   orderStatusLabel,

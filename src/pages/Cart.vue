@@ -7,7 +7,7 @@
         <p class="page-shell-desc">{{ PAGES.cart.description }}</p>
       </div>
       <span v-if="!needLogin && !cartStore.isEmpty" class="u-tag u-tag--accent">
-        {{ cartStore.count }} 件
+        {{ translate('trade.cartItemsUnit', '{count} 件', { count: cartStore.count }) }}
       </span>
     </header>
 
@@ -16,30 +16,30 @@
       <p class="page-empty-title">{{ TRADE.cartLoginFirst }}</p>
       <div class="page-actions cart-empty-actions">
         <button type="button" class="u-btn-primary" @click="openLogin">
-          登录 / 注册
+          {{ TRADE.cartLoginCta }}
         </button>
-        <router-link to="/hot" class="u-btn-secondary">先去逛逛</router-link>
+        <router-link to="/hot" class="u-btn-secondary">{{ TRADE.cartBrowseFirst }}</router-link>
       </div>
     </div>
 
     <div v-else-if="loading && !cartStore.loaded" class="u-loading-block" role="status">
       <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
-      <span>正在加载购物车…</span>
+      <span>{{ TRADE.cartLoading }}</span>
     </div>
 
     <div v-else-if="cartStore.isEmpty" class="page-empty">
       <p class="page-empty-title">{{ TRADE.cartEmpty }}</p>
       <p class="page-empty-hint">{{ TRADE.cartEmptyHint }}</p>
       <div class="page-actions cart-empty-actions">
-        <router-link to="/categories" class="u-btn-primary">浏览商品分类</router-link>
-        <router-link to="/hot" class="u-btn-secondary">看热门推荐</router-link>
+        <router-link to="/categories" class="u-btn-primary">{{ TRADE.cartBrowseCategories }}</router-link>
+        <router-link to="/hot" class="u-btn-secondary">{{ TRADE.cartViewHot }}</router-link>
       </div>
     </div>
 
     <template v-else>
       <div class="cart-layout">
         <!-- 左：条目列表 -->
-        <section class="page-panel cart-list" aria-label="购物车条目">
+        <section class="page-panel cart-list" :aria-label="TRADE.cartItemsAria">
           <div class="cart-list-head">
             <label class="u-checkbox">
               <input
@@ -49,7 +49,7 @@
                 @change="toggleAll"
               />
               <span class="u-checkbox-box" aria-hidden="true"></span>
-              <span>全选</span>
+              <span>{{ TRADE.cartSelectAll }}</span>
             </label>
 
             <button
@@ -74,7 +74,7 @@
                   type="checkbox"
                   :checked="selected.has(item.id)"
                   :disabled="!item.available"
-                  :aria-label="`选择 ${item.product_title || '商品'}`"
+                  :aria-label="translate('trade.cartSelectItem', '选择 {name}', { name: item.product_title || TRADE.cartDefaultProduct })"
                   @change="toggleOne(item)"
                 />
                 <span class="u-checkbox-box" aria-hidden="true"></span>
@@ -83,7 +83,7 @@
               <router-link
                 :to="`/product/${item.product_id}`"
                 class="cart-thumb"
-                :aria-label="`查看 ${item.product_title || '商品'}`"
+                :aria-label="translate('trade.cartViewItem', '查看 {name}', { name: item.product_title || TRADE.cartDefaultProduct })"
               >
                 <SmartImage
                   v-if="item.product_image"
@@ -99,13 +99,13 @@
 
               <div class="cart-item-main">
                 <router-link :to="`/product/${item.product_id}`" class="cart-item-title">
-                  {{ item.product_title || '商品已下架' }}
+                  {{ item.product_title || TRADE.cartDelisted }}
                 </router-link>
 
                 <p class="cart-item-price">
                   <span class="u-price cart-item-unit">{{ formatPrice(item.unit_price) }}</span>
                   <span v-if="item.price_changed" class="cart-item-changed">
-                    （现价 {{ formatPrice(item.current_price) }}）
+                    {{ translate('trade.cartPriceChanged', '（现价 {price}）', { price: formatPrice(item.current_price) }) }}
                   </span>
                 </p>
 
@@ -118,7 +118,7 @@
                 <button
                   type="button"
                   class="u-btn-secondary quantity-step"
-                  aria-label="减少数量"
+                  :aria-label="TRADE.cartDecrease"
                   :disabled="item.quantity <= 1 || pending.has(item.id)"
                   @click="changeQuantity(item, item.quantity - 1)"
                 >
@@ -128,7 +128,7 @@
                 <button
                   type="button"
                   class="u-btn-secondary quantity-step"
-                  aria-label="增加数量"
+                  :aria-label="TRADE.cartIncrease"
                   :disabled="item.quantity >= 999 || pending.has(item.id)"
                   @click="changeQuantity(item, item.quantity + 1)"
                 >
@@ -141,7 +141,7 @@
               <button
                 type="button"
                 class="u-icon-btn cart-item-remove"
-                :aria-label="`移除 ${item.product_title || '商品'}`"
+                :aria-label="translate('trade.cartRemoveItem', '移除 {name}', { name: item.product_title || TRADE.cartDefaultProduct })"
                 :disabled="pending.has(item.id)"
                 @click="removeItem(item)"
               >
@@ -156,14 +156,14 @@
         </section>
 
         <!-- 右：结算面板（桌面吸顶） -->
-        <aside class="cart-summary" aria-label="结算">
+        <aside class="cart-summary" :aria-label="TRADE.cartSummaryAria">
           <div class="page-panel">
-            <h2 class="page-panel-head">结算</h2>
+            <h2 class="page-panel-head">{{ TRADE.cartSummaryTitle }}</h2>
 
             <dl class="summary-rows">
               <div class="summary-row">
                 <dt>{{ TRADE.cartSelected }}</dt>
-                <dd>{{ selectedCount }} 件</dd>
+                <dd>{{ selectedCount }} {{ TRADE.cartSelectedUnit }}</dd>
               </div>
               <div class="summary-row summary-row--total">
                 <dt>{{ TRADE.cartTotal }}</dt>
@@ -189,12 +189,12 @@
                 v-model="couponValue"
                 :options="couponOptions"
                 :disabled="couponOptions.length === 0"
-                aria-label="选择优惠券"
-                placeholder="不使用优惠券"
+                :aria-label="TRADE.cartSelectCoupon"
+                :placeholder="TRADE.cartNoCoupon"
               />
 
               <div class="u-field">
-                <label class="u-field-label" for="cart-points">积分抵扣</label>
+                <label class="u-field-label" for="cart-points">{{ TRADE.cartPointsLabel }}</label>
                 <div class="quote-points">
                   <input
                     id="cart-points"
@@ -212,16 +212,16 @@
                     :disabled="pointsMax <= 0"
                     @click="useAllPoints"
                   >
-                    全部可用
+                    {{ TRADE.cartUseAll }}
                   </button>
                 </div>
                 <p class="page-note quote-hint">
-                  100 积分抵 ¥1 · 本单最多可抵 {{ pointsMax }} 积分
+                  {{ translate('trade.cartPointsHint', '100 积分抵 ¥1 · 本单最多可抵 {max} 积分', { max: pointsMax }) }}
                 </p>
                 <p v-if="pointsError" class="page-note quote-error" role="alert">{{ pointsError }}</p>
               </div>
 
-              <dl v-if="quoteRows.length > 0" class="summary-rows quote-rows" aria-label="结算明细">
+              <dl v-if="quoteRows.length > 0" class="summary-rows quote-rows" :aria-label="TRADE.cartDetailAria">
                 <div
                   v-for="row in quoteRows"
                   :key="row.key"
@@ -234,7 +234,7 @@
                   </dd>
                 </div>
               </dl>
-              <p v-else-if="checkoutStore.quoting" class="page-note quote-hint">正在试算…</p>
+              <p v-else-if="checkoutStore.quoting" class="page-note quote-hint">{{ TRADE.cartQuoting }}</p>
 
               <p v-if="checkoutStore.couponNotice" class="page-note quote-error" role="alert">
                 {{ checkoutStore.couponNotice }}
@@ -282,7 +282,7 @@
               @click="handleCheckout"
             >
               <span v-if="submitting" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-              <span>{{ submitting ? '提交中…' : TRADE.cartCheckout }}</span>
+              <span>{{ submitting ? TRADE.cartSubmitting : TRADE.cartCheckout }}</span>
             </button>
 
             <p class="page-note">{{ PRODUCT_GRID.paymentNotice }}</p>
@@ -337,6 +337,7 @@ import {
   settlementRows,
 } from '@/utils/checkout.js'
 import { PAGES, PRODUCT_GRID, TRADE } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 
 const router = useRouter()
 const cartStore = useCartStore()

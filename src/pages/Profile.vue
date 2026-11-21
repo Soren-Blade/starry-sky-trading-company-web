@@ -7,7 +7,7 @@
         <p class="page-shell-desc">{{ PAGES.profile.description }}</p>
       </div>
       <span class="u-tag u-tag--accent">
-        {{ userStore.isLoggedIn ? '已登录' : '游客' }}
+        {{ userStore.isLoggedIn ? PAGES.profile.statusLoggedIn : PAGES.profile.statusGuest }}
       </span>
     </header>
 
@@ -20,7 +20,7 @@
     <section
       v-if="userStore.isLoggedIn && memberSummaryVisible"
       class="ui-card profile-member"
-      aria-label="会员权益摘要"
+      :aria-label="PAGES.profile.memberAria"
     >
       <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-member-skeleton">
         <span class="u-skeleton profile-member-skeleton-line"></span>
@@ -29,27 +29,29 @@
 
       <p v-else-if="memberStore.error" class="profile-member-error" role="alert">
         {{ memberStore.error }}
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">重试</button>
+        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">{{ PAGES.profile.retry }}</button>
       </p>
 
       <template v-else-if="memberStore.overview">
         <div class="profile-member-head">
           <p class="profile-member-title">
             <AppIcon name="star" aria-hidden="true" />
-            {{ memberStore.isMember ? memberStore.levelName : '还不是会员' }}
+            {{ memberStore.isMember ? memberStore.levelName : PAGES.profile.notMember }}
           </p>
           <p class="profile-member-note">
             {{
               memberStore.isMember && memberStore.overview.days_left
-                ? `有效期剩余 ${memberStore.overview.days_left} 天`
-                : '开通会员可享消费折扣与积分倍率'
+                ? translate('pages.profile.memberDaysLeft', PAGES.profile.memberDaysLeft, {
+                    days: memberStore.overview.days_left,
+                  })
+                : PAGES.profile.memberUpgradeNote
             }}
           </p>
         </div>
 
         <dl class="profile-member-stats">
           <div class="profile-member-stat">
-            <dt class="profile-member-term">成长值</dt>
+            <dt class="profile-member-term">{{ PAGES.profile.growth }}</dt>
             <dd class="profile-member-value">
               {{ memberStore.overview.growth ?? 0 }}
               <span v-if="memberStore.overview.growth_threshold" class="profile-member-sub">
@@ -58,7 +60,7 @@
             </dd>
           </div>
           <div class="profile-member-stat">
-            <dt class="profile-member-term">积分</dt>
+            <dt class="profile-member-term">{{ PAGES.profile.points }}</dt>
             <dd class="profile-member-value">
               {{ memberStore.points }}
               <span v-if="memberStore.overview.points_value" class="profile-member-sub">
@@ -67,20 +69,22 @@
             </dd>
           </div>
           <div class="profile-member-stat">
-            <dt class="profile-member-term">优惠券</dt>
+            <dt class="profile-member-term">{{ PAGES.profile.coupons }}</dt>
             <dd class="profile-member-value">{{ memberStore.overview.coupons ?? 0 }}</dd>
           </div>
         </dl>
 
         <div class="profile-member-actions">
-          <router-link class="u-btn-secondary" to="/member">会员中心</router-link>
-          <router-link class="u-btn-secondary" to="/member/plans">套餐对比</router-link>
+          <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
+          <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
         </div>
 
         <p v-if="memberStore.overview.points_expiring" class="profile-member-remind">
           <AppIcon name="clock" aria-hidden="true" />
-          {{ memberStore.overview.points_expiring.points }} 积分将于
-          {{ toDate(memberStore.overview.points_expiring.expire_at) }} 过期
+          {{ translate('pages.profile.pointsExpiring', PAGES.profile.pointsExpiring, {
+            points: memberStore.overview.points_expiring.points,
+            date: toDate(memberStore.overview.points_expiring.expire_at),
+          }) }}
         </p>
       </template>
     </section>
@@ -90,11 +94,11 @@
       入口挂在 `/user/checkin`（旧 `/checkin` 在路由里重定向过去）。
       今日状态读会员摘要里已有的 `checkin_available`，不额外发请求。
     -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-checkin" aria-label="每日签到">
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-checkin" :aria-label="PAGES.profile.checkinAria">
       <div class="profile-checkin-text">
-        <p class="profile-checkin-title">每日签到</p>
+        <p class="profile-checkin-title">{{ PAGES.profile.checkinTitle }}</p>
         <p class="profile-checkin-desc">
-          {{ checkinAvailable ? '今天还没签到，连签 7 天以上每天得 20 积分' : '今天已签到，明天再来' }}
+          {{ checkinAvailable ? PAGES.profile.checkinAvailable : PAGES.profile.checkinDone }}
         </p>
       </div>
       <!--
@@ -109,26 +113,26 @@
         :disabled="checkinPending"
         @click="handleProfileCheckin"
       >
-        {{ checkinPending ? '签到中…' : '立即签到' }}
+        {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
       </button>
-      <router-link v-else class="u-btn-secondary" to="/user/checkin">查看签到日历</router-link>
+      <router-link v-else class="u-btn-secondary" to="/user/checkin">{{ PAGES.profile.checkinCalendar }}</router-link>
     </section>
 
     <!--
       邀请有礼（1.6.0）：奖励同样是积分来源，且**发奖在好友完成首单时**，
       不是注册时 —— 文案必须与派奖时机一致，否则用户会以为奖励丢了。
     -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" aria-label="邀请有礼">
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
       <div class="profile-invite-text">
-        <p class="profile-invite-title">邀请有礼</p>
-        <p class="profile-invite-desc">好友通过你的链接注册并完成首单，双方各得积分奖励</p>
+        <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
+        <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
       </div>
-      <router-link class="u-btn-secondary" to="/invite">去邀请</router-link>
+      <router-link class="u-btn-secondary" to="/invite">{{ PAGES.profile.inviteCta }}</router-link>
     </section>
 
     <div class="profile-layout">
       <!-- 左：账号信息（只读） -->
-      <section class="page-panel" aria-label="账号信息">
+      <section class="page-panel" :aria-label="PAGES.profile.accountAria">
         <h2 class="page-panel-head">{{ TRADE.profileBasic }}</h2>
 
         <div class="profile-identity">
@@ -136,15 +140,15 @@
             <SmartImage
               v-if="userStore.avatarUrl"
               :src="userStore.avatarUrl"
-              :alt="nickname || '用户头像'"
+              :alt="nickname || PAGES.profile.accountAvatar"
               fallback-icon="user"
               loading="eager"
             />
             <AppIcon v-else name="user" />
           </span>
           <div class="profile-identity-text">
-            <p class="profile-name">{{ nickname || '未设置昵称' }}</p>
-            <p class="profile-since">注册于 {{ toDate(userInfo.created_at) || '—' }}</p>
+            <p class="profile-name">{{ nickname || PAGES.profile.accountNoNickname }}</p>
+            <p class="profile-since">{{ translate('pages.profile.accountSince', PAGES.profile.accountSince, { date: toDate(userInfo.created_at) || '—' }) }}</p>
           </div>
         </div>
 
@@ -164,7 +168,7 @@
               v-if="row.key === 'uuid'"
               class="profile-field-value profile-field-value--code ec-code ec-code--sm"
             >
-              <span class="ec-code__label">{{ uuidRevealed ? '明文' : '已脱敏' }}</span>
+              <span class="ec-code__label">{{ uuidRevealed ? PAGES.profile.uidPlain : PAGES.profile.uidMasked }}</span>
               <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
                 {{ uuidDisplay }}
               </span>
@@ -173,7 +177,7 @@
                   type="button"
                   class="ec-icon-btn"
                   :aria-pressed="uuidRevealed ? 'true' : 'false'"
-                  :aria-label="uuidRevealed ? '隐藏用户 UID' : '显示用户 UID'"
+                  :aria-label="uuidRevealed ? PAGES.profile.uidHide : PAGES.profile.uidShow"
                   :disabled="!uuidRaw"
                   @click="toggleUuid"
                 >
@@ -183,12 +187,12 @@
                   type="button"
                   class="ec-icon-btn"
                   :class="{ 'is-ok': uuidCopied }"
-                  :aria-label="uuidCopied ? '已复制用户 UID' : '复制用户 UID'"
+                  :aria-label="uuidCopied ? PAGES.profile.uidCopiedAria : PAGES.profile.uidCopy"
                   :disabled="!uuidRaw"
                   @click="copyUuid"
                 >
                   <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
-                  <span class="ec-sr">{{ uuidCopied ? '已复制' : '复制' }}</span>
+                  <span class="ec-sr">{{ uuidCopied ? PAGES.profile.uidCopied : PAGES.profile.uidCopyShort }}</span>
                 </button>
               </div>
             </dd>
@@ -200,7 +204,7 @@
       </section>
 
       <!-- 右：可编辑资料 -->
-      <section class="page-panel" aria-label="修改资料">
+      <section class="page-panel" :aria-label="PAGES.profile.editAria">
         <h2 class="page-panel-head">{{ TRADE.profileEdit }}</h2>
 
         <p v-if="!userStore.isLoggedIn" class="page-note page-note--warning">
@@ -241,7 +245,7 @@
                   <SmartImage
                     v-if="avatarShown"
                     :src="avatarShown"
-                    :alt="nickname || '用户头像'"
+                    :alt="nickname || PAGES.profile.accountAvatar"
                     fallback-icon="user"
                     loading="eager"
                   />
@@ -350,7 +354,7 @@
               :aria-busy="saving"
             >
               <span v-if="saving" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-              <span>{{ saving ? '保存中…' : TRADE.profileSave }}</span>
+              <span>{{ saving ? PAGES.profile.saving : TRADE.profileSave }}</span>
             </button>
             <button
               type="button"
@@ -373,14 +377,11 @@
       时间窗三档（一个月 / 半年 / 一年）与导出的 CSV 列由服务端决定，
       前端只负责把 blob 接成下载 —— 口径放在服务端，换接口时不会两边各写一套。
     -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-logs" aria-label="操作日志">
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-logs" :aria-label="PAGES.profile.logsAria">
       <div class="profile-logs-head">
         <div class="profile-logs-text">
-          <p class="profile-logs-title">操作日志</p>
-          <p class="profile-logs-desc">
-            你的账号与商城操作记录（登录、下单、兑换卡密、收藏、加购、签到、积分与成长值变动等）。
-            可导出为 CSV，最多近一年、5000 条。
-          </p>
+          <p class="profile-logs-title">{{ PAGES.profile.logsTitle }}</p>
+          <p class="profile-logs-desc">{{ PAGES.profile.logsDesc }}</p>
         </div>
         <button
           type="button"
@@ -390,12 +391,12 @@
           @click="handleDownloadLogs"
         >
           <span v-if="downloadingLogs" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-          <span>{{ downloadingLogs ? '导出中…' : '下载日志' }}</span>
+          <span>{{ downloadingLogs ? PAGES.profile.logsExporting : PAGES.profile.logsDownload }}</span>
         </button>
       </div>
 
       <!-- 时间范围只影响「导出多少」，不影响页面上的任何数据，因此按 tablist 表达 -->
-      <div class="u-tabs u-tabs--pill profile-logs-tabs" role="tablist" aria-label="导出时间范围">
+      <div class="u-tabs u-tabs--pill profile-logs-tabs" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
         <button
           v-for="item in LOG_RANGES"
           :key="item.value"
@@ -406,13 +407,11 @@
           :aria-selected="logRange === item.value"
           @click="logRange = item.value"
         >
-          {{ item.label }}
+          {{ logRangeLabel(item) }}
         </button>
       </div>
 
-      <p class="page-note profile-logs-note">
-        日志记录「你做了什么、对象是什么、成功与否」，不包含你在输入框里填写的内容，卡密卡号在服务端就已脱敏；游客身份没有账号历史。
-      </p>
+      <p class="page-note profile-logs-note">{{ PAGES.profile.logsFootnote }}</p>
     </section>
   </div>
 </template>
@@ -541,6 +540,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 import { formatPointsValue } from '@/constants/member.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
@@ -574,6 +574,13 @@ const memberSummaryVisible = computed(
  */
 const checkinAvailable = computed(() => memberStore.overview?.checkin_available === true)
 
+const logRangeLabel = (item) =>
+  ({
+    '30d': PAGES.profile.logRange30,
+    '180d': PAGES.profile.logRange180,
+    '365d': PAGES.profile.logRange365,
+  })[item.value] || item.label
+
 /**
  * 签到按钮的进行中状态。
  *
@@ -601,15 +608,20 @@ async function handleProfileCheckin() {
     const result = await pointsStore.doCheckin()
     if (!result) return
     if (result.already) {
-      notify.info('今天已经签过到了')
+      notify.info(PAGES.profile.checkinAlready)
     } else {
-      notify.success(`签到成功，获得 ${result.awarded} 积分（连签 ${result.streak} 天）`)
+      notify.success(
+        translate('pages.profile.checkinSuccess', PAGES.profile.checkinSuccess, {
+          awarded: result.awarded,
+          streak: result.streak,
+        })
+      )
     }
     // force: 签到是写操作，8 秒短缓存里还是签到前的快照（checkin_available 仍为 true），
     // 不穿透的话按钮会一直停在「立即签到」—— 这正是用户实测到的「签完没换成查看签到日历」。
     await memberStore.fetchOverview({ silent: true, force: true })
   } catch (error) {
-    notify.error(error?.response?.data?.message || '签到失败，请稍后重试')
+    notify.error(error?.response?.data?.message || PAGES.profile.checkinFailed)
   } finally {
     checkinPending.value = false
   }
@@ -712,8 +724,12 @@ const avatarShown = computed(() => {
 /** 选中文件的提示：文件名 + 缩放后的体积，让用户知道「传上去的是多大」 */
 const pickedInfo = computed(() => {
   if (!avatarPreview.value) return ''
-  const size = previewSize.value ? `，压缩后 ${previewSize.value}` : ''
-  return `${sourceName.value || '已选择图片'}${size}`
+  const size = previewSize.value
+    ? translate('pages.profile.pickedCompressed', PAGES.profile.pickedCompressed, {
+        size: previewSize.value,
+      })
+    : ''
+  return `${sourceName.value || PAGES.profile.selectedImage}${size}`
 })
 
 /**
@@ -736,13 +752,13 @@ const readonlyRows = computed(() => {
     // 字段名「用户 UID」由 TRADE.profileFields.uuid 统一提供（值仍是 users.uuid，
     // 展示 / 复制逻辑都不变），这里不再就地覆盖，避免同一文案有两个来源。
     { key: 'uuid', label: fields.uuid, value: data.uuid || '—' },
-    { key: 'username', label: fields.username, value: data.username || '未设置' },
-    { key: 'email', label: fields.email, value: data.email || '未绑定' },
-    { key: 'phone', label: fields.phone, value: data.phone || '未绑定' },
+    { key: 'username', label: fields.username, value: data.username || PAGES.profile.unset },
+    { key: 'email', label: fields.email, value: data.email || PAGES.profile.unbound },
+    { key: 'phone', label: fields.phone, value: data.phone || PAGES.profile.unbound },
     {
       key: 'userType',
       label: fields.userType,
-      value: data.user_type === 'registered' ? '注册用户' : '游客',
+      value: data.user_type === 'registered' ? PAGES.profile.registeredUser : PAGES.profile.guestUser,
     },
     { key: 'status', label: fields.status, value: data.status || '—' },
     { key: 'createdAt', label: fields.createdAt, value: toDate(data.created_at) || '—' },
@@ -780,7 +796,7 @@ const copyUuid = async () => {
 
   const result = await copyText(uuidRaw.value)
   if (!result.ok) {
-    notify.error(result.message || '复制失败，请手动选择文本复制')
+    notify.error(result.message || PAGES.profile.copyFailed)
     return
   }
 
@@ -850,7 +866,7 @@ const handleSubmit = async () => {
 
   const nicknameValue = form.value.nickname.trim()
   if (!nicknameValue) {
-    errorMessage.value = '昵称不能为空'
+    errorMessage.value = PAGES.profile.nicknameRequired
     return
   }
 
@@ -898,7 +914,7 @@ const handleDownloadLogs = async () => {
   try {
     const blob = await downloadMyLogs({ range: logRange.value })
     if (!(blob instanceof Blob)) {
-      throw new Error('导出失败，请稍后重试')
+      throw new Error(PAGES.profile.exportFailed)
     }
 
     const url = URL.createObjectURL(blob)
@@ -910,9 +926,9 @@ const handleDownloadLogs = async () => {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
 
-    notify.success('日志已开始下载')
+    notify.success(PAGES.profile.exportStarted)
   } catch (error) {
-    notify.error(error?.message || '导出失败，请稍后重试')
+    notify.error(error?.message || PAGES.profile.exportFailed)
   } finally {
     downloadingLogs.value = false
   }

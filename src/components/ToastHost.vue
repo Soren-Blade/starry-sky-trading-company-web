@@ -1,5 +1,5 @@
 <template>
-  <div class="ec-toast-layer" role="region" aria-label="系统提示">
+  <div class="ec-toast-layer" role="region" :aria-label="$t('a11y.systemMessages')">
     <div
       v-for="item in toast.items"
       :key="item.id"

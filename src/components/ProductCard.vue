@@ -76,7 +76,7 @@
           class="ec-icon-btn product-card__icon"
           :class="{ 'is-active': isFavorited }"
           :aria-pressed="isFavorited"
-          :aria-label="isFavorited ? `取消收藏 ${title}` : `收藏 ${title}`"
+          :aria-label="isFavorited ? translate('productGrid.unfavorite', PRODUCT_GRID.unfavorite, { title }) : translate('productGrid.favorite', PRODUCT_GRID.favorite, { title })"
           :disabled="favoriteBusy"
           @click.stop="onToggleFavorite"
         >
@@ -99,7 +99,7 @@
           type="button"
           class="ec-icon-btn product-card__icon"
           disabled
-          aria-label="已售罄，不可加入购物车"
+          :aria-label="PRODUCT_GRID.soldOutAria"
         >
           <AppIcon name="shopping-cart" />
         </button>
@@ -151,6 +151,7 @@ import { useFavoriteStore } from '@/stores/favorite'
 import { useUserStore } from '@/stores/user'
 import { notify } from '@/hooks/useToast/index.js'
 import { PRODUCT_GRID } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 import { formatUtils } from '@/utils/index.js'
 import { goodsTypeLabel } from '@/utils/goodsType.js'
 

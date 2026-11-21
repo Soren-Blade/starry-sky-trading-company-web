@@ -141,6 +141,8 @@
 
   /* ── A11. 导航栏 ──────────────────────────────────────────── */
   --navbar-height: var(--ec-topbar-h);
+  /* 移动端底部悬浮导航：图标 22 + 10px 标签 + 上下内边距，64 是可用下限 */
+  --bottom-nav-height: 64px;
   --nav-padding-x: var(--ec-space-6);
   --nav-border-color: var(--ec-border-subtle);
   --nav-logo-height: 24px;

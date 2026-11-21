@@ -23,24 +23,24 @@
       </router-link>
 
       <!-- 建议链接：行式列表，行间 --divider -->
-      <nav class="nf-links" aria-label="建议访问的页面">
+      <nav class="nf-links" :aria-label="PAGES.notFound.suggestionsAria">
         <h2 class="nf-links-title">{{ PAGES.notFound.suggestionsTitle }}</h2>
         <ul class="nf-links-list">
           <li>
             <router-link to="/categories" class="nf-link">
-              <span>商品分类</span>
+              <span>{{ PAGES.categories.title }}</span>
               <span class="nf-link-arrow" aria-hidden="true">→</span>
             </router-link>
           </li>
           <li>
             <router-link to="/hot" class="nf-link">
-              <span>热卖榜</span>
+              <span>{{ PAGES.hot.title }}</span>
               <span class="nf-link-arrow" aria-hidden="true">→</span>
             </router-link>
           </li>
           <li>
             <router-link to="/about" class="nf-link">
-              <span>关于我们</span>
+              <span>{{ PAGES.about.title }}</span>
               <span class="nf-link-arrow" aria-hidden="true">→</span>
             </router-link>
           </li>

@@ -3,8 +3,13 @@
   <header class="navbar" :class="{ 'navbar-scrolled': isScrolled }">
     <div class="navbar-inner">
       <!-- Logo（高度由 --nav-logo-height 决定，文字随之派生） -->
-      <router-link to="/home" class="navbar-logo" @click="handleMenuClick">
-        <span class="logo-icon" aria-hidden="true">{{ SITE.logo }}</span>
+      <router-link
+        to="/home"
+        class="navbar-logo"
+        :aria-label="SITE.name"
+        @click="handleMenuClick"
+      >
+        <span class="logo-icon" aria-hidden="true"><AppIcon name="star" /></span>
         <span class="logo-text">{{ SITE.name }}</span>
       </router-link>
 
@@ -72,6 +77,9 @@
             </button>
           </div>
         </div>
+
+        <!-- 语言切换：只占一枚图标的位置；移动端搬进抽屉（顶栏放不下第二组设置） -->
+        <LanguageSwitch class="hide-below-768" />
 
         <!-- 明暗切换（EC theme-switch：浅色 / 深色 / 跟随系统 三档） -->
         <ThemeSwitch />
@@ -153,7 +161,8 @@
           class="u-btn-primary"
           @click="openLoginModal"
         >
-          {{ AUTH.loginCta }}
+          <span class="hide-below-768">{{ AUTH.loginCta }}</span>
+          <span class="show-below-768">{{ t('auth.loginShort', '登录') }}</span>
         </button>
 
         <!-- 有身份（游客或注册用户）：头像与下拉菜单 -->
@@ -177,7 +186,7 @@
               <SmartImage
                 v-if="avatarUrl"
                 :src="avatarUrl"
-                :alt="nickname || '用户头像'"
+                :alt="nickname || t('navbar.avatarFallback')"
                 fallback-icon="user"
                 fallback-class="avatar-fallback"
                 loading="eager"
@@ -202,12 +211,12 @@
             ref="userMenuPanel"
             class="u-dropdown user-dropdown"
             role="menu"
-            aria-label="账号菜单"
+            :aria-label="t('navbar.accountMenu')"
             @keydown="onMenuKeydown"
           >
             <div class="user-info">
               <p class="user-name">
-                <span class="user-name-text">{{ nickname || '未设置昵称' }}</span>
+                <span class="user-name-text">{{ nickname || t('navbar.nicknameUnset') }}</span>
                 <span v-if="isGuest" class="u-tag u-tag--warning user-badge">
                   {{ AUTH.guestBadge }}
                 </span>
@@ -257,7 +266,7 @@
             <!-- 分组标题按设计去掉了可见形态：菜单里不再出现「账号资产」这行小字。
                  组名保留为 visually-hidden —— role="menu" 的条目仍需要一个分组上下文，
                  读屏用户听到的是「账号资产，个人中心」，而不是一串没有归属的跳转。 -->
-            <p class="visually-hidden">账号资产</p>
+            <p class="visually-hidden">{{ t('navbar.assetsGroup') }}</p>
             <router-link
               role="menuitem"
               class="u-dropdown-item user-menu-first-item"
@@ -265,7 +274,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="user" /></span>
-              个人中心
+              {{ t('navbar.profile') }}
             </router-link>
             <router-link
               role="menuitem"
@@ -274,7 +283,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="package" /></span>
-              我的订单
+              {{ t('navbar.orders') }}
             </router-link>
             <router-link
               role="menuitem"
@@ -283,7 +292,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="heart" /></span>
-              我的收藏
+              {{ t('navbar.favorites') }}
             </router-link>
             <!--
               我的资产（2.3.0）：数字商品、卡密、已激活工具的统一入口。
@@ -297,7 +306,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="credit-card" /></span>
-              我的资产
+              {{ t('navbar.assets') }}
             </router-link>
             <router-link
               role="menuitem"
@@ -306,7 +315,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="key" /></span>
-              卡密管理
+              {{ t('navbar.kami') }}
             </router-link>
             <!--
               签到归「账号资产」而不是会员那一组：非会员同样每天签到赚积分，
@@ -321,7 +330,7 @@
               @click="handleMenuClick"
             >
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="calendar" /></span>
-              签到日历
+              {{ t('navbar.checkin') }}
             </router-link>
 
             <!--
@@ -356,7 +365,7 @@
           class="u-icon-btn menu-toggle show-mobile"
           :class="{ active: menuOpen }"
           :aria-expanded="menuOpen"
-          aria-label="切换导航菜单"
+          :aria-label="t('navbar.toggleMenu')"
           @click="toggleMenu"
         >
           <span class="menu-toggle-bars" aria-hidden="true">
@@ -388,6 +397,11 @@
         <span class="drawer-theme-label">{{ THEME_SWITCH.label }}</span>
         <ThemeSwitch />
       </div>
+
+      <!-- 语言切换：抽屉是移动端唯一有纵向余量的地方，与明暗切换同属「偏好」 -->
+      <div class="drawer-lang">
+        <LanguageSwitch variant="drawer" />
+      </div>
     </div>
   </header>
 </template>
@@ -412,6 +426,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { useMemberStore } from '@/stores/member'
 import { useCartStore } from '@/stores/cart'
@@ -420,6 +435,7 @@ import { throttle } from '@/utils/index.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
 import SearchBar from './SearchBar.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 import AppIcon from './AppIcon.vue'
 import SmartImage from './SmartImage.vue'
 import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT, THEME_SWITCH } from '@/constants/index.js'
@@ -430,6 +446,7 @@ const memberStore = useMemberStore()
 const mailStore = useMailStore()
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 // isGuest 用于游客标记与文案；顶栏的「显示头像还是登录按钮」判断走的是
 // hasIdentity（游客也算有身份），因此这里不需要 isLoggedIn。
@@ -458,9 +475,9 @@ const hasIdentity = computed(() => Boolean(userStore.userId))
 
 /** 头像按钮的无障碍名：把身份一并读出来，读屏用户同样能知道自己是游客 */
 const identityLabel = computed(() => {
-  const who = nickname.value || '未设置昵称'
-  const role = isGuest.value ? AUTH.guestBadge : '已登录'
-  return `打开用户菜单（${who}，${role}）`
+  const who = nickname.value || t('navbar.nicknameUnset')
+  const role = isGuest.value ? AUTH.guestBadge : t('navbar.signedIn')
+  return t('navbar.identityLabel', { name: who, role })
 })
 
 // 说明：这里**不**引入 useBodyScroll。
@@ -477,7 +494,7 @@ const navMenu = NAV_MENU
 /** 购物车角标：来自 cart store，登录后由 App.vue 拉取 */
 const cartCount = computed(() => cartStore.count)
 const cartLabel = computed(() =>
-  cartCount.value > 0 ? `购物车，${cartCount.value} 件商品` : '购物车'
+  cartCount.value > 0 ? t('navbar.cartCount', { count: cartCount.value }) : t('navbar.cartEmpty')
 )
 
 /**
@@ -487,7 +504,9 @@ const cartLabel = computed(() =>
  * 顶栏拿不到的只有「未登录」这一种情况，那时读成「会员中心」即可，不编造等级。
  */
 const memberLabel = computed(() =>
-  memberStore.levelName ? `会员中心，当前等级 ${memberStore.levelName}` : '会员中心'
+  memberStore.levelName
+    ? t('navbar.memberLevel', { level: memberStore.levelName })
+    : t('navbar.member')
 )
 
 /**
@@ -498,7 +517,9 @@ const memberLabel = computed(() =>
  * 未读数由 App.vue 在身份就绪后统一拉取，这里不自己发请求。
  */
 const mailLabel = computed(() =>
-  mailStore.hasUnread ? `消息中心，${mailStore.unreadCount} 条未读` : '消息中心'
+  mailStore.hasUnread
+    ? t('navbar.mailUnread', { count: mailStore.unreadCount })
+    : t('navbar.mail')
 )
 
 /**
@@ -819,8 +840,11 @@ onUnmounted(() => {
 }
 
 .logo-icon {
-  font-size: var(--nav-logo-height);
+  display: inline-flex;
+  align-items: center;
+  font-size: calc(var(--nav-logo-height) * 0.9);
   line-height: 1;
+  color: var(--accent);
 }
 
 .logo-text {
@@ -1416,9 +1440,17 @@ onUnmounted(() => {
   }
 }
 
+.show-below-768 {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .hide-below-768 {
     display: none;
+  }
+
+  .show-below-768 {
+    display: inline-flex;
   }
 
   .menu-toggle {
@@ -1468,6 +1500,10 @@ onUnmounted(() => {
     margin-top: calc(var(--space-unit) * 2);
     padding-top: calc(var(--space-unit) * 2);
     border-top: var(--stroke-width) solid var(--divider);
+  }
+
+  .drawer-lang {
+    margin-top: calc(var(--space-unit) * 2);
   }
 }
 

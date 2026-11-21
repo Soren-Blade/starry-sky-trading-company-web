@@ -18,11 +18,20 @@
  *    （见 `content.js` 的 AUTH.forgot*）。客服页不提「找回密码」。
  */
 
+import { translate } from '../i18n/index.js'
+
 /** 页签：提交反馈 / 我的会话 */
 export const SUPPORT_TABS = [
   { value: 'submit', label: '提交反馈' },
   { value: 'threads', label: '我的会话' },
 ]
+
+/** 页签文案（按当前语言） */
+export function supportTabLabel(value) {
+  const hit = SUPPORT_TABS.find((item) => item.value === value)
+  const fallback = hit ? hit.label : ''
+  return translate(value === 'threads' ? 'support.tabThreads' : 'support.tabSubmit', fallback)
+}
 
 /**
  * 反馈分类 —— 取值必须与 `support_threads_category_check` 完全一致。
@@ -98,15 +107,19 @@ export const SUPPORT_LIMITS = {
   message: 5000,
 }
 
-/** 分类取值 → 中文名（认不出给兜底，不裸露英文键） */
+/** 分类取值 → 当前语言名称（认不出给兜底，不裸露英文键） */
 export function supportCategoryLabel(value) {
   const hit = SUPPORT_CATEGORIES.find((item) => item.value === value)
-  return hit ? hit.label : SUPPORT_CATEGORY_FALLBACK
+  const fallback = hit ? hit.label : SUPPORT_CATEGORY_FALLBACK
+  const key = hit ? `support.categories.${hit.value}` : 'support.categories.other'
+  return translate(key, fallback)
 }
 
-/** 会话状态 → 中文名（认不出给「已关闭」，不显示英文键） */
+/** 会话状态 → 当前语言名称（认不出给「已关闭」，不显示英文键） */
 export function supportStatusLabel(status) {
-  return SUPPORT_STATUSES[status]?.label || SUPPORT_STATUSES.closed.label
+  const hit = SUPPORT_STATUSES[status] || SUPPORT_STATUSES.closed
+  const key = SUPPORT_STATUSES[status] ? `support.statuses.${status}` : 'support.statuses.closed'
+  return translate(key, hit.label)
 }
 
 /** 会话状态 → `.u-tag--*` 变体（认不出给 muted，不退化成无底色） */
@@ -114,14 +127,18 @@ export function supportStatusTag(status) {
   return SUPPORT_STATUSES[status]?.tag || 'u-tag--muted'
 }
 
-/** 消息作者 → 中文名（认不出给「系统」） */
+/** 消息作者 → 当前语言名称（认不出给「系统」） */
 export function supportAuthorLabel(authorType) {
-  return SUPPORT_AUTHOR_LABELS[authorType] || SUPPORT_AUTHOR_LABELS.system
+  const hit = SUPPORT_AUTHOR_LABELS[authorType] || SUPPORT_AUTHOR_LABELS.system
+  const key = SUPPORT_AUTHOR_LABELS[authorType] ? `support.authors.${authorType}` : 'support.authors.system'
+  return translate(key, hit)
 }
 
-/** 消息来源 → 中文名（认不出给「系统」） */
+/** 消息来源 → 当前语言名称（认不出给「系统」） */
 export function supportSourceLabel(source) {
-  return SUPPORT_SOURCE_LABELS[source] || SUPPORT_SOURCE_LABELS.system
+  const hit = SUPPORT_SOURCE_LABELS[source] || SUPPORT_SOURCE_LABELS.system
+  const key = SUPPORT_SOURCE_LABELS[source] ? `support.sources.${source}` : 'support.sources.system'
+  return translate(key, hit)
 }
 
 /** 未读角标文案：超过 99 收敛成 99+（与消息中心同一口径） */

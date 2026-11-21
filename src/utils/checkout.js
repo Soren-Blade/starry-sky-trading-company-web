@@ -15,6 +15,8 @@
  *   3. **不读 store**：全部是纯函数，余额与试算结果都由调用方传进来。
  */
 
+import { translate } from '../i18n/index.js'
+
 /** 100 积分 = ¥1，且积分必须是 100 的整数倍（服务端 `INVALID_PARAMS` 的口径） */
 export const POINTS_STEP = 100
 
@@ -85,15 +87,18 @@ export function maxUsablePoints(quote, balance = 0) {
  * `points_used` / `points_discount` / `payable_amount`），所以订单详情页也复用这个函数，
  * 只是把末行文案从「应付」换成「实付」。
  */
-export function settlementRows(quote, { totalLabel = '应付' } = {}) {
+export function settlementRows(quote, { totalLabel = translate('trade.settlementPayable', '应付') } = {}) {
   if (!quote) return []
+  const pointsUsed = Number(quote.points_used) > 0
   const rows = [
-    { key: 'original_amount', label: '商品原价', amount: Number(quote.original_amount) || 0, kind: 'base' },
-    { key: 'member_discount', label: '会员价优惠', amount: Number(quote.member_discount) || 0, kind: 'discount' },
-    { key: 'coupon_discount', label: '优惠券抵扣', amount: Number(quote.coupon_discount) || 0, kind: 'discount' },
+    { key: 'original_amount', label: translate('trade.settlementOriginal', '商品原价'), amount: Number(quote.original_amount) || 0, kind: 'base' },
+    { key: 'member_discount', label: translate('trade.settlementMember', '会员价优惠'), amount: Number(quote.member_discount) || 0, kind: 'discount' },
+    { key: 'coupon_discount', label: translate('trade.settlementCoupon', '优惠券抵扣'), amount: Number(quote.coupon_discount) || 0, kind: 'discount' },
     {
       key: 'points_discount',
-      label: `积分抵扣${Number(quote.points_used) > 0 ? `（${quote.points_used} 积分）` : ''}`,
+      label: pointsUsed
+        ? translate('trade.settlementPointsWith', `积分抵扣（${quote.points_used} 积分）`, { points: quote.points_used })
+        : translate('trade.settlementPoints', '积分抵扣'),
       amount: Number(quote.points_discount) || 0,
       kind: 'discount',
     },

@@ -26,7 +26,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import KamiSection from '@/components/KamiSection.vue'
-import { PAGES } from '@/constants/content.js'
+import { PAGES } from '@/constants/index.js'
 import { useUserStore } from '@/stores/user'
 import { useKamiStore } from '@/stores/kami'
 

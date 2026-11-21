@@ -3,13 +3,13 @@
     <header class="page-shell-head">
       <p class="page-shell-eyebrow">{{ eyebrow }}</p>
       <h1 class="page-shell-title">{{ doc.title }}</h1>
-      <p class="page-shell-desc">最后更新：{{ doc.updatedAt }}</p>
+      <p class="page-shell-desc">{{ translate('legal.ui.updatedAt', LEGAL.ui.updatedAt, { date: doc.updatedAt }) }}</p>
     </header>
 
     <!-- 页内目录：长文档给一条跳转路径，窄屏隐藏（内容仍可滚动阅读） -->
     <div class="legal-layout">
-      <nav class="legal-toc" aria-label="页内目录">
-        <p class="legal-toc-title">目录</p>
+      <nav class="legal-toc" :aria-label="LEGAL.ui.tocAria">
+        <p class="legal-toc-title">{{ LEGAL.ui.tocTitle }}</p>
         <ul class="legal-toc-list">
           <li v-for="(section, index) in sections" :key="section.heading">
             <a :href="`#legal-${index}`" class="legal-toc-link">{{ section.heading }}</a>
@@ -55,10 +55,7 @@
           </ul>
         </section>
 
-        <p class="page-note legal-footnote">
-          本文档描述的是本站当前的实际行为。若你发现文档与实现不符，
-          请通过页脚的联系方式告知我们 —— 那属于缺陷，我们会修正。
-        </p>
+        <p class="page-note legal-footnote">{{ LEGAL.ui.footnote }}</p>
       </article>
     </div>
   </div>
@@ -78,6 +75,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { LEGAL } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 
 const route = useRoute()
 
@@ -121,13 +119,13 @@ const sections = computed(() =>
 /** 眉标取 key 的大写（TERMS / PRIVACY / RULES），与其它页的等宽眉标同构 */
 const eyebrow = computed(() => String(key.value).toUpperCase())
 
-const ALL_DOCS = [
-  { key: 'terms', label: '用户协议', to: '/terms' },
-  { key: 'privacy', label: '隐私政策', to: '/privacy' },
-  { key: 'rules', label: '平台规则', to: '/rules' },
-]
+const ALL_DOCS = computed(() => [
+  { key: 'terms', label: LEGAL.ui.docs.terms, to: '/terms' },
+  { key: 'privacy', label: LEGAL.ui.docs.privacy, to: '/privacy' },
+  { key: 'rules', label: LEGAL.ui.docs.rules, to: '/rules' },
+])
 
-const otherDocs = computed(() => ALL_DOCS.filter((item) => item.key !== key.value))
+const otherDocs = computed(() => ALL_DOCS.value.filter((item) => item.key !== key.value))
 </script>
 
 <style scoped>
@@ -305,6 +303,22 @@ const otherDocs = computed(() => ALL_DOCS.filter((item) => item.key !== key.valu
 }
 
 @media (max-width: 767px) {
+  .legal-toc-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .legal-toc-link {
+    padding: calc(var(--space-unit) * 1.25) 0;
+    border-bottom: var(--stroke-width) solid var(--divider);
+    font-size: var(--fs-body);
+  }
+
+  .legal-toc-list li:last-child .legal-toc-link {
+    border-bottom: 0;
+  }
+
   .legal-section + .legal-section,
   .legal-footnote {
     margin-top: calc(var(--section-gap) * var(--mobile-section-scale));

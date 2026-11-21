@@ -5,7 +5,7 @@
 
     <div v-if="loading" class="u-loading-block" role="status">
       <span class="u-spinner u-spinner--lg" aria-hidden="true"></span>
-      <span>正在加载订单…</span>
+      <span>{{ TRADE.orderLoading }}</span>
     </div>
 
     <!-- 订单不存在 / 拉取失败：按设计系统的败态模板呈现，而不是一句「失败」 -->
@@ -15,7 +15,7 @@
       </span>
       <p class="ec-redeem-result__title">{{ error }}</p>
       <p class="ec-redeem-result__desc">
-        订单可能已被删除，或链接里的订单号有误。可以回到订单列表再找一次。
+        {{ TRADE.orderMissingHint }}
       </p>
       <div class="ec-redeem-result__actions">
         <router-link to="/user/orders" class="ec-btn ec-btn--primary">
@@ -33,7 +33,7 @@
         </span>
         <p class="ec-redeem-result__title">{{ TRADE.checkoutSuccess }}</p>
         <p class="ec-redeem-result__desc">
-          订单号 {{ order.order_no }}，可在「我的订单」查看进度与卡密。
+          {{ translate('trade.orderCreatedHint', TRADE.orderCreatedHint, { orderNo: order.order_no }) }}
         </p>
         <div class="ec-redeem-result__actions">
           <router-link to="/user/orders" class="ec-btn ec-btn--outline">
@@ -76,7 +76,7 @@
               v-if="item.product_id"
               :to="`/product/${item.product_id}`"
               class="detail-thumb"
-              :aria-label="`查看 ${item.product_title}`"
+              :aria-label="translate('trade.orderViewItem', TRADE.orderViewItem, { title: item.product_title })"
             >
               <SmartImage
                 v-if="item.product_image"
@@ -114,7 +114,7 @@
 
         <dl class="detail-totals">
           <div class="detail-total-row">
-            <dt>商品件数</dt>
+            <dt>{{ TRADE.orderItemCount }}</dt>
             <dd>{{ order.item_count }}</dd>
           </div>
 
@@ -197,7 +197,7 @@
 
       <!-- 备注与联系信息：下单时填过才显示，空字段不占位 -->
       <section v-if="order.contact || order.remark" class="page-panel">
-        <h2 class="page-panel-head">联系与备注</h2>
+        <h2 class="page-panel-head">{{ TRADE.orderContactTitle }}</h2>
         <dl class="detail-meta">
           <div v-if="order.contact" class="detail-meta-row">
             <dt>{{ TRADE.checkoutContact }}</dt>
@@ -212,7 +212,7 @@
 
       <!-- 在线支付：仅待付款且服务端已配置支付通道时出现（未配置时保留线下结算流程） -->
       <section v-if="order.status === 'pending' && payEnabled" class="page-panel">
-        <h2 class="page-panel-head">在线支付</h2>
+        <h2 class="page-panel-head">{{ TRADE.orderPaymentTitle }}</h2>
         <PaymentPanel
           :order-no="order.order_no"
           :amount-fen="amountFen"
@@ -225,27 +225,27 @@
       <!-- 状态时间线：只列出已经发生过的节点，顺序必须是真实发生的先后
            （下单 → 已支付 → 已完成 → 已退款；已取消是替代分支）。 -->
       <section class="page-panel">
-        <h2 class="page-panel-head">状态流转</h2>
+        <h2 class="page-panel-head">{{ TRADE.orderTimelineTitle }}</h2>
         <ol class="timeline">
           <li class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">下单 {{ toDate(order.created_at) }}</span>
+            <span class="timeline-text">{{ TRADE.orderTimelineCreated }} {{ toDate(order.created_at) }}</span>
           </li>
           <li v-if="order.paid_at" class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">已支付 {{ toDate(order.paid_at) }}</span>
+            <span class="timeline-text">{{ TRADE.orderTimelinePaid }} {{ toDate(order.paid_at) }}</span>
           </li>
           <li v-if="order.completed_at" class="timeline-item timeline-item--done">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">已完成 {{ toDate(order.completed_at) }}</span>
+            <span class="timeline-text">{{ TRADE.orderTimelineCompleted }} {{ toDate(order.completed_at) }}</span>
           </li>
           <li v-if="order.cancelled_at" class="timeline-item timeline-item--cancelled">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">已取消 {{ toDate(order.cancelled_at) }}</span>
+            <span class="timeline-text">{{ TRADE.orderTimelineCancelled }} {{ toDate(order.cancelled_at) }}</span>
           </li>
           <li v-if="order.refunded_at" class="timeline-item timeline-item--cancelled">
             <span class="timeline-dot" aria-hidden="true"></span>
-            <span class="timeline-text">已退款 {{ toDate(order.refunded_at) }}</span>
+            <span class="timeline-text">{{ TRADE.orderTimelineRefunded }} {{ toDate(order.refunded_at) }}</span>
           </li>
           <li v-if="pendingTodoNote" class="timeline-item timeline-item--todo">
             <span class="timeline-dot" aria-hidden="true"></span>
@@ -291,9 +291,9 @@
       <!-- 退款不开放自助：商户后台「自助退款」未开启，渠道退款必须人工处理。
            对客户只给一条明确的路（客服/售后工单），不要放一个点了会失败的按钮。 -->
       <p v-if="canRequestRefund(order.status)" class="order-detail-refund-tip">
-        如需退款，请
-        <router-link to="/support" class="order-detail-refund-link">联系客服</router-link>
-        提交售后工单，核对后由人工原路退回（会员权益同步撤销）。
+        {{ TRADE.orderRefundBefore }}
+        <router-link to="/support" class="order-detail-refund-link">{{ TRADE.orderRefundLink }}</router-link>
+        {{ TRADE.orderRefundAfter }}
       </p>
     </template>
   </div>
@@ -324,7 +324,8 @@ import { copyText } from '@/utils/clipboard.js'
 import { maskCode } from '@/utils/mask.js'
 import { settlementRows } from '@/utils/checkout.js'
 import { formatUtils } from '@/utils/index.js'
-import { PAGES, PRODUCT_GRID, TRADE, CARD_PRODUCT } from '@/constants/index.js'
+import { PAGES, PRODUCT_GRID, TRADE, CARD_PRODUCT, NAV_MENU } from '@/constants/index.js'
+import { translate } from '@/i18n/index.js'
 import {
   orderStatusLabel,
   orderStatusTagClass,
@@ -338,11 +339,11 @@ const router = useRouter()
 const themeStore = useThemeStore()
 
 /** 面包屑：订单详情是「首页 → 我的订单」下的三级页，两段父级都可点回去 */
-const breadcrumbItems = [
-  { label: '首页', to: '/home' },
-  { label: '我的订单', to: '/user/orders' },
+const breadcrumbItems = computed(() => [
+  { label: NAV_MENU[0].label, to: '/home' },
+  { label: TRADE.ordersBreadcrumb, to: '/user/orders' },
   { label: TRADE.orderDetail },
-]
+])
 
 const order = ref(null)
 /** 本单已发放的卡密（非卡密订单恒为空数组） */
@@ -389,7 +390,7 @@ const amount = computed(() => formatUtils.splitPrice(order.value?.total_amount, 
  * 有优惠才展开：没有优惠时「商品原价 89 / 实付 89」只是把同一个数字写两遍，
  * 保持原来那一行「订单金额」更干净。
  */
-const settlement = computed(() => settlementRows(order.value, { totalLabel: '实付' }))
+const settlement = computed(() => settlementRows(order.value, { totalLabel: TRADE.orderTotalLabel }))
 const hasSettlement = computed(() => settlement.value.length > 2)
 const settlementTotal = computed(() =>
   formatUtils.splitPrice(order.value?.payable_amount ?? order.value?.total_amount, currency.value)
@@ -415,11 +416,9 @@ const amountFen = computed(() =>
 const pendingTodoNote = computed(() => {
   const status = order.value?.status
   if (status === 'pending') {
-    return payEnabled.value
-      ? '等待付款：下单后 24 小时内未支付将自动关闭'
-      : '等待线下结算后确认完成'
+    return payEnabled.value ? TRADE.orderPendingUnpaid : TRADE.orderPendingOffline
   }
-  if (status === 'paid') return '等待交付，收到商品后点「确认完成」'
+  if (status === 'paid') return TRADE.orderPendingPaid
   return ''
 })
 
@@ -451,7 +450,7 @@ const load = async () => {
 
 /** 支付面板轮询到已付款：重新拉订单，让徽标/时间线/按钮一起进入新状态 */
 const handlePaid = async () => {
-  notify.success('支付成功，订单已进入待交付状态')
+  notify.success(TRADE.orderPaySuccess)
   await load()
 }
 
@@ -491,14 +490,14 @@ const handleCancel = async () => {
   try {
     const result = await api.cancelOrder(orderNo.value)
     if (result?.success) {
-      notify.success(result.message || '订单已取消')
+      notify.success(result.message || TRADE.orderCancelled)
       if (result.data?.order) order.value = result.data.order
       else await load()
     } else {
-      notify.error(result?.message || '取消失败')
+      notify.error(result?.message || TRADE.orderCancelFailed)
     }
   } catch (err) {
-    notify.error(err?.message || '取消失败')
+    notify.error(err?.message || TRADE.orderCancelFailed)
     await load()
   } finally {
     busy.value = false
@@ -513,14 +512,14 @@ const handleComplete = async () => {
   try {
     const result = await api.completeOrder(orderNo.value)
     if (result?.success) {
-      notify.success(result.message || '订单已完成')
+      notify.success(result.message || TRADE.orderCompleted)
       if (result.data?.order) order.value = result.data.order
       else await load()
     } else {
-      notify.error(result?.message || '操作失败')
+      notify.error(result?.message || TRADE.orderActionFailed)
     }
   } catch (err) {
-    notify.error(err?.message || '操作失败')
+    notify.error(err?.message || TRADE.orderActionFailed)
     await load()
   } finally {
     busy.value = false

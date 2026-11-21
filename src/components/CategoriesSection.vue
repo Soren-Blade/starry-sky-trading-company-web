@@ -58,7 +58,7 @@
           </li>
         </template>
 
-        <li v-else-if="!shopClass.length" class="categories-empty">暂无商品分类</li>
+        <li v-else-if="!shopClass.length" class="categories-empty">{{ SECTIONS.categories.empty }}</li>
       </ul>
     </div>
   </section>

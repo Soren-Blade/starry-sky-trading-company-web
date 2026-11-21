@@ -10,7 +10,7 @@
  * 未分类商品猜成「虚拟商品」误导用户下单。
  */
 
-import { GOODS_TYPE } from '@/constants/content.js'
+import { GOODS_TYPE } from '@/constants/index.js'
 
 /**
  * 是否是受支持的形态值

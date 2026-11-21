@@ -16,7 +16,7 @@
         <!-- 计数：总数取自数据层，与下方索引行的条数同源 -->
         <p class="index-total u-tag u-tag--accent u-enter" :style="{ '--i': 1 }">
           <span class="index-total-value">{{ categoryCount }}</span>
-          <span>个分类</span>
+          <span>{{ CATEGORY_PAGE.countUnit }}</span>
         </p>
       </div>
     </header>
@@ -31,7 +31,7 @@ import { storeToRefs } from 'pinia'
 import CategoriesSection from '@/components/CategoriesSection.vue'
 import { useShopStore } from '@/stores/shop'
 // 开场文案集中在 constants，改文案只碰一个文件
-import { PAGES } from '@/constants/index.js'
+import { CATEGORY_PAGE, PAGES } from '@/constants/index.js'
 
 const shopStore = useShopStore()
 const { shopClass } = storeToRefs(shopStore)

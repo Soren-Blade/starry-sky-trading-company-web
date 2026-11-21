@@ -14,14 +14,14 @@
       aria-labelledby="login-modal-title"
     >
       <h2 id="login-modal-title" class="visually-hidden">
-        {{ activeTab === 'login' ? '登录' : '注册' }}
+        {{ activeTab === 'login' ? AUTH.login : AUTH.register }}
       </h2>
 
       <button
         type="button"
         class="ec-icon-btn login-dialog-close"
         @click="$emit('close')"
-        aria-label="关闭弹窗"
+        :aria-label="AUTH.closeDialog"
       >
         <AppIcon name="x" />
       </button>
@@ -33,14 +33,14 @@
           :class="{ active: activeTab === 'login' }"
           @click="switchTab('login')"
         >
-          登录
+          {{ AUTH.login }}
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'register' }"
           @click="switchTab('register')"
         >
-          注册
+          {{ AUTH.register }}
         </button>
       </div>
 
@@ -49,27 +49,27 @@
         <!-- Login Form -->
         <form v-if="activeTab === 'login'" class="form login-form" @submit.prevent="handleLogin">
           <div class="form-group">
-            <label for="login-username">用户名</label>
+            <label for="login-username">{{ AUTH.username }}</label>
             <input
               id="login-username"
               v-model="loginForm.username"
               class="u-input"
               type="text"
               autocomplete="username"
-              placeholder="请输入用户名/邮箱/手机号"
+              :placeholder="AUTH.usernamePlaceholder"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="login-password">密码</label>
+            <label for="login-password">{{ AUTH.password }}</label>
             <input
               id="login-password"
               v-model="loginForm.password"
               class="u-input"
               type="password"
               autocomplete="current-password"
-              placeholder="请输入密码"
+              :placeholder="AUTH.passwordPlaceholder"
               required
             />
           </div>
@@ -92,10 +92,10 @@
             :aria-busy="loading"
           >
             <span v-if="loading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-            <span class="btn-text">{{ loading ? '登录中...' : '登录' }}</span>
+            <span class="btn-text">{{ loading ? AUTH.loginLoading : AUTH.login }}</span>
           </button>
 
-          <div class="divider">或者</div>
+          <div class="divider">{{ AUTH.or }}</div>
 
           <div class="social-login">
             <button
@@ -103,88 +103,88 @@
               class="u-btn-secondary social-btn"
               @click="showHelpModal = true"
             >
-              <span>微信登录</span>
+              <span>{{ AUTH.wechatLogin }}</span>
             </button>
             <button
               type="button"
               class="u-btn-secondary social-btn"
               @click="showHelpModal = true"
             >
-              <span>QQ登录</span>
+              <span>{{ AUTH.qqLogin }}</span>
             </button>
           </div>
           <p class="social-note page-note">
-            第三方登录尚未接入。需要协助请
-            <button type="button" class="link-btn" @click="showHelpModal = true">联系客服</button>。
+            {{ AUTH.thirdPartyNote }}
+            <button type="button" class="link-btn" @click="showHelpModal = true">{{ AUTH.contactSupport }}</button>.
           </p>
         </form>
 
         <!-- Register Form -->
         <form v-else class="form register-form" @submit.prevent="handleRegister">
           <div class="form-group">
-            <label for="register-username">用户名</label>
+            <label for="register-username">{{ AUTH.username }}</label>
             <input
               id="register-username"
               v-model="registerForm.username"
               class="u-input"
               type="text"
               autocomplete="username"
-              placeholder="请输入用户名"
+              :placeholder="AUTH.usernameEnter"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="register-email">邮箱</label>
+            <label for="register-email">{{ AUTH.email }}</label>
             <input
               id="register-email"
               v-model="registerForm.email"
               class="u-input"
               type="email"
               autocomplete="email"
-              placeholder="请输入邮箱地址"
+              :placeholder="AUTH.emailPlaceholder"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="register-password">密码</label>
+            <label for="register-password">{{ AUTH.password }}</label>
             <input
               id="register-password"
               v-model="registerForm.password"
               class="u-input"
               type="password"
               autocomplete="new-password"
-              placeholder="请输入密码"
+              :placeholder="AUTH.passwordPlaceholder"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="register-confirm">确认密码</label>
+            <label for="register-confirm">{{ AUTH.confirmPassword }}</label>
             <input
               id="register-confirm"
               v-model="registerForm.confirmPassword"
               class="u-input"
               type="password"
               autocomplete="new-password"
-              placeholder="请再次输入密码"
+              :placeholder="AUTH.confirmPlaceholder"
               required
             />
           </div>
 
           <div class="form-group">
-            <label for="register-invite">邀请码（选填）</label>
+            <label for="register-invite">{{ AUTH.inviteCode }}</label>
             <input
               id="register-invite"
               v-model="registerForm.inviteCode"
               class="u-input"
               type="text"
               maxlength="16"
-              placeholder="好友的邀请码，没有可留空"
+              :placeholder="AUTH.invitePlaceholder"
             />
             <span class="u-field-hint">
-              通过邀请链接打开时会自动填入；好友在你完成第一笔商品订单后获得奖励
+              {{ AUTH.inviteHint }}
             </span>
           </div>
 
@@ -193,9 +193,9 @@
               <input v-model="registerForm.agreeTerms" type="checkbox" /><span class="u-checkbox-box" aria-hidden="true"></span>
               <span>
                 {{ AUTH.agreePrefix }}
-                <router-link to="/terms" class="inline-link">用户协议</router-link>
+                <router-link to="/terms" class="inline-link">{{ AUTH.userAgreement }}</router-link>
                 {{ AUTH.and }}
-                <router-link to="/privacy" class="inline-link">隐私政策</router-link>
+                <router-link to="/privacy" class="inline-link">{{ AUTH.privacyPolicy }}</router-link>
               </span>
             </label>
           </div>
@@ -207,7 +207,7 @@
             :aria-busy="loading"
           >
             <span v-if="loading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-            <span class="btn-text">{{ loading ? '提交中...' : '注册' }}</span>
+            <span class="btn-text">{{ loading ? AUTH.submitting : AUTH.register }}</span>
           </button>
         </form>
       </div>

@@ -45,8 +45,11 @@ import './assets/styles/ui-kit-member.css'
  */
 import './assets/styles/ui-kit-tool.css'
 
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
+// i18n 必须早于 router / App：constants 的本地化代理在模块求值时就要能查到词条
+import { i18n, translate } from './i18n/index.js'
+import { applyRouteTitle } from './i18n/title.js'
 import router from './router/index.js'
 import App from './App.vue'
 import { setAuthExpiredHandler } from './api/request.js'
@@ -57,7 +60,11 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(i18n)
 app.use(router)
+
+// 语言切换后同步 document.title（路由 meta 里的标题是中文兜底）
+watch(i18n.global.locale, () => applyRouteTitle(router.currentRoute.value))
 
 // ── 样式主题 ────────────────────────────────────────────────────
 // 必须在 app.mount() 之前同步执行：主题令牌是写到 <html> 的行内样式上的，
@@ -85,7 +92,7 @@ setAuthExpiredHandler(() => {
     if (now - notifiedAt < 3000) return
     notifiedAt = now
 
-    notify.warning('登录状态已失效，请重新登录')
+    notify.warning(translate('auth.sessionExpired', '登录状态已失效，请重新登录'))
 
     // 回到首页，避免停留在需要登录的页面反复失败
     // （路由名是 'Home'，见 router/index.js）

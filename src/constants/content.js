@@ -16,10 +16,12 @@
 // import 必须放在文件顶部：以前它写在第 623 行、夹在两组常量中间，
 // 靠 `Object.assign(TOOL_PAGES, ...)` 事后变异，谁先谁后取决于求值顺序，
 // 现在改成在定义处一次性展开合并，`TOOL_PAGES` 从声明起就是完整的。
+import { localizeNamespace } from '../i18n/content.js'
+import { translate } from '../i18n/index.js'
 import { TOOL_PAGES_EXTRA } from './tool-pages.js'
 
 /** 品牌信息 */
-export const SITE = {
+const SITE_RAW = {
   name: '星辰商行',
   nameEn: 'Starry Sky Trading Co.',
   /** AppIcon 的图标名（此前是 emoji ⭐，颜色不随主题变化） */
@@ -28,7 +30,7 @@ export const SITE = {
 }
 
 /** 导航菜单 */
-export const NAV_MENU = [
+const NAV_MENU_RAW = [
   { id: 1, label: '首页', path: '/home' },
   { id: 2, label: '商品分类', path: '/categories' },
   { id: 3, label: '热门推荐', path: '/hot' },
@@ -43,7 +45,7 @@ export const NAV_MENU = [
  * 而现在「忘记密码」「下单说明」「页脚」都要展示同一份联系方式 ——
  * 抄四遍就会出现四个不一致的客服邮箱。
  */
-export const CONTACT = {
+const CONTACT_RAW = {
   address: '中国 北京市 朝阳区',
   phone: '400-800-8888',
   email: 'service@starrysky.com',
@@ -54,7 +56,7 @@ export const CONTACT = {
 }
 
 /** 首页首屏 */
-export const HERO = {
+const HERO_RAW = {
   eyebrow: '2026 精选商城',
   title: '探索星辰之美',
   subtitle: '在星辰商行，发现生活的美好时刻。每一件商品都承载着独特的故事与品质。',
@@ -74,11 +76,12 @@ export const HERO = {
  * emoji 不受 CSS `color` 影响，因此没法跟随主题变色，与
  * 「线性单色图标 + 颜色随主题」的目标冲突。
  */
-export const SECTIONS = {
+const SECTIONS_RAW = {
   categories: {
     icon: 'shopping-bag',
     title: '商品分类',
     description: '探索丰富多彩的商品世界，发现适合你的完美选择',
+    empty: '暂无商品分类',
   },
   hot: {
     icon: 'flame',
@@ -116,7 +119,7 @@ export const SECTIONS = {
  *   description 一句说明
  *   meta        右侧/次要的计数或提示（可选）
  */
-export const PAGES = {
+const PAGES_RAW = {
   categories: {
     eyebrow: 'INDEX',
     title: '商品分类',
@@ -126,6 +129,8 @@ export const PAGES = {
     eyebrow: 'RANKING',
     title: '热卖榜',
     description: '按销量与浏览量排序的精选商品',
+    onBoard: '件在榜',
+    totalAria: '共 {count} 件商品在榜',
   },
   tools: {
     eyebrow: 'WORKSPACE',
@@ -141,6 +146,22 @@ export const PAGES = {
     eyebrow: 'ABOUT',
     title: '关于我们',
     description: '星辰商行的由来、做事方式与联系方式',
+    navAria: '本页目录',
+    visionTitle: '我们的愿景',
+    visionBody:
+      '星辰商行致力于为用户带来精选商品和优质服务。我们相信，每一件商品都承载着独特的故事和品质，我们的使命是让消费者在享受便利购物的同时，感受到生活的美好。',
+    valuesTitle: '我们的核心价值',
+    values: [
+      { title: '品质优先', text: '每一件商品都经过严格筛选，确保品质与美学的完美结合' },
+      { title: '高效服务', text: '快速配送、贴心售后，让您的购物体验更加轻松' },
+      { title: '创新体验', text: '不断创新购物方式，为用户提供更好的体验' },
+      { title: '用户至上', text: '以用户需求为中心，打造温暖的购物社区' },
+    ],
+    contactTitle: '联系我们',
+    addressLabel: '地址',
+    phoneLabel: '电话',
+    emailLabel: '邮箱',
+    hoursLabel: '服务时间',
   },
   kami: {
     eyebrow: 'CONSOLE',
@@ -153,6 +174,7 @@ export const PAGES = {
     description: '抱歉，您访问的页面不存在或已被删除',
     backHome: '返回首页',
     suggestionsTitle: '您可能想查看',
+    suggestionsAria: '建议访问的页面',
   },
   product: {
     eyebrow: 'PRODUCT',
@@ -173,6 +195,67 @@ export const PAGES = {
     eyebrow: 'ACCOUNT',
     title: '个人中心',
     description: '查看账号信息并修改个人资料',
+    statusLoggedIn: '已登录',
+    statusGuest: '游客',
+    memberAria: '会员权益摘要',
+    retry: '重试',
+    notMember: '还不是会员',
+    memberDaysLeft: '有效期剩余 {days} 天',
+    memberUpgradeNote: '开通会员可享消费折扣与积分倍率',
+    growth: '成长值',
+    points: '积分',
+    coupons: '优惠券',
+    memberCenter: '会员中心',
+    planCompare: '套餐对比',
+    pointsExpiring: '{points} 积分将于 {date} 过期',
+    checkinAria: '每日签到',
+    checkinTitle: '每日签到',
+    checkinAvailable: '今天还没签到，连签 7 天以上每天得 20 积分',
+    checkinDone: '今天已签到，明天再来',
+    checkinPending: '签到中…',
+    checkinNow: '立即签到',
+    checkinCalendar: '查看签到日历',
+    inviteAria: '邀请有礼',
+    inviteTitle: '邀请有礼',
+    inviteDesc: '好友通过你的链接注册并完成首单，双方各得积分奖励',
+    inviteCta: '去邀请',
+    accountAria: '账号信息',
+    accountAvatar: '用户头像',
+    accountNoNickname: '未设置昵称',
+    accountSince: '注册于 {date}',
+    uidPlain: '明文',
+    uidMasked: '已脱敏',
+    uidShow: '显示用户 UID',
+    uidHide: '隐藏用户 UID',
+    uidCopy: '复制用户 UID',
+    uidCopiedAria: '已复制用户 UID',
+    uidCopied: '已复制',
+    uidCopyShort: '复制',
+    editAria: '修改资料',
+    saving: '保存中…',
+    logsAria: '操作日志',
+    logsTitle: '操作日志',
+    logsDesc: '你的账号与商城操作记录（登录、下单、兑换卡密、收藏、加购、签到、积分与成长值变动等）。可导出为 CSV，最多近一年、5000 条。',
+    logsExporting: '导出中…',
+    logsDownload: '下载日志',
+    logsRangeAria: '导出时间范围',
+    logsFootnote: '日志记录「你做了什么、对象是什么、成功与否」，不包含你在输入框里填写的内容，卡密卡号在服务端就已脱敏；游客身份没有账号历史。',
+    logRange30: '近一个月',
+    logRange180: '近半年',
+    logRange365: '近一年',
+    unset: '未设置',
+    unbound: '未绑定',
+    registeredUser: '注册用户',
+    guestUser: '游客',
+    nicknameRequired: '昵称不能为空',
+    checkinAlready: '今天已经签过到了',
+    checkinSuccess: '签到成功，获得 {awarded} 积分（连签 {streak} 天）',
+    checkinFailed: '签到失败，请稍后重试',
+    selectedImage: '已选择图片',
+    pickedCompressed: '，压缩后 {size}',
+    copyFailed: '复制失败，请手动选择文本复制',
+    exportFailed: '导出失败，请稍后重试',
+    exportStarted: '日志已开始下载',
   },
   favorites: {
     eyebrow: 'SAVED',
@@ -197,7 +280,7 @@ export const PAGES = {
 }
 
 /** 商品网格 */
-export const PRODUCT_GRID = {
+const PRODUCT_GRID_RAW = {
   loading: '正在加载商品…',
   empty: '暂无商品可展示',
   errorPrefix: '商品加载失败：',
@@ -209,6 +292,7 @@ export const PRODUCT_GRID = {
   // 首页不再有「按关键词过滤」这种状态，该文案没有使用者，已删除。
   // 搜索无结果的文案在 SEARCH_PAGE.productEmpty / toolEmpty。
   soldOut: '缺货',
+  soldOutAria: '已售罄，不可加入购物车',
   viewsLabel: '浏览',
   salesLabel: '销量',
   stockLabel: '库存',
@@ -226,6 +310,16 @@ export const PRODUCT_GRID = {
   detailBack: '返回上一页',
   detailMissing: '商品不存在或已下架',
   detailLoading: '正在加载商品详情…',
+  fallbackHot: '去看热门推荐',
+  quantity: '数量',
+  decreaseQty: '减少数量',
+  increaseQty: '增加数量',
+  stockLine: '库存 {stock} 件，单笔最多 {max} 件',
+  favorite: '收藏 {title}',
+  unfavorite: '取消收藏 {title}',
+  loginHint: '加入购物车与下单需要登录账号；游客可以先浏览商品。',
+  descriptionTitle: '商品详情',
+  relatedTitle: '同类商品',
   /**
    * 支付说明的**兜底值**。
    *
@@ -245,7 +339,7 @@ export const PRODUCT_GRID = {
  * service / account。前端**不做兜底推断**：拿不到合法值就不渲染角标与交付说明，
  * 免得把还没分类的商品猜成「虚拟商品」误导用户下单（见 utils/goodsType.js）。
  */
-export const GOODS_TYPE = {
+const GOODS_TYPE_RAW = {
   /** 合法枚举；顺序即展示顺序，判断合法性也只认这份名单 */
   values: ['digital', 'physical', 'service', 'account'],
   /** 商品卡角标用的短标签 */
@@ -263,7 +357,7 @@ export const GOODS_TYPE = {
     account: '账号类商品 · 发货后请及时修改密码并绑定自己的信息',
   },
   /** 实物商品的重量补充说明；只在 weight_kg 是正数时使用 */
-  weight: (value) => `约 ${value} kg`,
+  weight: (value) => translate('goodsType.weight', `约 ${value} kg`, { value }),
   /** 交付说明里拼接各段的分隔符，与正文里已有的「 · 」保持一致 */
   separator: ' · ',
 }
@@ -279,7 +373,7 @@ export const GOODS_TYPE = {
  *
  * 三份文案分开写而不是拼一段：三个位置的语气与长度都不一样。
  */
-export const CARD_PRODUCT = {
+const CARD_PRODUCT_RAW = {
   /** 商品详情页（购买前）：与交付说明并列显示 */
   noticeBefore: '虚拟卡密商品 · 付款成功后自动发卡并自动完成订单 · 卡密一经发出不支持退货退款',
   /** 订单详情：未付款时预告流程 */
@@ -294,7 +388,7 @@ export const CARD_PRODUCT = {
  * 与 PRODUCT_GRID 分开：那里是商品卡片的文案，这里是交易流程的文案，
  * 混在一起会让「改下单提示」时在一堆商品文案里找。
  */
-export const TRADE = {
+const TRADE_RAW = {
   cartEmpty: '购物车是空的',
   cartEmptyHint: '去商品分类看看，把想要的加进来',
   cartUnavailable: '不可下单',
@@ -306,6 +400,33 @@ export const TRADE = {
   cartCheckout: '提交订单',
   cartLoginFirst: '请先登录账号后再使用购物车',
   cartUnavailableNote: '标为「不可下单」的商品不会计入金额，也不会被提交',
+  cartItemsUnit: '{count} 件',
+  cartLoginCta: '登录 / 注册',
+  cartBrowseFirst: '先去逛逛',
+  cartLoading: '正在加载购物车…',
+  cartBrowseCategories: '浏览商品分类',
+  cartViewHot: '看热门推荐',
+  cartSelectAll: '全选',
+  cartItemsAria: '购物车条目',
+  cartSelectItem: '选择 {name}',
+  cartViewItem: '查看 {name}',
+  cartRemoveItem: '移除 {name}',
+  cartDefaultProduct: '商品',
+  cartDelisted: '商品已下架',
+  cartPriceChanged: '（现价 {price}）',
+  cartDecrease: '减少数量',
+  cartIncrease: '增加数量',
+  cartSummaryAria: '结算',
+  cartSummaryTitle: '结算',
+  cartSelectedUnit: '件',
+  cartSelectCoupon: '选择优惠券',
+  cartNoCoupon: '不使用优惠券',
+  cartPointsLabel: '积分抵扣',
+  cartUseAll: '全部可用',
+  cartPointsHint: '100 积分抵 ¥1 · 本单最多可抵 {max} 积分',
+  cartDetailAria: '结算明细',
+  cartQuoting: '正在试算…',
+  cartSubmitting: '提交中…',
   checkoutRemark: '订单备注',
   checkoutRemarkPlaceholder: '选填，例如希望的发货时间',
   checkoutContact: '联系方式',
@@ -314,6 +435,18 @@ export const TRADE = {
   checkoutViewOrder: '查看订单',
   ordersEmpty: '还没有订单',
   ordersEmptyHint: '下单后可以在这里查看状态',
+  ordersCount: '{count} 笔',
+  ordersFilterAria: '订单状态',
+  ordersSearchLabel: '搜索订单号或商品名',
+  ordersLoading: '正在加载订单…',
+  ordersBrowseHot: '去看热门推荐',
+  ordersAssetsBefore: '数字商品与卡密已汇总到',
+  ordersAssetsLink: '我的资产',
+  ordersAssetsAfter: '，实物商品的物流信息仍在本页订单里。',
+  orderPay: '去支付',
+  ordersPaginationAria: '订单分页',
+  ordersPrev: '上一页',
+  ordersNext: '下一页',
   orderCancel: '取消订单',
   orderCancelConfirm: '取消后库存会退回，确定取消这笔订单吗？',
   orderComplete: '确认完成',
@@ -321,6 +454,38 @@ export const TRADE = {
   orderProcessing: '处理中…',
   orderCompleteConfirm: '确认已收到商品？完成后订单不可取消。',
   orderDetail: '订单详情',
+  orderLoading: '正在加载订单…',
+  orderMissingHint: '订单可能已被删除，或链接里的订单号有误。可以回到订单列表再找一次。',
+  orderCreatedHint: '订单号 {orderNo}，可在「我的订单」查看进度与卡密。',
+  orderViewItem: '查看 {title}',
+  orderItemCount: '商品件数',
+  orderContactTitle: '联系与备注',
+  orderPaymentTitle: '在线支付',
+  orderTimelineTitle: '状态流转',
+  orderTimelineCreated: '下单',
+  orderTimelinePaid: '已支付',
+  orderTimelineCompleted: '已完成',
+  orderTimelineCancelled: '已取消',
+  orderTimelineRefunded: '已退款',
+  orderRefundBefore: '如需退款，请',
+  orderRefundLink: '联系客服',
+  orderRefundAfter: '提交售后工单，核对后由人工原路退回（会员权益同步撤销）。',
+  orderTotalLabel: '实付',
+  ordersBreadcrumb: '我的订单',
+  settlementOriginal: '商品原价',
+  settlementMember: '会员价优惠',
+  settlementCoupon: '优惠券抵扣',
+  settlementPoints: '积分抵扣',
+  settlementPointsWith: '积分抵扣（{points} 积分）',
+  settlementPayable: '应付',
+  orderPendingUnpaid: '等待付款：下单后 24 小时内未支付将自动关闭',
+  orderPendingOffline: '等待线下结算后确认完成',
+  orderPendingPaid: '等待交付，收到商品后点「确认完成」',
+  orderPaySuccess: '支付成功，订单已进入待交付状态',
+  orderCancelled: '订单已取消',
+  orderCancelFailed: '取消失败',
+  orderCompleted: '订单已完成',
+  orderActionFailed: '操作失败',
   orderBackToList: '返回订单列表',
   orderViewAll: '查看我的订单',
   orderGoShopping: '看看热门商品',
@@ -356,6 +521,13 @@ export const TRADE = {
   favoritesRemoved: '已取消收藏',
   favoritesMissing: '该内容已被删除',
   favoritesLoginFirst: '请先登录账号后再查看收藏',
+  favoritesCount: '商品 {products} · 工具 {tools}',
+  favoritesTabsAria: '收藏类型',
+  favoritesLoading: '正在加载收藏…',
+  favoritesRemove: '取消收藏',
+  favoritesRemoveMissing: '从收藏中移除',
+  favoritesBrowseHot: '去看热门推荐',
+  favoritesBrowseTools: '去工具工作台',
   profileSaved: '资料已保存',
   profileBasic: '账号信息',
   profileEdit: '修改资料',
@@ -403,7 +575,7 @@ export const TRADE = {
 }
 
 /** 商品分类页 / 分类详情页 */
-export const CATEGORY_PAGE = {
+const CATEGORY_PAGE_RAW = {
   notFound: '分类不存在或已停用',
   empty: '该分类下暂无商品',
   /**
@@ -413,7 +585,8 @@ export const CATEGORY_PAGE = {
   emptyFallback: '该分类下暂无直接上架的商品，以下为它各个子分类的商品。',
   subCategories: '子分类',
   backToIndex: '返回分类索引',
-  countLabel: (n) => `${n} 件商品`,
+  countLabel: (n) => translate('categoryPage.countLabel', `${n} 件商品`, { n }),
+  countUnit: '个分类',
 }
 
 /**
@@ -423,7 +596,7 @@ export const CATEGORY_PAGE = {
  * 商品 / 工具这些**有骨架屏**的数据不算在内 —— 让遮罩等它们
  * 会把「边看边加载」变成「更久的白屏」，那是退步。
  */
-export const BOOT = {
+const BOOT_RAW = {
   /** 遮罩上的说明文字 */
   text: '正在准备你的工作台…',
   /** 顶部路由进度条的无障碍名 */
@@ -439,7 +612,7 @@ export const BOOT = {
  * 好让需要鉴权的只读接口能跑），因此顶栏必须如实地把「你是谁」告诉用户，
  * 而不是把他当成未登录 —— 否则用户既看不到自己的头像，也找不到退出的入口。
  */
-export const AUTH = {
+const AUTH_RAW = {
   rememberMe: '记住我',
   rememberHint: '勾选后关掉浏览器再打开仍是登录态，有效期 7 天；不勾选则只在本次浏览器会话内有效。',
   forgotPassword: '忘记密码',
@@ -455,6 +628,30 @@ export const AUTH = {
   contactIntro: '以下方式都可以找到我们：',
   agreePrefix: '我同意',
   and: '和',
+  login: '登录',
+  register: '注册',
+  loginLoading: '登录中...',
+  submitting: '提交中...',
+  closeDialog: '关闭弹窗',
+  username: '用户名',
+  usernameEnter: '请输入用户名',
+  usernamePlaceholder: '请输入用户名/邮箱/手机号',
+  email: '邮箱',
+  emailPlaceholder: '请输入邮箱地址',
+  password: '密码',
+  passwordPlaceholder: '请输入密码',
+  confirmPassword: '确认密码',
+  confirmPlaceholder: '请再次输入密码',
+  inviteCode: '邀请码（选填）',
+  invitePlaceholder: '好友的邀请码，没有可留空',
+  inviteHint: '通过邀请链接打开时会自动填入；好友在你完成第一笔商品订单后获得奖励',
+  or: '或者',
+  wechatLogin: '微信登录',
+  qqLogin: 'QQ登录',
+  thirdPartyNote: '第三方登录尚未接入。需要协助请',
+  contactSupport: '联系客服',
+  userAgreement: '用户协议',
+  privacyPolicy: '隐私政策',
 
   loginCta: '登录 / 注册',
   guestBadge: '游客',
@@ -473,8 +670,12 @@ export const AUTH = {
 }
 
 /** 工具页 */
-export const TOOL_PAGE = {
+const TOOL_PAGE_RAW = {
   searchPlaceholder: '搜索工具…',
+  usageLabel: '使用方式',
+  categoryLabel: '分类',
+  filtersAria: '工具筛选',
+  totalLabel: '共 {count} 个工具',
   loading: '正在加载工具…',
   errorPrefix: '工具加载失败：',
   empty: '该分类下暂无工具',
@@ -512,7 +713,7 @@ export const TOOL_PAGE = {
  * 读时长、分辨率、体积并按时间点抽一帧导出 PNG，全程不出浏览器。
  * `status` / `body` 是骨架期占位页的文案，页面已不再渲染，保留供旧测试与回滚参照。
  */
-export const VIDEO_TOOL = {
+const VIDEO_TOOL_RAW = {
   title: '视频信息与抽帧',
   description: '本地读取视频的时长、分辨率与体积，并可导出任意时间点的一帧 PNG。',
   status: '功能开发中',
@@ -529,7 +730,7 @@ export const VIDEO_TOOL = {
  * 五个工具页的结果区都由 `ToolResultPane` 渲染，四个状态（空/加载/成功/失败）
  * 的兜底文案放在这里 —— 页面只覆盖需要改的那一条，不必各写一份。
  */
-export const TOOL_RESULT = {
+const TOOL_RESULT_RAW = {
   loading: '正在处理…',
   emptyTitle: '还没有结果',
   emptyDesc: '在上面填好内容后开始。',
@@ -567,8 +768,8 @@ export const TOOL_RESULT = {
 const TOOL_PAGES_BASE = {
   '/video/downloader': {
     eyebrow: '视频工具',
-    title: VIDEO_TOOL.title,
-    description: VIDEO_TOOL.description,
+    title: VIDEO_TOOL_RAW.title,
+    description: VIDEO_TOOL_RAW.description,
     icon: 'video',
     // 该工具在数据库里 requires_card = true
     requiresCard: true,
@@ -597,7 +798,7 @@ const TOOL_PAGES_BASE = {
     emptyDesc: '把视频分享链接填在上面，选好清晰度与格式即可。',
     invalidLink: '请填入以 http:// 或 https:// 开头的完整链接。',
     resultNote: '骨架阶段的结果为占位数据，解析服务接通后会替换为真实解析结果。',
-    asideNotice: VIDEO_TOOL.body,
+    asideNotice: VIDEO_TOOL_RAW.body,
     asideItems: [
       '链接必须是可以直接打开的分享链接，短链也可以。',
       '解析完成后会出现下载入口；本工具需要卡密激活。',
@@ -716,7 +917,7 @@ const TOOL_PAGES_BASE = {
 }
 
 /** 工具页全量清单：先列 3 个原有页，再并入 28 个扩展页 */
-export const TOOL_PAGES = { ...TOOL_PAGES_BASE, ...TOOL_PAGES_EXTRA }
+const TOOL_PAGES_RAW = { ...TOOL_PAGES_BASE, ...TOOL_PAGES_EXTRA }
 
 /**
  * 搜索结果页
@@ -724,14 +925,15 @@ export const TOOL_PAGES = { ...TOOL_PAGES_BASE, ...TOOL_PAGES_EXTRA }
  * 一个关键词**同时**搜商品与工具，两个分区各有自己的加载/错误/空态。
  * `limit` 放在这里而不是页面里，是为了让「每类最多几条」只有一个出处。
  */
-export const SEARCH_PAGE = {
+const SEARCH_PAGE_RAW = {
   eyebrow: 'SEARCH',
   title: '搜索',
-  titleWith: (keyword) => `「${keyword}」的搜索结果`,
+  titleWith: (keyword) =>
+    translate('searchPage.titleWith', `「${keyword}」的搜索结果`, { keyword }),
   description: '同时搜索商品与工具。',
   productSection: '商品',
   toolSection: '工具',
-  countLabel: (n) => `${n} 条`,
+  countLabel: (n) => translate('searchPage.countLabel', `${n} 条`, { n }),
   limit: 12,
   // 空关键词不请求，直接引导
   emptyKeywordTitle: '想找什么？',
@@ -741,8 +943,10 @@ export const SEARCH_PAGE = {
   // 两个分区各自的三态文案
   productErrorPrefix: '商品加载失败：',
   toolErrorPrefix: '工具加载失败：',
-  productEmpty: (keyword) => `没有找到与「${keyword}」相关的商品`,
-  toolEmpty: (keyword) => `没有找到与「${keyword}」相关的工具`,
+  productEmpty: (keyword) =>
+    translate('searchPage.productEmpty', `没有找到与「${keyword}」相关的商品`, { keyword }),
+  toolEmpty: (keyword) =>
+    translate('searchPage.toolEmpty', `没有找到与「${keyword}」相关的工具`, { keyword }),
   toolNeedIdentity: '登录后即可搜索工具。',
   toolLoading: '正在加载工具…',
 }
@@ -758,10 +962,36 @@ export const SEARCH_PAGE = {
  *    说「我们会邮件通知你」在偏好关掉时就是假话；
  * 3. **客服入口不是密码找回通道**：平台没有邮件/短信服务，重置密码仍需人工核验。
  */
-export const SUPPORT = {
+const SUPPORT_RAW = {
   eyebrow: '支持',
   title: '客服中心',
   desc: '提交问题、查看客服回复。游客也可以提问 —— 填一个能收到信的邮箱就行。',
+  tabsAria: '支持中心分区',
+  loading: '正在加载',
+  paginationAria: '会话分页',
+  pageOf: '第 {page} / {total} 页',
+  prevPage: '上一页',
+  nextPage: '下一页',
+  newReply: '有新回复',
+  viewThreadItem: '查看',
+  tabSubmit: '提交反馈',
+  tabThreads: '我的会话',
+  categories: {
+    order: '订单问题',
+    member: '会员问题',
+    points: '积分问题',
+    coupon: '优惠券问题',
+    account: '账号问题',
+    other: '其他问题',
+  },
+  statuses: {
+    open: '待客服回复',
+    pending: '客服已回复',
+    resolved: '已解决',
+    closed: '已关闭',
+  },
+  authors: { user: '我', staff: '客服', system: '系统' },
+  sources: { web: '网页', admin: '运营后台', email: '邮件', system: '系统' },
   guestNote:
     '你当前是游客身份：没有账号邮箱，回执与客服回复只会发到你填写的那一个邮箱，请务必记下回执号。',
 
@@ -793,8 +1023,8 @@ export const SUPPORT = {
   refresh: '刷新',
   listEmptyTitle: '还没有提交过反馈',
   listEmptyDesc: '在「提交反馈」里填一条，客服回复会出现在这里。',
-  listCount: (total) => `共 ${total} 条会话`,
-  messageCount: (count) => `${count} 条消息`,
+  listCount: (total) => translate('support.listCount', `共 ${total} 条会话`, { total }),
+  messageCount: (count) => translate('support.messageCount', `${count} 条消息`, { count }),
   backToList: '返回会话列表',
   detailTitle: '消息记录',
   noMessages: '这条会话里还没有消息',
@@ -815,7 +1045,7 @@ export const SUPPORT = {
   threadNotFoundHint: '回执号抄错一位就会找不到，请对照邮件或截图再试一次。',
 }
 
-/** 页脚 */export const FOOTER = {
+/** 页脚 */const FOOTER_RAW = {
   about:
     '星辰商行致力于为用户带来精选商品和优质服务。每一件商品都经过严格筛选，确保品质与美学的完美结合。',
   /**
@@ -827,8 +1057,8 @@ export const SUPPORT = {
    * 联系方式的取值来自 CONTACT，与「忘记密码」弹窗共用一份。
    */
   contacts: [
-    { key: 'phone', label: '客服电话', icon: 'phone', href: CONTACT.telHref },
-    { key: 'email', label: '客服邮箱', icon: 'mail', href: CONTACT.mailtoHref },
+    { key: 'phone', label: '客服电话', icon: 'phone', href: CONTACT_RAW.telHref },
+    { key: 'email', label: '客服邮箱', icon: 'mail', href: CONTACT_RAW.mailtoHref },
   ],
   hoursLabel: '服务时间',
   paymentLabel: '结算方式',
@@ -855,7 +1085,19 @@ export const SUPPORT = {
  * 内容刻意对齐**代码实际做的事**（写了哪些字段、用了哪些 localStorage key、
  * 有没有支付通道），而不是抄一份模板条款 —— 与实现对不上的隐私政策比没有更糟。
  */
-export const LEGAL = {
+const LEGAL_RAW = {
+  ui: {
+    updatedAt: '最后更新：{date}',
+    tocAria: '页内目录',
+    tocTitle: '目录',
+    footnote:
+      '本文档描述的是本站当前的实际行为。若你发现文档与实现不符，请通过页脚的联系方式告知我们 —— 那属于缺陷，我们会修正。',
+    docs: {
+      terms: '用户协议',
+      privacy: '隐私政策',
+      rules: '平台规则',
+    },
+  },
   terms: {
     title: '用户协议',
     updatedAt: '2026-10-12',
@@ -1011,7 +1253,7 @@ export const LEGAL = {
  *
  * 图标名对应 `utils/iconSet.js`；颜色由 currentColor 决定，因此跟随令牌。
  */
-export const THEME_SWITCH = {
+const THEME_SWITCH_RAW = {
   label: '明暗模式',
   modes: [
     { mode: 'light', label: '浅色', icon: 'sun' },
@@ -1019,3 +1261,29 @@ export const THEME_SWITCH = {
     { mode: 'auto', label: '跟随系统', icon: 'monitor' },
   ],
 }
+
+
+// ── 对外导出的「本地化视图」────────────────────────────────────────────
+// 原常量保留为 *_RAW，导出层按当前 locale 惰性取值；模板无需知道 i18n 存在。
+export const SITE = localizeNamespace('site', SITE_RAW)
+export const NAV_MENU = localizeNamespace('nav', NAV_MENU_RAW)
+export const CONTACT = localizeNamespace('contact', CONTACT_RAW)
+export const HERO = localizeNamespace('hero', HERO_RAW)
+export const SECTIONS = localizeNamespace('sections', SECTIONS_RAW)
+export const PAGES = localizeNamespace('pages', PAGES_RAW)
+export const PRODUCT_GRID = localizeNamespace('productGrid', PRODUCT_GRID_RAW)
+export const GOODS_TYPE = localizeNamespace('goodsType', GOODS_TYPE_RAW)
+export const CARD_PRODUCT = localizeNamespace('cardProduct', CARD_PRODUCT_RAW)
+export const TRADE = localizeNamespace('trade', TRADE_RAW)
+export const CATEGORY_PAGE = localizeNamespace('categoryPage', CATEGORY_PAGE_RAW)
+export const BOOT = localizeNamespace('boot', BOOT_RAW)
+export const AUTH = localizeNamespace('auth', AUTH_RAW)
+export const TOOL_PAGE = localizeNamespace('toolPage', TOOL_PAGE_RAW)
+export const VIDEO_TOOL = localizeNamespace('videoTool', VIDEO_TOOL_RAW)
+export const TOOL_RESULT = localizeNamespace('toolResult', TOOL_RESULT_RAW)
+export const TOOL_PAGES = localizeNamespace('toolPages', TOOL_PAGES_RAW)
+export const SEARCH_PAGE = localizeNamespace('searchPage', SEARCH_PAGE_RAW)
+export const SUPPORT = localizeNamespace('support', SUPPORT_RAW)
+export const FOOTER = localizeNamespace('footer', FOOTER_RAW)
+export const LEGAL = localizeNamespace('legal', LEGAL_RAW)
+export const THEME_SWITCH = localizeNamespace('themeSwitch', THEME_SWITCH_RAW)

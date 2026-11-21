@@ -25,7 +25,7 @@
       {{ SUPPORT.guestNote }}
     </p>
 
-    <div class="ec-tabs" role="tablist" aria-label="支持中心分区">
+    <div class="ec-tabs" role="tablist" :aria-label="SUPPORT.tabsAria">
       <button
         v-for="item in SUPPORT_TABS"
         :key="item.value"
@@ -35,7 +35,7 @@
         :aria-selected="tab === item.value ? 'true' : 'false'"
         @click="switchTab(item.value)"
       >
-        <span>{{ item.label }}</span>
+        <span>{{ supportTabLabel(item.value) }}</span>
         <span
           v-if="item.value === 'threads' && supportStore.hasThreadsUnread"
           class="support-tab-badge"
@@ -48,7 +48,7 @@
     <section
       v-if="tab === 'submit'"
       class="u-tabs-content support-panel"
-      aria-label="提交反馈"
+      :aria-label="SUPPORT.tabSubmit"
     >
       <div v-if="supportStore.hasCreated" class="ui-card support-receipt" role="status">
         <p class="support-receipt-title">{{ SUPPORT.receiptTitle }}</p>
@@ -75,7 +75,7 @@
           <SelectField
             id="support-category"
             v-model="form.category"
-            :options="SUPPORT_CATEGORIES"
+            :options="categoryOptions"
             :aria-label="SUPPORT.categoryLabel"
             :disabled="supportStore.creating"
           />
@@ -138,7 +138,7 @@
     </section>
 
     <!-- ── 我的会话 ──────────────────────────────────────────── -->
-    <section v-else class="u-tabs-content support-panel" aria-label="我的会话">
+    <section v-else class="u-tabs-content support-panel" :aria-label="SUPPORT.tabThreads">
       <!-- 详情 -->
       <template v-if="supportStore.hasCurrent">
         <div class="support-detail-bar">
@@ -156,7 +156,7 @@
           </button>
         </div>
 
-        <div v-if="supportStore.loadingThread" class="support-skeleton" role="status" aria-label="正在加载">
+        <div v-if="supportStore.loadingThread" class="support-skeleton" role="status" :aria-label="SUPPORT.loading">
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
         </div>
@@ -255,7 +255,7 @@
 
       <!-- 列表 -->
       <template v-else>
-        <div v-if="supportStore.loadingThreads" class="support-skeleton" role="status" aria-label="正在加载">
+        <div v-if="supportStore.loadingThreads" class="support-skeleton" role="status" :aria-label="SUPPORT.loading">
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
           <span class="u-skeleton u-skeleton--card"></span>
@@ -299,7 +299,7 @@
                 <button type="button" class="support-item-title" @click="openThread(item.thread_no)">
                   <span>{{ item.subject }}</span>
                   <span v-if="item.unread > 0" class="support-dot" aria-hidden="true"></span>
-                  <span v-if="item.unread > 0" class="support-sr">有新回复</span>
+                  <span v-if="item.unread > 0" class="support-sr">{{ SUPPORT.newReply }}</span>
                 </button>
                 <div class="support-item-foot">
                   <span class="support-item-no support-mono">{{ item.thread_no }}</span>
@@ -311,7 +311,7 @@
                     class="u-btn-secondary support-item-open"
                     @click="openThread(item.thread_no)"
                   >
-                    查看
+                    {{ SUPPORT.viewThreadItem }}
                   </button>
                 </div>
               </li>
@@ -320,10 +320,10 @@
             <nav
               v-if="supportStore.threadsTotalPages > 1"
               class="u-mm-pager"
-              aria-label="会话分页"
+              :aria-label="SUPPORT.paginationAria"
             >
               <span class="u-mm-pager-info">
-                第 {{ supportStore.threadsPage }} / {{ supportStore.threadsTotalPages }} 页
+                {{ translate('support.pageOf', SUPPORT.pageOf, { page: supportStore.threadsPage, total: supportStore.threadsTotalPages }) }}
               </span>
               <div class="u-mm-pager-btns">
                 <button
@@ -332,7 +332,7 @@
                   :disabled="!supportStore.threadsHasPrev"
                   @click="goThreadsPage(supportStore.threadsPage - 1)"
                 >
-                  上一页
+                  {{ SUPPORT.prevPage }}
                 </button>
                 <button
                   type="button"
@@ -340,7 +340,7 @@
                   :disabled="!supportStore.threadsHasNext"
                   @click="goThreadsPage(supportStore.threadsPage + 1)"
                 >
-                  下一页
+                  {{ SUPPORT.nextPage }}
                 </button>
               </div>
             </nav>
@@ -368,7 +368,9 @@ import {
   supportSourceLabel,
   supportStatusLabel,
   supportStatusTag,
+  supportTabLabel,
 } from '@/constants/support.js'
+import { translate } from '@/i18n/index.js'
 import { toDateTime } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useSupportStore } from '@/stores/support.js'
 import { useUserStore } from '@/stores/user.js'
@@ -382,6 +384,10 @@ const userStore = useUserStore()
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const tab = ref('submit')
+
+const categoryOptions = computed(() =>
+  SUPPORT_CATEGORIES.map((item) => ({ ...item, label: supportCategoryLabel(item.value) })),
+)
 
 const form = reactive({
   category: SUPPORT_CATEGORIES[0].value,

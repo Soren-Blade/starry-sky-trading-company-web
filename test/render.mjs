@@ -110,6 +110,11 @@ export async function renderComponent(moduleSpec, options = {}) {
 
   const app = createSSRApp({ render: () => h(Comp, options.props || {}) })
 
+  // 组件里可能用 useI18n()/`$t()`：先装上真实实例，避免只在测试里抛
+  // 「Need to install with app.use」。语言取默认 zh-CN，不影响断言。
+  const { i18n } = await import('@/i18n/index.js')
+  app.use(i18n)
+
   for (const plugin of options.allPlugins || options.plugins || []) {
     app.use(plugin)
   }

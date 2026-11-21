@@ -60,7 +60,8 @@ test('面板本体是 role=menu 且能被键盘导航取到（ref 是必需的�
   assert.ok(DROPDOWN.length > 0, '源码里找不到用户下拉主体')
   assert.match(DROPDOWN, /ref="userMenuPanel"/)
   assert.match(DROPDOWN, /role="menu"/)
-  assert.match(DROPDOWN, /aria-label="账号菜单"/)
+  assert.match(DROPDOWN, /:aria-label="t\('navbar\.accountMenu'\)"/)
+  assert.match(read('src/i18n/locales/zh-CN.js'), /accountMenu:\s*'账号菜单'/, '中文词条丢失')
   assert.match(DROPDOWN, /@keydown="onMenuKeydown"/)
 })
 
@@ -97,8 +98,10 @@ test('去重：会员与消息的入口只在顶栏，下拉里连会员子页�
 })
 
 test('分组与排序：只保留「账号资产」一组，退出登录独立收尾', () => {
-  const accountLabelAt = DROPDOWN.indexOf('>账号资产<')
+  // 组名现在是 i18n 词条：断言绑定 + 中文词条，而不是源码里的写死文本
+  const accountLabelAt = DROPDOWN.indexOf("t('navbar.assetsGroup')")
   assert.ok(accountLabelAt > -1, '缺少「账号资产」组标题')
+  assert.match(read('src/i18n/locales/zh-CN.js'), /assetsGroup:\s*'账号资产'/, '中文词条丢失')
   assert.equal(DROPDOWN.indexOf('>会员权益<'), -1, '会员权益组标题必须已移除')
 
   const paths = ['/user/profile', '/user/orders', '/user/favorites', '/user/kami', '/user/checkin']

@@ -79,7 +79,7 @@
  * （`tel:` / `mailto:`）—— 改造前这里 6 个链接都是 `href="#"`。
  */
 import AppIcon from '@/components/AppIcon.vue'
-import { SITE, FOOTER, CONTACT } from '@/constants/content.js';
+import { SITE, FOOTER, CONTACT } from '@/constants/index.js';
 </script>
 
 <style scoped>

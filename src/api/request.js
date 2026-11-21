@@ -2,6 +2,7 @@
 import axios from 'axios'
 
 import { getAccessToken, getRefreshToken, clearTokens, setTokensFromHeaders, getAccessTokenRemainingMs } from '@/hooks/useToken'
+import { getLocale } from '@/i18n/index.js'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 
@@ -62,6 +63,14 @@ export function __resetRefreshState() {
 // 它会变成 `Bearer <access token>`，服务端据此走的是 access 分支校验，
 // 刷新必然失败（实测确认 —— 请求日志里刷新请求带的是 access token）。
 requests.interceptors.request.use(async (config) => {
+    // 语言偏好随每个请求发出：服务端据此本地化错误信息与内容型字段。
+    // 必须放在下面的提前 return 之前，否则显式带 Authorization 的请求会漏掉它。
+    config.headers = config.headers || {}
+    config.headers['Accept-Language'] =
+        getLocale() === 'en-US'
+            ? 'en-US,en;q=0.9,zh-CN;q=0.8'
+            : 'zh-CN,zh;q=0.9,en;q=0.6'
+
     const alreadySet = Boolean(config.headers?.Authorization || config.headers?.authorization)
     if (alreadySet) return config
 

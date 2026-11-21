@@ -49,8 +49,13 @@ test('路由与入口：/user/assets 需要登录，导航栏下拉有「我的�
 
   assert.match(
     navbarSource,
-    /<router-link[^>]*to="\/user\/assets"[\s\S]{0,200}我的资产/,
+    /<router-link[^>]*to="\/user\/assets"[\s\S]{0,200}t\('navbar\.assets'\)/,
     '用户下拉要能直接进资产页'
+  )
+  assert.match(
+    readFileSync(join(SRC_DIR, 'i18n/locales/zh-CN.js'), 'utf8'),
+    /assets:\s*'我的资产'/,
+    '中文词条里要保留「我的资产」'
   )
   // 顺序：收藏之后、卡密管理之前（资产是「我买了什么」的总入口）
   const favoritesIndex = navbarSource.indexOf('to="/user/favorites"')
@@ -119,10 +124,10 @@ test('已激活工具：来源映射（member → 会员额度）跟着搬到资
 test('卡密页与订单页：只留指路，不再各画一遍', () => {
   assert.match(kamiSection, /已激活的工具在「我的资产」查看/)
   assert.match(ordersSource, /class="orders-assets-link"/, '订单页要有指路条')
-  assert.match(ordersSource, /<router-link to="\/user\/assets">我的资产<\/router-link>/)
+  assert.match(ordersSource, /<router-link to="\/user\/assets">\{\{ TRADE\.ordersAssetsLink \}\}<\/router-link>/)
   assert.match(
     ordersSource,
-    /实物商品的物流信息仍在本页订单里/,
+    /\{\{ TRADE\.ordersAssetsAfter \}\}/,
     '说明实物订单不受影响，避免用户误解'
   )
 })

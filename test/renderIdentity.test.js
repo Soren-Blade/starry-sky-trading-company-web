@@ -66,8 +66,10 @@ async function renderNavbar(userInfo, storeState = {}) {
 }
 
 /** 页面里可见的「登录 / 注册」按钮（顶栏那一颗，不是下拉面板里的） */
-const hasTopLoginButton = (html) =>
-  new RegExp(`<button[^>]*class="u-btn-primary"[^>]*>\\s*${AUTH.loginCta}\\s*</button>`).test(html)
+const hasTopLoginButton = (html) => {
+  const match = html.match(/<button[^>]*class="u-btn-primary"[^>]*>([\s\S]*?)<\/button>/)
+  return Boolean(match && match[1].includes(AUTH.loginCta))
+}
 
 // ── 身份尚未解析：占位骨架 ─────────────────────────────────
 //
