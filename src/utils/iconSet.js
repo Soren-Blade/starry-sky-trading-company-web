@@ -400,6 +400,10 @@ export const ICONS = {
     'chevron-left': {
         paths: ['m15 18-6-6 6-6'],
     },
+    /** 下折角：下拉触发器（与 chevron-right 转 90°） */
+    'chevron-down': {
+        paths: ['m6 9 6 6 6-6'],
+    },
     /** 闪光：装饰性强调（不画五角星，与 star 区分） */
     sparkles: {
         paths: [

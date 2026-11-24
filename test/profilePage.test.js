@@ -21,22 +21,28 @@ test('源码：资料编辑为整页单栏，签到已上移到身份条，下�
   assert.ok(!PROFILE_SOURCE.includes('class="profile-layout"'), '不再有左右两栏容器')
   assert.ok(!PROFILE_SOURCE.includes('profile-checkin'), '签到卡与样式应已从下方移除')
 
-  // 身份条里签到在主按钮位、编辑资料是次按钮，且签到排在前面
+  // 身份行只留一个主按钮：签到；编辑资料降为「注册于 …」同一行的文字链
   const actions = PROFILE_SOURCE.slice(
     PROFILE_SOURCE.indexOf('class="profile-summary-actions"'),
     PROFILE_SOURCE.indexOf('</section>', PROFILE_SOURCE.indexOf('class="profile-summary-actions"'))
   )
-  const checkinAt = actions.indexOf('handleProfileCheckin')
-  const editAt = actions.indexOf('profile.editCta')
-  assert.ok(checkinAt > -1 && editAt > -1, '身份条应同时有签到与编辑资料入口')
-  assert.ok(checkinAt < editAt, '签到应排在编辑资料之前')
-  assert.match(actions.slice(checkinAt - 200, checkinAt + 400), /u-btn-primary/)
-  assert.match(actions.slice(editAt - 300, editAt + 100), /u-btn-secondary/)
+  assert.match(actions, /handleProfileCheckin/)
+  assert.match(actions, /u-btn-primary/)
+  assert.ok(!actions.includes('profile.editCta'), '编辑资料不再占一个按钮位')
+
+  const head = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('class="profile-summary-identity"'),
+    PROFILE_SOURCE.indexOf('class="profile-summary-actions"')
+  )
+  assert.match(head, /profile-summary-edit/)
+  assert.match(head, /@click="openEditor"/)
+  assert.match(head, /PAGES\.profile\.editCta/)
 })
 
-test('源码：身份条动作纵向排列，窄屏铺满一行', () => {
+test('源码：身份条动作横向收在右端，窄屏铺满一行', () => {
   const body = ruleBody('.profile-summary-actions {')
-  assert.match(body, /flex-direction: column/)
+  assert.match(body, /display: flex/)
+  assert.match(body, /justify-content: flex-end/)
   assert.match(body, /flex: 0 0 auto/)
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
@@ -271,13 +277,43 @@ test('源码：身份与会员合并成一张摘要卡，旧的两张卡不再�
   assert.match(PROFILE_SOURCE, /class="profile-summary-error"/)
 })
 
-test('源码：手机号带 +86 地区前缀，校验仍只认 11 位数字', () => {
-  assert.match(PROFILE_SOURCE, /class="profile-phone-prefix"[\s\S]{0,120}phonePrefix/)
+test('源码：手机号带地区前缀，只读显示 +86、编辑用可搜索选择器，校验仍只认 11 位数字', () => {
+  // 只读表：展示层补 `+86` 与 3-4-4 分组，存库仍是纯数字
+  assert.match(
+    PROFILE_SOURCE,
+    /key: 'phone'[\s\S]{0,220}formatPhoneDisplay\(data\.phone, DEFAULT_DIAL\)/
+  )
+  // 编辑弹层：前缀是可选国家 / 地区的触发器，不再是固定标签
+  assert.match(PROFILE_SOURCE, /<PhonePrefixPicker v-model="phoneDial" \/>/)
+  assert.match(PROFILE_SOURCE, /const phoneDial = ref\(DEFAULT_DIAL\)/)
   assert.match(PROFILE_SOURCE, /id="profile-phone"[\s\S]{0,400}class="profile-phone-input"/)
   assert.match(PROFILE_SOURCE, /maxlength="11"/)
   assert.match(PROFILE_SOURCE, /class="profile-phone-group"/)
   assert.match(ruleBody('.profile-phone-group {'), /display: flex/)
-  assert.match(ruleBody('.profile-phone-prefix {'), /font-family: var\(--font-mono\)/)
+})
+
+test('源码：摘要卡的按钮层级收敛 —— 签到是唯一主按钮，其余降为文字链', () => {
+  // 会员行两个入口是「去看看」型导航，不该和主操作抢按钮视觉
+  const planActions = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('class="profile-summary-plan-actions"'),
+    PROFILE_SOURCE.indexOf('</dl>', PROFILE_SOURCE.indexOf('class="profile-summary-plan-actions"'))
+  )
+  assert.match(planActions, /class="profile-summary-link"/)
+  assert.match(planActions, /chevron-right/)
+  assert.ok(!planActions.includes('u-btn-secondary'), '会员入口不再用次按钮')
+
+  // 编辑资料是低频动作，做成身份说明行里的文字链
+  assert.match(PROFILE_SOURCE, /class="profile-summary-edit"/)
+  assert.match(ruleBody('.profile-summary-edit {'), /text-decoration: underline/)
+  assert.match(ruleBody('.profile-summary-link {'), /font-size: var\(--fs-label\)/)
+  assert.match(ruleBody('.profile-summary-link {'), /color: var\(--text-secondary\)/)
+
+  // 签到按钮带日历图标：图标是「今天」的语义，不只是装饰
+  const actions = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('class="profile-summary-actions"'),
+    PROFILE_SOURCE.indexOf('</section>', PROFILE_SOURCE.indexOf('class="profile-summary-actions"'))
+  )
+  assert.match(actions, /AppIcon name="calendar"/)
 })
 
 test('源码：UID 复制成功有 toast，按钮本身也变成功态', () => {

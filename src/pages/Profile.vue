@@ -56,14 +56,26 @@
         </span>
         <div class="profile-summary-identity">
           <p class="profile-summary-name">{{ heroName }}</p>
-          <p v-if="heroMeta" class="profile-summary-meta">{{ heroMeta }}</p>
+          <!--
+            编辑资料是低频动作，不再和签到并排成第二个按钮：
+            跟着「注册于 …」这行说明走，做成文字链，视觉重量降下来，
+            身份行只留一个真正的主按钮。
+          -->
+          <p v-if="heroMeta || userStore.isLoggedIn" class="profile-summary-meta">
+            <span v-if="heroMeta">{{ heroMeta }}</span>
+            <span v-if="heroMeta && userStore.isLoggedIn" class="profile-summary-dot" aria-hidden="true">·</span>
+            <button
+              v-if="userStore.isLoggedIn"
+              type="button"
+              class="profile-summary-edit"
+              @click="openEditor"
+            >
+              {{ PAGES.profile.editCta }}
+            </button>
+          </p>
         </div>
         <div class="profile-summary-actions">
-          <!--
-            签到是每天一次的高频动作，直接放在身份行上（少一跳）；
-            「编辑资料」是低频动作，降为次按钮，点开弹层再改，不在页面上常驻一块表单。
-            两个动作纵向排列：窄屏时各自铺满一行，不并排挤压。
-          -->
+          <!-- 签到是每天一次的高频动作，也是身份行唯一的主按钮 -->
           <template v-if="userStore.isLoggedIn">
             <button
               v-if="checkinAvailable"
@@ -72,14 +84,13 @@
               :disabled="checkinPending"
               @click="handleProfileCheckin"
             >
+              <AppIcon name="calendar" aria-hidden="true" />
               {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
             </button>
             <router-link v-else class="u-btn-secondary" to="/user/checkin">
+              <AppIcon name="calendar" aria-hidden="true" />
               {{ PAGES.profile.checkinCalendar }}
             </router-link>
-            <button type="button" class="u-btn-secondary" @click="openEditor">
-              {{ PAGES.profile.editCta }}
-            </button>
           </template>
           <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
           <button v-else type="button" class="u-btn-primary" @click="goLogin">
@@ -119,8 +130,15 @@
               </p>
             </div>
             <div class="profile-summary-plan-actions">
-              <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
-              <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
+              <!-- 会员中心 / 套餐对比是「去看看」型入口，不是主操作；文字链比两个次按钮安静 -->
+              <router-link class="profile-summary-link" to="/member">
+                {{ PAGES.profile.memberCenter }}
+                <AppIcon name="chevron-right" aria-hidden="true" />
+              </router-link>
+              <router-link class="profile-summary-link" to="/member/plans">
+                {{ PAGES.profile.planCompare }}
+                <AppIcon name="chevron-right" aria-hidden="true" />
+              </router-link>
             </div>
           </div>
 
@@ -300,7 +318,7 @@
               仍然只认纯数字，格式化不进入数据层。
             -->
             <div class="profile-phone-group">
-              <span class="profile-phone-prefix" aria-hidden="true">{{ PAGES.profile.phonePrefix }}</span>
+              <PhonePrefixPicker v-model="phoneDial" />
               <input
                 id="profile-phone"
                 v-model="form.phone"
@@ -754,6 +772,9 @@ import { formatPointsValue } from '@/constants/member.js'
 import DatePickerField from '@/components/DatePickerField.vue'
 // 性别用自绘下拉：原生 <select> 的弹出层同理，明暗两套主题都管不到
 import SelectField from '@/components/SelectField.vue'
+// 手机号前缀：点开可搜索国家 / 地区，面板 teleport 出弹层避免被 overflow 裁切
+import PhonePrefixPicker from '@/components/PhonePrefixPicker.vue'
+import { DEFAULT_DIAL, formatPhoneDisplay } from '@/constants/phoneCountries.js'
 // 操作日志：时间线预览用 JSON（按范围 + 条数），导出走 CSV blob
 import { LOG_RANGES, downloadMyLogs, getMyLogs } from '@/api/ask/userLogs'
 import { copyText } from '@/utils/clipboard.js'
@@ -931,6 +952,11 @@ const errorMessage = ref('')
 const nicknameError = ref('')
 const emailError = ref('')
 const phoneError = ref('')
+/**
+ * 地区代码只做展示与输入辅助，不进入 `form`：
+ * 接口仍然只收 11 位号码（`form.phone`），所以它不参与 isDirty / patch。
+ */
+const phoneDial = ref(DEFAULT_DIAL)
 const nicknameInputRef = ref(null)
 const emailInputRef = ref(null)
 const phoneInputRef = ref(null)
@@ -1221,7 +1247,13 @@ const readonlyRows = computed(() => {
     { key: 'uuid', label: fields.uuid, value: data.uuid || '—' },
     { key: 'username', label: fields.username, value: data.username || PAGES.profile.unset },
     { key: 'email', label: fields.email, value: data.email || PAGES.profile.unbound },
-    { key: 'phone', label: fields.phone, value: data.phone || PAGES.profile.unbound },
+    {
+      key: 'phone',
+      label: fields.phone,
+      // 号码是「地区 + 本地号」，只显示 11 位数字会让用户不确定能不能境外拨打；
+      // 存库仍是纯数字，这里只是展示层加 `+86` 与 3-4-4 分组。
+      value: data.phone ? formatPhoneDisplay(data.phone, DEFAULT_DIAL) : PAGES.profile.unbound,
+    },
     {
       key: 'userType',
       label: fields.userType,
@@ -1591,16 +1623,48 @@ onMounted(() => {
 }
 
 .profile-summary-meta {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 0.5);
   margin: calc(var(--space-unit) * 0.5) 0 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
 
-/* 签到是这一页唯一的「今天要做的事」，主按钮在上；编辑资料是低频动作，次按钮在下。 */
+.profile-summary-dot {
+  color: var(--divider);
+}
+
+/* 编辑资料：低频动作做成文字链，和「注册于 …」同一行，身份行只留一个主按钮 */
+.profile-summary-edit {
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.profile-summary-edit:hover {
+  text-decoration-thickness: 2px;
+}
+
+.profile-summary-edit:focus-visible {
+  outline: 2px solid var(--ec-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-input);
+}
+
+/* 签到是这一页唯一的「今天要做的事」，也是身份行唯一的主按钮 */
 .profile-summary-actions {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  justify-content: flex-end;
   flex: 0 0 auto;
   gap: var(--space-unit);
 }
@@ -1609,6 +1673,11 @@ onMounted(() => {
 .profile-summary-actions .u-btn-secondary {
   justify-content: center;
   white-space: nowrap;
+}
+
+.profile-summary-actions .app-icon {
+  font-size: var(--fs-body);
+  opacity: 0.9;
 }
 
 .profile-summary-skeleton {
@@ -1666,7 +1735,40 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: calc(var(--space-unit) * 1.5);
+  gap: calc(var(--space-unit) * 2.5);
+}
+
+/* 「去看看」型入口：文字 + 右折角，不抢主按钮的视觉重量 */
+.profile-summary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.25);
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--transition-interactive);
+}
+
+.profile-summary-link .app-icon {
+  font-size: var(--fs-label);
+  opacity: 0.6;
+  transition: transform var(--transition-interactive);
+}
+
+.profile-summary-link:hover {
+  color: var(--accent);
+}
+
+.profile-summary-link:hover .app-icon {
+  transform: translateX(2px);
+}
+
+.profile-summary-link:focus-visible {
+  outline: 2px solid var(--ec-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-input);
 }
 
 .profile-summary-stats {
@@ -1994,8 +2096,8 @@ onMounted(() => {
   grid-column: 1 / -1;
 }
 
-/* 手机号：+86 前缀与输入框拼成一个控件。
- * 前缀是本地的固定标签（不参加校验，也不写进 form.phone），输入框只装 11 位号码；
+/* 手机号：区号选择器与输入框拼成一个控件。
+ * 区号不参加校验，也不写进 form.phone，输入框只装 11 位号码；
  * 两者共享同一圈边框与焦点环，视觉上不能读成「两个字段」。 */
 .profile-phone-group {
   display: flex;
@@ -2013,20 +2115,6 @@ onMounted(() => {
 .profile-phone-group:focus-within {
   border-color: var(--ec-border-focus);
   box-shadow: var(--focus-ring);
-}
-
-.profile-phone-prefix {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  height: 100%;
-  padding-inline: var(--ec-input-px);
-  border-right: 1px solid var(--ec-border-subtle);
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
-  user-select: none;
 }
 
 .profile-phone-input {
@@ -2451,10 +2539,7 @@ onMounted(() => {
 
   .profile-summary-plan-actions {
     justify-content: flex-start;
-  }
-
-  .profile-summary-plan-actions > * {
-    flex: 1 1 auto;
+    gap: calc(var(--space-unit) * 2);
   }
 
   .profile-summary-stats {
