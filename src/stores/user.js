@@ -248,7 +248,7 @@ export const useUserStore = defineStore('user', {
         /**
          * 修改个人资料（昵称 / 头像 / 性别 / 生日）
          * @param {{nickname?: string, avatar_url?: string|null, gender?: string|null, birthday?: string|null}} patch
-         * @returns {Promise<{success: boolean, message: string}>}
+         * @returns {Promise<{success: boolean, message: string, field?: string}>}
          */
         async updateProfile(patch) {
             try {
@@ -259,7 +259,8 @@ export const useUserStore = defineStore('user', {
                     if (result.data) this.userInfo = { ...this.userInfo, ...result.data }
                     return { success: true, message: result.message || '资料已更新' }
                 }
-                return { success: false, message: result?.message || '资料更新失败' }
+                // field 目前服务端不返回；透传它是为了将来字段级错误能挂回字段下方
+                return { success: false, message: result?.message || '资料更新失败', field: result?.field }
             } catch (error) {
                 return { success: false, message: error.message || '资料更新失败，请稍后重试' }
             }

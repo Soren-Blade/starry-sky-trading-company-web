@@ -223,7 +223,7 @@ export default {
     profileAvatarUploaded: 'Avatar updated',
     profileAvatarUrl: 'External image URL (optional)',
     profileAvatarUrlHint:
-      'You can also paste an https:// image URL. Leave blank to use the default avatar.',
+      'Paste an https:// image URL and save to apply it. Leave blank to keep the current avatar.',
     profileAvatarPlaceholder: 'https:// image URL',
     profileGender: 'Gender',
     profileGenderUnset: 'Not set',

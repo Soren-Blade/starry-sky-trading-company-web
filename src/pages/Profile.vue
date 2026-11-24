@@ -47,10 +47,29 @@
         </span>
         <div class="profile-hero-text">
           <p class="profile-hero-name">{{ heroName }}</p>
-          <p class="profile-hero-meta">{{ heroMeta }}</p>
+          <p v-if="heroMeta" class="profile-hero-meta">{{ heroMeta }}</p>
         </div>
       </div>
-      <a v-if="userStore.isLoggedIn" class="u-btn-secondary" href="#profile-edit">{{ PAGES.profile.editCta }}</a>
+      <div v-if="userStore.isLoggedIn" class="profile-hero-actions">
+        <!--
+          签到是每天一次的高频动作，直接放在身份条上（少一跳）；
+          「编辑资料」是低频动作，降为次按钮，锚到下方资料面板。
+          两个动作纵向排列：窄屏时各自铺满一行，不并排挤压。
+        -->
+        <button
+          v-if="checkinAvailable"
+          type="button"
+          class="u-btn-primary profile-hero-checkin"
+          :disabled="checkinPending"
+          @click="handleProfileCheckin"
+        >
+          {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+        </button>
+        <router-link v-else class="u-btn-secondary" to="/user/checkin">
+          {{ PAGES.profile.checkinCalendar }}
+        </router-link>
+        <a class="u-btn-secondary" href="#profile-edit">{{ PAGES.profile.editCta }}</a>
+      </div>
     </section>
 
     <!--
@@ -68,70 +87,8 @@
       </router-link>
     </nav>
 
-    <div class="profile-layout">
-      <!-- 左：账号信息（只读） -->
-      <section class="page-panel" :aria-label="PAGES.profile.accountAria">
-        <h2 class="page-panel-head">{{ TRADE.profileBasic }}</h2>
-
-        <dl class="profile-fields">
-          <div v-for="row in readonlyRows" :key="row.key" class="profile-row">
-            <dt>{{ row.label }}</dt>
-
-            <!--
-              用户 UID：dd 元素本身就是设计系统的 CardCodeBox —— label / value / act
-              三段都是它的直接子元素，外面不再套只读字段底板，也不再多包一层 div；
-              行高、左基线、上下留白由 .profile-field-value 统一提供给所有字段行
-              （只读字段值的样式见文件末尾那一节样式表）。
-              默认只显示前三段，点眼睛后显示明文，30 秒自动回到掩码；复制按钮在 __act 里。
-              这里不是卡密详情页，因此不加水印。
-            -->
-            <dd
-              v-if="row.key === 'uuid'"
-              class="profile-field-value profile-field-value--code ec-code ec-code--sm"
-            >
-              <span class="ec-code__label">{{ uuidRevealed ? PAGES.profile.uidPlain : PAGES.profile.uidMasked }}</span>
-              <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
-                {{ uuidDisplay }}
-              </span>
-              <div class="ec-code__act">
-                <button
-                  type="button"
-                  class="ec-icon-btn"
-                  :aria-pressed="uuidRevealed ? 'true' : 'false'"
-                  :aria-label="uuidRevealed ? PAGES.profile.uidHide : PAGES.profile.uidShow"
-                  :disabled="!uuidRaw"
-                  @click="toggleUuid"
-                >
-                  <AppIcon :name="uuidRevealed ? 'eye-off' : 'eye'" />
-                </button>
-                <button
-                  type="button"
-                  class="ec-icon-btn"
-                  :class="{ 'is-ok': uuidCopied }"
-                  :aria-label="uuidCopied ? PAGES.profile.uidCopiedAria : PAGES.profile.uidCopy"
-                  :disabled="!uuidRaw"
-                  @click="copyUuid"
-                >
-                  <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
-                  <span class="ec-sr">{{ uuidCopied ? PAGES.profile.uidCopied : PAGES.profile.uidCopyShort }}</span>
-                </button>
-              </div>
-            </dd>
-            <dd v-else class="profile-field-value u-field-value">{{ row.value }}</dd>
-          </div>
-        </dl>
-
-        <p class="page-note profile-note">{{ TRADE.profileReadonlyNote }}</p>
-
-        <!-- 「不能自助改」必须给出路：账号与安全（2FA）/ 联系客服 -->
-        <div class="profile-security">
-          <router-link class="u-btn-secondary" to="/other/2fa">{{ PAGES.profile.securityEntry }}</router-link>
-          <router-link class="u-btn-secondary" to="/support">{{ PAGES.profile.contactSupport }}</router-link>
-        </div>
-      </section>
-
-      <!-- 右：可编辑资料（身份条「编辑资料」锚点落在这里） -->
-      <section id="profile-edit" class="page-panel profile-edit" :aria-label="PAGES.profile.editAria">
+    <!-- 资料编辑：整页单栏。身份摘要在上面只出现一次，这里只留可改的四个字段。 -->
+    <section id="profile-edit" class="page-panel profile-edit" :aria-label="PAGES.profile.editAria">
         <h2 class="page-panel-head">{{ TRADE.profileEdit }}</h2>
 
         <div v-if="!userStore.isLoggedIn" class="profile-guest">
@@ -141,6 +98,7 @@
         </div>
 
         <form class="profile-form" novalidate @submit.prevent="handleSubmit">
+          <div class="profile-field-grid">
           <div class="u-field">
             <label class="u-field-label" for="profile-nickname">{{ TRADE.profileNickname }}</label>
             <input
@@ -162,6 +120,30 @@
             <p v-if="nicknameError" id="profile-nickname-error" class="u-field-error" role="alert">
               {{ nicknameError }}
             </p>
+          </div>
+
+          <div class="u-field">
+            <label class="u-field-label" for="profile-gender">{{ TRADE.profileGender }}</label>
+            <SelectField
+              id="profile-gender"
+              v-model="form.gender"
+              :options="genderOptions"
+              :disabled="!userStore.isLoggedIn"
+              :aria-label="TRADE.profileGender"
+            />
+          </div>
+
+          <div class="u-field">
+            <label class="u-field-label" for="profile-birthday">{{ TRADE.profileBirthday }}</label>
+            <DatePickerField
+              id="profile-birthday"
+              v-model="form.birthday"
+              :aria-label="TRADE.profileBirthday"
+              :max="today"
+              view-date="1990-01-01"
+              :disabled="!userStore.isLoggedIn"
+            />
+          </div>
           </div>
 
           <div class="u-field">
@@ -225,15 +207,24 @@
 
           <!--
             头像 URL 对普通用户是内部实现外泄（占位符原来提示 /uploads 路径），
-            上传已覆盖绝大多数场景。折叠进「高级」，默认不打扰；文案也不出现 /uploads。
+            上传已覆盖绝大多数场景。折叠进「高级」，默认不打扰。
+            头像已是上传结果（站内路径）时，输入框不再把 /userApi/avatar/... 当值显示，
+            只写一句「当前头像由上传设置」，输入位留给「改用外链」。
           -->
           <details class="profile-advanced">
-            <summary class="profile-advanced-summary">{{ PAGES.profile.avatarAdvanced }}</summary>
+            <summary class="profile-advanced-summary">
+              {{ avatarFromUpload ? PAGES.profile.avatarExternalLabel : TRADE.profileAvatarUrl }}
+            </summary>
             <div class="u-field profile-advanced-field">
-              <label class="u-field-label" for="profile-avatar-url">{{ TRADE.profileAvatarUrl }}</label>
+              <label class="u-field-label" for="profile-avatar-url">
+                {{ avatarFromUpload ? PAGES.profile.avatarExternalLabel : TRADE.profileAvatarUrl }}
+              </label>
+              <p v-if="avatarFromUpload" class="page-note profile-advanced-note">
+                {{ PAGES.profile.avatarFromUploadNote }}
+              </p>
               <input
                 id="profile-avatar-url"
-                v-model="form.avatar_url"
+                v-model="avatarUrlInput"
                 class="u-input"
                 type="text"
                 maxlength="500"
@@ -243,50 +234,6 @@
               <span class="u-field-hint">{{ TRADE.profileAvatarUrlHint }}</span>
             </div>
           </details>
-
-          <div class="profile-grid">
-            <div class="u-field">
-              <label class="u-field-label" for="profile-gender">{{ TRADE.profileGender }}</label>
-              <!--
-                原生 <select> 的弹出层由操作系统绘制，明暗两套主题一套都管不到；
-                这里换成消费 ui-kit-form.css §1 的 SelectField，与上面几处
-                （卡密的工具/状态筛选、资料表单的性别选择）保持同一套外观。
-                id 交给组件后会落在触发器的 <button> 上，而 <button> 是 labelable
-                元素，所以 <label for> 的关联照旧成立。
-              -->
-              <SelectField
-                id="profile-gender"
-                v-model="form.gender"
-                :options="genderOptions"
-                :disabled="!userStore.isLoggedIn"
-                :aria-label="TRADE.profileGender"
-              />
-            </div>
-
-            <div class="u-field">
-              <label class="u-field-label" for="profile-birthday">{{ TRADE.profileBirthday }}</label>
-              <!--
-                原生 `<input type="date">` 的弹出日历由操作系统绘制，明暗两套主题都管不到；
-                这里换成消费 ui-kit-data.css §11 的 DatePickerField。
-                值仍是 `YYYY-MM-DD` 或空串，与原生控件的 value 同构，
-                因此 toDateInput()、isDirty 与 `patch.birthday = … || null` 都不必改。
-                `:max="today"` 禁掉未来日期（生日不该在未来）。
-                `view-date` 只在**没有选中值**时决定首次落点：生日往往是几十年前，
-                否则打开会落在今天所在月，而 max 又把之后的日子全禁掉 ——
-                42 格里只剩个位数可点，要退回 1990 年得点几百次。
-                id 落在组件的触发器 <button> 上，而 <button> 是 labelable 元素，
-                所以上面 <label for> 的关联成立（点标签也能打开面板）。
-              -->
-              <DatePickerField
-                id="profile-birthday"
-                v-model="form.birthday"
-                :aria-label="TRADE.profileBirthday"
-                :max="today"
-                view-date="1990-01-01"
-                :disabled="!userStore.isLoggedIn"
-              />
-            </div>
-          </div>
 
           <!-- 服务端校验（重名 / 敏感词）原样带回，不统一成「保存失败」 -->
           <p v-if="errorMessage" ref="formErrorRef" class="u-field-error" role="alert" tabindex="-1">
@@ -313,8 +260,74 @@
             </button>
           </div>
         </form>
-      </section>
-    </div>
+    </section>
+
+    <!--
+      账号信息：只读，放在资料面板之后。
+      桌面两列、UID 横跨整行；手机上值不再装进盒子，只按 label + 文本排列。
+    -->
+    <section class="page-panel profile-account" :aria-label="PAGES.profile.accountAria">
+      <h2 class="page-panel-head">{{ TRADE.profileBasic }}</h2>
+
+      <dl class="profile-fields">
+        <div
+          v-for="row in readonlyRows"
+          :key="row.key"
+          class="profile-row"
+          :class="{ 'profile-row--wide': row.key === 'uuid' }"
+        >
+          <dt>{{ row.label }}</dt>
+
+          <!--
+            用户 UID：dd 元素本身就是设计系统的 CardCodeBox —— label / value / act
+            三段都是它的直接子元素，外面不再套只读字段底板，也不再多包一层 div；
+            行高、左基线、上下留白由 .profile-field-value 统一提供给所有字段行。
+            默认只显示前三段，点眼睛后显示明文，30 秒自动回到掩码；复制按钮在 __act 里。
+          -->
+          <dd
+            v-if="row.key === 'uuid'"
+            class="profile-field-value profile-field-value--code ec-code ec-code--sm"
+          >
+            <span class="ec-code__label">{{ uuidRevealed ? PAGES.profile.uidPlain : PAGES.profile.uidMasked }}</span>
+            <span class="ec-code__value" :class="{ 'is-masked': !uuidRevealed }">
+              {{ uuidDisplay }}
+            </span>
+            <div class="ec-code__act">
+              <button
+                type="button"
+                class="ec-icon-btn"
+                :aria-pressed="uuidRevealed ? 'true' : 'false'"
+                :aria-label="uuidRevealed ? PAGES.profile.uidHide : PAGES.profile.uidShow"
+                :disabled="!uuidRaw"
+                @click="toggleUuid"
+              >
+                <AppIcon :name="uuidRevealed ? 'eye-off' : 'eye'" />
+              </button>
+              <button
+                type="button"
+                class="ec-icon-btn"
+                :class="{ 'is-ok': uuidCopied }"
+                :aria-label="uuidCopied ? PAGES.profile.uidCopiedAria : PAGES.profile.uidCopy"
+                :disabled="!uuidRaw"
+                @click="copyUuid"
+              >
+                <AppIcon :name="uuidCopied ? 'check-circle' : 'clipboard'" />
+                <span class="ec-sr">{{ uuidCopied ? PAGES.profile.uidCopied : PAGES.profile.uidCopyShort }}</span>
+              </button>
+            </div>
+          </dd>
+          <dd v-else class="profile-field-value u-field-value">{{ row.value }}</dd>
+        </div>
+      </dl>
+
+      <p class="page-note profile-note">{{ TRADE.profileReadonlyNote }}</p>
+
+      <!-- 「不能自助改」必须给出路：账号与安全（2FA）/ 联系客服 -->
+      <div class="profile-security">
+        <router-link class="u-btn-secondary" to="/other/2fa">{{ PAGES.profile.securityEntry }}</router-link>
+        <router-link class="u-btn-secondary" to="/support">{{ PAGES.profile.contactSupport }}</router-link>
+      </div>
+    </section>
 
     <!--
       会员权益摘要：放在资料双栏之后。
@@ -419,46 +432,16 @@
     </section>
 
     <!--
-      每日签到 + 邀请有礼：运营位，收成并排两卡（≥992px 两列，窄屏堆叠），
-      不再各占一整行把资料区推到折叠线以下。
+      邀请有礼：签到已经提到身份条，这里只留邀请（奖励同样是积分来源，
+      且**发奖在好友完成首单时**，不是注册时 —— 文案必须与派奖时机一致）。
     -->
-    <div v-if="userStore.isLoggedIn" class="profile-ops">
-      <section class="ui-card profile-checkin" :aria-label="PAGES.profile.checkinAria">
-        <div class="profile-checkin-text">
-          <p class="profile-checkin-title">{{ PAGES.profile.checkinTitle }}</p>
-          <p class="profile-checkin-desc">
-            {{ checkinAvailable ? PAGES.profile.checkinAvailable : PAGES.profile.checkinDone }}
-          </p>
-        </div>
-        <!--
-          今天还没签到就直接在这里签到（少一跳），已签到才退回「看日历」。
-          两个动作互斥渲染：同一位置不该同时出现「立即签到」和「查看日历」，
-          否则用户会以为两者都能补今天。
-        -->
-        <button
-          v-if="checkinAvailable"
-          type="button"
-          class="u-btn-primary profile-checkin-btn"
-          :disabled="checkinPending"
-          @click="handleProfileCheckin"
-        >
-          {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
-        </button>
-        <router-link v-else class="u-btn-secondary" to="/user/checkin">{{ PAGES.profile.checkinCalendar }}</router-link>
-      </section>
-
-      <!--
-        邀请有礼（1.6.0）：奖励同样是积分来源，且**发奖在好友完成首单时**，
-        不是注册时 —— 文案必须与派奖时机一致，否则用户会以为奖励丢了。
-      -->
-      <section class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
-        <div class="profile-invite-text">
-          <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
-          <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
-        </div>
+    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
+      <div class="profile-invite-text">
+        <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
+        <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
+      </div>
         <router-link class="u-btn-secondary" to="/invite">{{ PAGES.profile.inviteCta }}</router-link>
-      </section>
-    </div>
+    </section>
 
     <!--
       操作日志（可导出）：数据来源是服务端合并后的「本人全部重要操作」——`sstc.user_events`
@@ -680,29 +663,24 @@ const accountBadge = computed(() => {
 })
 
 const heroName = computed(() => {
-  if (!userStore.isLoggedIn) return PAGES.profile.guestName
+  if (!userStore.isLoggedIn) return PAGES.profile.guestHeroName
   return nickname.value || PAGES.profile.accountNoNickname
 })
 
 const heroMeta = computed(() => {
-  if (!userStore.isLoggedIn) return TRADE.profileGuestNote
-  const parts = []
+  // 身份条只说「注册于哪天」：等级/注册天数已经由右上角徽标表达，重复一遍是噪音。
+  if (!userStore.isLoggedIn) return ''
   const joined = toDate(userInfo.value?.created_at)
-  if (joined) {
-    parts.push(translate('pages.profile.accountSince', PAGES.profile.accountSince, { date: joined }))
-  }
-  if (registeredDays.value != null && registeredDays.value > 0) {
-    parts.push(
-      translate('pages.profile.statusRegisteredDays', PAGES.profile.statusRegisteredDays, {
-        days: registeredDays.value,
-      })
-    )
-  }
-  if (memberStore.isMember && memberStore.levelName) parts.push(memberStore.levelName)
-  return parts.join(' · ') || PAGES.profile.statusLoggedIn
+  return joined ? translate('pages.profile.accountSince', PAGES.profile.accountSince, { date: joined }) : ''
 })
 
-/** banned / deleted 才置顶警示；active 属于内部状态，对用户没有信息量 */
+/**
+ * banned / deleted 才置顶警示；active 属于内部状态，对用户没有信息量。
+ *
+ * 正常不可达（防御性代码）：服务端登录只放行 status='active'
+ * （server/src/router/user.js:360），被封禁/注销的账号根本进不来这一页。
+ * 保留这段是为了响应体被其他入口（如 token 续期、后台代登录）带回来时不至于静默。
+ */
 const accountAlert = computed(() => {
   const status = String(userInfo.value?.status || '').toLowerCase()
   if (status === 'banned') {
@@ -966,6 +944,28 @@ const avatarShown = computed(() => {
   return resolveAssetUrl(raw)
 })
 
+/**
+ * 头像是不是「上传设置的」（站内路径）。
+ *
+ * 站内路径（/userApi/avatar/<id>?v=...）是服务端回写的实现细节，不该当作用户可编辑的值
+ * 摆在输入框里 —— 用户会以为要自己填一个 URL，还顺带看到内部接口。
+ * 这种情况下输入位会被清空只留「改用外链」的入口，保存时也不会把内部路径再写回去。
+ */
+const avatarFromUpload = computed(() => form.value.avatar_url.trim().startsWith('/'))
+
+/**
+ * 「高级」里的外链输入框。
+ *
+ * 站点内部路径不显示成值；用户只在这个框里填真正的外链。
+ * 清空输入不会把已上传的头像弄丢（保存时 `avatar_url` 跳过 `/` 开头的值）。
+ */
+const avatarUrlInput = computed({
+  get: () => (avatarFromUpload.value ? '' : form.value.avatar_url),
+  set: (value) => {
+    form.value.avatar_url = value
+  },
+})
+
 /** 选中文件的提示：文件名 + 缩放后的体积，让用户知道「传上去的是多大」 */
 const pickedInfo = computed(() => {
   if (!avatarPreview.value) return ''
@@ -1143,7 +1143,10 @@ const handleSubmit = async () => {
     const patch = {}
     if (nicknameValue !== baseline.value.nickname.trim()) patch.nickname = nicknameValue
     if (form.value.avatar_url !== baseline.value.avatar_url) {
-      patch.avatar_url = form.value.avatar_url.trim() || null
+      // 站内路径是上传接口回写的，不接受用户手填；保存时跳过它，
+      // 免得把内部路径当成用户输入再写一遍（头像本身已经随上传保存过）。
+      const avatarValue = form.value.avatar_url.trim()
+      if (!avatarValue.startsWith('/')) patch.avatar_url = avatarValue || null
     }
     if (form.value.gender !== baseline.value.gender) patch.gender = form.value.gender || null
     if (form.value.birthday !== baseline.value.birthday) patch.birthday = form.value.birthday || null
@@ -1152,6 +1155,12 @@ const handleSubmit = async () => {
     if (result.success) {
       fillForm()
       notify.success(TRADE.profileSaved)
+    } else if (result.field === 'nickname') {
+      // 字段级错误（重名 / 敏感词）挂回昵称下方，banner 只说「保存失败」
+      nicknameError.value = result.message
+      errorMessage.value = PAGES.profile.nicknameSaveFailed
+      await nextTick()
+      nicknameInputRef.value?.focus()
     } else {
       // 服务端文案（重名 / 敏感词等）原样展示，不统一成「保存失败」
       errorMessage.value = result.message
@@ -1230,29 +1239,29 @@ onMounted(() => {
 
 <style scoped>
 /*
- * 个人中心：左只读信息 / 右可编辑表单。
- * 外壳来自 .page-shell 系列，字段来自 .u-field 系列，这里只写两栏比例与信息表。
+ * 个人中心：整页单栏 —— 身份条（含签到与编辑）→ 我的服务 → 资料编辑 → 账号信息 → 会员 → 邀请 → 日志。
+ * 外壳来自 .page-shell 系列，字段来自 .u-field 系列，这里只写本页特有的块。
  */
 
-/* ── 会员权益摘要：两栏面板之上的一条横向概览 ───────────────── */
+/* ── 会员权益摘要：单栏页面里的一条横向概览 ───────────────────── */
 /* 两个类名合写提高优先级：global.css 的 .ui-card 是纵向 flex 卡片，
-   这里要的是横向摘要条，靠 .ui-card.profile-member 明确覆盖它的方向 */
+   这里要的是「标题在左、按钮在右、数字独占下一行」的网格，
+   否则窄屏时三个数字和两个按钮会挤在同一行、文字互相贴住。 */
 .ui-card.profile-member {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(var(--space-unit) * 2.5);
-  /* .ui-card 自己没有外边距，.profile-page 也不是 flex 容器，
-     因此这三块（摘要条 / 签到入口 / 两栏面板）之间的竖向间距必须显式给，
-     否则它们会紧贴在一起。取与会员中心页面卡片相同的节奏（24px）。 */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: calc(var(--space-unit) * 4);
+  row-gap: calc(var(--space-unit) * 2);
   margin-bottom: calc(var(--space-unit) * 3);
 }
 
 .profile-member-head {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 0.5);
-  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1274,16 +1283,19 @@ onMounted(() => {
 }
 
 .profile-member-stats {
+  grid-column: 1 / -1;
+  grid-row: 2;
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 3);
+  gap: calc(var(--space-unit) * 2) calc(var(--space-unit) * 4);
   margin: 0;
 }
 
 .profile-member-stat {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 0.25);
+  gap: calc(var(--space-unit) * 0.75);
+  min-width: 0;
 }
 
 .profile-member-term {
@@ -1292,20 +1304,36 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/*
+ * 数字与说明必须同一行、之间留 6px：原来的 dd 是等宽字体，中文副文案继承后
+ * 字距被拉散，且没有间距，「36,485距 V8 还差 3,510」会粘成一个词。
+ * 数字保留等宽（对齐、易读），说明回到正文字体（中文才有正常字距）。
+ */
 .profile-member-value {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: var(--fs-h3);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
   color: var(--text-primary);
+  min-width: 0;
 }
 
 .profile-member-sub {
+  font-family: var(--font-body);
   font-size: var(--fs-label);
+  line-height: 1.5;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* 三个数字都可点：积分 / 优惠券 / 成长值各有落点页面 */
 .profile-member-link {
+  font-family: var(--font-mono);
+  font-size: var(--fs-h3);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
   color: inherit;
   text-decoration: none;
 }
@@ -1317,17 +1345,22 @@ onMounted(() => {
 }
 
 .profile-member-actions {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: calc(var(--space-unit) * 1.5);
+  /* 不允许被数字挤压：按钮要么完整显示，要么整组换行 */
+  flex: 0 0 auto;
 }
 
 /* 到期提醒横跨整行：它属于「需要你注意」的信息，不该挤在数字那一行 */
 .profile-member-remind {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit));
-  flex-basis: 100%;
   margin: 0;
   padding-top: calc(var(--space-unit) * 1.5);
   border-top: var(--stroke-width) solid var(--divider);
@@ -1373,7 +1406,7 @@ onMounted(() => {
   text-underline-offset: 2px;
 }
 
-/* ── 身份条：头像 + 昵称 / 注册信息 + 编辑锚点 ───────────────── */
+/* ── 身份条：头像 + 昵称 / 注册信息 + 签到 / 编辑 ─────────────── */
 .ui-card.profile-hero {
   flex-direction: row;
   flex-wrap: wrap;
@@ -1389,6 +1422,25 @@ onMounted(() => {
   align-items: center;
   gap: calc(var(--space-unit) * 2);
   min-width: 0;
+}
+
+/*
+ * 签到是这一页唯一的「今天要做的事」，放在最上、用主按钮；
+ * 编辑资料是低频动作，降为次按钮并排在它下面。
+ */
+.profile-hero-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-unit);
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.profile-hero-actions .u-btn-primary,
+.profile-hero-actions .u-btn-secondary {
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .profile-hero-avatar {
@@ -1484,33 +1536,38 @@ onMounted(() => {
   margin-bottom: calc(var(--space-unit) * 3);
 }
 
-/*
- * 全局 `.page-panel + .page-panel` 给相邻面板加了 margin-top，那是为「同一条竖向流」
- * 准备的间距。这里两栏是 grid 的并列项，右栏（修改资料）会被这条规则整体压低
- * —— 表现为「修改资料标题比账号信息低一截、顶部像被顶下去了」。
- * 版式间距交给 grid 的 gap，兄弟选择器在这层失效。
- */
-.profile-layout > .page-panel + .page-panel {
-  margin-top: 0;
-}
-
 /* 「编辑资料」锚点跳转后不要被固定顶栏盖住标题 */
 .profile-edit {
   scroll-margin-top: calc(var(--ec-topbar-h) + var(--space-unit) * 2);
 }
 
+/* 账号信息在资料编辑下方，作为「我有哪些不可改的东西」的补充 */
+.profile-account {
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+
+/*
+ * 桌面/平板：两个短字段同排、UID 跨整行。
+ * 只读值不再每行一个盒子堆成 600px 高的墙 —— 两列后这块高度减半。
+ */
 .profile-fields {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1.25);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: calc(var(--space-unit) * 3);
+  row-gap: calc(var(--space-unit) * 1.25);
   margin: 0;
 }
 
 .profile-row {
   display: grid;
-  grid-template-columns: calc(var(--space-unit) * 11) minmax(0, 1fr);
+  grid-template-columns: calc(var(--space-unit) * 9) minmax(0, 1fr);
   align-items: center;
   gap: calc(var(--space-unit) * 1.5);
+  min-width: 0;
+}
+
+.profile-row--wide {
+  grid-column: 1 / -1;
 }
 
 .profile-row dt {
@@ -1610,9 +1667,10 @@ onMounted(() => {
   box-shadow: 0 0 0 2px var(--danger-bg);
 }
 
-.profile-grid {
+/* 昵称 / 性别 / 生日：昵称略宽，两个短字段同排，减少表单纵向长度 */
+.profile-field-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
   gap: calc(var(--space-unit) * 2);
 }
 
@@ -1701,62 +1759,26 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 1.5);
 }
 
+/* 头像已是上传结果时的一句说明：不要把 /userApi/avatar/... 当值摆出来 */
+.profile-advanced-note {
+  margin: 0 0 calc(var(--space-unit));
+  font-size: var(--fs-label);
+}
+
 .profile-actions {
   margin-top: calc(var(--space-unit));
 }
 
-/* ── 运营位：签到 + 邀请并排两卡（≥992px 两列） ───────────────── */
-.profile-ops {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;
-  gap: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
-}
-
-/* ── 每日签到入口（个人中心功能，`/user/checkin`） ───────────── */
-/* 同 .profile-member：合写类名压过 .ui-card 的纵向方向（否则「文案左、按钮右」
-   会变成垂直居中堆叠）。竖向间距交给 .profile-ops 的 gap。 */
-.ui-card.profile-checkin {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-  margin-bottom: 0;
-}
-.profile-checkin-text {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.25);
-  min-width: 0;
-}
-.profile-checkin-title {
-  margin: 0;
-  font-weight: var(--fw-heading);
-}
-.profile-checkin-desc {
-  margin: 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-/* 「立即签到」比「查看签到日历」更重，但要和右侧那块 36px 的按钮位对齐，
-   所以只约束不换行与最小宽度，不写死高度（主按钮自带 --btn-height）。 */
-.profile-checkin-btn {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
 /* ── 邀请有礼入口（1.6.0，`/invite`） ─────────────────────────
-   与签到卡同一版式：合写类名压过 .ui-card 的纵向方向。 */
+   签到已上提到身份条；这里只剩邀请一张卡，不再需要并排网格。
+   合写类名压过 .ui-card 的纵向方向。 */
 .ui-card.profile-invite {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
-  margin-bottom: 0;
+  margin-bottom: calc(var(--space-unit) * 3);
 }
 .profile-invite-text {
   display: flex;
@@ -1819,17 +1841,23 @@ onMounted(() => {
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
-  .profile-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* 平板：服务四宫格降到两列；运营位收成一列（卡片内部仍是左右布局） */
+  /* 平板：服务四宫格降到两列；会员条按钮回到标题下方，数字独占一行 */
   .profile-services {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .profile-ops {
+  .profile-member {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-member-actions {
+    grid-column: 1;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+
+  .profile-member-stats {
+    grid-row: 3;
   }
 }
 
@@ -1852,25 +1880,85 @@ onMounted(() => {
   .profile-field-value--code .ec-code__value {
     overflow-wrap: anywhere;
   }
+
+  /* 平板竖屏：资料字段两列放不下，回落单列；昵称独占一行，性别/生日并排 */
+  .profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-field-grid > .u-field:first-child {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 575px) {
+  /*
+   * 手机：账号信息不再一行一个 36px 的盒子（六行约 600px），
+   * 改成「标签 + 文本」的紧凑行，靠 dl 的行间距分组。
+   */
   .profile-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: calc(var(--space-unit) * 0.5);
+    grid-template-columns: calc(var(--space-unit) * 8) minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 1.25);
+    align-items: baseline;
   }
 
-  .profile-grid {
+  .profile-field-value,
+  .profile-fields .u-field-value {
+    min-height: 0;
+    padding-block: 0;
+    padding-inline: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-family: var(--font-body);
+    font-size: var(--fs-sm);
+    line-height: 32px;
+  }
+
+  /* 小屏 UID 还是需要卡片感：它是这一屏唯一要「复制」的串 */
+  .profile-field-value--code {
+    padding-inline: var(--ec-input-px);
+    border: 1px solid var(--ec-border-subtle);
+    border-radius: var(--ec-radius-lg);
+    background: var(--ec-bg-muted);
+    line-height: normal;
+  }
+
+  /* 昵称 / 性别 / 生日在手机上各占一行：两列会把性别、生日压成半宽 */
+  .profile-field-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* 手机：服务入口一列，避免四宫格里每格只剩两个字 */
+  /* 手机：服务入口改 2×2，只留图标 + 名称 + 箭头，描述行隐藏 */
   .profile-services {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--space-unit) * 1.5);
   }
 
-  /* 窄屏**保持左右结构**（这正是这次改动要的版式）：只把头像与间距收一档，
-   * 说明文字自己换行，按钮继续钉在右侧。 */
+  .ui-card.profile-service {
+    gap: calc(var(--space-unit));
+    padding: calc(var(--space-unit) * 1.5);
+  }
+
+  .profile-service-desc {
+    display: none;
+  }
+
+  .profile-member-stats {
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  /* 会员条窄屏整体竖排：标题、按钮、数字依次向下 */
+  .profile-member-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 窄屏保持头像编辑器左右结构：只把头像与间距收一档，按钮继续钉在右侧 */
   .avatar-editor,
   .avatar-profile {
     gap: calc(var(--space-unit) * 1.25);
@@ -1887,14 +1975,13 @@ onMounted(() => {
     max-width: none;
   }
 
-  /* 签到入口窄屏改竖排：按钮占满一行，避免说明被压成单字一列。
-     选择器必须与上面那条同优先级（.ui-card 也在里面），否则压不过它。 */
-  .ui-card.profile-checkin {
-    flex-direction: column;
-    align-items: stretch;
+  /* 签到 / 编辑两个按钮在窄屏占满整行 */
+  .profile-hero-actions {
+    width: 100%;
+    margin-left: 0;
   }
 
-  /* 邀请入口同理（两条选择器必须同优先级） */
+  /* 邀请入口窄屏改竖排（两条选择器必须同优先级） */
   .ui-card.profile-invite {
     flex-direction: column;
     align-items: stretch;

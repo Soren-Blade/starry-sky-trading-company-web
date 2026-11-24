@@ -289,11 +289,22 @@ test('统一性：profile-fields 下每一行共用一套字段值类名', async
 
 /* ── 样式：只读字段行的节奏只定义一处 ─────────────────────────────────── */
 
-test('样式：.u-field-value 只有一个定义，节奏统一由 .profile-field-value 提供', () => {
+test('样式：.u-field-value 桌面只有一个基础定义，575 只允许去盒覆盖', () => {
   const css = styleBlock()
 
-  const hits = css.match(/\.u-field-value\b/g) || []
-  assert.equal(hits.length, 1, `.u-field-value 只允许有一处规则，实际 ${hits.length} 处`)
+  const baseHits = css.match(/\.profile-fields \.u-field-value\s*\{/g) || []
+  assert.equal(
+    baseHits.length,
+    2,
+    `.profile-fields .u-field-value 应有「桌面基础 + 575 去盒」两处，实际 ${baseHits.length} 处`
+  )
+
+  const compactAt = css.indexOf('@media (max-width: 575px)')
+  const firstAt = css.indexOf('.profile-fields .u-field-value {')
+  const secondAt = css.indexOf('.profile-fields .u-field-value {', firstAt + 1)
+  assert.ok(compactAt > -1, '应存在 ≤575px 媒体查询')
+  assert.ok(firstAt > -1 && firstAt < compactAt, '基础只读底板应写在媒体查询之前')
+  assert.ok(secondAt > compactAt, '只读值去盒只能写在 ≤575px 媒体查询里')
 
   const base = ruleBody(css, '\n.profile-field-value {')
   for (const prop of ['padding-inline', 'min-height', 'font-size', 'line-height', 'color', 'overflow-wrap']) {

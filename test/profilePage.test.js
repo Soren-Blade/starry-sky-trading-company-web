@@ -1,10 +1,9 @@
 /**
- * 个人中心页（`/user/profile`）布局测试
+ * 个人中心页（`/user/profile`）版式测试
  *
- * 只做源码断言：这里的三类问题（卡片间距、卡片方向、两栏回落）全都只存在于 CSS，
- * SSR 渲染出来的 HTML 一模一样 —— `.ui-card` 自带的方向与页面里显式写的 margin
- * 都不在 HTML 里。真浏览器里一旦漏掉，表现就是「两张卡紧贴在一起」或者
- * 「文案与按钮叠成上下两行」。
+ * 只做源码断言：卡片方向、栅格列数、移动端降级这些全都只存在于 CSS 与模板结构里，
+ * SSR 出来的 HTML 一模一样 —— `.ui-card` 自带的方向与响应式断点都不在 SSR 结果里。
+ * 真浏览器里一旦漏掉，表现就是「两张卡紧贴」「数字与说明粘成一句」「手机上要滚两屏」。
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -18,50 +17,76 @@ const ruleBody = (selector) => {
   return PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('}', at))
 }
 
-test('源码：会员卡自身留白，签到 / 邀请的间距由 .profile-ops 的 gap 统一给', () => {
-  // .ui-card（global.css）自己不设 margin，.profile-page 也不是 flex/grid 容器，
-  // 因此卡片与下方内容的竖向间距只能显式给。
+test('源码：资料编辑为整页单栏，签到已上移到身份条，下方不再有签到卡', () => {
+  assert.ok(!PROFILE_SOURCE.includes('class="profile-layout"'), '不再有左右两栏容器')
+  assert.ok(!PROFILE_SOURCE.includes('profile-checkin'), '签到卡与样式应已从下方移除')
+
+  // 身份条里签到在主按钮位、编辑资料是次按钮，且签到排在前面
+  const actions = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('class="profile-hero-actions"'),
+    PROFILE_SOURCE.indexOf('</section>', PROFILE_SOURCE.indexOf('class="profile-hero-actions"'))
+  )
+  const checkinAt = actions.indexOf('handleProfileCheckin')
+  const editAt = actions.indexOf('profile.editCta')
+  assert.ok(checkinAt > -1 && editAt > -1, '身份条应同时有签到与编辑资料入口')
+  assert.ok(checkinAt < editAt, '签到应排在编辑资料之前')
+  assert.match(actions.slice(checkinAt - 200, checkinAt + 400), /u-btn-primary/)
+  assert.match(actions.slice(editAt - 300, editAt + 100), /u-btn-secondary/)
+})
+
+test('源码：身份条动作纵向排列，窄屏铺满一行', () => {
+  const body = ruleBody('.profile-hero-actions {')
+  assert.match(body, /flex-direction: column/)
+  assert.match(body, /margin-left: auto/)
+
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
+  assert.match(phone, /\.profile-hero-actions \{[\s\S]*?margin-left: 0/)
+})
+
+test('源码：会员条数字与说明有明确间距，数字等宽、说明走正文字体', () => {
+  assert.match(ruleBody('.profile-member-stat {'), /gap: calc\(var\(--space-unit\) \* 0\.75\)/)
   assert.match(
-    ruleBody('.ui-card.profile-member {'),
-    /margin-bottom: calc\(var\(--space-unit\) \* 3\)/,
-    '会员摘要卡需要下外边距'
+    ruleBody('.profile-member-value {'),
+    /display: flex[\s\S]*?flex-direction: column[\s\S]*?gap: calc\(var\(--space-unit\) \* 0\.75\)/,
+    'dd 只是纵向排版容器，不能整块继承等宽字体'
+  )
+  assert.match(ruleBody('.profile-member-link {'), /font-family: var\(--font-mono\)/)
+  assert.match(ruleBody('.profile-member-sub {'), /font-family: var\(--font-body\)/)
+  assert.match(ruleBody('.profile-member-sub {'), /white-space: nowrap/)
+
+  // 卡片本身给足列间距，并让按钮组不再被挤压收缩
+  assert.match(ruleBody('.ui-card.profile-member {'), /column-gap: calc\(var\(--space-unit\) \* 4\)/)
+  assert.match(ruleBody('.profile-member-actions {'), /flex: 0 0 auto/)
+  assert.match(ruleBody('.ui-card.profile-member {'), /margin-bottom: calc\(var\(--space-unit\) \* 3\)/)
+})
+
+test('源码：账号信息跟在资料面板之后，桌面两列、UID 横跨整行', () => {
+  const editAt = PROFILE_SOURCE.indexOf('id="profile-edit"')
+  const accountAt = PROFILE_SOURCE.indexOf('class="page-panel profile-account"')
+  assert.ok(editAt > -1 && accountAt > editAt, '账号信息应在资料面板之后')
+
+  assert.match(ruleBody('.profile-fields {'), /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(ruleBody('.profile-row--wide {'), /grid-column: 1 \/ -1/)
+
+  const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 991px)'))
+  assert.match(tablet, /\.profile-fields \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
+})
+
+test('源码：表单三字段同一行，平板两列（昵称独占）、手机一列', () => {
+  assert.match(
+    ruleBody('.profile-field-grid {'),
+    /grid-template-columns: minmax\(0, 1\.2fr\) minmax\(0, 0\.9fr\) minmax\(0, 0\.9fr\)/
   )
 
-  const ops = ruleBody('.profile-ops {')
-  assert.match(ops, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/, '签到 + 邀请并排两列')
-  assert.match(ops, /gap: calc\(var\(--space-unit\) \* 2\)/, '两卡之间由 grid gap 分隔')
-  assert.match(ops, /margin-bottom: calc\(var\(--space-unit\) \* 3\)/, '与下方日志留出间距')
+  const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 991px)'))
+  assert.match(tablet, /\.profile-field-grid \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(tablet, /\.profile-field-grid > \.u-field:first-child \{[\s\S]*?grid-column: 1 \/ -1/)
 
-  for (const selector of ['.ui-card.profile-checkin {', '.ui-card.profile-invite {']) {
-    assert.match(ruleBody(selector), /margin-bottom: 0/, `${selector} 不再各自占一行，外边距交给 .profile-ops`)
-  }
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
+  assert.match(phone, /\.profile-field-grid \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
 })
 
-test('源码：签到卡与邀请卡都是横向条（文案左、按钮右），不能继承 .ui-card 的纵向方向', () => {
-  for (const selector of ['.ui-card.profile-checkin {', '.ui-card.profile-invite {']) {
-    const body = ruleBody(selector)
-
-    assert.match(body, /flex-direction: row/, `global.css 的 .ui-card 是 column，${selector} 必须合写类名覆盖`)
-    assert.match(body, /justify-content: space-between/)
-  }
-})
-
-test('源码：极窄屏的签到卡与邀请卡覆盖也带上 .ui-card（否则又变回纵向）', () => {
-  const media = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(media, /\.ui-card\.profile-checkin \{/, '窄屏覆盖必须是同一个选择器')
-  assert.match(media, /\.ui-card\.profile-invite \{/, '窄屏覆盖必须是同一个选择器')
-})
-
-test('源码：两栏面板用 grid + --section-gap，窄屏回落单列', () => {
-  const body = ruleBody('.profile-layout {')
-  assert.match(body, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/)
-  assert.match(body, /gap: var\(--section-gap\)/)
-
-  const media = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 991px)'))
-  assert.match(media, /\.profile-layout \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
-})
-
-test('源码：我的服务四入口在桌面四列、平板两列、手机一列', () => {
+test('源码：我的服务桌面四列、平板两列、手机 2×2 且隐藏描述行', () => {
   assert.match(
     ruleBody('.profile-services {'),
     /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/,
@@ -72,10 +97,32 @@ test('源码：我的服务四入口在桌面四列、平板两列、手机一�
   assert.match(tablet, /\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(phone, /\.profile-services \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
+  assert.match(phone, /\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/, '手机仍是 2×2')
+  assert.match(phone, /\.profile-service-desc \{[\s\S]*?display: none/)
 })
 
-test('源码：优惠券为 0 时用空态文案替换数字，不与「0」并排', () => {
+test('源码：手机上只读值去掉盒状底板，label + 文本靠 dl 间距分组', () => {
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
+  const block = phone.slice(
+    phone.indexOf('.profile-fields .u-field-value {'),
+    phone.indexOf('.profile-field-grid {', phone.indexOf('.profile-fields .u-field-value {'))
+  )
+  assert.match(block, /background: none/)
+  assert.match(block, /border: 0/)
+  assert.match(block, /line-height: 32px/)
+  assert.match(block, /font-family: var\(--font-body\)/)
+})
+
+test('源码：邀请卡仍是横向条（文案左、按钮右），窄屏才竖排', () => {
+  const body = ruleBody('.ui-card.profile-invite {')
+  assert.match(body, /flex-direction: row/, 'global.css 的 .ui-card 是 column，必须合写类名覆盖')
+  assert.match(body, /justify-content: space-between/)
+
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
+  assert.match(phone, /\.ui-card\.profile-invite \{[\s\S]*?flex-direction: column/)
+})
+
+test('源码：会员为 0 张券时只渲染空态文案，不与「0」并排', () => {
   const at = PROFILE_SOURCE.indexOf('v-if="memberStore.overview.coupons != null"')
   assert.ok(at > -1, '应有优惠券统计项')
   const block = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('</dl>', at))
@@ -86,6 +133,23 @@ test('源码：优惠券为 0 时用空态文案替换数字，不与「0」并�
     !block.includes('profile-member-sub'),
     '0 张时不要再并排渲染一个数字加一行提示，两句话互相矛盾'
   )
+})
+
+test('源码：头像外链输入框不展示内部路径，保存时跳过 / 开头的内部地址', () => {
+  assert.match(PROFILE_SOURCE, /const avatarFromUpload = computed\(\(\) =>/, '应判断头像是否来自上传')
+  assert.match(PROFILE_SOURCE, /v-model="avatarUrlInput"/, '输入框只绑定代理值')
+  assert.ok(
+    !PROFILE_SOURCE.includes('v-model="form.avatar_url"'),
+    '不能直接绑 form.avatar_url —— 一展开就会看到 /userApi/avatar/… 内部路径'
+  )
+  assert.match(PROFILE_SOURCE, /if \(!avatarValue\.startsWith\('\/'\)\) patch\.avatar_url/)
+  assert.match(PROFILE_SOURCE, /avatarFromUpload \? PAGES\.profile\.avatarExternalLabel/, '上传态改标「改用外链」')
+})
+
+test('源码：banned / deleted 警示条注明「正常不可达」', () => {
+  const at = PROFILE_SOURCE.indexOf('const accountAlert = computed')
+  const block = PROFILE_SOURCE.slice(at - 600, at)
+  assert.match(block, /正常不可达/, '登录只放行 active，这段是防御性死代码，必须写明')
 })
 
 test('源码：日志导出文件名是 account-events-<范围>-<日期>.csv，不是 tool-usage-', () => {

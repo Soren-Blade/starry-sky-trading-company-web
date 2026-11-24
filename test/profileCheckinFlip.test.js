@@ -51,7 +51,10 @@ test('Profile：签到成功后用 force 重取总览（否则按钮不翻面）
 
 test('按钮文案由 checkin_available 驱动，两个分支都在', () => {
   // 未签到 → 主按钮「立即签到」；已签到 → 次级链接「查看签到日历」
-  assert.match(PROFILE, /checkinAvailable \? PAGES\.profile\.checkinAvailable/)
+  assert.match(
+    PROFILE,
+    /checkinPending \? PAGES\.profile\.checkinPending : PAGES\.profile\.checkinNow/
+  )
   assert.match(PROFILE, /v-if="checkinAvailable"/)
   assert.match(PROFILE, /PAGES\.profile\.checkinPending/)
   assert.match(PROFILE, /PAGES\.profile\.checkinCalendar/)
