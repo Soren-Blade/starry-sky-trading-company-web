@@ -6,151 +6,72 @@
         <h1 class="page-shell-title">{{ PAGES.profile.title }}</h1>
         <p class="page-shell-desc">{{ PAGES.profile.description }}</p>
       </div>
-      <span class="u-tag u-tag--accent">
-        {{ userStore.isLoggedIn ? PAGES.profile.statusLoggedIn : PAGES.profile.statusGuest }}
+      <!--
+        账号级徽标：登录后写「V7」或「注册 N 天」，游客写「游客」。
+        不再输出「已登录」—— 这句话在只有登录后才能看到的页面上等于没说。
+      -->
+      <span class="u-tag" :class="userStore.isLoggedIn ? 'u-tag--accent' : 'u-tag--muted'">
+        {{ accountBadge }}
       </span>
     </header>
 
     <!--
-      会员权益摘要：等级 / 成长值 / 积分 / 优惠券四个数放在两栏面板之上。
-      未登录整块不渲染（这几个数都属于账号）；数据没回来时给骨架 —— 加载中
-      就写「还不是会员」是错的。数据由 App.vue 在登录态变化时统一拉取，
-      本页只负责展示与重试。
+      账号被禁用 / 注销时，后台状态不能只以英文枚举藏在只读表格里。
+      置顶一条警示条，并给出「能做什么」：联系客服。
     -->
-    <section
-      v-if="userStore.isLoggedIn && memberSummaryVisible"
-      class="ui-card profile-member"
-      :aria-label="PAGES.profile.memberAria"
+    <AppAlert
+      v-if="accountAlert"
+      class="profile-alert"
+      :variant="accountAlert.variant"
+      :title="accountAlert.title"
     >
-      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-member-skeleton">
-        <span class="u-skeleton profile-member-skeleton-line"></span>
-        <span class="u-skeleton profile-member-skeleton-line profile-member-skeleton-line--short"></span>
+      {{ accountAlert.body }}
+      <router-link class="profile-alert-link" to="/support">{{ PAGES.profile.contactSupport }}</router-link>
+    </AppAlert>
+
+    <!--
+      身份条：头像 + 昵称 + 注册时间（+ 会员等级）+「编辑资料」锚点。
+      这是「我是谁」的唯一出处，从原来的左栏里提出来，也让首屏第一眼有落点。
+    -->
+    <section class="ui-card profile-hero" :aria-label="PAGES.profile.identityAria">
+      <div class="profile-hero-identity">
+        <span class="u-avatar profile-hero-avatar">
+          <SmartImage
+            v-if="userStore.avatarUrl"
+            :src="userStore.avatarUrl"
+            :alt="nickname || PAGES.profile.accountAvatar"
+            fallback-icon="user"
+            loading="eager"
+          />
+          <AppIcon v-else name="user" />
+        </span>
+        <div class="profile-hero-text">
+          <p class="profile-hero-name">{{ heroName }}</p>
+          <p class="profile-hero-meta">{{ heroMeta }}</p>
+        </div>
       </div>
-
-      <p v-else-if="memberStore.error" class="profile-member-error" role="alert">
-        {{ memberStore.error }}
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">{{ PAGES.profile.retry }}</button>
-      </p>
-
-      <template v-else-if="memberStore.overview">
-        <div class="profile-member-head">
-          <p class="profile-member-title">
-            <AppIcon name="star" aria-hidden="true" />
-            {{ memberStore.isMember ? memberStore.levelName : PAGES.profile.notMember }}
-          </p>
-          <p class="profile-member-note">
-            {{
-              memberStore.isMember && memberStore.overview.days_left
-                ? translate('pages.profile.memberDaysLeft', PAGES.profile.memberDaysLeft, {
-                    days: memberStore.overview.days_left,
-                  })
-                : PAGES.profile.memberUpgradeNote
-            }}
-          </p>
-        </div>
-
-        <dl class="profile-member-stats">
-          <div class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.growth }}</dt>
-            <dd class="profile-member-value">
-              {{ memberStore.overview.growth ?? 0 }}
-              <span v-if="memberStore.overview.growth_threshold" class="profile-member-sub">
-                / {{ memberStore.overview.growth_threshold }}
-              </span>
-            </dd>
-          </div>
-          <div class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.points }}</dt>
-            <dd class="profile-member-value">
-              {{ memberStore.points }}
-              <span v-if="memberStore.overview.points_value" class="profile-member-sub">
-                ≈ ¥{{ formatPointsValue(memberStore.points) }}
-              </span>
-            </dd>
-          </div>
-          <div class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.coupons }}</dt>
-            <dd class="profile-member-value">{{ memberStore.overview.coupons ?? 0 }}</dd>
-          </div>
-        </dl>
-
-        <div class="profile-member-actions">
-          <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
-          <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
-        </div>
-
-        <p v-if="memberStore.overview.points_expiring" class="profile-member-remind">
-          <AppIcon name="clock" aria-hidden="true" />
-          {{ translate('pages.profile.pointsExpiring', PAGES.profile.pointsExpiring, {
-            points: memberStore.overview.points_expiring.points,
-            date: toDate(memberStore.overview.points_expiring.expire_at),
-          }) }}
-        </p>
-      </template>
+      <a v-if="userStore.isLoggedIn" class="u-btn-secondary" href="#profile-edit">{{ PAGES.profile.editCta }}</a>
     </section>
 
     <!--
-      每日签到：非会员同样每天签到赚积分，所以它是**个人中心功能**，
-      入口挂在 `/user/checkin`（旧 `/checkin` 在路由里重定向过去）。
-      今日状态读会员摘要里已有的 `checkin_available`，不额外发请求。
+      我的服务：订单 / 卡密 / 收藏 / 优惠券。
+      这四项此前只能从顶栏下拉进，个人中心「我有什么」反而没有入口 —— 补回来。
     -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-checkin" :aria-label="PAGES.profile.checkinAria">
-      <div class="profile-checkin-text">
-        <p class="profile-checkin-title">{{ PAGES.profile.checkinTitle }}</p>
-        <p class="profile-checkin-desc">
-          {{ checkinAvailable ? PAGES.profile.checkinAvailable : PAGES.profile.checkinDone }}
-        </p>
-      </div>
-      <!--
-        今天还没签到就直接在这里签到（少一跳），已签到才退回「看日历」。
-        两个动作互斥渲染：同一位置不该同时出现「立即签到」和「查看日历」，
-        否则用户会以为两者都能补今天。
-      -->
-      <button
-        v-if="checkinAvailable"
-        type="button"
-        class="u-btn-primary profile-checkin-btn"
-        :disabled="checkinPending"
-        @click="handleProfileCheckin"
-      >
-        {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
-      </button>
-      <router-link v-else class="u-btn-secondary" to="/user/checkin">{{ PAGES.profile.checkinCalendar }}</router-link>
-    </section>
-
-    <!--
-      邀请有礼（1.6.0）：奖励同样是积分来源，且**发奖在好友完成首单时**，
-      不是注册时 —— 文案必须与派奖时机一致，否则用户会以为奖励丢了。
-    -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
-      <div class="profile-invite-text">
-        <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
-        <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
-      </div>
-      <router-link class="u-btn-secondary" to="/invite">{{ PAGES.profile.inviteCta }}</router-link>
-    </section>
+    <nav v-if="userStore.isLoggedIn" class="profile-services" :aria-label="PAGES.profile.servicesAria">
+      <router-link v-for="item in serviceEntries" :key="item.to" :to="item.to" class="ui-card profile-service">
+        <span class="profile-service-icon"><AppIcon :name="item.icon" aria-hidden="true" /></span>
+        <span class="profile-service-text">
+          <span class="profile-service-name">{{ item.name }}</span>
+          <span class="profile-service-desc">{{ item.desc }}</span>
+        </span>
+        <AppIcon class="profile-service-arrow" name="chevron-right" aria-hidden="true" />
+      </router-link>
+    </nav>
 
     <div class="profile-layout">
       <!-- 左：账号信息（只读） -->
       <section class="page-panel" :aria-label="PAGES.profile.accountAria">
         <h2 class="page-panel-head">{{ TRADE.profileBasic }}</h2>
-
-        <div class="profile-identity">
-          <span class="u-avatar profile-avatar">
-            <SmartImage
-              v-if="userStore.avatarUrl"
-              :src="userStore.avatarUrl"
-              :alt="nickname || PAGES.profile.accountAvatar"
-              fallback-icon="user"
-              loading="eager"
-            />
-            <AppIcon v-else name="user" />
-          </span>
-          <div class="profile-identity-text">
-            <p class="profile-name">{{ nickname || PAGES.profile.accountNoNickname }}</p>
-            <p class="profile-since">{{ translate('pages.profile.accountSince', PAGES.profile.accountSince, { date: toDate(userInfo.created_at) || '—' }) }}</p>
-          </div>
-        </div>
 
         <dl class="profile-fields">
           <div v-for="row in readonlyRows" :key="row.key" class="profile-row">
@@ -201,30 +122,46 @@
         </dl>
 
         <p class="page-note profile-note">{{ TRADE.profileReadonlyNote }}</p>
+
+        <!-- 「不能自助改」必须给出路：账号与安全（2FA）/ 联系客服 -->
+        <div class="profile-security">
+          <router-link class="u-btn-secondary" to="/other/2fa">{{ PAGES.profile.securityEntry }}</router-link>
+          <router-link class="u-btn-secondary" to="/support">{{ PAGES.profile.contactSupport }}</router-link>
+        </div>
       </section>
 
-      <!-- 右：可编辑资料 -->
-      <section class="page-panel" :aria-label="PAGES.profile.editAria">
+      <!-- 右：可编辑资料（身份条「编辑资料」锚点落在这里） -->
+      <section id="profile-edit" class="page-panel profile-edit" :aria-label="PAGES.profile.editAria">
         <h2 class="page-panel-head">{{ TRADE.profileEdit }}</h2>
 
-        <p v-if="!userStore.isLoggedIn" class="page-note page-note--warning">
-          {{ TRADE.profileGuestNote }}
-        </p>
+        <div v-if="!userStore.isLoggedIn" class="profile-guest">
+          <p class="page-note page-note--warning">{{ TRADE.profileGuestNote }}</p>
+          <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
+          <button type="button" class="u-btn-primary" @click="goLogin">{{ PAGES.profile.goLogin }}</button>
+        </div>
 
-        <form class="profile-form" @submit.prevent="handleSubmit">
+        <form class="profile-form" novalidate @submit.prevent="handleSubmit">
           <div class="u-field">
             <label class="u-field-label" for="profile-nickname">{{ TRADE.profileNickname }}</label>
             <input
               id="profile-nickname"
+              ref="nicknameInputRef"
               v-model="form.nickname"
               class="u-input"
               type="text"
               maxlength="32"
               :placeholder="TRADE.profileNicknamePlaceholder"
               :disabled="!userStore.isLoggedIn"
+              :aria-invalid="nicknameError ? 'true' : 'false'"
+              :aria-describedby="nicknameError ? 'profile-nickname-hint profile-nickname-error' : 'profile-nickname-hint'"
               required
+              @blur="validateNickname"
+              @input="nicknameError = ''"
             />
-            <span class="u-field-hint">{{ form.nickname.length }} / 32</span>
+            <span id="profile-nickname-hint" class="u-field-hint">{{ form.nickname.length }} / 32</span>
+            <p v-if="nicknameError" id="profile-nickname-error" class="u-field-error" role="alert">
+              {{ nicknameError }}
+            </p>
           </div>
 
           <div class="u-field">
@@ -286,19 +223,26 @@
             </div>
           </div>
 
-          <div class="u-field">
-            <label class="u-field-label" for="profile-avatar-url">{{ TRADE.profileAvatarUrl }}</label>
-            <input
-              id="profile-avatar-url"
-              v-model="form.avatar_url"
-              class="u-input"
-              type="text"
-              maxlength="500"
-              :placeholder="TRADE.profileAvatarPlaceholder"
-              :disabled="!userStore.isLoggedIn"
-            />
-            <span class="u-field-hint">{{ TRADE.profileAvatarUrlHint }}</span>
-          </div>
+          <!--
+            头像 URL 对普通用户是内部实现外泄（占位符原来提示 /uploads 路径），
+            上传已覆盖绝大多数场景。折叠进「高级」，默认不打扰；文案也不出现 /uploads。
+          -->
+          <details class="profile-advanced">
+            <summary class="profile-advanced-summary">{{ PAGES.profile.avatarAdvanced }}</summary>
+            <div class="u-field profile-advanced-field">
+              <label class="u-field-label" for="profile-avatar-url">{{ TRADE.profileAvatarUrl }}</label>
+              <input
+                id="profile-avatar-url"
+                v-model="form.avatar_url"
+                class="u-input"
+                type="text"
+                maxlength="500"
+                :placeholder="TRADE.profileAvatarPlaceholder"
+                :disabled="!userStore.isLoggedIn"
+              />
+              <span class="u-field-hint">{{ TRADE.profileAvatarUrlHint }}</span>
+            </div>
+          </details>
 
           <div class="profile-grid">
             <div class="u-field">
@@ -344,7 +288,10 @@
             </div>
           </div>
 
-          <p v-if="errorMessage" class="u-field-error" role="alert">{{ errorMessage }}</p>
+          <!-- 服务端校验（重名 / 敏感词）原样带回，不统一成「保存失败」 -->
+          <p v-if="errorMessage" ref="formErrorRef" class="u-field-error" role="alert" tabindex="-1">
+            {{ errorMessage }}
+          </p>
 
           <div class="page-actions profile-actions">
             <button
@@ -368,6 +315,151 @@
         </form>
       </section>
     </div>
+
+    <!--
+      会员权益摘要：放在资料双栏之后。
+      它回答的是「我还有什么」，不该抢在「改资料 / 我的服务」之前占满首屏。
+    -->
+    <section
+      v-if="userStore.isLoggedIn && memberSummaryVisible"
+      class="ui-card profile-member"
+      :aria-label="PAGES.profile.memberAria"
+    >
+      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-member-skeleton">
+        <span class="u-skeleton profile-member-skeleton-line"></span>
+        <span class="u-skeleton profile-member-skeleton-line profile-member-skeleton-line--short"></span>
+      </div>
+
+      <p v-else-if="memberStore.error" class="profile-member-error" role="alert">
+        {{ memberStore.error }}
+        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">{{ PAGES.profile.retry }}</button>
+      </p>
+
+      <template v-else-if="memberStore.overview">
+        <div class="profile-member-head">
+          <p class="profile-member-title">
+            <AppIcon name="star" aria-hidden="true" />
+            {{ memberStore.isMember ? memberStore.levelName : PAGES.profile.notMember }}
+          </p>
+          <p class="profile-member-note">
+            {{
+              memberStore.isMember && memberStore.overview.days_left
+                ? translate('pages.profile.memberDaysLeft', PAGES.profile.memberDaysLeft, {
+                    days: memberStore.overview.days_left,
+                  })
+                : PAGES.profile.memberUpgradeNote
+            }}
+          </p>
+        </div>
+
+        <dl class="profile-member-stats">
+          <div class="profile-member-stat">
+            <dt class="profile-member-term">{{ PAGES.profile.growth }}</dt>
+            <dd class="profile-member-value">
+              <router-link class="profile-member-link" to="/member/growth">
+                {{ formatNumber(memberStore.overview.growth ?? 0) }}
+              </router-link>
+              <!--
+                成长值不写「x / 当前等级门槛」：那是已经越过的线，会被读成「还差」。
+                有下一等级才写「距 V8 还差 13,515」；满级写「已达最高等级」；
+                非会员不编造进度。
+              -->
+              <span v-if="growthNext" class="profile-member-sub">
+                {{
+                  translate('pages.profile.growthToNext', PAGES.profile.growthToNext, {
+                    level: growthNext.name,
+                    points: formatNumber(growthNext.toNext),
+                  })
+                }}
+              </span>
+              <span v-else-if="memberStore.isMember" class="profile-member-sub">{{ PAGES.profile.maxLevelNote }}</span>
+            </dd>
+          </div>
+          <!-- 非会员的 points / coupons 键不存在，不是 0 —— 不渲染，也不写 0 -->
+          <div v-if="memberStore.overview.points != null" class="profile-member-stat">
+            <dt class="profile-member-term">{{ PAGES.profile.points }}</dt>
+            <dd class="profile-member-value">
+              <router-link class="profile-member-link" to="/points">{{ formatNumber(memberStore.points) }}</router-link>
+              <span v-if="memberStore.overview.points_value" class="profile-member-sub">
+                ≈ ¥{{ formatPointsValue(memberStore.points) }}
+              </span>
+            </dd>
+          </div>
+          <div v-if="memberStore.overview.coupons != null" class="profile-member-stat">
+            <dt class="profile-member-term">{{ PAGES.profile.coupons }}</dt>
+            <dd class="profile-member-value">
+              <!--
+                会员且 0 张时不要再把 0 和空态提示同时写出来：
+                「优惠券 0」「暂无可用券 · 去领券」并排是自相矛盾的两句话，只保留后者。
+              -->
+              <router-link class="profile-member-link" to="/coupons">
+                {{
+                  memberStore.isMember && memberStore.overview.coupons === 0
+                    ? PAGES.profile.couponsEmpty
+                    : memberStore.overview.coupons
+                }}
+              </router-link>
+            </dd>
+          </div>
+        </dl>
+
+        <div class="profile-member-actions">
+          <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
+          <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
+        </div>
+
+        <p v-if="memberStore.overview.points_expiring" class="profile-member-remind">
+          <AppIcon name="clock" aria-hidden="true" />
+          {{ translate('pages.profile.pointsExpiring', PAGES.profile.pointsExpiring, {
+            points: memberStore.overview.points_expiring.points,
+            date: toDate(memberStore.overview.points_expiring.expire_at),
+          }) }}
+        </p>
+      </template>
+    </section>
+
+    <!--
+      每日签到 + 邀请有礼：运营位，收成并排两卡（≥992px 两列，窄屏堆叠），
+      不再各占一整行把资料区推到折叠线以下。
+    -->
+    <div v-if="userStore.isLoggedIn" class="profile-ops">
+      <section class="ui-card profile-checkin" :aria-label="PAGES.profile.checkinAria">
+        <div class="profile-checkin-text">
+          <p class="profile-checkin-title">{{ PAGES.profile.checkinTitle }}</p>
+          <p class="profile-checkin-desc">
+            {{ checkinAvailable ? PAGES.profile.checkinAvailable : PAGES.profile.checkinDone }}
+          </p>
+        </div>
+        <!--
+          今天还没签到就直接在这里签到（少一跳），已签到才退回「看日历」。
+          两个动作互斥渲染：同一位置不该同时出现「立即签到」和「查看日历」，
+          否则用户会以为两者都能补今天。
+        -->
+        <button
+          v-if="checkinAvailable"
+          type="button"
+          class="u-btn-primary profile-checkin-btn"
+          :disabled="checkinPending"
+          @click="handleProfileCheckin"
+        >
+          {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+        </button>
+        <router-link v-else class="u-btn-secondary" to="/user/checkin">{{ PAGES.profile.checkinCalendar }}</router-link>
+      </section>
+
+      <!--
+        邀请有礼（1.6.0）：奖励同样是积分来源，且**发奖在好友完成首单时**，
+        不是注册时 —— 文案必须与派奖时机一致，否则用户会以为奖励丢了。
+      -->
+      <section class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
+        <div class="profile-invite-text">
+          <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
+          <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
+        </div>
+        <router-link class="u-btn-secondary" to="/invite">{{ PAGES.profile.inviteCta }}</router-link>
+      </section>
+    </div>
+
     <!--
       操作日志（可导出）：数据来源是服务端合并后的「本人全部重要操作」——`sstc.user_events`
       （登录/注册等没有主表可查的动作）与各业务主表（工具使用、下单、兑换卡密、收藏、加购、
@@ -415,7 +507,6 @@
     </section>
   </div>
 </template>
-
 <script>
 /**
  * 用户 UID（即 users.uuid）的展示规则。
@@ -528,11 +619,13 @@ export function createUuidRevealController({ onChange, timers } = {}) {
  * 性别取值必须与数据库约束一致（male / female / unknown）——
  * 服务端会再校验一次，但界面上给出合法选项才不会让用户白填一遍。
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useMemberStore } from '@/stores/member'
 import { usePointsStore } from '@/stores/points'
+import AppAlert from '@/components/AppAlert.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import SmartImage from '@/components/SmartImage.vue'
 import { useAvatarUpload } from '@/hooks/useAvatarUpload'
@@ -540,7 +633,7 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
-import { translate } from '@/i18n/index.js'
+import { formatNumber, translate } from '@/i18n/index.js'
 import { formatPointsValue } from '@/constants/member.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
@@ -554,7 +647,101 @@ import { createClickGuard } from '@/utils/rateLimit.js'
 const userStore = useUserStore()
 const memberStore = useMemberStore()
 const pointsStore = usePointsStore()
+const route = useRoute()
+const router = useRouter()
 const { userInfo, nickname } = storeToRefs(userStore)
+
+/** 距某个时间点过去了几天（本地时区）；非法日期返回 null */
+const daysSince = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000)
+  return days >= 0 ? days : null
+}
+
+/**
+ * 账号徽标 / 身份条里的「注册 N 天」「V7」。
+ *
+ * 只在数据够用时显示：注册天数来自 created_at，会员等级来自会员摘要。
+ * 两者都没有时才退回「已登录」—— 那是兜底，不再是常态文案。
+ */
+const registeredDays = computed(() => daysSince(userInfo.value?.created_at))
+
+const accountBadge = computed(() => {
+  if (!userStore.isLoggedIn) return PAGES.profile.statusGuest
+  if (memberStore.isMember && memberStore.levelName) return memberStore.levelName
+  if (registeredDays.value != null) {
+    return translate('pages.profile.statusRegisteredDays', PAGES.profile.statusRegisteredDays, {
+      days: registeredDays.value,
+    })
+  }
+  return PAGES.profile.statusLoggedIn
+})
+
+const heroName = computed(() => {
+  if (!userStore.isLoggedIn) return PAGES.profile.guestName
+  return nickname.value || PAGES.profile.accountNoNickname
+})
+
+const heroMeta = computed(() => {
+  if (!userStore.isLoggedIn) return TRADE.profileGuestNote
+  const parts = []
+  const joined = toDate(userInfo.value?.created_at)
+  if (joined) {
+    parts.push(translate('pages.profile.accountSince', PAGES.profile.accountSince, { date: joined }))
+  }
+  if (registeredDays.value != null && registeredDays.value > 0) {
+    parts.push(
+      translate('pages.profile.statusRegisteredDays', PAGES.profile.statusRegisteredDays, {
+        days: registeredDays.value,
+      })
+    )
+  }
+  if (memberStore.isMember && memberStore.levelName) parts.push(memberStore.levelName)
+  return parts.join(' · ') || PAGES.profile.statusLoggedIn
+})
+
+/** banned / deleted 才置顶警示；active 属于内部状态，对用户没有信息量 */
+const accountAlert = computed(() => {
+  const status = String(userInfo.value?.status || '').toLowerCase()
+  if (status === 'banned') {
+    return {
+      variant: 'danger',
+      title: PAGES.profile.accountBannedTitle,
+      body: PAGES.profile.accountBannedBody,
+    }
+  }
+  if (status === 'deleted') {
+    return {
+      variant: 'danger',
+      title: PAGES.profile.accountDeletedTitle,
+      body: PAGES.profile.accountDeletedBody,
+    }
+  }
+  return null
+})
+
+/**
+ * 下一等级与差值。
+ *
+ * 后端在满级时会删掉 next_level / next_level_name / next_level_threshold /
+ * growth_to_next 四个键，因此「满级」的判据是键不存在，不是数值大小。
+ * 用当前等级的 growth_threshold 当分母会得到「36485 / 20000」这种假进度。
+ */
+const growthNext = computed(() => {
+  const overview = memberStore.overview
+  if (!overview || overview.next_level == null || overview.growth_to_next == null) return null
+  return { name: overview.next_level_name || '', toNext: overview.growth_to_next }
+})
+
+/** 我的服务四入口 —— 个人中心回答「我有什么」的第一屏 */
+const serviceEntries = computed(() => [
+  { to: '/user/orders', icon: 'package', name: PAGES.profile.serviceOrders, desc: PAGES.profile.serviceOrdersDesc },
+  { to: '/user/kami', icon: 'key', name: PAGES.profile.serviceKami, desc: PAGES.profile.serviceKamiDesc },
+  { to: '/user/favorites', icon: 'heart', name: PAGES.profile.serviceFavorites, desc: PAGES.profile.serviceFavoritesDesc },
+  { to: '/coupons', icon: 'ticket', name: PAGES.profile.serviceCoupons, desc: PAGES.profile.serviceCouponsDesc },
+])
 
 /**
  * 会员摘要条什么时候出现。
@@ -629,6 +816,51 @@ async function handleProfileCheckin() {
 
 const saving = ref(false)
 const errorMessage = ref('')
+const nicknameError = ref('')
+const nicknameInputRef = ref(null)
+const formErrorRef = ref(null)
+
+/**
+ * 昵称校验（失焦时也跑一次）。
+ *
+ * 规则与后端白名单一致：去掉首尾空格后 2–32 个字符，且不能全是空格。
+ * 只做 trim 非空是不够的 —— 单个字符、纯空格都该在字段下方就地报错，
+ * 而不是等提交后把错误统一丢到表单底部。
+ */
+function validateNickname() {
+  const raw = form.value.nickname || ''
+  const value = raw.trim()
+  if (!value) {
+    nicknameError.value = raw.length > 0 ? PAGES.profile.nicknameWhitespace : PAGES.profile.nicknameRequired
+    return false
+  }
+  if (value.length < 2) {
+    nicknameError.value = PAGES.profile.nicknameTooShort
+    return false
+  }
+  nicknameError.value = ''
+  return true
+}
+
+/**
+ * 游客去登录。
+ *
+ * 项目没有独立 `/login` 路由，登录是全局弹窗；因此先把回跳目标写进当前路由，
+ * 登录成功后 App.vue 会读 `?redirect=` 再 replace 回来。
+ */
+function goLogin() {
+  if (route.path !== '/user/profile' || route.query.redirect !== '/user/profile') {
+    router.replace({ path: '/user/profile', query: { ...route.query, redirect: '/user/profile' } })
+  }
+  userStore.openLoginModal()
+}
+
+/** 关页面 / 刷新时的未保存拦截；路由内跳转另用 onBeforeRouteLeave */
+const handleBeforeUnload = (event) => {
+  if (!isDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
 
 /** 头像上传：选图 → 缩放 → 提交 */
 const fileInputRef = ref(null)
@@ -692,15 +924,28 @@ const fillForm = () => {
   // 已保存的资料成为新基线，本地预览（未提交的选图）随之作废
   resetAvatar()
   errorMessage.value = ''
+  nicknameError.value = ''
 }
 
 const isDirty = computed(
   () =>
-    form.value.nickname !== baseline.value.nickname ||
+    // 昵称按 trim 后比较：只多打了首尾空格不算改动（后端也会 trim）
+    form.value.nickname.trim() !== baseline.value.nickname.trim() ||
     form.value.avatar_url !== baseline.value.avatar_url ||
     form.value.gender !== baseline.value.gender ||
     form.value.birthday !== baseline.value.birthday
 )
+
+/**
+ * 路由内离开确认。
+ *
+ * 表单在页面中部，误点顶栏或「我的服务」就会把改动丢掉；`beforeunload`
+ * 只管关标签页，管不到 SPA 内部跳转，因此两条都要挂。
+ */
+onBeforeRouteLeave(() => {
+  if (!isDirty.value) return true
+  return window.confirm(PAGES.profile.unsavedConfirm)
+})
 
 /**
  * 头像显示什么。
@@ -745,6 +990,22 @@ const uploadLabel = computed(() => {
   return TRADE.profileAvatarUpload
 })
 
+/**
+ * 最后登录：绝对时间 + 相对天数。
+ * 「2026-11-20 · 2 天前」能自查「是不是我登的」；只给一个日期还要自己算。
+ */
+const lastLoginText = computed(() => {
+  const raw = userInfo.value?.last_login_at
+  const date = toDate(raw)
+  if (!date) return '—'
+  const days = daysSince(raw)
+  if (days === 0) return `${date} · ${PAGES.profile.lastLoginToday}`
+  if (days != null && days > 0) {
+    return `${date} · ${translate('pages.profile.lastLoginDaysAgo', PAGES.profile.lastLoginDaysAgo, { days })}`
+  }
+  return date
+})
+
 const readonlyRows = computed(() => {
   const data = userInfo.value || {}
   const fields = TRADE.profileFields
@@ -760,9 +1021,10 @@ const readonlyRows = computed(() => {
       label: fields.userType,
       value: data.user_type === 'registered' ? PAGES.profile.registeredUser : PAGES.profile.guestUser,
     },
-    { key: 'status', label: fields.status, value: data.status || '—' },
+    // status（active|banned|deleted）不再以英文枚举出现在只读表里：
+    // banned / deleted 改为页面顶部警示条，active 对用户没有信息量。
     { key: 'createdAt', label: fields.createdAt, value: toDate(data.created_at) || '—' },
-    { key: 'lastLoginAt', label: fields.lastLoginAt, value: toDate(data.last_login_at) || '—' },
+    { key: 'lastLoginAt', label: fields.lastLoginAt, value: lastLoginText.value },
   ]
 })
 
@@ -813,12 +1075,14 @@ onBeforeUnmount(() => {
   uuidController.dispose()
   if (uuidCopyTimer) clearTimeout(uuidCopyTimer)
   uuidCopyTimer = null
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 const resetForm = () => {
   form.value = { ...baseline.value }
   resetAvatar()
   errorMessage.value = ''
+  nicknameError.value = ''
   // 让同一个文件能被再次选择（input 的值不变时不会触发 change）
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
@@ -864,18 +1128,20 @@ const handleSubmit = async () => {
   if (saving.value) return
   errorMessage.value = ''
 
-  const nicknameValue = form.value.nickname.trim()
-  if (!nicknameValue) {
-    errorMessage.value = PAGES.profile.nicknameRequired
+  // 与失焦校验同一套规则；失败时聚焦字段，而不是把错误丢在表单底部等用户找
+  if (!validateNickname()) {
+    await nextTick()
+    nicknameInputRef.value?.focus()
     return
   }
+  const nicknameValue = form.value.nickname.trim()
 
   saving.value = true
   try {
     // 只提交**真正改过**的字段：服务端把「未提交」与「提交为空」区分对待，
     // 全量提交会把没动过的头像/生日一并清空。
     const patch = {}
-    if (form.value.nickname !== baseline.value.nickname) patch.nickname = nicknameValue
+    if (nicknameValue !== baseline.value.nickname.trim()) patch.nickname = nicknameValue
     if (form.value.avatar_url !== baseline.value.avatar_url) {
       patch.avatar_url = form.value.avatar_url.trim() || null
     }
@@ -887,7 +1153,10 @@ const handleSubmit = async () => {
       fillForm()
       notify.success(TRADE.profileSaved)
     } else {
+      // 服务端文案（重名 / 敏感词等）原样展示，不统一成「保存失败」
       errorMessage.value = result.message
+      await nextTick()
+      formErrorRef.value?.focus()
     }
   } finally {
     saving.value = false
@@ -920,7 +1189,8 @@ const handleDownloadLogs = async () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `tool-usage-${logRange.value}-${new Date().toISOString().slice(0, 10)}.csv`
+    // 文件名与内容对齐：这份 CSV 是账号与商城操作记录，不是工具使用统计
+    link.download = `account-events-${logRange.value}-${new Date().toISOString().slice(0, 10)}.csv`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -952,6 +1222,7 @@ watch(
 )
 
 onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
   // 深链进入时用户信息可能还没拉回来，补一次
   if (!userInfo.value?.uuid) userStore.getUserInfo()
 })
@@ -1033,6 +1304,18 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* 三个数字都可点：积分 / 优惠券 / 成长值各有落点页面 */
+.profile-member-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profile-member-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .profile-member-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1078,11 +1361,127 @@ onMounted(() => {
   width: 40%;
 }
 
+/* ── 账号状态警示条（仅 banned / deleted 出现） ───────────────── */
+.profile-alert {
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+
+.profile-alert-link {
+  margin-left: calc(var(--space-unit) * 0.5);
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── 身份条：头像 + 昵称 / 注册信息 + 编辑锚点 ───────────────── */
+.ui-card.profile-hero {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+
+.profile-hero-identity {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 2);
+  min-width: 0;
+}
+
+.profile-hero-avatar {
+  flex-shrink: 0;
+  width: calc(var(--space-unit) * 7);
+  height: calc(var(--space-unit) * 7);
+  font-size: var(--fs-h2);
+}
+
+.profile-hero-text {
+  min-width: 0;
+}
+
+.profile-hero-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-primary);
+}
+
+.profile-hero-meta {
+  margin: calc(var(--space-unit) * 0.5) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* ── 我的服务：订单 / 卡密 / 收藏 / 优惠券 ───────────────────── */
+.profile-services {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+
+.ui-card.profile-service {
+  flex-direction: row;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--transition-interactive), transform var(--transition-interactive);
+}
+
+.ui-card.profile-service:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.profile-service-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: calc(var(--space-unit) * 4);
+  height: calc(var(--space-unit) * 4);
+  border-radius: var(--radius-pill);
+  background: var(--bg-soft);
+  color: var(--accent);
+  font-size: var(--fs-body);
+}
+
+.profile-service-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  min-width: 0;
+}
+
+.profile-service-name {
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-service-desc {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-service-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
 .profile-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: var(--section-gap);
+  margin-bottom: calc(var(--space-unit) * 3);
 }
 
 /*
@@ -1095,34 +1494,9 @@ onMounted(() => {
   margin-top: 0;
 }
 
-.profile-identity {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 2.5);
-}
-
-.profile-avatar {
-  font-size: var(--fs-h3);
-}
-
-.profile-identity-text {
-  min-width: 0;
-}
-
-.profile-name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
-}
-
-.profile-since {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
+/* 「编辑资料」锚点跳转后不要被固定顶栏盖住标题 */
+.profile-edit {
+  scroll-margin-top: calc(var(--ec-topbar-h) + var(--space-unit) * 2);
 }
 
 .profile-fields {
@@ -1200,10 +1574,40 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 2.5);
 }
 
+/* 「账号与安全 / 联系客服」：不能自助改的字段必须给出路 */
+.profile-security {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 1.5);
+}
+
+/* 游客态：说明 + 去登录主按钮，放在本该是表单的位置 */
+.profile-guest {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-bottom: calc(var(--space-unit) * 2.5);
+}
+
+.profile-guest .page-note {
+  margin: 0;
+}
+
 .profile-form {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2.5);
+}
+
+/* 昵称失焦校验失败：字段自身给出红边（错误文字在下方，aria-describedby 已关联） */
+.profile-form .u-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.profile-form .u-input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 2px var(--danger-bg);
 }
 
 .profile-grid {
@@ -1275,20 +1679,51 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+/* ── 高级：外部图片地址（默认折叠） ───────────────────────────
+ * 上传已覆盖绝大多数场景；URL 输入框对普通用户是内部实现外泄，
+ * 因此收进 <details>，摘要文案也不出现 /uploads。 */
+.profile-advanced {
+  border-top: var(--stroke-width) solid var(--divider);
+  padding-top: calc(var(--space-unit) * 2);
+}
+
+.profile-advanced-summary {
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.profile-advanced-summary:hover {
+  color: var(--text-primary);
+}
+
+.profile-advanced-field {
+  margin-top: calc(var(--space-unit) * 1.5);
+}
+
 .profile-actions {
   margin-top: calc(var(--space-unit));
 }
 
+/* ── 运营位：签到 + 邀请并排两卡（≥992px 两列） ───────────────── */
+.profile-ops {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 3);
+}
+
 /* ── 每日签到入口（个人中心功能，`/user/checkin`） ───────────── */
 /* 同 .profile-member：合写类名压过 .ui-card 的纵向方向（否则「文案左、按钮右」
-   会变成垂直居中堆叠），并补上与上一张卡之间的外边距。 */
+   会变成垂直居中堆叠）。竖向间距交给 .profile-ops 的 gap。 */
 .ui-card.profile-checkin {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
+  margin-bottom: 0;
 }
 .profile-checkin-text {
   display: flex;
@@ -1321,7 +1756,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: calc(var(--space-unit) * 2);
   padding: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
+  margin-bottom: 0;
 }
 .profile-invite-text {
   display: flex;
@@ -1346,8 +1781,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
-  /* 与上方「会员卡」的 margin-bottom 同一个 24px 节奏：两张卡片贴在一起会像同一块内容 */
-  margin-top: calc(var(--space-unit) * 3);
+  /* 上方 .profile-ops 已经带 24px 下边距；这里不再叠加，否则两张卡之间会空出一条 */
+  margin-top: 0;
 }
 .profile-logs-head {
   display: flex;
@@ -1387,6 +1822,15 @@ onMounted(() => {
   .profile-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* 平板：服务四宫格降到两列；运营位收成一列（卡片内部仍是左右布局） */
+  .profile-services {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-ops {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* 移动端：字段行跟着设计系统的全局缩放收一档。
@@ -1417,6 +1861,11 @@ onMounted(() => {
   }
 
   .profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 手机：服务入口一列，避免四宫格里每格只剩两个字 */
+  .profile-services {
     grid-template-columns: minmax(0, 1fr);
   }
 

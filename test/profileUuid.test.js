@@ -270,7 +270,11 @@ test('统一性：profile-fields 下每一行共用一套字段值类名', async
   const to = html.indexOf('</dl>', from)
   const rows = html.slice(from, to).match(/<dd [^>]*>/g) || []
 
-  assert.ok(rows.length >= 8, `只读字段应有 8 行，实际 ${rows.length}`)
+  // 7 行 = UID / 用户名 / 邮箱 / 手机号 / 账号类型 / 注册时间 / 最后登录。
+  // status（active|banned|deleted）不再以英文枚举出现在只读表里：
+  // banned / deleted 走页面顶部警示条，active 对用户没有信息量。
+  assert.ok(rows.length >= 7, `只读字段应有 7 行，实际 ${rows.length}`)
+  assert.doesNotMatch(html.slice(from, to), /账号状态/, '只读表不再输出账号状态枚举')
   for (const tag of rows) {
     assert.match(tag, /profile-field-value/, `<dd> 必须统一带字段值节奏类：${tag}`)
   }

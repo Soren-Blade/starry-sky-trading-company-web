@@ -282,9 +282,12 @@ test('个人中心：性别选项与数据库约束一致（male / female / unkn
   assert.match(html, /aria-label="性别"/, '触发器应带可访问名')
 })
 
-test('个人中心：说明哪些字段不能自助修改', async () => {
+test('个人中心：说明哪些字段不能自助修改，并给出「账号与安全 / 联系客服」去处', async () => {
   const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
-  assert.match(html, /暂不支持自助修改/)
+  assert.match(html, /如需更换/)
+  assert.match(html, /href="\/other\/2fa"/, '「账号与安全」入口')
+  assert.match(html, /href="\/support"/, '「联系客服」入口')
+  assert.doesNotMatch(html, /暂不支持自助修改/)
 })
 
 // ── 头像栏的版式：左「头像 + 说明」/ 右「上传图标按钮」──────────

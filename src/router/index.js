@@ -70,10 +70,12 @@ const routes = [
     meta: { title: '卡密管理 - 星辰商行', requiresAuth: true }
   },
   {
+    // 游客也可进：未登录时页面本身就是「去登录」的出口（带 ?redirect 回跳），
+    // 不再由守卫直接弹窗并把用户送回首页 —— 那会让「点进个人中心」变成一次白跳。
     path: '/user/profile',
     name: 'Profile',
     component: () => import('@/pages/Profile.vue'),
-    meta: { title: '个人中心 - 星辰商行', requiresAuth: true }
+    meta: { title: '个人中心 - 星辰商行' }
   },
   {
     // 我的资产（2.3.0）：数字商品 + 卡密 + 已激活工具收在一处，

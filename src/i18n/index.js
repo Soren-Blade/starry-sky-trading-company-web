@@ -138,11 +138,28 @@ export function setLocale(input, { persist = true } = {}) {
   return next
 }
 
+const PLACEHOLDER_RE = /\{(\w+)\}/g
+
+/**
+ * 兜底文案的插值
+ *
+ * vue-i18n 只负责「词条存在」时的插值；词条不存在而走 fallback 时，
+ * 若直接 return fallback，`{points}` / `{date}` 会原样漏到页面上。
+ * 缺参时保留占位符，便于暴露漏传，而不是渲染成 "undefined"。
+ */
+function interpolate(template, params) {
+  if (!params || typeof template !== 'string') return template
+  return template.replace(PLACEHOLDER_RE, (match, key) => {
+    const value = params[key]
+    return value === null || value === undefined ? match : String(value)
+  })
+}
+
 /**
  * 带兜底的翻译
  *
  * @param {string} key 词条 key
- * @param {string} fallback 中文原文（缺词条时原样返回）
+ * @param {string} fallback 中文原文（缺词条时插值后返回）
  * @param {Record<string, unknown>} [params] 插值参数
  */
 export function translate(key, fallback, params) {
@@ -153,11 +170,11 @@ export function translate(key, fallback, params) {
   } catch {
     exists = false
   }
-  if (!exists) return fallback
+  if (!exists) return interpolate(fallback, params)
   try {
     return params ? t(key, params) : t(key)
   } catch {
-    return fallback
+    return interpolate(fallback, params)
   }
 }
 

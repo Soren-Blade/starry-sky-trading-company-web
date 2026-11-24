@@ -213,7 +213,7 @@ export default {
     profileBasic: 'Account information',
     profileEdit: 'Edit profile',
     profileNickname: 'Display name',
-    profileNicknamePlaceholder: '1–32 characters',
+    profileNicknamePlaceholder: '2–32 characters',
     profileAvatar: 'Avatar',
     profileAvatarUpload: 'Upload avatar',
     profileAvatarUploading: 'Uploading avatar…',
@@ -234,7 +234,7 @@ export default {
     profileSave: 'Save changes',
     profileReset: 'Reset',
     profileReadonlyNote:
-      'Username, email and phone are sign-in credentials. Changing them requires re-verification and is not supported yet.',
+      'Username, email and phone are sign-in credentials and require re-verification to change. To update them, go to Account & security or contact support.',
     profileGuestNote: 'You are a guest. Sign in to save your profile.',
     profileFields: {
       uuid: 'User UID',

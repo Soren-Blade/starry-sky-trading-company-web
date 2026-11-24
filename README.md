@@ -4,7 +4,19 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.1.0`**（2026-11-21 发布）：**前后端国际化（i18n）+ 移动端悬浮底部导航与页面优化** ——
+> **当前版本 `4.2.0`**（2026-11-24 发布）：**个人中心重排与「页面说错话」修正** ——
+> ① 首屏改为「身份条 → 我的服务（订单 / 卡密 / 收藏 / 优惠券）→ 资料双栏 → 会员 + 签到 + 邀请 → 操作日志」，
+> 签到与邀请并排两列（`.profile-ops`），把「我有什么」从顶栏下拉搬回个人中心；
+> ② 修中文页漏 `{points}` / `{date}`：`translate()` 缺词条时兜底不插值，新增 `interpolate()` 统一处理，
+> 缺参时保留占位符而不是渲染 `undefined`；
+> ③ 成长值不再渲染假进度「x / 当前等级门槛」，改用 `next_level_name` / `growth_to_next` 显示
+> 「距 V8 还差 13,515」，满级显示「已达最高等级」；非会员的 `coupons` / `points` 键不存在时不再渲染成 0；
+> ④ 账号状态英文枚举改页面顶部警示条（active 不展示）、游客可达本页并给「去登录」出口
+> （登录后按 `?redirect=/user/profile` 回跳）、只读区补「账号与安全 / 联系客服」入口；
+> ⑤ 昵称失焦校验 + `aria-describedby`、未保存修改的 `beforeunload` / 路由离开拦截、
+> 头像 URL 收进「高级」折叠、导出文件名改为 `account-events-*`。
+>
+> **上一版 `4.1.0`**（2026-11-21 发布）：**前后端国际化（i18n）+ 移动端悬浮底部导航与页面优化** ——
 > ① 接入 `vue-i18n@11`（Composition API，`zh-CN` / `en-US`，`fallbackLocale zh-CN`）：语言检测顺序
 > `?lang=` → `localStorage.sstc.locale` → `navigator.languages` → 中文，`?lang=en-US` 可直达英文；
 > 导航栏与移动端抽屉内 `LanguageSwitch` 即时切换，不刷新页面，同步 `<html lang>`、路由标题与请求头
@@ -545,7 +557,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `JsonFormatter.vue` | JSON 格式化工具的**唯一真实实现页**：`JSON.parse` + `JSON.stringify(obj, null, indent)`，缩进 2/4/Tab、可切「压缩为单行」，失败时原样展示 `SyntaxError.message`（含位置），成功展示字符数与行数并可一键复制。解析期间插一帧让出主线程，保证加载态可见 |
 | `Kami.vue` | 仅包一层 `KamiSection`（"我的卡密"表格 + "激活卡密"表单两个 tab） |
 | `Assets.vue` | **我的资产（2.3.0 新增，`/user/assets`）**：三块独立卡片 + 独立 loading/error/刷新 —— ①「数字商品」把订单项里 `goods_type ∈ digital/account/service` 的拍平列出（形态标签、数量、金额、下单时间、订单号回链订单详情）②「我的卡密」（与卡密页同一数据源 `kamiStore.fetchUserKamis`）③「已激活工具」（`/kamiApi/myEntitlements`，含来源与剩余天数）。**实物不动**：`physical` 与 `goods_type` 为 `null` 的订单项不进这一块，仍归订单页。卡密页原先那张「已激活工具」表整体搬到这里，卡密页只留一条指路链接 |
-| `Profile.vue` | 左只读账号信息 / 右可编辑资料（昵称、性别、生日、头像）。头像栏是**左右两栏**：左「头像 + 说明文字」、右「上传图标按钮」—— 按钮只有 `↑` 图标，可见文字转为 `.visually-hidden` 的可访问名，因此那个 `label` 里**必须**保留一段文字，否则被它关联的 file input 就没有可访问名（`label` 上的 `aria-label` 不算 input 的名字）。两栏之上还有三张**独立卡片**：会员权益摘要、每日签到入口、**邀请有礼入口（1.6.0 M8 新增，指向 `/invite`）**。`.ui-card` 自己不设外边距、`.profile-page` 也不是 flex 容器，所以这三张卡的下外边距必须显式给（否则几块会紧贴在一起）；签到卡与邀请卡还必须合写类名（`.ui-card.profile-checkin` / `.ui-card.profile-invite`）才压得过 `.ui-card` 的纵向方向（文案左、按钮右），窄屏再用同优先级选择器改回 `column` |
+| `Profile.vue` | **4.2.0 重排**：身份条（头像 + 昵称 + 注册时间 + 会员等级 + 「编辑资料」锚）→ 我的服务四入口（`/user/orders`、`/user/kami`、`/user/favorites`、`/coupons`，桌面四列 / ≤991px 两列 / ≤575px 单列）→ 账号信息（只读）与修改资料双栏 → 会员权益摘要 + `.profile-ops`（签到 / 邀请并排，≤991px 单列）→ 操作日志。只读表不再输出 `status` 英文枚举：`banned` / `deleted` 用页面顶部 `AppAlert` 警示条 + 联系客服，`active` 不展示；只读说明下方是「账号与安全」（`/other/2fa`）与「联系客服」（`/support`）两个入口。成长值 / 积分 / 优惠券只在后端下发了对应键时渲染（非会员不下发 `points` / `coupons`，不能写 `?? 0`），成长值用 `next_level_name` + `growth_to_next` 显示「距 V8 还差 N」，满级显示「已达最高等级」。游客可进本页：右栏给「去登录」主按钮，登录后按 `?redirect=/user/profile` 回跳。昵称失焦校验 2–32 字、禁止全空格，错误挂字段下方并 `aria-describedby`；`isDirty` 时 `beforeunload` + 路由离开确认；头像 URL 收进 `<details>`「高级」。禁改：头像栏**左右两栏**（左「头像 + 说明文字」、右「上传图标按钮」—— `label` 里必须保留文字，否则关联的 file input 没有可访问名）、选完即传、保存按钮 `!isDirty` 禁用 + 成功 toast、UID 掩码/复制。`.ui-card` 不设外边距，会员卡与 `.profile-ops` 的下外边距必须显式给；签到 / 邀请合写 `.ui-card.profile-checkin` / `.ui-card.profile-invite` 才压得过 `.ui-card` 的纵向方向 |
 | `Member.vue` | 会员中心（**枢纽，七区块**）：身份区（等级徽标 / 有效期 / 开通或续费 + 权益详解入口）、资产三卡（积分 / 优惠券 / 会员到期日，**就地显示已有数值**，不新增后端调用）、成长值进度（`growth_to_next` 存在才渲染）、八项权益卡（已解锁显示服务端下发的当前值，未解锁显示解锁等级；**`2.6.1` 起「会员免卡密」的 `u-mm-benefit-next` 按本等级实时额度渲染** —— `api.getMemberQuota()` 取 `{ used, quota, remaining, unlimited }`，有限档写「可解锁 已用/上限 个卡密工具（还可激活 N 个）」，v7/v8 的 `quota<0` 写「不限次数，已激活 N 个」，非会员写引导语）、下一档预告（用 `benefits[].value.next` 与 `next_level`）、快捷入口（含每日签到）。四个分支按优先级排：未登录引导 → 骨架 → 错误（带重试）→ 正式内容 |
 | `MemberBenefits.vue` | 会员权益详解（**公开页，不要求登录**）：权益说明（八项，逐项给规则与当前值）、**8×8 数值矩阵**（全部来自服务端 `levels[]` 的六个新列，当前档高亮，窄屏降级成「每档一张卡」）、规则与常见问题。**页面上不写死任何折扣 / 倍率 / 金额 / 档位数字** —— 数字只有服务端一份，改档位不用改页面。**1.5.0 M6/M7 起文案与矩阵也走服务端**（`GET /memberApi/getBenefits`）：`benefitDetails` 按字段回落（服务端缺哪个字段就用内置的那一条），`faq` 优先服务端、`detail` 归一成数组逐行渲染，矩阵取 `memberStore.matrixLevels`（服务端 `benefitsPage.levels` → `plans.levels` → `[]`） |
 | `MemberGrowth.vue` | 成长值（原 `/growth`）：汇总三数（累计 / 成长值等级 / **当前生效等级**）、升级进度、来源说明（四条规则文案由 `getGrowthHistory` 的 `rules` 下发）、八档门槛对照表。**满级时服务端不下发 `next_level` 三键，进度块整块不渲染**（判据是 `!== undefined`，不是 `> 0`）；非会员不写「已是最高等级」，而是说「按成长值门槛定档、到账即时生效」 |
@@ -1435,7 +1447,7 @@ antd 的 `message` 只能顶部居中且样式由它自己的样式表固定，
 | 购物车 `/cart` | **事务页**：左条目列表 + 右吸顶结算面板 | `.page-shell-head--row`（右侧件数标签） |
 | 工具分享 `/tool` | **工作台**：左侧筛选轨（分类 + 计数 + 已收藏）吸顶 + 右侧工具条与网格 | 左对齐：眉标 + 大字标题 + 说明 + 工具数 |
 | 卡密管理 `/user/kami` | **控制台**：左激活面板（吸顶）+ 右卡密表格与分页 | 眉标 + 大字标题 + 说明 + 卡密总数 |
-| 个人中心 `/user/profile` | **事务页**：左只读账号信息 / 右可编辑资料 | `.page-shell-head--row` |
+| 个人中心 `/user/profile` | **事务页**：身份条 + 我的服务四入口 → 左只读账号信息 / 右可编辑资料双栏 → 会员摘要 + 签到 / 邀请并排 | `.page-shell-head--row` |
 | 我的收藏 `/user/favorites` | **事务页**：胶囊页签 + 卡片网格 | `.page-shell-head--row` |
 | 订单管理 `/user/orders` | **事务页**：状态页签 + 订单卡片列表 + 分页 | `.page-shell-head--row` |
 | 订单详情 `/user/orders/:orderNo` | **事务页**：订单号标题带 + 明细 / 备注 / 状态时间线三个面板 | 标题带带等宽订单号 |
@@ -1460,7 +1472,7 @@ Logo 左边缘对不上下方的卡片与表格 —— 这是导航栏「排版�
 NotFound 里几处 `calc(var(--container-narrow) * N)` 派生宽度的基准，也是
 About / Footer / Kami / Tool 这几个页面的固定页宽，改成流体值会让它们一起漂移。
 （2FA 页原先也用它压窄，改造为工具页骨架后已改为整宽 + 页壳，不再依赖这个令牌。）
-个人中心（`/user/profile`）**有意不进这一族**，它是双栏面板版式。
+个人中心（`/user/profile`）**有意不进这一族**，它是「身份条 + 我的服务」前置区块 + 双栏面板版式；4.2.0 起签到 / 邀请收进 `.profile-ops` 两列网格，不再各占一行。
 
 带吸顶侧栏的页面统一用 `top: calc(var(--navbar-height) + var(--space-unit) * 2)`
 让出粘性顶栏的高度（`≤767px` 时顶栏是 `var(--navbar-height) * var(--mobile-nav-scale)`）。
@@ -1815,7 +1827,7 @@ test/
 ├── renderIdentity.test.js            # 顶栏的身份呈现：游客显示头像与标记、退出后显示登录按钮
 ├── stores.member.test.js             # 会员 store：levels 初值 null 与 hasLevels 判据、benefits 未解锁项无 value 键、fetchPlans 六列原样保留、失败回退
 ├── memberBenefitValue.test.js        # 权益数值翻译：rate/multiplier/money/percent/quota/tier 六种 type 与「0 与不限」的区别、未知类型不产出 undefined
-├── profilePage.test.js               # 个人中心布局：摘要/签到两张卡都要有下外边距、签到卡必须横向（.ui-card 是纵向）、两栏面板窄屏回落
+├── profilePage.test.js               # 个人中心布局：会员卡下外边距、.profile-ops（签到/邀请）两列与 gap、我的服务四列/两列/一列、签到卡必须横向（.ui-card 是纵向）、两栏面板窄屏回落
 ├── pointsPage.test.js                # 积分中心流水列表：每条横向排版且可换行、左右两端对齐、极窄屏退回两行、**列表行（挂了 .ui-card）必须显式 flex-direction: row**
 ├── stores.points.test.js             # 积分 store 的商城部分：fetchMall 落库/失败保留旧清单、兑换用服务端返回的 item 覆盖（不做本地 -1）、失败抛出且不留 redeemingId、applyBalance、reset
 ├── stores.task.test.js               # 任务 store：清单落库与可领数、失败保留旧清单、领奖后重拉（断言 POST 再 GET 的顺序）、失败抛出、reset
