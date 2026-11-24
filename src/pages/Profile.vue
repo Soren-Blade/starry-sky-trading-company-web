@@ -147,6 +147,50 @@
           </div>
 
           <div class="u-field">
+            <label class="u-field-label" for="profile-email">{{ TRADE.profileFields.email }}</label>
+            <input
+              id="profile-email"
+              v-model="form.email"
+              class="u-input"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              maxlength="254"
+              :placeholder="TRADE.profileFields.email"
+              :aria-invalid="emailError ? 'true' : 'false'"
+              :aria-describedby="emailError ? 'profile-email-hint profile-email-error' : 'profile-email-hint'"
+              @blur="validateEmail"
+              @input="emailError = ''"
+            />
+            <span id="profile-email-hint" class="u-field-hint">{{ PAGES.profile.emailHint }}</span>
+            <p v-if="emailError" id="profile-email-error" class="u-field-error" role="alert">
+              {{ emailError }}
+            </p>
+          </div>
+
+          <div class="u-field">
+            <label class="u-field-label" for="profile-phone">{{ TRADE.profileFields.phone }}</label>
+            <input
+              id="profile-phone"
+              v-model="form.phone"
+              class="u-input"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              maxlength="11"
+              :placeholder="TRADE.profileFields.phone"
+              :aria-invalid="phoneError ? 'true' : 'false'"
+              :aria-describedby="phoneError ? 'profile-phone-hint profile-phone-error' : 'profile-phone-hint'"
+              @blur="validatePhone"
+              @input="phoneError = ''"
+            />
+            <span id="profile-phone-hint" class="u-field-hint">{{ PAGES.profile.phoneHint }}</span>
+            <p v-if="phoneError" id="profile-phone-error" class="u-field-error" role="alert">
+              {{ phoneError }}
+            </p>
+          </div>
+
+          <div class="u-field">
             <label class="u-field-label" for="profile-gender">{{ TRADE.profileGender }}</label>
             <SelectField
               id="profile-gender"
@@ -345,13 +389,17 @@
         </div>
       </dl>
 
-      <p class="page-note profile-note">{{ TRADE.profileReadonlyNote }}</p>
-
-      <!-- 「不能自助改」必须给出路：账号与安全（2FA）/ 联系客服 -->
-      <div class="profile-security">
-        <router-link class="u-btn-secondary" to="/other/2fa">{{ PAGES.profile.securityEntry }}</router-link>
-        <router-link class="u-btn-secondary" to="/support">{{ PAGES.profile.contactSupport }}</router-link>
-      </div>
+      <!-- 说明文字里直接给出路：改绑与二次验证、联系客服都做成行内文本链接，
+           不再占一排按钮 —— 这是说明，不是主操作。 -->
+      <p class="page-note profile-note">
+        {{ TRADE.profileReadonlyNote }}
+        <span class="profile-note-links">
+          {{ PAGES.profile.securityHelp }}
+          <router-link to="/other/2fa">{{ PAGES.profile.securityEntry }}</router-link>
+          <span class="profile-note-sep" aria-hidden="true">·</span>
+          <router-link to="/support">{{ PAGES.profile.contactSupport }}</router-link>
+        </span>
+      </p>
     </section>
 
     <!--
@@ -430,7 +478,14 @@
                 会员且 0 张时不要再把 0 和空态提示同时写出来：
                 「优惠券 0」「暂无可用券 · 去领券」并排是自相矛盾的两句话，只保留后者。
               -->
-              <router-link class="profile-member-link" to="/coupons">
+              <router-link
+                class="profile-member-link"
+                :class="{
+                  'profile-member-link--text':
+                    memberStore.isMember && memberStore.overview.coupons === 0,
+                }"
+                to="/coupons"
+              >
                 {{
                   memberStore.isMember && memberStore.overview.coupons === 0
                     ? PAGES.profile.couponsEmpty
@@ -495,7 +550,7 @@
         </button>
       </div>
 
-      <!-- 时间范围只影响「导出多少」，不影响页面上的任何数据，因此按 tablist 表达 -->
+      <!-- 时间范围同时作用于「页面上的时间线」与「导出的 CSV」 -->
       <div class="u-tabs u-tabs--pill profile-logs-tabs" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
         <button
           v-for="item in LOG_RANGES"
@@ -505,11 +560,51 @@
           class="u-tab"
           :class="{ 'u-tab--active': logRange === item.value }"
           :aria-selected="logRange === item.value"
-          @click="logRange = item.value"
+          @click="selectLogRange(item.value)"
         >
           {{ logRangeLabel(item) }}
         </button>
       </div>
+
+      <!--
+        时间线而不是表格：日志的读法是「最近发生了什么」，
+        时间、类别、动作、结果四列足以扫读；细节只在有值时显示，
+        过长由 CSS 省略，不撑破卡片。
+      -->
+      <div v-if="logsLoading" class="profile-log-state" aria-live="polite" aria-busy="true">
+        <span v-for="n in 3" :key="n" class="u-skeleton profile-log-skeleton"></span>
+      </div>
+
+      <p v-else-if="logsError" class="profile-log-state profile-log-state--error" role="alert">
+        <span>{{ logsError }}</span>
+        <button type="button" class="u-btn-secondary" @click="loadLogs">{{ PAGES.profile.logsRetry }}</button>
+      </p>
+
+      <p v-else-if="!logItems.length" class="profile-log-state">{{ PAGES.profile.logsEmpty }}</p>
+
+      <ol v-else class="profile-log-list">
+        <li
+          v-for="item in logItems"
+          :key="`${item.created_at}-${item.action}-${item.target_id}`"
+          class="profile-log-item"
+        >
+          <time class="profile-log-time" :datetime="item.created_at">{{ formatLogTime(item.created_at) }}</time>
+          <span class="profile-log-category">{{ item.category_label }}</span>
+          <span class="profile-log-action">{{ item.action_label }}</span>
+          <span class="profile-log-detail" :title="item.detail">{{ item.detail || '—' }}</span>
+          <span class="profile-log-outcome" :class="logOutcomeClass(item.outcome)">
+            {{ item.outcome_label || '—' }}
+          </span>
+        </li>
+      </ol>
+
+      <p v-if="logItems.length" class="profile-log-preview-note">
+        {{
+          translate('pages.profile.logsPreviewNote', PAGES.profile.logsPreviewNote, {
+            count: LOG_PREVIEW_LIMIT,
+          })
+        }}
+      </p>
 
       <p class="page-note profile-logs-note">{{ PAGES.profile.logsFootnote }}</p>
     </section>
@@ -641,14 +736,14 @@ import { notify } from '@/hooks/useToast/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { resolveAssetUrl } from '@/utils/assetUrl.js'
 import { PAGES, TRADE } from '@/constants/index.js'
-import { formatNumber, translate } from '@/i18n/index.js'
+import { formatDate, formatNumber, translate } from '@/i18n/index.js'
 import { formatPointsValue } from '@/constants/member.js'
 // 生日用自绘日期选择器：原生 type="date" 的日历由系统绘制，主题化不了
 import DatePickerField from '@/components/DatePickerField.vue'
 // 性别用自绘下拉：原生 <select> 的弹出层同理，明暗两套主题都管不到
 import SelectField from '@/components/SelectField.vue'
-// 操作日志导出：时间窗与 CSV 列都由服务端决定，这里只挑范围、接 blob
-import { LOG_RANGES, downloadMyLogs } from '@/api/ask/userLogs'
+// 操作日志：时间线预览用 JSON（按范围 + 条数），导出走 CSV blob
+import { LOG_RANGES, downloadMyLogs, getMyLogs } from '@/api/ask/userLogs'
 import { copyText } from '@/utils/clipboard.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
 // 编辑资料改成弹层后，Escape / 焦点陷阱 / 滚动锁定必须走项目唯一的模态实现
@@ -822,8 +917,33 @@ async function handleProfileCheckin() {
 const saving = ref(false)
 const errorMessage = ref('')
 const nicknameError = ref('')
+const emailError = ref('')
+const phoneError = ref('')
 const nicknameInputRef = ref(null)
+const emailInputRef = ref(null)
+const phoneInputRef = ref(null)
 const formErrorRef = ref(null)
+
+/** 已有的登录凭据不能清空：清空等于把账号的登录方式删掉 */
+function validateEmail() {
+  const raw = (form.value.email || '').trim()
+  if (!raw) {
+    emailError.value = baseline.value.email ? PAGES.profile.emailRequired : ''
+    return !emailError.value
+  }
+  emailError.value = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw) ? '' : PAGES.profile.emailInvalid
+  return !emailError.value
+}
+
+function validatePhone() {
+  const raw = (form.value.phone || '').trim().replace(/[\s-]/g, '')
+  if (!raw) {
+    phoneError.value = baseline.value.phone ? PAGES.profile.phoneRequired : ''
+    return !phoneError.value
+  }
+  phoneError.value = /^1[3-9]\d{9}$/.test(raw) ? '' : PAGES.profile.phoneInvalid
+  return !phoneError.value
+}
 
 /**
  * 昵称校验（失焦时也跑一次）。
@@ -875,6 +995,8 @@ const { preview: avatarPreview, previewSize, sourceName, preparing, prepare, res
 
 const form = ref({
   nickname: '',
+  email: '',
+  phone: '',
   avatar_url: '',
   gender: '',
   birthday: '',
@@ -921,6 +1043,8 @@ const fillForm = () => {
   const data = userInfo.value || {}
   form.value = {
     nickname: data.nickname || '',
+    email: data.email || '',
+    phone: data.phone || '',
     avatar_url: data.avatar_url || '',
     gender: data.gender || '',
     birthday: toDateInput(data.birthday),
@@ -930,12 +1054,16 @@ const fillForm = () => {
   resetAvatar()
   errorMessage.value = ''
   nicknameError.value = ''
+  emailError.value = ''
+  phoneError.value = ''
 }
 
 const isDirty = computed(
   () =>
-    // 昵称按 trim 后比较：只多打了首尾空格不算改动（后端也会 trim）
+    // 文本字段按 trim 后比较：只多打了首尾空格不算改动（后端也会 trim）
     form.value.nickname.trim() !== baseline.value.nickname.trim() ||
+    form.value.email.trim() !== baseline.value.email.trim() ||
+    form.value.phone.trim() !== baseline.value.phone.trim() ||
     form.value.avatar_url !== baseline.value.avatar_url ||
     form.value.gender !== baseline.value.gender ||
     form.value.birthday !== baseline.value.birthday
@@ -1149,6 +1277,8 @@ const resetForm = () => {
   resetAvatar()
   errorMessage.value = ''
   nicknameError.value = ''
+  emailError.value = ''
+  phoneError.value = ''
   // 让同一个文件能被再次选择（input 的值不变时不会触发 change）
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
@@ -1194,13 +1324,22 @@ const handleSubmit = async () => {
   if (saving.value) return
   errorMessage.value = ''
 
-  // 与失焦校验同一套规则；失败时聚焦字段，而不是把错误丢在表单底部等用户找
-  if (!validateNickname()) {
+  // 与失焦校验同一套规则；失败时聚焦第一个出错的字段，
+  // 而不是把错误丢在表单底部等用户自己找。
+  const checks = [
+    { ok: validateNickname(), ref: nicknameInputRef },
+    { ok: validateEmail(), ref: emailInputRef },
+    { ok: validatePhone(), ref: phoneInputRef },
+  ]
+  const firstInvalid = checks.find((item) => !item.ok)
+  if (firstInvalid) {
     await nextTick()
-    nicknameInputRef.value?.focus()
+    firstInvalid.ref.value?.focus()
     return
   }
   const nicknameValue = form.value.nickname.trim()
+  const emailValue = form.value.email.trim().toLowerCase()
+  const phoneValue = form.value.phone.trim().replace(/[\s-]/g, '')
 
   saving.value = true
   try {
@@ -1208,6 +1347,8 @@ const handleSubmit = async () => {
     // 全量提交会把没动过的头像/生日一并清空。
     const patch = {}
     if (nicknameValue !== baseline.value.nickname.trim()) patch.nickname = nicknameValue
+    if (emailValue !== baseline.value.email.trim().toLowerCase()) patch.email = emailValue
+    if (phoneValue !== baseline.value.phone.trim()) patch.phone = phoneValue
     if (form.value.avatar_url !== baseline.value.avatar_url) {
       // 站内路径是上传接口回写的，不接受用户手填；保存时跳过它，
       // 免得把内部路径当成用户输入再写一遍（头像本身已经随上传保存过）。
@@ -1230,8 +1371,15 @@ const handleSubmit = async () => {
       errorMessage.value = PAGES.profile.nicknameSaveFailed
       await nextTick()
       nicknameInputRef.value?.focus()
+    } else if (result.field === 'email' || result.field === 'phone') {
+      // 服务端预检到重复（目前只在 message 里给文案，字段级由前端兜底）
+      const target = result.field === 'email' ? emailError : phoneError
+      target.value = result.message
+      errorMessage.value = PAGES.profile.fieldSaveFailed
+      await nextTick()
+      ;(result.field === 'email' ? emailInputRef : phoneInputRef).value?.focus()
     } else {
-      // 服务端文案（重名 / 敏感词等）原样展示，不统一成「保存失败」
+      // 服务端文案（重名 / 敏感词 / 该邮箱已占用等）原样展示
       errorMessage.value = result.message
       await nextTick()
       formErrorRef.value?.focus()
@@ -1281,6 +1429,80 @@ const handleDownloadLogs = async () => {
     downloadingLogs.value = false
   }
 }
+
+/**
+ * 操作日志时间线。
+ *
+ * 页面只展示最近几条（服务端 `limit` 单独生效），导出仍走完整 CSV；
+ * 两个动作共用 `logRange`，切换范围会同时刷新列表。
+ */
+const LOG_PREVIEW_LIMIT = 6
+const logItems = ref([])
+const logsLoading = ref(false)
+const logsError = ref('')
+let logRequestSeq = 0
+
+/** 列表时间用「月/日 时:分」：同一年内的记录，年份是噪音 */
+const formatLogTime = (value) =>
+  formatDate(value, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+/** 结果徽标：成功 / 失败 / 中性（服务端 outcome 是英文枚举，别直接展示） */
+const logOutcomeClass = (outcome) => {
+  const value = String(outcome || '').toLowerCase()
+  if (['success', 'succeeded', 'ok', 'completed', 'approved'].includes(value)) {
+    return 'profile-log-outcome--ok'
+  }
+  if (['failed', 'failure', 'error', 'rejected', 'denied', 'cancelled'].includes(value)) {
+    return 'profile-log-outcome--bad'
+  }
+  return 'profile-log-outcome--muted'
+}
+
+const loadLogs = async () => {
+  if (!userStore.isLoggedIn) {
+    logItems.value = []
+    return
+  }
+  const seq = ++logRequestSeq
+  logsLoading.value = true
+  logsError.value = ''
+  try {
+    const result = await getMyLogs({ range: logRange.value, limit: LOG_PREVIEW_LIMIT })
+    if (seq !== logRequestSeq) return
+    const items = Array.isArray(result?.data?.items) ? result.data.items : []
+    logItems.value = items.slice(0, LOG_PREVIEW_LIMIT)
+  } catch (error) {
+    if (seq !== logRequestSeq) return
+    logItems.value = []
+    logsError.value = error?.message || PAGES.profile.logsLoadFailed
+  } finally {
+    if (seq === logRequestSeq) logsLoading.value = false
+  }
+}
+
+/** 切换范围：先刷新列表，再让导出跟着当前范围走 */
+const selectLogRange = (value) => {
+  if (logRange.value === value) return
+  logRange.value = value
+  loadLogs()
+}
+
+/* 首屏在挂载后再拉日志：SSR 不需要它，也避免登录态尚未 hydrate 时发请求 */
+onMounted(() => {
+  loadLogs()
+})
+
+watch(
+  () => userStore.userId,
+  (next, prev) => {
+    if (next !== prev) loadLogs()
+  }
+)
 
 /**
  * 用 `watch(..., { immediate: true })` 而不是 `onMounted` 预填表单。
@@ -1405,6 +1627,16 @@ onMounted(() => {
   line-height: 1.1;
   color: inherit;
   text-decoration: none;
+}
+
+/* 数字是数据：等宽 + 大字，便于竖排/横排对齐。
+ * 「暂无可用券 · 去领券」是散文（空态 + 动作），必须回到正文字体与字号；
+ * 否则它会继承上一行数字的等宽字号，和旁边的「优惠券」标签明显不是一套字。 */
+.profile-member-link--text {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  line-height: 1.5;
+  color: var(--accent);
 }
 
 .profile-member-link:hover {
@@ -1716,12 +1948,26 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 2.5);
 }
 
-/* 「账号与安全 / 联系客服」：不能自助改的字段必须给出路 */
-.profile-security {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-top: calc(var(--space-unit) * 1.5);
+/* 说明里的「改绑与验证」入口做成行内文本链接：
+ * 这是补充说明，不是主操作，不该有一排按钮的重量。 */
+.profile-note-links {
+  display: inline;
+  white-space: normal;
+}
+
+.profile-note-links a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-note-links a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.profile-note-sep {
+  margin: 0 calc(var(--space-unit) * 0.5);
+  color: var(--text-muted);
 }
 
 .profile-form {
@@ -1877,14 +2123,14 @@ onMounted(() => {
   text-underline-offset: 2px;
 }
 
-/* ── 操作日志导出（1.7.0，`GET /userLogsApi/`） ─────────────────
-   刻意不做成表格：日志是「需要留证时才翻」的东西，常驻列表会把资料表单推下去。
-   版面 = 标题 + 一句话说明 + 右侧下载按钮，下面一行时间范围 tab。 */
+/* ── 操作日志：时间线（`GET /userLogsApi/?format=json`） ─────────
+   日志的读法是「最近发生了什么」，不是「导出一份表格」：
+   一行 = 时间 · 类别 · 动作 · 细节 · 结果，桌面五列、手机两行。
+   导出按钮保留在标题右侧，数据口径仍在服务端。 */
 .ui-card.profile-logs {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
-  /* 上方 .profile-ops 已经带 24px 下边距；这里不再叠加，否则两张卡之间会空出一条 */
   margin-top: 0;
 }
 .profile-logs-head {
@@ -1909,7 +2155,7 @@ onMounted(() => {
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
-/* 胶囊 tab 自带上下内边距，这里压到 40px 行高 —— 与工具页模式页签一致，
+/* 胶囊 tab 自带上下内边距，这里压到 32px 行高 —— 与工具页模式页签一致，
    默认高度放在这张卡里显得比「下载日志」按钮重。 */
 .profile-logs-tabs {
   margin: 0;
@@ -1918,6 +2164,83 @@ onMounted(() => {
   height: 32px;
   padding: 0 calc(var(--space-unit) * 1.75);
   font-size: var(--fs-label);
+}
+
+/* 时间线本体 */
+.profile-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--divider);
+}
+.profile-log-item {
+  display: grid;
+  grid-template-columns: 6.5rem 6rem minmax(6rem, 9rem) minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: calc(var(--space-unit) * 2);
+  row-gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 1.25) 0;
+  border-bottom: 1px solid var(--divider);
+}
+.profile-log-time {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.profile-log-category {
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.profile-log-action {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.profile-log-detail {
+  min-width: 0;
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-log-outcome {
+  justify-self: end;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.profile-log-outcome--ok {
+  color: var(--success);
+}
+.profile-log-outcome--bad {
+  color: var(--danger);
+}
+.profile-log-preview-note {
+  margin: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.profile-log-state {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  padding: calc(var(--space-unit) * 2) 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+.profile-log-state--error {
+  color: var(--danger);
+}
+.profile-log-skeleton {
+  display: block;
+  width: 100%;
+  height: calc(var(--space-unit) * 2.5);
 }
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
@@ -1973,6 +2296,37 @@ onMounted(() => {
 
   .profile-field-grid > .u-field:first-child {
     grid-column: 1 / -1;
+  }
+
+  /* 时间线在窄屏收成两行两列：第一行「时间 + 结果」，第二行动作 + 细节，
+     类别退到次要位置。五列硬塞只会每列挤出省略号。 */
+  .profile-log-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: calc(var(--space-unit) * 1.5);
+  }
+
+  .profile-log-time {
+    grid-column: 1;
+  }
+
+  .profile-log-outcome {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .profile-log-category {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .profile-log-action {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .profile-log-detail {
+    grid-column: 1 / -1;
+    grid-row: 4;
   }
 }
 

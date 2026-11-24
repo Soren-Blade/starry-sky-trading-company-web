@@ -234,7 +234,7 @@ export default {
     profileSave: 'Save changes',
     profileReset: 'Reset',
     profileReadonlyNote:
-      'Username, email and phone are sign-in credentials and require re-verification to change. To update them, go to Account & security or contact support.',
+      'Your username is a sign-in credential and cannot be changed here. Email and phone can be edited directly; format is checked, but SMS verification is not yet required.',
     profileGuestNote: 'You are a guest. Sign in to save your profile.',
     profileFields: {
       uuid: 'User UID',

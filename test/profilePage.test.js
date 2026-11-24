@@ -190,3 +190,65 @@ test('源码：编辑资料走弹层，关闭时按未保存状态确认，保�
   // 保存成功关闭弹层，页面回到只读摘要
   assert.match(PROFILE_SOURCE, /if \(result\.success\)[\s\S]{0,240}?editorOpen\.value = false/)
 })
+
+test('源码：优惠券空态走正文字体，不继承数字的等宽字号', () => {
+  const at = PROFILE_SOURCE.indexOf('v-if="memberStore.overview.coupons != null"')
+  const block = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('</dl>', at))
+  assert.match(block, /profile-member-link--text/, '0 张时用散文样式，不用数字样式')
+  assert.match(ruleBody('.profile-member-link--text {'), /font-family: var\(--font-body\)/)
+  assert.match(ruleBody('.profile-member-link--text {'), /font-size: var\(--fs-label\)/)
+})
+
+test('源码：账号说明里的入口是行内文本链接，不再是一排按钮', () => {
+  assert.ok(!PROFILE_SOURCE.includes('class="profile-security"'), '按钮组已删除')
+  assert.ok(!PROFILE_SOURCE.includes('.profile-security'), '对应样式也应删除')
+
+  const at = PROFILE_SOURCE.indexOf('class="page-note profile-note"')
+  const block = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('</section>', at))
+  assert.match(block, /class="profile-note-links"/)
+  assert.match(block, /to="\/other\/2fa"/)
+  assert.match(block, /to="\/support"/)
+  assert.match(ruleBody('.profile-note-links a {'), /color: var\(--accent\)/)
+})
+
+test('源码：邮箱 / 手机号可在弹层里直接改，且校验格式与空值', () => {
+  assert.match(PROFILE_SOURCE, /v-model="form\.email"/)
+  assert.match(PROFILE_SOURCE, /v-model="form\.phone"/)
+  assert.match(PROFILE_SOURCE, /id="profile-email"/)
+  assert.match(PROFILE_SOURCE, /id="profile-phone"/)
+
+  // 失焦校验 + 提交前校验，错误挂在字段下方
+  assert.match(PROFILE_SOURCE, /function validateEmail\(\)/)
+  assert.match(PROFILE_SOURCE, /function validatePhone\(\)/)
+  assert.match(PROFILE_SOURCE, /@blur="validateEmail"/)
+  assert.match(PROFILE_SOURCE, /@blur="validatePhone"/)
+  assert.match(PROFILE_SOURCE, /id="profile-email-error"/)
+  assert.match(PROFILE_SOURCE, /id="profile-phone-error"/)
+
+  // 只提交改动过的字段；空值仍受「已有凭据不能清空」约束
+  assert.match(PROFILE_SOURCE, /if \(emailValue !== baseline\.value\.email/)
+  assert.match(PROFILE_SOURCE, /if \(phoneValue !== baseline\.value\.phone/)
+  assert.match(PROFILE_SOURCE, /emailError\.value = baseline\.value\.email \? PAGES\.profile\.emailRequired/)
+  assert.match(PROFILE_SOURCE, /phoneError\.value = baseline\.value\.phone \? PAGES\.profile\.phoneRequired/)
+
+  // 说明文字必须与「能否自助改」一致
+  assert.ok(!PROFILE_SOURCE.includes('手机号是登录凭据'))
+})
+
+test('源码：操作日志是时间线，按范围加载最近几条并能重试', () => {
+  assert.match(PROFILE_SOURCE, /getMyLogs\(\{ range: logRange\.value, limit: LOG_PREVIEW_LIMIT \}\)/)
+  assert.match(PROFILE_SOURCE, /const LOG_PREVIEW_LIMIT = 6/)
+  assert.match(PROFILE_SOURCE, /class="profile-log-list"/)
+  assert.match(PROFILE_SOURCE, /v-for="item in logItems"/)
+  assert.match(PROFILE_SOURCE, /formatLogTime\(item\.created_at\)/)
+  assert.match(PROFILE_SOURCE, /item\.outcome_label/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsEmpty/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsRetry/)
+  assert.match(PROFILE_SOURCE, /@click="selectLogRange\(item\.value\)"/)
+  assert.match(PROFILE_SOURCE, /const selectLogRange = \(value\) => \{[\s\S]{0,200}?loadLogs\(\)/, '切范围要同时刷新列表')
+
+  // 时间线网格：桌面五列、窄屏两列
+  assert.match(ruleBody('.profile-log-item {'), /grid-template-columns: 6\.5rem 6rem minmax\(6rem, 9rem\) minmax\(0, 1fr\) auto/)
+  const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(tablet, /\.profile-log-item \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto/)
+})
