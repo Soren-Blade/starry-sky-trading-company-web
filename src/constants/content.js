@@ -248,6 +248,8 @@ const PAGES_RAW = {
     lastLoginDaysAgo: '{days} 天前',
     lastLoginToday: '今天',
     emailHint: '用于登录与通知',
+    phonePrefix: '+86',
+    phonePlaceholder: '11 位手机号',
     phoneHint: '11 位大陆手机号，未绑定时可填写',
     emailRequired: '邮箱不能为空',
     phoneRequired: '手机号不能为空',

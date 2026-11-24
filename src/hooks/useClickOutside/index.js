@@ -32,8 +32,22 @@ import { onMounted, onUnmounted } from 'vue'
  *
  * @param {import('vue').Ref<HTMLElement|null>} targetRef 边界元素；它内部的点击不算「外部」
  * @param {(event: PointerEvent) => void} handler 判定为外部点击时调用
+ * @param {{ alsoInside?: Array<import('vue').Ref<HTMLElement|null>> }} [options]
+ *   `alsoInside` 用于「视觉上属于这个控件、但 DOM 上被 Teleport 到 body 的浮层」：
+ *   teleport 之后浮层不再是 targetRef 的后代，只判断 targetRef.contains 会把
+ *   点击浮层内部误判成点击外部，面板会在点到日期格之前就被关掉。
  */
-export function useClickOutside(targetRef, handler) {
+export function useClickOutside(targetRef, handler, options = {}) {
+  const extraRefs = options.alsoInside || []
+
+  const isInside = (event, root) => {
+    if (root.contains(event.target)) return true
+    return extraRefs.some((extra) => {
+      const el = extra?.value
+      return Boolean(el) && typeof el.contains === 'function' && el.contains(event.target)
+    })
+  }
+
   const onPointerDown = (event) => {
     const root = targetRef?.value
     // 边界元素还没挂上（或已卸载）时不做判定：此时「外部」无从谈起，
@@ -42,7 +56,7 @@ export function useClickOutside(targetRef, handler) {
     // contains 不是所有环境都有（SSR / 测试桩里的假元素可能缺），缺了就当内部处理，
     // 宁可不关，也不要在不确定的情况下关掉用户正在操作的浮层。
     if (typeof root.contains !== 'function') return
-    if (root.contains(event.target)) return
+    if (isInside(event, root)) return
     handler(event)
   }
 

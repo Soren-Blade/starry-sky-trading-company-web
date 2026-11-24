@@ -38,15 +38,20 @@
       面板用 v-if 而不是 v-show：关闭时不能有 42 个格子留在无障碍树与 Tab 序列里，
       「点击外部关闭」也要真的关掉，而不是只藏起来。
     -->
-    <div
-      v-if="open"
-      ref="panelRef"
-      class="u-datepicker datepicker-panel"
-      :class="{ 'datepicker-panel--up': placement === 'top' }"
-      role="dialog"
-      aria-modal="false"
-      :aria-label="ariaLabel"
-    >
+    <Teleport to="body" :disabled="!teleport">
+      <div
+        v-if="open"
+        ref="panelRef"
+        class="u-datepicker datepicker-panel"
+        :class="{
+          'datepicker-panel--up': placement === 'top',
+          'datepicker-panel--fixed': teleport,
+        }"
+        :style="teleport ? panelStyle : undefined"
+        role="dialog"
+        aria-modal="false"
+        :aria-label="ariaLabel"
+      >
       <!--
         四键布局 « ‹ 标题 › »：月份头两侧各一对，外层 / 内层分别是年与月。
         顺序由「跨度大的在外」决定 —— 与主流日历控件一致，误点成本也从「跳错 11 个月」
@@ -140,7 +145,8 @@
           清除
         </button>
       </div>
-    </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -399,6 +405,16 @@ const props = defineProps({
    * 有选中值时**不生效**（选中值优先）；非法值 / 空串安静退回今天所在月。
    */
   viewDate: { type: String, default: '' },
+  /**
+   * 是否把面板 Teleport 到 body，并用 fixed 定位。
+   *
+   * 默认 false：面板仍挂在字段旁边，适用于普通页面（没有任何 overflow 容器）。
+   * 在**可滚动的弹层**里必须开 —— 弹层 `.profile-editor` 有
+   * `max-height + overflow-y: auto`，绝对定位的面板会被裁在弹层的内容盒里，
+   * 表现为「点生日只看到一小条 / 完全看不见」，而弹层本身还能接着滚。
+   * teleport 之后面板不再受祖先 overflow 与 z-index 影响。
+   */
+  teleport: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -416,6 +432,18 @@ const panelRef = ref(null)
  * 面板底边到 917px，超出视口 244px，而那是绝对定位元素，滚动也带不回来。
  */
 const placement = ref('bottom')
+/**
+ * teleport 模式的 fixed 坐标。
+ *
+ * 面板脱离文档流后不再有「父级的 top/left」可依，必须用触发器的视口矩形算：
+ * - 水平：对齐触发器，但夹在视口内（面板 280px 宽，窄屏时不能伸出右侧）；
+ * - 垂直：下方放不下且上方更宽裕时翻到上方，与 adjustPlacement 的判据一致。
+ *
+ * 坐标写在 style 上而不是 CSS 变量里，是因为它每次打开 / 滚动 / 改变窗口都要重算。
+ */
+const panelStyle = ref(null)
+/** 与 .datepicker-panel 的 `top: calc(100% + var(--dropdown-offset))` 对齐 */
+const PANEL_GAP = 6
 /** 42 个格子的 DOM 引用，用来把键盘光标落到真实元素上 */
 const cellRefs = ref([])
 const setCellRef = (el, index) => {
@@ -601,17 +629,41 @@ const adjustPlacement = () => {
   const panel = panelRef.value
   if (!trigger?.getBoundingClientRect || !panel?.getBoundingClientRect) return
 
+  const viewportW = window.innerWidth || document.documentElement?.clientWidth || 0
   const viewportH = window.innerHeight || document.documentElement?.clientHeight || 0
   if (!viewportH) return
 
   const triggerRect = trigger.getBoundingClientRect()
+  // 高度与宽度分开实测：面板是 fixed 定位，没有父容器可参照，只能读视口实测值。
   const panelHeight = panel.getBoundingClientRect().height
+  const panelWidth = panel.getBoundingClientRect().width
   const spaceBelow = viewportH - triggerRect.bottom
   const spaceAbove = triggerRect.top
 
   // 下方放得下就保持朝下；放不下时选更宽裕的一侧（上方也放不下就仍朝下，
   // 至少不会把面板顶到视口外看不见触发器）。
   placement.value = spaceBelow < panelHeight && spaceAbove > spaceBelow ? 'top' : 'bottom'
+
+  if (!props.teleport) {
+    panelStyle.value = null
+    return
+  }
+
+  // 8px：既给视口留呼吸位，也让阴影不被裁
+  const margin = 8
+  const left = Math.min(
+    Math.max(triggerRect.left, margin),
+    Math.max(margin, viewportW - panelWidth - margin)
+  )
+  const top =
+    placement.value === 'top'
+      ? triggerRect.top - panelHeight - PANEL_GAP
+      : triggerRect.bottom + PANEL_GAP
+
+  panelStyle.value = {
+    top: `${Math.round(Math.max(margin, top))}px`,
+    left: `${Math.round(left)}px`,
+  }
 }
 
 const openPanel = () => {
@@ -731,10 +783,14 @@ const handleKeydown = (event) => {
  * hooks/useClickOutside 里，与 SelectField 共用一份 —— 这段的坑很细，复制两份
  * 迟早会有一份漂移。这里只负责「当前是否该关」。
  */
-useClickOutside(rootRef, () => {
-  if (!open.value) return
-  close()
-})
+useClickOutside(
+  rootRef,
+  () => {
+    if (!open.value) return
+    close()
+  },
+  { alsoInside: [panelRef] }
+)
 
 /**
  * 触发器上按下时**拦掉默认的取焦行为**。
@@ -781,23 +837,33 @@ watch(cursorIndex, () => {
 })
 
 /*
- * 面板开着时窗口尺寸变了要重新判朝向：把窗口从矮拉高（或反过来）之后，
- * 「下方放不放得下」的结论会变，不重算就会停在一个已经不合适的方向上。
- * 只在打开期间挂监听，关掉即摘，避免常驻一个全局 resize 监听。
+ * 面板开着时窗口尺寸 / 滚动位置变了要重新判朝向与坐标：
+ * - 把窗口从矮拉高（或反过来）之后，「下方放不放得下」的结论会变；
+ * - teleport 面板是 fixed 的，弹层内部滚动时触发器会移动，面板不跟着重算就会飘在
+ *   原地 —— 看起来像「日历掉在半空中」。
+ * scroll 用捕获阶段：滚动的是弹层（不是 window）时也能收到。
  */
-watch(open, (isOpen) => {
+const attachGlobalListeners = () => {
   if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
-  if (isOpen) {
-    window.addEventListener('resize', adjustPlacement)
-    return
-  }
-  window.removeEventListener('resize', adjustPlacement)
-})
+  window.addEventListener('resize', adjustPlacement)
+  window.addEventListener('scroll', adjustPlacement, true)
+}
 
-onBeforeUnmount(() => {
+const detachGlobalListeners = () => {
   if (typeof window === 'undefined' || typeof window.removeEventListener !== 'function') return
   window.removeEventListener('resize', adjustPlacement)
+  window.removeEventListener('scroll', adjustPlacement, true)
+}
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    attachGlobalListeners()
+    return
+  }
+  detachGlobalListeners()
 })
+
+onBeforeUnmount(detachGlobalListeners)
 
 // 面板开着时被父组件禁用：立刻收起来，不能留一个点不动的浮层
 watch(
@@ -951,10 +1017,29 @@ watch(
   transform: scale(var(--active-scale));
 }
 
+/*
+ * Teleport 到 body 的 fixed 面板：不受祖先 overflow 裁剪，也不再依赖字段的定位。
+ * z-index 用 modal 档（400）：弹层 overlay 是 300、modal 容器 400 —— 面板必须
+ * 压在弹层之上，否则日历明明渲染了却被遮罩盖住。
+ * 具体的 top / left 由 adjustPlacement 每帧算好写在行内 style 上。
+ */
+.datepicker-panel--fixed {
+  position: fixed;
+  z-index: var(--ec-z-modal, 400);
+  right: auto;
+  bottom: auto;
+  animation: none;
+}
+
 /* 窄屏：面板与字段左右对齐（不再向外探出），日期尺寸由 §11 的 575 档继续收 */
 @media (max-width: 767px) {
   .datepicker-panel {
     right: 0;
+  }
+
+  /* teleport 面板的 left 是算出来的，不能再被 `right: 0` 拉成整行宽 */
+  .datepicker-panel--fixed {
+    right: auto;
   }
 
   .datepicker-field {

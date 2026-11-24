@@ -541,3 +541,18 @@ test('面板放不下时会翻到触发器上方（否则下半截掉出视口�
   assert.match(source, /window\.addEventListener\('resize', adjustPlacement\)/, 'resize 时重算朝向')
   assert.match(source, /window\.removeEventListener\('resize', adjustPlacement\)/, '关闭/卸载时要摘掉监听')
 })
+
+test('源码：弹层内需要 teleport 到 body，否则会被 overflow 裁掉', () => {
+  const source = stripHtmlComments(readComponentSource())
+  assert.match(source, /<Teleport to="body" :disabled="!teleport">/, '面板要能脱离弹层的 overflow')
+  assert.match(source, /teleport: \{ type: Boolean, default: false \}/, 'teleport 必须是 opt-in')
+  assert.match(source, /:class="\{[\s\S]{0,120}?'datepicker-panel--up': placement === 'top',[\s\S]{0,80}?'datepicker-panel--fixed': teleport/)
+  assert.match(source, /panelStyle\.value = \{[\s\S]{0,160}?top: `[\s\S]{0,120}?left: `/, 'fixed 定位由触发器 rect 计算')
+  assert.match(source, /useClickOutside\([\s\S]{0,80}alsoInside: \[panelRef\]/, 'teleport 后面板点击不能当成外部')
+
+  const styleAt = source.indexOf('.datepicker-panel--fixed {')
+  assert.ok(styleAt > -1, '应有 fixed 面板样式')
+  const styleBody = source.slice(styleAt, source.indexOf('}', styleAt))
+  assert.match(styleBody, /position: fixed/)
+  assert.match(styleBody, /z-index: var\(--ec-z-modal, 400\)/)
+})

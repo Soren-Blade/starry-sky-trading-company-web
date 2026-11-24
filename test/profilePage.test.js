@@ -23,8 +23,8 @@ test('源码：资料编辑为整页单栏，签到已上移到身份条，下�
 
   // 身份条里签到在主按钮位、编辑资料是次按钮，且签到排在前面
   const actions = PROFILE_SOURCE.slice(
-    PROFILE_SOURCE.indexOf('class="profile-hero-actions"'),
-    PROFILE_SOURCE.indexOf('</section>', PROFILE_SOURCE.indexOf('class="profile-hero-actions"'))
+    PROFILE_SOURCE.indexOf('class="profile-summary-actions"'),
+    PROFILE_SOURCE.indexOf('</section>', PROFILE_SOURCE.indexOf('class="profile-summary-actions"'))
   )
   const checkinAt = actions.indexOf('handleProfileCheckin')
   const editAt = actions.indexOf('profile.editCta')
@@ -35,15 +35,15 @@ test('源码：资料编辑为整页单栏，签到已上移到身份条，下�
 })
 
 test('源码：身份条动作纵向排列，窄屏铺满一行', () => {
-  const body = ruleBody('.profile-hero-actions {')
+  const body = ruleBody('.profile-summary-actions {')
   assert.match(body, /flex-direction: column/)
-  assert.match(body, /margin-left: auto/)
+  assert.match(body, /flex: 0 0 auto/)
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(phone, /\.profile-hero-actions \{[\s\S]*?margin-left: 0/)
+  assert.match(phone, /\.profile-summary-actions \{[\s\S]*?width: 100%;[\s\S]*?margin-left: 0/)
 })
 
-test('源码：会员条数字与说明有明确间距，数字等宽、说明走正文字体', () => {
+test('源码：会员数字与说明有明确间距，数字等宽、说明走正文字体，摘要卡合三为一', () => {
   assert.match(ruleBody('.profile-member-stat {'), /gap: calc\(var\(--space-unit\) \* 0\.75\)/)
   assert.match(
     ruleBody('.profile-member-value {'),
@@ -54,10 +54,13 @@ test('源码：会员条数字与说明有明确间距，数字等宽、说明�
   assert.match(ruleBody('.profile-member-sub {'), /font-family: var\(--font-body\)/)
   assert.match(ruleBody('.profile-member-sub {'), /white-space: nowrap/)
 
-  // 卡片本身给足列间距，并让按钮组不再被挤压收缩
-  assert.match(ruleBody('.ui-card.profile-member {'), /column-gap: calc\(var\(--space-unit\) \* 4\)/)
-  assert.match(ruleBody('.profile-member-actions {'), /flex: 0 0 auto/)
-  assert.match(ruleBody('.ui-card.profile-member {'), /margin-bottom: calc\(var\(--space-unit\) \* 3\)/)
+  // 身份、会员、统计、邀请合并在同一张摘要卡里：纵向分三段，间距由卡片统一给
+  const summary = ruleBody('.ui-card.profile-summary {')
+  assert.match(summary, /flex-direction: column/)
+  assert.match(summary, /gap: calc\(var\(--space-unit\) \* 2\.5\)/)
+  assert.match(summary, /margin-bottom: calc\(var\(--space-unit\) \* 3\)/)
+  assert.match(ruleBody('.profile-summary-plan {'), /grid-template-columns: minmax\(0, 1fr\) auto/)
+  assert.match(ruleBody('.profile-summary-plan-actions {'), /justify-content: flex-end/)
 })
 
 test('源码：资料只在弹层里编辑，账号信息跟在后面，桌面两列、UID 横跨整行', () => {
@@ -121,9 +124,10 @@ test('源码：手机上只读值去掉盒状底板，label + 文本靠 dl 间�
   assert.match(block, /font-family: var\(--font-body\)/)
 })
 
-test('源码：邀请收进会员卡最后一行（说明左、入口右），窄屏入口换行', () => {
+test('源码：邀请收进摘要卡最后一行（说明左、入口右），窄屏入口换行', () => {
   const body = ruleBody('.profile-member-invite {')
-  assert.match(body, /grid-column: 1 \/ -1/, '邀请行要横跨会员卡整行')
+  assert.match(body, /display: flex/, '邀请行与统计同处一张卡，用分隔线分段即可')
+  assert.ok(!body.includes('grid-column'), '合并后不再需要跨会员卡整行')
   assert.match(body, /align-items: baseline/)
   assert.match(body, /border-top: var\(--stroke-width\) solid var\(--divider\)/, '用分隔线区分运营位')
 
@@ -251,4 +255,32 @@ test('源码：操作日志是时间线，按范围加载最近几条并能重�
   assert.match(ruleBody('.profile-log-item {'), /grid-template-columns: 6\.5rem 6rem minmax\(6rem, 9rem\) minmax\(0, 1fr\) auto/)
   const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
   assert.match(tablet, /\.profile-log-item \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto/)
+})
+
+test('源码：身份与会员合并成一张摘要卡，旧的两张卡不再存在', () => {
+  assert.equal(PROFILE_SOURCE.includes('class="ui-card profile-hero"'), false, '身份条不再是独立卡片')
+  assert.equal(
+    PROFILE_SOURCE.includes('class="ui-card profile-member"'),
+    false,
+    '会员摘要不再单独成卡'
+  )
+  assert.match(PROFILE_SOURCE, /class="ui-card profile-summary"/)
+  assert.match(PROFILE_SOURCE, /class="profile-summary-plan"/)
+  assert.match(PROFILE_SOURCE, /class="profile-summary-stats"/)
+  assert.match(PROFILE_SOURCE, /class="profile-summary-skeleton"/)
+  assert.match(PROFILE_SOURCE, /class="profile-summary-error"/)
+})
+
+test('源码：手机号带 +86 地区前缀，校验仍只认 11 位数字', () => {
+  assert.match(PROFILE_SOURCE, /class="profile-phone-prefix"[\s\S]{0,120}phonePrefix/)
+  assert.match(PROFILE_SOURCE, /id="profile-phone"[\s\S]{0,400}class="profile-phone-input"/)
+  assert.match(PROFILE_SOURCE, /maxlength="11"/)
+  assert.match(PROFILE_SOURCE, /class="profile-phone-group"/)
+  assert.match(ruleBody('.profile-phone-group {'), /display: flex/)
+  assert.match(ruleBody('.profile-phone-prefix {'), /font-family: var\(--font-mono\)/)
+})
+
+test('源码：UID 复制成功有 toast，按钮本身也变成功态', () => {
+  assert.match(PROFILE_SOURCE, /notify\.success\(PAGES\.profile\.uidCopied\)/, '复制成功要有即时反馈')
+  assert.match(ruleBody('.profile-field-value--code .ec-icon-btn.is-ok {'), /color: var\(--success\)/)
 })

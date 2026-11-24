@@ -170,6 +170,8 @@ export default {
       lastLoginDaysAgo: '{days} days ago',
       lastLoginToday: 'Today',
       emailHint: 'Used for sign-in and notifications',
+      phonePrefix: '+86',
+      phonePlaceholder: '11-digit mobile number',
       phoneHint: '11-digit mainland China mobile number; leave empty if not linked',
       emailRequired: 'Email is required',
       phoneRequired: 'Phone number is required',

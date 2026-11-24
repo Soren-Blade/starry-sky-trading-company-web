@@ -30,12 +30,21 @@
     </AppAlert>
 
     <!--
-      身份条：头像 + 昵称 + 注册时间（+ 会员等级）+「编辑资料」锚点。
-      这是「我是谁」的唯一出处，从原来的左栏里提出来，也让首屏第一眼有落点。
+      账号摘要：把「我是谁」（头像 + 昵称 + 注册信息）与「我有什么」（会员等级、
+      成长值、积分、优惠券、邀请入口）合成一张卡。
+
+      它们此前是两张各自带 padding 的卡，中间隔一档间距 —— 读起来像两个互不相关
+      的模块，而用户的心智里这就是「我的账号」。合并后：
+      · 身份行承载高频动作（签到 / 编辑），会员与统计向下展开；
+      · 一张卡最多三个视觉层次（身份 → 会员 → 统计），比两张卡各自反复用标题更安静；
+      · 首屏少一张卡的高度，我的服务与账号信息更早出现。
+
+      状态必须完整：游客（只有身份 + 登录）、加载中（骨架）、加载失败（重试）、
+      会员有下一级 / 会员满级 / 非会员（只有成长值）、积分即将到期。
     -->
-    <section class="ui-card profile-hero" :aria-label="PAGES.profile.identityAria">
-      <div class="profile-hero-identity">
-        <span class="u-avatar profile-hero-avatar">
+    <section class="ui-card profile-summary" :aria-label="PAGES.profile.identityAria">
+      <div class="profile-summary-head">
+        <span class="u-avatar profile-summary-avatar">
           <SmartImage
             v-if="userStore.avatarUrl"
             :src="userStore.avatarUrl"
@@ -45,39 +54,154 @@
           />
           <AppIcon v-else name="user" />
         </span>
-        <div class="profile-hero-text">
-          <p class="profile-hero-name">{{ heroName }}</p>
-          <p v-if="heroMeta" class="profile-hero-meta">{{ heroMeta }}</p>
+        <div class="profile-summary-identity">
+          <p class="profile-summary-name">{{ heroName }}</p>
+          <p v-if="heroMeta" class="profile-summary-meta">{{ heroMeta }}</p>
+        </div>
+        <div class="profile-summary-actions">
+          <!--
+            签到是每天一次的高频动作，直接放在身份行上（少一跳）；
+            「编辑资料」是低频动作，降为次按钮，点开弹层再改，不在页面上常驻一块表单。
+            两个动作纵向排列：窄屏时各自铺满一行，不并排挤压。
+          -->
+          <template v-if="userStore.isLoggedIn">
+            <button
+              v-if="checkinAvailable"
+              type="button"
+              class="u-btn-primary profile-summary-checkin"
+              :disabled="checkinPending"
+              @click="handleProfileCheckin"
+            >
+              {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+            </button>
+            <router-link v-else class="u-btn-secondary" to="/user/checkin">
+              {{ PAGES.profile.checkinCalendar }}
+            </router-link>
+            <button type="button" class="u-btn-secondary" @click="openEditor">
+              {{ PAGES.profile.editCta }}
+            </button>
+          </template>
+          <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
+          <button v-else type="button" class="u-btn-primary" @click="goLogin">
+            {{ PAGES.profile.goLogin }}
+          </button>
         </div>
       </div>
-      <div class="profile-hero-actions">
-        <!--
-          签到是每天一次的高频动作，直接放在身份条上（少一跳）；
-          「编辑资料」是低频动作，降为次按钮，点开弹层再改，不在页面上常驻一块表单。
-          两个动作纵向排列：窄屏时各自铺满一行，不并排挤压。
-        -->
-        <template v-if="userStore.isLoggedIn">
-          <button
-            v-if="checkinAvailable"
-            type="button"
-            class="u-btn-primary profile-hero-checkin"
-            :disabled="checkinPending"
-            @click="handleProfileCheckin"
-          >
-            {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+
+      <template v-if="userStore.isLoggedIn && memberSummaryVisible">
+        <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-summary-skeleton">
+          <span class="u-skeleton profile-summary-skeleton-line"></span>
+          <span class="u-skeleton profile-summary-skeleton-line profile-summary-skeleton-line--short"></span>
+        </div>
+
+        <p v-else-if="memberStore.error" class="profile-summary-error" role="alert">
+          {{ memberStore.error }}
+          <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">
+            {{ PAGES.profile.retry }}
           </button>
-          <router-link v-else class="u-btn-secondary" to="/user/checkin">
-            {{ PAGES.profile.checkinCalendar }}
-          </router-link>
-          <button type="button" class="u-btn-secondary" @click="openEditor">
-            {{ PAGES.profile.editCta }}
-          </button>
+        </p>
+
+        <template v-else-if="memberStore.overview">
+          <div class="profile-summary-plan">
+            <div class="profile-summary-plan-text">
+              <p class="profile-summary-plan-name">
+                <AppIcon name="star" aria-hidden="true" />
+                {{ memberStore.isMember ? memberStore.levelName : PAGES.profile.notMember }}
+              </p>
+              <p class="profile-summary-plan-note">
+                {{
+                  memberStore.isMember && memberStore.overview.days_left
+                    ? translate('pages.profile.memberDaysLeft', PAGES.profile.memberDaysLeft, {
+                        days: memberStore.overview.days_left,
+                      })
+                    : PAGES.profile.memberUpgradeNote
+                }}
+              </p>
+            </div>
+            <div class="profile-summary-plan-actions">
+              <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
+              <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
+            </div>
+          </div>
+
+          <dl class="profile-summary-stats">
+            <div class="profile-member-stat">
+              <dt class="profile-member-term">{{ PAGES.profile.growth }}</dt>
+              <dd class="profile-member-value">
+                <router-link class="profile-member-link" to="/member/growth">
+                  {{ formatNumber(memberStore.overview.growth ?? 0) }}
+                </router-link>
+                <!--
+                  成长值不写「x / 当前等级门槛」：那是已经越过的线，会被读成「还差」。
+                  有下一等级才写「距 V8 还差 13,515」；满级写「已达最高等级」；
+                  非会员不编造进度。
+                -->
+                <span v-if="growthNext" class="profile-member-sub">
+                  {{
+                    translate('pages.profile.growthToNext', PAGES.profile.growthToNext, {
+                      level: growthNext.name,
+                      points: formatNumber(growthNext.toNext),
+                    })
+                  }}
+                </span>
+                <span v-else-if="memberStore.isMember" class="profile-member-sub">{{ PAGES.profile.maxLevelNote }}</span>
+              </dd>
+            </div>
+            <!-- 非会员的 points / coupons 键不存在，不是 0 —— 不渲染，也不写 0 -->
+            <div v-if="memberStore.overview.points != null" class="profile-member-stat">
+              <dt class="profile-member-term">{{ PAGES.profile.points }}</dt>
+              <dd class="profile-member-value">
+                <router-link class="profile-member-link" to="/points">{{ formatNumber(memberStore.points) }}</router-link>
+                <span v-if="memberStore.overview.points_value" class="profile-member-sub">
+                  ≈ ¥{{ formatPointsValue(memberStore.points) }}
+                </span>
+              </dd>
+            </div>
+            <div v-if="memberStore.overview.coupons != null" class="profile-member-stat">
+              <dt class="profile-member-term">{{ PAGES.profile.coupons }}</dt>
+              <dd class="profile-member-value">
+                <!--
+                  会员且 0 张时不要再把 0 和空态提示同时写出来：
+                  「优惠券 0」「暂无可用券 · 去领券」并排是自相矛盾的两句话，只保留后者。
+                -->
+                <router-link
+                  class="profile-member-link"
+                  :class="{
+                    'profile-member-link--text':
+                      memberStore.isMember && memberStore.overview.coupons === 0,
+                  }"
+                  to="/coupons"
+                >
+                  {{
+                    memberStore.isMember && memberStore.overview.coupons === 0
+                      ? PAGES.profile.couponsEmpty
+                      : memberStore.overview.coupons
+                  }}
+                </router-link>
+              </dd>
+            </div>
+          </dl>
+
+          <p v-if="memberStore.overview.points_expiring" class="profile-summary-remind">
+            <AppIcon name="clock" aria-hidden="true" />
+            {{ translate('pages.profile.pointsExpiring', PAGES.profile.pointsExpiring, {
+              points: memberStore.overview.points_expiring.points,
+              date: toDate(memberStore.overview.points_expiring.expire_at),
+            }) }}
+          </p>
+
+          <!-- 邀请是积分来源之一，和会员/积分同属「我还有什么」，收进同一张卡的最后一行 -->
+          <p class="profile-member-invite">
+            <AppIcon name="gift" aria-hidden="true" />
+            <span class="profile-member-invite-text">
+              {{ PAGES.profile.inviteTitle }} · {{ PAGES.profile.inviteDesc }}
+            </span>
+            <router-link class="profile-member-invite-link" to="/invite">
+              {{ PAGES.profile.inviteCta }}
+            </router-link>
+          </p>
         </template>
-        <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
-        <button v-else type="button" class="u-btn-primary" @click="goLogin">
-          {{ PAGES.profile.goLogin }}
-        </button>
-      </div>
+      </template>
     </section>
 
     <!--
@@ -170,20 +294,28 @@
 
           <div class="u-field">
             <label class="u-field-label" for="profile-phone">{{ TRADE.profileFields.phone }}</label>
-            <input
-              id="profile-phone"
-              v-model="form.phone"
-              class="u-input"
-              type="tel"
-              inputmode="tel"
-              autocomplete="tel"
-              maxlength="11"
-              :placeholder="TRADE.profileFields.phone"
-              :aria-invalid="phoneError ? 'true' : 'false'"
-              :aria-describedby="phoneError ? 'profile-phone-hint profile-phone-error' : 'profile-phone-hint'"
-              @blur="validatePhone"
-              @input="phoneError = ''"
-            />
+            <!--
+              手机号按国际号码展示：前缀（+86）是「地区」而不是用户输入的一部分，
+              单独成一个不可编辑的前缀块，输入框只装 11 位号码 —— 校验与接口
+              仍然只认纯数字，格式化不进入数据层。
+            -->
+            <div class="profile-phone-group">
+              <span class="profile-phone-prefix" aria-hidden="true">{{ PAGES.profile.phonePrefix }}</span>
+              <input
+                id="profile-phone"
+                v-model="form.phone"
+                class="profile-phone-input"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                maxlength="11"
+                :placeholder="PAGES.profile.phonePlaceholder"
+                :aria-invalid="phoneError ? 'true' : 'false'"
+                :aria-describedby="phoneError ? 'profile-phone-hint profile-phone-error' : 'profile-phone-hint'"
+                @blur="validatePhone"
+                @input="phoneError = ''"
+              />
+            </div>
             <span id="profile-phone-hint" class="u-field-hint">{{ PAGES.profile.phoneHint }}</span>
             <p v-if="phoneError" id="profile-phone-error" class="u-field-error" role="alert">
               {{ phoneError }}
@@ -209,6 +341,7 @@
               :aria-label="TRADE.profileBirthday"
               :max="today"
               view-date="1990-01-01"
+              teleport
               :disabled="!userStore.isLoggedIn"
             />
           </div>
@@ -400,127 +533,6 @@
           <router-link to="/support">{{ PAGES.profile.contactSupport }}</router-link>
         </span>
       </p>
-    </section>
-
-    <!--
-      会员权益摘要：放在资料双栏之后。
-      它回答的是「我还有什么」，不该抢在「改资料 / 我的服务」之前占满首屏。
-    -->
-    <section
-      v-if="userStore.isLoggedIn && memberSummaryVisible"
-      class="ui-card profile-member"
-      :aria-label="PAGES.profile.memberAria"
-    >
-      <div v-if="memberStore.loadingOverview && !memberStore.overview" class="profile-member-skeleton">
-        <span class="u-skeleton profile-member-skeleton-line"></span>
-        <span class="u-skeleton profile-member-skeleton-line profile-member-skeleton-line--short"></span>
-      </div>
-
-      <p v-else-if="memberStore.error" class="profile-member-error" role="alert">
-        {{ memberStore.error }}
-        <button type="button" class="u-btn-secondary" @click="memberStore.fetchOverview()">{{ PAGES.profile.retry }}</button>
-      </p>
-
-      <template v-else-if="memberStore.overview">
-        <div class="profile-member-head">
-          <p class="profile-member-title">
-            <AppIcon name="star" aria-hidden="true" />
-            {{ memberStore.isMember ? memberStore.levelName : PAGES.profile.notMember }}
-          </p>
-          <p class="profile-member-note">
-            {{
-              memberStore.isMember && memberStore.overview.days_left
-                ? translate('pages.profile.memberDaysLeft', PAGES.profile.memberDaysLeft, {
-                    days: memberStore.overview.days_left,
-                  })
-                : PAGES.profile.memberUpgradeNote
-            }}
-          </p>
-        </div>
-
-        <dl class="profile-member-stats">
-          <div class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.growth }}</dt>
-            <dd class="profile-member-value">
-              <router-link class="profile-member-link" to="/member/growth">
-                {{ formatNumber(memberStore.overview.growth ?? 0) }}
-              </router-link>
-              <!--
-                成长值不写「x / 当前等级门槛」：那是已经越过的线，会被读成「还差」。
-                有下一等级才写「距 V8 还差 13,515」；满级写「已达最高等级」；
-                非会员不编造进度。
-              -->
-              <span v-if="growthNext" class="profile-member-sub">
-                {{
-                  translate('pages.profile.growthToNext', PAGES.profile.growthToNext, {
-                    level: growthNext.name,
-                    points: formatNumber(growthNext.toNext),
-                  })
-                }}
-              </span>
-              <span v-else-if="memberStore.isMember" class="profile-member-sub">{{ PAGES.profile.maxLevelNote }}</span>
-            </dd>
-          </div>
-          <!-- 非会员的 points / coupons 键不存在，不是 0 —— 不渲染，也不写 0 -->
-          <div v-if="memberStore.overview.points != null" class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.points }}</dt>
-            <dd class="profile-member-value">
-              <router-link class="profile-member-link" to="/points">{{ formatNumber(memberStore.points) }}</router-link>
-              <span v-if="memberStore.overview.points_value" class="profile-member-sub">
-                ≈ ¥{{ formatPointsValue(memberStore.points) }}
-              </span>
-            </dd>
-          </div>
-          <div v-if="memberStore.overview.coupons != null" class="profile-member-stat">
-            <dt class="profile-member-term">{{ PAGES.profile.coupons }}</dt>
-            <dd class="profile-member-value">
-              <!--
-                会员且 0 张时不要再把 0 和空态提示同时写出来：
-                「优惠券 0」「暂无可用券 · 去领券」并排是自相矛盾的两句话，只保留后者。
-              -->
-              <router-link
-                class="profile-member-link"
-                :class="{
-                  'profile-member-link--text':
-                    memberStore.isMember && memberStore.overview.coupons === 0,
-                }"
-                to="/coupons"
-              >
-                {{
-                  memberStore.isMember && memberStore.overview.coupons === 0
-                    ? PAGES.profile.couponsEmpty
-                    : memberStore.overview.coupons
-                }}
-              </router-link>
-            </dd>
-          </div>
-        </dl>
-
-        <div class="profile-member-actions">
-          <router-link class="u-btn-secondary" to="/member">{{ PAGES.profile.memberCenter }}</router-link>
-          <router-link class="u-btn-secondary" to="/member/plans">{{ PAGES.profile.planCompare }}</router-link>
-        </div>
-
-        <p v-if="memberStore.overview.points_expiring" class="profile-member-remind">
-          <AppIcon name="clock" aria-hidden="true" />
-          {{ translate('pages.profile.pointsExpiring', PAGES.profile.pointsExpiring, {
-            points: memberStore.overview.points_expiring.points,
-            date: toDate(memberStore.overview.points_expiring.expire_at),
-          }) }}
-        </p>
-
-        <!-- 邀请是积分来源之一，和会员/积分同属「我还有什么」，收进同一张卡的最后一行，
-             不再单独占一张全宽卡。发奖时机是好友完成首单，不是注册时。 -->
-        <p class="profile-member-invite">
-          <AppIcon name="gift" aria-hidden="true" />
-          <span class="profile-member-invite-text">
-            {{ PAGES.profile.inviteTitle }} · {{ PAGES.profile.inviteDesc }}
-          </span>
-          <router-link class="profile-member-invite-link" to="/invite">
-            {{ PAGES.profile.inviteCta }}
-          </router-link>
-        </p>
-      </template>
     </section>
 
     <!--
@@ -1256,6 +1268,9 @@ const copyUuid = async () => {
     return
   }
 
+  // 按钮变对勾只是「局部反馈」，视线不在按钮上的用户看不到；
+  // 再给一条 toast，确保「复制成功了」这件事一定被听见/看见。
+  notify.success(PAGES.profile.uidCopied)
   uuidCopied.value = true
   if (uuidCopyTimer) clearTimeout(uuidCopyTimer)
   uuidCopyTimer = setTimeout(() => {
@@ -1537,51 +1552,135 @@ onMounted(() => {
 /* ── 会员权益摘要：单栏页面里的一条横向概览 ───────────────────── */
 /* 两个类名合写提高优先级：global.css 的 .ui-card 是纵向 flex 卡片，
    这里要的是「标题在左、按钮在右、数字独占下一行」的网格，
-   否则窄屏时三个数字和两个按钮会挤在同一行、文字互相贴住。 */
-.ui-card.profile-member {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  column-gap: calc(var(--space-unit) * 4);
-  row-gap: calc(var(--space-unit) * 2);
+/* ── 账号摘要：身份 + 会员 + 统计 + 邀请，合成一张卡 ───────────── */
+/* 一张卡内部三段：身份行（谁）、会员行（什么等级）、统计行（有什么）。
+   用 border-top 分段而不再给每段套一张卡 —— 少两张底板就少两层边框与阴影。 */
+.ui-card.profile-summary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2.5);
+  padding: calc(var(--space-unit) * 2.5);
   margin-bottom: calc(var(--space-unit) * 3);
 }
 
-.profile-member-head {
-  grid-column: 1;
-  grid-row: 1;
+.profile-summary-head {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
+  align-items: center;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.profile-summary-avatar {
+  flex-shrink: 0;
+  width: calc(var(--space-unit) * 9);
+  height: calc(var(--space-unit) * 9);
+  font-size: var(--fs-h2);
+}
+
+.profile-summary-identity {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.profile-member-title {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit));
+.profile-summary-name {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
   color: var(--text-primary);
 }
 
-.profile-member-note {
-  margin: 0;
-  font-size: var(--fs-sm);
+.profile-summary-meta {
+  margin: calc(var(--space-unit) * 0.5) 0 0;
+  font-size: var(--fs-label);
   color: var(--text-muted);
 }
 
-.profile-member-stats {
-  grid-column: 1 / -1;
-  grid-row: 2;
+/* 签到是这一页唯一的「今天要做的事」，主按钮在上；编辑资料是低频动作，次按钮在下。 */
+.profile-summary-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--space-unit) * 2) calc(var(--space-unit) * 4);
-  margin: 0;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 0 0 auto;
+  gap: var(--space-unit);
 }
 
+.profile-summary-actions .u-btn-primary,
+.profile-summary-actions .u-btn-secondary {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.profile-summary-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit));
+  width: 100%;
+}
+
+.profile-summary-skeleton-line {
+  display: block;
+  height: calc(var(--space-unit) * 2);
+  border-radius: var(--radius-media);
+}
+
+.profile-summary-skeleton-line--short {
+  width: 40%;
+}
+
+.profile-summary-error {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.profile-summary-plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: calc(var(--space-unit) * 3);
+  padding-top: calc(var(--space-unit) * 2);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.profile-summary-plan-name {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.75);
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-summary-plan-note {
+  margin: calc(var(--space-unit) * 0.5) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-summary-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+.profile-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: calc(var(--space-unit) * 4);
+  row-gap: calc(var(--space-unit) * 2);
+  margin: 0;
+  padding-top: calc(var(--space-unit) * 2);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+/* 一项统计 = 标签 + 数字 + 说明，三者纵向排列；说明与数字之间必须有间距，
+   否则「36,485 距 V8 还差 13,515」会粘成一句话。 */
 .profile-member-stat {
   display: flex;
   flex-direction: column;
@@ -1590,48 +1689,30 @@ onMounted(() => {
 }
 
 .profile-member-term {
-  margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
 
-/*
- * 数字与说明必须同一行、之间留 6px：原来的 dd 是等宽字体，中文副文案继承后
- * 字距被拉散，且没有间距，「36,485距 V8 还差 3,510」会粘成一个词。
- * 数字保留等宽（对齐、易读），说明回到正文字体（中文才有正常字距）。
- */
 .profile-member-value {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 0.75);
   margin: 0;
   font-family: var(--font-body);
-  font-size: var(--fs-body);
-  color: var(--text-primary);
-  min-width: 0;
 }
 
-.profile-member-sub {
-  font-family: var(--font-body);
-  font-size: var(--fs-label);
-  line-height: 1.5;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-/* 三个数字都可点：积分 / 优惠券 / 成长值各有落点页面 */
+/* 数字是数据：等宽 + 大字，便于竖排/横排对齐。 */
 .profile-member-link {
   font-family: var(--font-mono);
   font-size: var(--fs-h3);
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  font-weight: var(--fw-heading);
   color: inherit;
   text-decoration: none;
 }
 
-/* 数字是数据：等宽 + 大字，便于竖排/横排对齐。
- * 「暂无可用券 · 去领券」是散文（空态 + 动作），必须回到正文字体与字号；
- * 否则它会继承上一行数字的等宽字号，和旁边的「优惠券」标签明显不是一套字。 */
+/* 「暂无可用券 · 去领券」是散文（空态 + 动作），必须回到正文字体与字号；
+   否则它会继承上一行数字的等宽字号，和旁边的「优惠券」标签明显不是一套字。 */
 .profile-member-link--text {
   font-family: var(--font-body);
   font-size: var(--fs-label);
@@ -1645,20 +1726,16 @@ onMounted(() => {
   text-underline-offset: 2px;
 }
 
-.profile-member-actions {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: calc(var(--space-unit) * 1.5);
-  /* 不允许被数字挤压：按钮要么完整显示，要么整组换行 */
-  flex: 0 0 auto;
+.profile-member-sub {
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* 到期提醒横跨整行：它属于「需要你注意」的信息，不该挤在数字那一行 */
-.profile-member-remind {
-  grid-column: 1 / -1;
+.profile-summary-remind {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit));
@@ -1667,32 +1744,6 @@ onMounted(() => {
   border-top: var(--stroke-width) solid var(--divider);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-}
-
-.profile-member-error {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 1.5);
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-.profile-member-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit));
-  width: 100%;
-}
-
-.profile-member-skeleton-line {
-  display: block;
-  height: calc(var(--space-unit) * 2);
-  border-radius: var(--radius-media);
-}
-
-.profile-member-skeleton-line--short {
-  width: 40%;
 }
 
 /* ── 账号状态警示条（仅 banned / deleted 出现） ───────────────── */
@@ -1707,68 +1758,6 @@ onMounted(() => {
   text-underline-offset: 2px;
 }
 
-/* ── 身份条：头像 + 昵称 / 注册信息 + 签到 / 编辑 ─────────────── */
-.ui-card.profile-hero {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
-}
-
-.profile-hero-identity {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 2);
-  min-width: 0;
-}
-
-/*
- * 签到是这一页唯一的「今天要做的事」，放在最上、用主按钮；
- * 编辑资料是低频动作，降为次按钮并排在它下面。
- */
-.profile-hero-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-unit);
-  margin-left: auto;
-  flex: 0 0 auto;
-}
-
-.profile-hero-actions .u-btn-primary,
-.profile-hero-actions .u-btn-secondary {
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.profile-hero-avatar {
-  flex-shrink: 0;
-  width: calc(var(--space-unit) * 7);
-  height: calc(var(--space-unit) * 7);
-  font-size: var(--fs-h2);
-}
-
-.profile-hero-text {
-  min-width: 0;
-}
-
-.profile-hero-name {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-heading);
-  letter-spacing: var(--tracking-display);
-  color: var(--text-primary);
-}
-
-.profile-hero-meta {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
 
 /* ── 我的服务：订单 / 卡密 / 收藏 / 优惠券 ───────────────────── */
 .profile-services {
@@ -1944,6 +1933,14 @@ onMounted(() => {
   height: var(--ec-control-h-sm);
 }
 
+/* 复制成功：按钮本身也要变（对勾 + 成功色），否则只有 toast 一闪而过；
+ * 1.5 秒后组件把 is-ok 摘掉，恢复正常图标与颜色。 */
+.profile-field-value--code .ec-icon-btn.is-ok {
+  color: var(--success);
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+
 .profile-note {
   margin-top: calc(var(--space-unit) * 2.5);
 }
@@ -1995,6 +1992,62 @@ onMounted(() => {
 
 .profile-field-grid > .u-field:first-child {
   grid-column: 1 / -1;
+}
+
+/* 手机号：+86 前缀与输入框拼成一个控件。
+ * 前缀是本地的固定标签（不参加校验，也不写进 form.phone），输入框只装 11 位号码；
+ * 两者共享同一圈边框与焦点环，视觉上不能读成「两个字段」。 */
+.profile-phone-group {
+  display: flex;
+  align-items: center;
+  height: var(--ec-control-h-md);
+  overflow: hidden;
+  background: var(--ec-input-bg, var(--bg-elevated));
+  border: 1px solid var(--ec-input-border);
+  border-radius: var(--ec-input-radius);
+  transition:
+    border-color var(--transition-interactive),
+    box-shadow var(--transition-interactive);
+}
+
+.profile-phone-group:focus-within {
+  border-color: var(--ec-border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.profile-phone-prefix {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 100%;
+  padding-inline: var(--ec-input-px);
+  border-right: 1px solid var(--ec-border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.profile-phone-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding-inline: var(--ec-input-px);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.profile-phone-input::placeholder {
+  color: var(--placeholder);
+}
+
+.profile-phone-group:has(.profile-phone-input[aria-invalid='true']) {
+  border-color: var(--danger);
 }
 
 /* ── 头像编辑器 ─────────────────────────────────────────────
@@ -2092,9 +2145,8 @@ onMounted(() => {
   margin-top: calc(var(--space-unit));
 }
 
-/* 邀请收进会员卡的最后一行：一句说明 + 右侧入口，不再单占一张全宽卡 */
+/* 邀请收进摘要卡的最后一行：一句说明 + 右侧入口，不再单占一张全宽卡 */
 .profile-member-invite {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -2107,6 +2159,7 @@ onMounted(() => {
 }
 
 .profile-member-invite-text {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -2245,23 +2298,18 @@ onMounted(() => {
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
-  /* 平板：服务四宫格降到两列；会员条按钮回到标题下方，数字独占一行 */
+  /* 平板：服务四宫格降到两列；摘要卡的会员行把按钮收到文字下方 */
   .profile-services {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .profile-member {
+  .profile-summary-plan {
     grid-template-columns: minmax(0, 1fr);
+    row-gap: calc(var(--space-unit) * 1.5);
   }
 
-  .profile-member-actions {
-    grid-column: 1;
-    grid-row: 2;
+  .profile-summary-plan-actions {
     justify-content: flex-start;
-  }
-
-  .profile-member-stats {
-    grid-row: 3;
   }
 }
 
@@ -2383,19 +2431,46 @@ onMounted(() => {
     display: none;
   }
 
-  .profile-member-stats {
-    gap: calc(var(--space-unit) * 2);
+  /* 摘要卡：手机先让身份行与动作分行，再把统计压成「成长值整行 + 积分/优惠券并排」 */
+  .profile-summary {
+    padding: calc(var(--space-unit) * 2);
   }
 
-  /* 会员条窄屏：两个入口并排、够宽即可点，避免两个全宽按钮各占一行 */
-  .profile-member-actions {
-    flex-direction: row;
+  .profile-summary-head {
     flex-wrap: wrap;
-    align-items: stretch;
   }
 
-  .profile-member-actions > * {
+  .profile-summary-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .profile-summary-actions > * {
     flex: 1 1 auto;
+  }
+
+  .profile-summary-plan-actions {
+    justify-content: flex-start;
+  }
+
+  .profile-summary-plan-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .profile-summary-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: calc(var(--space-unit) * 2);
+  }
+
+  .profile-summary-stats > .profile-member-stat:first-child {
+    grid-column: 1 / -1;
+  }
+
+  /* 编辑弹层在手机上贴满可用宽度，纵向自己滚动 */
+  .profile-editor {
+    width: 100%;
+    max-height: 100dvh;
+    padding: calc(var(--space-unit) * 2);
   }
 
   /* 窄屏保持头像编辑器左右结构：只把头像与间距收一档，按钮继续钉在右侧 */
@@ -2413,19 +2488,6 @@ onMounted(() => {
   /* 说明文字在小屏让它自己换行即可，不必压到按钮底下 */
   .avatar-hint {
     max-width: none;
-  }
-
-  /* 签到 / 编辑两个按钮在窄屏占满整行 */
-  .profile-hero-actions {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  /* 编辑弹层在手机上贴满可用宽度，纵向自己滚动 */
-  .profile-editor {
-    width: 100%;
-    max-height: 100dvh;
-    padding: calc(var(--space-unit) * 2);
   }
 
   /* 邀请行在窄屏让入口换到下一行左对齐 */
