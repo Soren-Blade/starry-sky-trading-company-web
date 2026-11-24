@@ -223,38 +223,34 @@ test('收藏：空收藏给出空态与去逛的入口', async () => {
 // 个人中心
 // ══════════════════════════════════════════════════════════════
 
-test('个人中心：只读区渲染账号信息，表单预填当前资料', async () => {
+test('个人中心：只读摘要渲染账号信息，编辑表单不常驻', async () => {
   const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
 
-  // 只读区
+  // 只读摘要
   assert.ok(html.includes('uuid-42'), '应显示用户标识')
   assert.ok(html.includes('stardust'), '应显示用户名')
   assert.ok(html.includes('a@b.c'), '应显示邮箱')
   assert.ok(html.includes('未绑定'), '未绑定的手机号应显示占位而不是空白')
 
-  // 表单预填。
-  // 注意这里**不**断言 `<select>` 的 selected：SSR 不给 `<select v-model>` 的
-  // 静态 `<option>` 输出 selected 属性，那是 SSR 的产物而不是真实行为
-  // （本应用是纯客户端渲染）。下一行的 input value 能证明 fillForm 真的跑过。
-  assert.match(html, /id="profile-nickname"[^>]*value="星尘"/, '昵称应预填')
+  /*
+   * 编辑表单现在收在「编辑资料」按钮打开的弹层里（v-if="editorOpen"），
+   * 页面常驻的只有「看资料」一套结构 —— 这正是不再左右重复的关键。
+   * SSR 不会渲染关闭的弹层，所以表单预填改为源码级断言：
+   * openEditor() 会先跑 fillForm()，后者从 userInfo 铺 nickname / birthday，
+   * 并把结果记为 baseline（决定保存按钮的 disabled）。
+   */
+  assert.equal(html.includes('id="profile-nickname"'), false, '编辑表单不应常驻页面')
 
-  // 生日的断言刻意**不绑定具体控件**：这个字段先是原生 `<input type="date">`，
-  // 后来换成了自绘的 DatePickerField（值渲染成「1995 年 06 月 15 日」的文本）。
-  // 两种实现都保留 `id="profile-birthday"`，因此只要求「值的年份出现在该字段的标记里」，
-  // 换控件不会让这条断言失效 —— 它要证明的是 toDateInput() 把 ISO 串正确截断并预填。
-  const birthdayAt = html.indexOf('id="profile-birthday"')
-  assert.ok(birthdayAt > -1, '生日字段应渲染出来')
-  const birthdayMarkup = html.slice(birthdayAt, birthdayAt + 400)
-  assert.match(birthdayMarkup, /1995/, `生日应预填成 1995 年，实际片段：${birthdayMarkup.slice(0, 200)}`)
-  assert.match(birthdayMarkup, /06/, '生日应带月份')
-  assert.match(birthdayMarkup, /15/, '生日应带日')
-
-  // 表单已预填 → 与基线一致 → 保存按钮应当禁用（没有改动可提交）
-  assert.match(html, /class="u-btn-primary" disabled/, '没有改动时保存按钮应禁用')
+  const source = readFileSync(new URL('../src/pages/Profile.vue', import.meta.url), 'utf8')
+  const fillAt = source.indexOf('const fillForm = () => {')
+  assert.ok(fillAt > -1, '应有 fillForm')
+  const fillBlock = source.slice(fillAt, source.indexOf('const isDirty', fillAt))
+  assert.match(fillBlock, /nickname: data\.nickname \|\| ''/, '昵称应从 userInfo 预填')
+  assert.match(fillBlock, /birthday: toDateInput\(data\.birthday\)/, '生日应预填成 input 值')
+  assert.match(fillBlock, /baseline\.value = \{ \.\.\.form\.value \}/, '预填后应建立基线，未改动时保存按钮禁用')
 })
 
 test('个人中心：性别选项与数据库约束一致（male / female / unknown）', async () => {
-  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
 
   /*
    * 性别原来用原生 <select>，选项能从 SSR 的 <option> 里抓；换成 SelectField 之后
@@ -276,10 +272,9 @@ test('个人中心：性别选项与数据库约束一致（male / female / unkn
     '性别取值必须与数据库 CHECK 约束一致'
   )
 
-  // 接线没断：页面上确实是一个 SelectField 触发器（面板 v-if 关闭时不渲染，
-  // 所以这里断言的是触发器语义，而不是选项文案 —— 后者会与文案常量耦合）。
-  assert.match(html, /aria-haspopup="listbox"/, '性别应渲染成 SelectField 的触发器')
-  assert.match(html, /aria-label="性别"/, '触发器应带可访问名')
+  // 接线没断：性别字段是一个 SelectField（表单默认不渲染，断言源码里的接线）。
+  assert.match(source, /<SelectField[\s\S]{0,200}?id="profile-gender"/, '性别应渲染成 SelectField')
+  assert.match(source, /id="profile-gender"[\s\S]{0,200}?aria-label="TRADE\.profileGender"/, '触发器应带可访问名')
 })
 
 test('个人中心：说明哪些字段不能自助修改，并给出「账号与安全 / 联系客服」去处', async () => {
@@ -291,73 +286,70 @@ test('个人中心：说明哪些字段不能自助修改，并给出「账号�
 })
 
 // ── 头像栏的版式：左「头像 + 说明」/ 右「上传图标按钮」──────────
+//
+// 头像编辑器在编辑弹层里，SSR 不开弹层时拿不到这段 DOM，因此这组断言改成
+// 对 Profile.vue 源码取「头像编辑器」区块，再在区块内验证结构 —— 保住的是
+// 「左说明 / 右图标按钮 / 隐藏 file input」这套用户认可的版式，不是 SSR 输出形状。
 
-test('头像栏：左侧是头像 + 说明文字，右侧是上传按钮', async () => {
-  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+function avatarEditorSource() {
+  const source = readFileSync(new URL('../src/pages/Profile.vue', import.meta.url), 'utf8')
+  const at = source.indexOf('class="avatar-editor"')
+  assert.ok(at > -1, '应有头像编辑器')
+  return source.slice(at, source.indexOf('</details>', at))
+}
 
-  const editorAt = html.indexOf('class="avatar-editor"')
-  assert.ok(editorAt > -1, '应有头像编辑器')
+test('头像栏：左侧是头像 + 说明文字，右侧是上传按钮', () => {
+  const block = avatarEditorSource()
 
   // 左栏：头像与说明在同一个 .avatar-profile 容器里，且**在**上传按钮之前
-  const leftAt = html.indexOf('class="avatar-profile"', editorAt)
-  const uploadAt = html.indexOf('class="u-icon-btn avatar-upload"', editorAt)
-  const descAt = html.indexOf('class="u-field-hint avatar-hint"', editorAt)
+  const leftAt = block.indexOf('class="avatar-profile"')
+  const uploadAt = block.indexOf('class="u-icon-btn avatar-upload"')
+  const descAt = block.indexOf('class="u-field-hint avatar-hint"')
 
   assert.ok(leftAt > -1 && descAt > -1 && uploadAt > -1, '左栏容器、说明、上传按钮都应存在')
   assert.ok(leftAt < uploadAt, '头像 + 说明应在左，上传按钮在右')
   assert.ok(descAt < uploadAt, '说明文字属于左栏，不能排在上传按钮之后')
 
   // 说明文字确实在左栏容器内部（两者之间没有关闭该容器）
-  const leftBlock = html.slice(leftAt, uploadAt)
+  const leftBlock = block.slice(leftAt, uploadAt)
   assert.ok(leftBlock.includes('avatar-hint'), '说明文字应位于左栏容器内')
 })
 
-test('头像栏：上传按钮已收成图标（可见文字改成图标，文字转为可访问名）', async () => {
-  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+test('头像栏：上传按钮已收成图标（可见文字改成图标，文字转为可访问名）', () => {
+  const block = avatarEditorSource()
 
-  const uploadAt = html.indexOf('class="u-icon-btn avatar-upload"')
+  const uploadAt = block.indexOf('class="u-icon-btn avatar-upload"')
   assert.ok(uploadAt > -1)
-  // 窗口给足：图标换成内联 SVG 后标记变长，截太短会把后面的可访问名切掉
-  const button = html.slice(uploadAt, uploadAt + 2000)
+  const button = block.slice(uploadAt, uploadAt + 1200)
 
   // 图标是**线性 SVG**（AppIcon），且对读屏隐藏（它只是装饰，语义由可访问名承担）。
   // 此前这里是一个 ↑ 文本字形 —— 换成 SVG 的原因正是「字形不受 CSS color 影响、
   // 悬停变色与五套主题都会失效」，那对 emoji 同样成立。
-  assert.match(
-    button,
-    /class="app-icon avatar-upload-icon"/,
-    '图标应是 AppIcon 渲染的线性 SVG'
-  )
-  assert.match(button, /aria-hidden="true"/, '装饰性图标要对读屏隐藏')
-
-  // 图标按钮必须有可访问名；且这段文字不能是可见文字
-  assert.match(
-    button,
-    /<span class="visually-hidden">上传头像<\/span>/,
-    '图标按钮必须带 .visually-hidden 的可访问名 —— label 上的 aria-label 不算 input 的名字'
-  )
-  assert.match(button, /title="上传头像"/, '鼠标悬停也要能知道这个按钮做什么')
+  assert.match(button, /class="avatar-upload-icon"[\s\S]*?name="arrow-up"/, '图标应是 AppIcon 渲染的线性 SVG')
+  assert.match(button, /<span class="visually-hidden">\{\{ uploadLabel \}\}<\/span>/, '图标按钮必须带可访问名')
 
   // 按钮里不应再有可见的「选择图片 / 上传中」文字
   assert.equal(/>\s*选择图片\s*</.test(button), false, '可见文字应已换成图标')
 })
 
-test('头像栏：隐藏的 file input 仍在，且被 label 关联', async () => {
-  const html = await renderPage('/pages/Profile.vue', { user: REGISTERED_USER })
+test('头像栏：隐藏的 file input 仍在，且被 label 关联', () => {
+  const block = avatarEditorSource()
+  const html = `\n${block}`
 
   assert.match(
     html,
-    /<input id="profile-avatar-file"[^>]*class="visually-hidden"[^>]*type="file"/,
+    /<input[\s\S]{0,200}?id="profile-avatar-file"[\s\S]{0,200}?class="visually-hidden"[\s\S]{0,200}?type="file"/,
     '原生 file input 应保留（隐藏），label 通过 for 触发它'
   )
-  assert.match(html, /<label for="profile-avatar-file"/, 'label 必须关联到该 input')
+  assert.match(html, /<label[\s\S]{0,120}?for="profile-avatar-file"/, 'label 必须关联到该 input')
 })
 
-test('个人中心：游客态禁用表单并说明原因', async () => {
+test('个人中心：游客态给出登录出口，不再渲染一份禁用表单', async () => {
   const html = await renderPage('/pages/Profile.vue', { user: GUEST_USER })
-  assert.match(html, /游客/)
-  assert.ok(html.includes('登录后即可保存个人资料'))
-  assert.match(html, /id="profile-nickname"[^>]*disabled/, '游客的表单应禁用')
+  assert.match(html, /未登录/, '身份条标题应说「未登录」而不是空着')
+  assert.match(html, /去登录/, '游客的编辑入口换成「去登录」主按钮')
+  assert.equal(html.includes('id="profile-nickname"'), false, '游客没有可编辑表单')
+  assert.equal(html.includes('id="profile-editor"'), false, '游客不会渲染编辑弹层')
 })
 
 test('个人中心：渲染结果不含 undefined / NaN 插值事故', async () => {

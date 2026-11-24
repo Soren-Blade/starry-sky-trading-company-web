@@ -202,6 +202,7 @@ const PAGES_RAW = {
     guestHeroName: '未登录',
     identityAria: '账号概览',
     editCta: '编辑资料',
+    closeEditor: '关闭',
     goLogin: '去登录',
     servicesAria: '我的服务',
     serviceOrders: '我的订单',

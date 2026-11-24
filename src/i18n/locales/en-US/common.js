@@ -124,6 +124,7 @@ export default {
       guestHeroName: 'Not signed in',
       identityAria: 'Account overview',
       editCta: 'Edit profile',
+      closeEditor: 'Close',
       goLogin: 'Sign in',
       servicesAria: 'My services',
       serviceOrders: 'My orders',

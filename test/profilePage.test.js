@@ -60,10 +60,17 @@ test('源码：会员条数字与说明有明确间距，数字等宽、说明�
   assert.match(ruleBody('.ui-card.profile-member {'), /margin-bottom: calc\(var\(--space-unit\) \* 3\)/)
 })
 
-test('源码：账号信息跟在资料面板之后，桌面两列、UID 横跨整行', () => {
-  const editAt = PROFILE_SOURCE.indexOf('id="profile-edit"')
+test('源码：资料只在弹层里编辑，账号信息跟在后面，桌面两列、UID 横跨整行', () => {
+  // 编辑入口不再常驻；页面常驻的只有只读摘要，表单收进 #profile-editor 弹层
+  assert.equal(
+    PROFILE_SOURCE.includes('id="profile-edit"'),
+    false,
+    '不应再有常驻的资料编辑面板'
+  )
+  const editorAt = PROFILE_SOURCE.indexOf('id="profile-editor"')
   const accountAt = PROFILE_SOURCE.indexOf('class="page-panel profile-account"')
-  assert.ok(editAt > -1 && accountAt > editAt, '账号信息应在资料面板之后')
+  assert.ok(editorAt > -1, '应有编辑弹层')
+  assert.ok(accountAt > editorAt, '账号信息应在资料弹层之后')
 
   assert.match(ruleBody('.profile-fields {'), /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(ruleBody('.profile-row--wide {'), /grid-column: 1 \/ -1/)
@@ -72,15 +79,16 @@ test('源码：账号信息跟在资料面板之后，桌面两列、UID 横跨�
   assert.match(tablet, /\.profile-fields \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
 })
 
-test('源码：表单三字段同一行，平板两列（昵称独占）、手机一列', () => {
+test('源码：表单字段昵称独占一行、性别生日并排，手机一列', () => {
   assert.match(
     ruleBody('.profile-field-grid {'),
-    /grid-template-columns: minmax\(0, 1\.2fr\) minmax\(0, 0\.9fr\) minmax\(0, 0\.9fr\)/
+    /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
+    '弹层只有 640 宽，昵称占整行、两个短字段并排'
   )
-
-  const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 991px)'))
-  assert.match(tablet, /\.profile-field-grid \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
-  assert.match(tablet, /\.profile-field-grid > \.u-field:first-child \{[\s\S]*?grid-column: 1 \/ -1/)
+  assert.match(
+    ruleBody('.profile-field-grid > .u-field:first-child {'),
+    /grid-column: 1 \/ -1/
+  )
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
   assert.match(phone, /\.profile-field-grid \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
@@ -113,13 +121,16 @@ test('源码：手机上只读值去掉盒状底板，label + 文本靠 dl 间�
   assert.match(block, /font-family: var\(--font-body\)/)
 })
 
-test('源码：邀请卡仍是横向条（文案左、按钮右），窄屏才竖排', () => {
-  const body = ruleBody('.ui-card.profile-invite {')
-  assert.match(body, /flex-direction: row/, 'global.css 的 .ui-card 是 column，必须合写类名覆盖')
-  assert.match(body, /justify-content: space-between/)
+test('源码：邀请收进会员卡最后一行（说明左、入口右），窄屏入口换行', () => {
+  const body = ruleBody('.profile-member-invite {')
+  assert.match(body, /grid-column: 1 \/ -1/, '邀请行要横跨会员卡整行')
+  assert.match(body, /align-items: baseline/)
+  assert.match(body, /border-top: var\(--stroke-width\) solid var\(--divider\)/, '用分隔线区分运营位')
+
+  assert.match(ruleBody('.profile-member-invite-link {'), /margin-left: auto/)
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(phone, /\.ui-card\.profile-invite \{[\s\S]*?flex-direction: column/)
+  assert.match(phone, /\.profile-member-invite-link \{[\s\S]*?margin-left: 0/)
 })
 
 test('源码：会员为 0 张券时只渲染空态文案，不与「0」并排', () => {
@@ -155,4 +166,27 @@ test('源码：banned / deleted 警示条注明「正常不可达」', () => {
 test('源码：日志导出文件名是 account-events-<范围>-<日期>.csv，不是 tool-usage-', () => {
   assert.match(PROFILE_SOURCE, /link\.download = `account-events-\$\{logRange\.value\}/)
   assert.ok(!PROFILE_SOURCE.includes('tool-usage-'), '日志内容是账号与商城操作，文件名不能叫 tool-usage')
+})
+
+test('源码：编辑资料走弹层，关闭时按未保存状态确认，保存成功后自动收起', () => {
+  // 页面不再常驻表单；「编辑资料」打开弹层，表单在弹层里
+  assert.match(PROFILE_SOURCE, /const editorOpen = ref\(false\)/)
+  assert.equal(PROFILE_SOURCE.includes('id="profile-edit"'), false, '不再有常驻编辑面板')
+  assert.match(PROFILE_SOURCE, /id="profile-editor"/, '弹层应有稳定 id，供测试与焦点管理使用')
+  assert.match(PROFILE_SOURCE, /role="dialog"[\s\S]{0,80}?aria-modal="true"/, '弹层必须声明为模态对话框')
+
+  // 无障碍复用项目唯一实现：Escape / 焦点陷阱 / 滚动锁不自己手写
+  assert.match(PROFILE_SOURCE, /useModalA11y\(\{[\s\S]{0,200}?initialFocus: '#profile-nickname'/)
+  assert.match(PROFILE_SOURCE, /function openEditor\(\)[\s\S]{0,160}?fillForm\(\)[\s\S]{0,120}?activateEditor\(\)/)
+
+  // 关闭：保存中不关；有改动先确认
+  assert.match(PROFILE_SOURCE, /function requestCloseEditor\(\)[\s\S]{0,160}?if \(saving\.value\) return/)
+  assert.match(PROFILE_SOURCE, /function requestCloseEditor\(\)[\s\S]{0,260}?window\.confirm\(PAGES\.profile\.unsavedConfirm\)/)
+
+  // 路由离开与关页面只在「弹层打开且有改动」时拦，页面本身没有草稿
+  assert.match(PROFILE_SOURCE, /onBeforeRouteLeave\(\(\) => \{[\s\S]{0,160}?!editorOpen\.value \|\| !isDirty\.value/)
+  assert.match(PROFILE_SOURCE, /handleBeforeUnload[\s\S]{0,160}?editorOpen\.value \|\| !isDirty\.value/)
+
+  // 保存成功关闭弹层，页面回到只读摘要
+  assert.match(PROFILE_SOURCE, /if \(result\.success\)[\s\S]{0,240}?editorOpen\.value = false/)
 })

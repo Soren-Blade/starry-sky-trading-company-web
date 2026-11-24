@@ -50,25 +50,33 @@
           <p v-if="heroMeta" class="profile-hero-meta">{{ heroMeta }}</p>
         </div>
       </div>
-      <div v-if="userStore.isLoggedIn" class="profile-hero-actions">
+      <div class="profile-hero-actions">
         <!--
           签到是每天一次的高频动作，直接放在身份条上（少一跳）；
-          「编辑资料」是低频动作，降为次按钮，锚到下方资料面板。
+          「编辑资料」是低频动作，降为次按钮，点开弹层再改，不在页面上常驻一块表单。
           两个动作纵向排列：窄屏时各自铺满一行，不并排挤压。
         -->
-        <button
-          v-if="checkinAvailable"
-          type="button"
-          class="u-btn-primary profile-hero-checkin"
-          :disabled="checkinPending"
-          @click="handleProfileCheckin"
-        >
-          {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+        <template v-if="userStore.isLoggedIn">
+          <button
+            v-if="checkinAvailable"
+            type="button"
+            class="u-btn-primary profile-hero-checkin"
+            :disabled="checkinPending"
+            @click="handleProfileCheckin"
+          >
+            {{ checkinPending ? PAGES.profile.checkinPending : PAGES.profile.checkinNow }}
+          </button>
+          <router-link v-else class="u-btn-secondary" to="/user/checkin">
+            {{ PAGES.profile.checkinCalendar }}
+          </router-link>
+          <button type="button" class="u-btn-secondary" @click="openEditor">
+            {{ PAGES.profile.editCta }}
+          </button>
+        </template>
+        <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
+        <button v-else type="button" class="u-btn-primary" @click="goLogin">
+          {{ PAGES.profile.goLogin }}
         </button>
-        <router-link v-else class="u-btn-secondary" to="/user/checkin">
-          {{ PAGES.profile.checkinCalendar }}
-        </router-link>
-        <a class="u-btn-secondary" href="#profile-edit">{{ PAGES.profile.editCta }}</a>
       </div>
     </section>
 
@@ -87,15 +95,31 @@
       </router-link>
     </nav>
 
-    <!-- 资料编辑：整页单栏。身份摘要在上面只出现一次，这里只留可改的四个字段。 -->
-    <section id="profile-edit" class="page-panel profile-edit" :aria-label="PAGES.profile.editAria">
-        <h2 class="page-panel-head">{{ TRADE.profileEdit }}</h2>
-
-        <div v-if="!userStore.isLoggedIn" class="profile-guest">
-          <p class="page-note page-note--warning">{{ TRADE.profileGuestNote }}</p>
-          <!-- 游客点进个人中心唯一的目的就是登录，不要让他自己找入口 -->
-          <button type="button" class="u-btn-primary" @click="goLogin">{{ PAGES.profile.goLogin }}</button>
-        </div>
+    <!--
+      资料编辑：不在页面上常驻表单（那会让「看资料」和「改资料」两套结构重复），
+      而是由身份条上的「编辑资料」按钮打开一个弹层。
+    -->
+    <div v-if="editorOpen" class="ec-overlay" @click.self="requestCloseEditor">
+      <section
+        id="profile-editor"
+        ref="editorRef"
+        class="ec-dialog profile-editor"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-editor-title"
+        :aria-label="PAGES.profile.editAria"
+      >
+        <header class="profile-editor-head">
+          <h2 id="profile-editor-title" class="profile-editor-title">{{ TRADE.profileEdit }}</h2>
+          <button
+            type="button"
+            class="ec-icon-btn"
+            :aria-label="PAGES.profile.closeEditor"
+            @click="requestCloseEditor"
+          >
+            <AppIcon name="x" />
+          </button>
+        </header>
 
         <form class="profile-form" novalidate @submit.prevent="handleSubmit">
           <div class="profile-field-grid">
@@ -260,10 +284,11 @@
             </button>
           </div>
         </form>
-    </section>
+      </section>
+    </div>
 
     <!--
-      账号信息：只读，放在资料面板之后。
+      账号信息：只读，放在资料编辑之后。
       桌面两列、UID 横跨整行；手机上值不再装进盒子，只按 label + 文本排列。
     -->
     <section class="page-panel profile-account" :aria-label="PAGES.profile.accountAria">
@@ -428,19 +453,19 @@
             date: toDate(memberStore.overview.points_expiring.expire_at),
           }) }}
         </p>
-      </template>
-    </section>
 
-    <!--
-      邀请有礼：签到已经提到身份条，这里只留邀请（奖励同样是积分来源，
-      且**发奖在好友完成首单时**，不是注册时 —— 文案必须与派奖时机一致）。
-    -->
-    <section v-if="userStore.isLoggedIn" class="ui-card profile-invite" :aria-label="PAGES.profile.inviteAria">
-      <div class="profile-invite-text">
-        <p class="profile-invite-title">{{ PAGES.profile.inviteTitle }}</p>
-        <p class="profile-invite-desc">{{ PAGES.profile.inviteDesc }}</p>
-      </div>
-        <router-link class="u-btn-secondary" to="/invite">{{ PAGES.profile.inviteCta }}</router-link>
+        <!-- 邀请是积分来源之一，和会员/积分同属「我还有什么」，收进同一张卡的最后一行，
+             不再单独占一张全宽卡。发奖时机是好友完成首单，不是注册时。 -->
+        <p class="profile-member-invite">
+          <AppIcon name="gift" aria-hidden="true" />
+          <span class="profile-member-invite-text">
+            {{ PAGES.profile.inviteTitle }} · {{ PAGES.profile.inviteDesc }}
+          </span>
+          <router-link class="profile-member-invite-link" to="/invite">
+            {{ PAGES.profile.inviteCta }}
+          </router-link>
+        </p>
+      </template>
     </section>
 
     <!--
@@ -626,6 +651,8 @@ import SelectField from '@/components/SelectField.vue'
 import { LOG_RANGES, downloadMyLogs } from '@/api/ask/userLogs'
 import { copyText } from '@/utils/clipboard.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
+// 编辑资料改成弹层后，Escape / 焦点陷阱 / 滚动锁定必须走项目唯一的模态实现
+import { useModalA11y } from '@/hooks/useModalA11y'
 
 const userStore = useUserStore()
 const memberStore = useMemberStore()
@@ -833,9 +860,9 @@ function goLogin() {
   userStore.openLoginModal()
 }
 
-/** 关页面 / 刷新时的未保存拦截；路由内跳转另用 onBeforeRouteLeave */
+/** 关页面 / 刷新时的未保存拦截（只拦弹层打开且确有修改的情况） */
 const handleBeforeUnload = (event) => {
-  if (!isDirty.value) return
+  if (!editorOpen.value || !isDirty.value) return
   event.preventDefault()
   event.returnValue = ''
 }
@@ -915,13 +942,52 @@ const isDirty = computed(
 )
 
 /**
+ * 编辑弹层的开关。
+ *
+ * 页面常驻的是「看资料」，改资料由身份条上的按钮打开弹层 ——
+ * 这样资料区不必同时承担两套结构，首屏也不会被一张永远展开的表单占住。
+ */
+const editorOpen = ref(false)
+
+const {
+  modalRef: editorRef,
+  activate: activateEditor,
+  deactivate: deactivateEditor,
+} = useModalA11y({
+  close: () => requestCloseEditor(),
+  auto: false,
+  initialFocus: '#profile-nickname',
+})
+
+function openEditor() {
+  if (!userStore.isLoggedIn) return
+  // 每次打开都从当前 userInfo 重新铺一遍，避免上次取消后残留半截修改
+  fillForm()
+  editorOpen.value = true
+  activateEditor()
+}
+
+function closeEditor() {
+  editorOpen.value = false
+  resetForm()
+  deactivateEditor()
+}
+
+/** 取消 / 遮罩 / Escape：有未保存修改时先确认，保存中不允许关 */
+function requestCloseEditor() {
+  if (saving.value) return
+  if (isDirty.value && !window.confirm(PAGES.profile.unsavedConfirm)) return
+  closeEditor()
+}
+
+/**
  * 路由内离开确认。
  *
- * 表单在页面中部，误点顶栏或「我的服务」就会把改动丢掉；`beforeunload`
- * 只管关标签页，管不到 SPA 内部跳转，因此两条都要挂。
+ * 表单现在只在弹层里；弹层关着时页面没有可丢的修改，因此只在弹层打开时拦截。
+ * `beforeunload` 只管关标签页，管不到 SPA 内部跳转，两条都要挂。
  */
 onBeforeRouteLeave(() => {
-  if (!isDirty.value) return true
+  if (!editorOpen.value || !isDirty.value) return true
   return window.confirm(PAGES.profile.unsavedConfirm)
 })
 
@@ -1155,6 +1221,9 @@ const handleSubmit = async () => {
     if (result.success) {
       fillForm()
       notify.success(TRADE.profileSaved)
+      // 保存成功即关闭弹层：页面重新以只读摘要呈现刚保存的值
+      editorOpen.value = false
+      deactivateEditor()
     } else if (result.field === 'nickname') {
       // 字段级错误（重名 / 敏感词）挂回昵称下方，banner 只说「保存失败」
       nicknameError.value = result.message
@@ -1528,17 +1597,33 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.profile-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--section-gap);
-  margin-bottom: calc(var(--space-unit) * 3);
+/* ── 编辑资料弹层：只放可改的四个字段 ───────────────────────────
+ * 页面本身只展示资料，编辑不常驻；弹层宽度收在 640，避免输入框横跨整页。 */
+.profile-editor {
+  width: min(640px, 100%);
+  max-height: min(86vh, 820px);
+  overflow-y: auto;
+  padding: calc(var(--space-unit) * 3);
 }
 
-/* 「编辑资料」锚点跳转后不要被固定顶栏盖住标题 */
-.profile-edit {
-  scroll-margin-top: calc(var(--ec-topbar-h) + var(--space-unit) * 2);
+.profile-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 2);
+  margin-bottom: calc(var(--space-unit) * 2.5);
+}
+
+.profile-editor-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-editor .profile-form {
+  gap: calc(var(--space-unit) * 2);
 }
 
 /* 账号信息在资料编辑下方，作为「我有哪些不可改的东西」的补充 */
@@ -1639,19 +1724,6 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 1.5);
 }
 
-/* 游客态：说明 + 去登录主按钮，放在本该是表单的位置 */
-.profile-guest {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-bottom: calc(var(--space-unit) * 2.5);
-}
-
-.profile-guest .page-note {
-  margin: 0;
-}
-
 .profile-form {
   display: flex;
   flex-direction: column;
@@ -1667,11 +1739,16 @@ onMounted(() => {
   box-shadow: 0 0 0 2px var(--danger-bg);
 }
 
-/* 昵称 / 性别 / 生日：昵称略宽，两个短字段同排，减少表单纵向长度 */
+/* 昵称 / 性别 / 生日：昵称独占一行，两个短字段并排 ——
+ * 弹层只有 640 宽，三列会把生日压成「2003 年 01…」 */
 .profile-field-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: calc(var(--space-unit) * 2);
+}
+
+.profile-field-grid > .u-field:first-child {
+  grid-column: 1 / -1;
 }
 
 /* ── 头像编辑器 ─────────────────────────────────────────────
@@ -1769,31 +1846,35 @@ onMounted(() => {
   margin-top: calc(var(--space-unit));
 }
 
-/* ── 邀请有礼入口（1.6.0，`/invite`） ─────────────────────────
-   签到已上提到身份条；这里只剩邀请一张卡，不再需要并排网格。
-   合写类名压过 .ui-card 的纵向方向。 */
-.ui-card.profile-invite {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
-}
-.profile-invite-text {
+/* 邀请收进会员卡的最后一行：一句说明 + 右侧入口，不再单占一张全宽卡 */
+.profile-member-invite {
+  grid-column: 1 / -1;
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.25);
-  min-width: 0;
-}
-.profile-invite-title {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: calc(var(--space-unit) * 0.75);
   margin: 0;
-  font-weight: var(--fw-heading);
-}
-.profile-invite-desc {
-  margin: 0;
+  padding-top: calc(var(--space-unit) * 1.5);
+  border-top: var(--stroke-width) solid var(--divider);
   font-size: var(--fs-label);
   color: var(--text-muted);
+}
+
+.profile-member-invite-text {
+  min-width: 0;
+}
+
+.profile-member-invite-link {
+  margin-left: auto;
+  font-weight: var(--fw-heading);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.profile-member-invite-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ── 操作日志导出（1.7.0，`GET /userLogsApi/`） ─────────────────
@@ -1952,10 +2033,15 @@ onMounted(() => {
     gap: calc(var(--space-unit) * 2);
   }
 
-  /* 会员条窄屏整体竖排：标题、按钮、数字依次向下 */
+  /* 会员条窄屏：两个入口并排、够宽即可点，避免两个全宽按钮各占一行 */
   .profile-member-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
+  }
+
+  .profile-member-actions > * {
+    flex: 1 1 auto;
   }
 
   /* 窄屏保持头像编辑器左右结构：只把头像与间距收一档，按钮继续钉在右侧 */
@@ -1981,10 +2067,16 @@ onMounted(() => {
     margin-left: 0;
   }
 
-  /* 邀请入口窄屏改竖排（两条选择器必须同优先级） */
-  .ui-card.profile-invite {
-    flex-direction: column;
-    align-items: stretch;
+  /* 编辑弹层在手机上贴满可用宽度，纵向自己滚动 */
+  .profile-editor {
+    width: 100%;
+    max-height: 100dvh;
+    padding: calc(var(--space-unit) * 2);
+  }
+
+  /* 邀请行在窄屏让入口换到下一行左对齐 */
+  .profile-member-invite-link {
+    margin-left: 0;
   }
 
   /* 操作日志：窄屏把「说明 + 按钮」压成竖排，避免按钮被文字挤成一小块 */
