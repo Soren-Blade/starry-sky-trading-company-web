@@ -1110,6 +1110,28 @@ const SUPPORT_RAW = {
   formNote:
     '同一身份 24 小时内最多提交 5 次。提交后可以继续在会话里追问，不必重复开新会话。',
 
+  /* 语言反馈（4.19.0）：从语言切换抽屉的「反馈语言问题」进来时，
+   * 用预设把分类、标题、正文骨架填好，用户只补细节 ——
+   * 分类仍只有服务端 CHECK 允许的 order/member/points/coupon/account/other 六种，
+   * 所以这里统一落到 other，预设只决定标题与正文本。 */
+  languageTopicsLabel: '语言问题类型',
+  languageTopicsHint: '选一个，标题和正文会先填好，你只需补充细节。',
+  languagePresets: {
+    missing: '没有我的语言',
+    wrong: '翻译意思不对',
+    layout: '文字显示异常',
+  },
+  languageSubjects: {
+    missing: '希望新增界面语言',
+    wrong: '翻译意思不准确',
+    layout: '界面文字显示异常',
+  },
+  languageBodies: {
+    missing: '我使用的语言：\n希望增加的界面语言：\n',
+    wrong: '出错的位置（页面 / 按钮）：\n原文是：\n更合适的说法：\n',
+    layout: '哪里显示异常（页面 / 按钮）：\n具体情况（截断、重叠、乱码）：\n',
+  },
+
   receiptTitle: '已受理，请记下回执号',
   receiptHint: '凭回执号可以在客服中心找回这条会话；登录态丢失时也只能靠它人工查询。',
   receiptMailHint: '回执已经发往你填写的邮箱；注册用户还会在消息中心收到一条通知。',

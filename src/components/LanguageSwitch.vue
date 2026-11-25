@@ -6,22 +6,48 @@
     @keydown.esc.stop="closeMenu(true)"
     @focusout="onFocusOut"
   >
-    <!-- 抽屉版：直接摊开两个选项，移动端不需要再点一次才能看见语言 -->
+    <!--
+      抽屉版（4.19.0）：从「两枚大胶囊」改成「一列语言行 + 一条反馈入口」。
+      理由：
+      - 胶囊在两种语言时刚好，第三种语言就开始挤压（加一种就掉一行），
+        而语言是只会增加、不会减少的清单 —— 行式列表天然可加，不重排版面；
+      - 行的右侧留一个「勾」作为选中标记（WCAG 1.4.1：不只靠颜色）；
+      - 底部给「没有你的语言 / 翻译读着别扭」一个出口，直接带到客服中心的
+        语言反馈模式（/support?topic=language），不让人自己找路径。
+    -->
     <template v-if="variant === 'drawer'">
       <span class="lang-drawer-label">{{ t('language.label') }}</span>
-      <div class="lang-segments" role="group" :aria-label="t('a11y.languageMenu')">
+      <div class="lang-rows" role="radiogroup" :aria-label="t('a11y.languageMenu')">
         <button
           v-for="item in options"
           :key="item.code"
           type="button"
-          class="lang-segment"
+          role="radio"
+          class="lang-row"
           :class="{ 'is-active': current === item.code }"
-          :aria-pressed="current === item.code"
+          :aria-checked="current === item.code"
           @click="choose(item.code)"
         >
-          {{ item.label }}
+          <span class="lang-row-label">{{ item.label }}</span>
+          <AppIcon
+            v-if="current === item.code"
+            class="lang-row-check"
+            name="check-circle"
+            aria-hidden="true"
+          />
         </button>
       </div>
+
+      <router-link class="lang-feedback" :to="{ path: '/support', query: { topic: 'language' } }">
+        <span class="lang-feedback-text">
+          <strong class="lang-feedback-title">{{ t('language.feedbackTitle') }}</strong>
+          <span class="lang-feedback-desc">{{ t('language.feedbackDesc') }}</span>
+        </span>
+        <span class="lang-feedback-cta">
+          {{ t('language.feedbackCta') }}
+          <AppIcon name="chevron-right" aria-hidden="true" />
+        </span>
+      </router-link>
     </template>
 
     <!-- 顶栏版：一枚地球图标 + 当前语言缩写，点开是菜单 -->
@@ -213,7 +239,7 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
 }
 
-/* 抽屉形态 */
+/* 抽屉形态（4.19.0）：语言行 + 反馈入口 */
 .lang-switch--drawer {
   flex-direction: column;
   align-items: stretch;
@@ -226,34 +252,101 @@ onBeforeUnmount(() => {
   font-size: var(--fs-sm);
 }
 
-.lang-segments {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: calc(var(--space-unit) * 1);
+/* 语言行：一行一种语言，右侧勾 = 当前选中。行高 44 起，多语言时只增行数不改排版 */
+.lang-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.lang-segment {
-  min-height: 44px;
+.lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  width: 100%;
+  min-height: var(--ec-control-h-md);
   padding: 0 calc(var(--space-unit) * 1.5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-surface);
-  color: var(--text-secondary);
+  border: 0;
+  border-radius: var(--ec-radius-md);
+  background: transparent;
+  color: var(--text-primary);
   font: inherit;
   font-size: var(--fs-sm);
-  white-space: normal;
+  text-align: left;
   cursor: pointer;
   transition:
     background var(--transition-interactive),
-    border-color var(--transition-interactive),
     color var(--transition-interactive);
 }
 
-.lang-segment.is-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.lang-row:hover,
+.lang-row:focus-visible {
+  background: var(--bg-soft);
+}
+
+.lang-row.is-active {
   color: var(--accent);
   font-weight: var(--fw-label);
+  background: var(--accent-soft);
+}
+
+.lang-row-check {
+  flex: none;
+  font-size: calc(var(--icon-btn-icon-size) * 0.8);
+}
+
+/* 反馈入口：与语言行同宽的一条描边行，文字两行、右侧一个动作 */
+.lang-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--ec-radius-lg);
+  background: var(--bg-surface);
+  text-decoration: none;
+  transition:
+    border-color var(--transition-interactive),
+    background var(--transition-interactive);
+}
+
+.lang-feedback:hover,
+.lang-feedback:focus-visible {
+  border-color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.lang-feedback-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lang-feedback-title {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.lang-feedback-desc {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
+}
+
+.lang-feedback-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 .lang-pop-enter-active,

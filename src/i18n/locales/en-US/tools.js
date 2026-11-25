@@ -107,6 +107,23 @@ export default {
     submitting: 'Submitting…',
     formNote:
       'Up to 5 submissions per identity in 24 hours. After submitting you can keep replying in the thread; no need to open a new one.',
+    languageTopicsLabel: 'What kind of language issue is it?',
+    languageTopicsHint: 'Pick one — we fill in the subject and details so you only add specifics.',
+    languagePresets: {
+      missing: 'My language is missing',
+      wrong: 'Translation is inaccurate',
+      layout: 'Text displays incorrectly',
+    },
+    languageSubjects: {
+      missing: 'Request a new interface language',
+      wrong: 'Inaccurate translation',
+      layout: 'Interface text displays incorrectly',
+    },
+    languageBodies: {
+      missing: 'Language I use:\nLanguage I would like:\n',
+      wrong: 'Where (page / button):\nCurrent wording:\nBetter wording:\n',
+      layout: 'Where it looks wrong (page / button):\nWhat happens (cut off, overlapping, garbled):\n',
+    },
     receiptTitle: 'Received — note your receipt number',
     receiptHint:
       'Use the receipt number to find this thread in Support. If you lose your session, it is also the only way for us to look it up.',

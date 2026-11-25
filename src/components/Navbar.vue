@@ -180,21 +180,40 @@
             :aria-label="t('navbar.accountMenu')"
             @keydown="onMenuKeydown"
           >
+            <!--
+              4.19.0：头部从「两行文字」改成一张身份卡 ——
+              左边是 40px 头像，右边是昵称 + 徽标 + 创建时间，
+              底色是一层品牌色洗染（与个人中心的「通行证」同一套语言）。
+              它不承担点击：个人中心在下面第一格，面板里不该有两个去同一处的入口。
+            -->
             <div class="user-info">
-              <p class="user-name">
-                <span class="user-name-text">{{ nickname || t('navbar.nicknameUnset') }}</span>
-                <span v-if="isGuest" class="u-tag u-tag--warning user-badge">
-                  {{ AUTH.guestBadge }}
+              <span class="u-avatar user-card-avatar" aria-hidden="true">
+                <SmartImage
+                  v-if="avatarUrl"
+                  :src="avatarUrl"
+                  :alt="nickname || t('navbar.avatarFallback')"
+                  fallback-icon="user"
+                  fallback-class="avatar-fallback"
+                  loading="eager"
+                />
+                <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
+              </span>
+              <span class="user-card-body">
+                <span class="user-name">
+                  <span class="user-name-text">{{ nickname || t('navbar.nicknameUnset') }}</span>
+                  <span v-if="isGuest" class="u-tag u-tag--warning user-badge">
+                    {{ AUTH.guestBadge }}
+                  </span>
+                  <!-- 会员等级徽标：levelName 为空（非会员）时整块不渲染，不留空位 -->
+                  <span v-else-if="memberStore.levelName" class="u-tag u-tag--accent user-badge">
+                    {{ memberStore.levelName }}
+                  </span>
                 </span>
-                <!-- 会员等级徽标：levelName 为空（非会员）时整块不渲染，不留空位 -->
-                <span v-else-if="memberStore.levelName" class="u-tag u-tag--accent user-badge">
-                  {{ memberStore.levelName }}
+                <span class="user-since">
+                  {{ isGuest ? AUTH.guestSince : AUTH.registeredSince }}
+                  {{ toDate(userInfo.created_at) }}
                 </span>
-              </p>
-              <p class="user-since">
-                {{ isGuest ? AUTH.guestSince : AUTH.registeredSince }}
-                {{ toDate(userInfo.created_at) }}
-              </p>
+              </span>
             </div>
 
             <!--
@@ -439,7 +458,7 @@
  *   3. **搜索关键词直接读写 shop store**。搜索栏与商品网格分处两个组件，
  *      关键词留在组件里就得层层透传事件；匹配规则也只应有一处定义。
  */
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -583,6 +602,17 @@ const handleMenuClick = () => {
   menuOpen.value = false
   userMenuOpen.value = false
 }
+
+/* 点抽屉里的链接（站内路由 / 语言反馈）后必须自己收起来：
+ * 4.19.0 加了「反馈语言问题」才暴露 —— 抽屉不在 RouterView 里，路由变了它不会自动关，
+ * 用户会落在「新页面已被菜单盖住」的状态。 */
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false
+    userMenuOpen.value = false
+  }
+)
 
 /**
  * 展开用户下拉时顺手刷新一次会员概览与未读数。
@@ -1039,8 +1069,36 @@ onUnmounted(() => {
   color: currentColor;
 }
 
+/* 身份卡（4.19.0）：头像 + 昵称/徽标/创建时间。
+ * 底色是一层品牌色洗染 + 表面色，与个人中心的「通行证」同一套语言；
+ * 它只是抬头，不承接点击 —— 个人中心就在下面第一格。 */
 .user-info {
-  padding: calc(var(--space-unit) * 1.5) var(--dropdown-item-padding-x);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 0.5) 0;
+  padding: calc(var(--space-unit) * 1.5);
+  border-radius: var(--ec-radius-lg);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 72%
+    ),
+    var(--bg-soft);
+}
+
+.user-card-avatar {
+  flex: none;
+  width: calc(var(--space-unit) * 5);
+  height: calc(var(--space-unit) * 5);
+}
+
+.user-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
 }
 
 /* 昵称与「游客」徽标同一行：徽标不参与压缩，昵称过长时省略 */
@@ -1051,7 +1109,6 @@ onUnmounted(() => {
   font-size: var(--fs-sm);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
-  margin: 0 0 calc(var(--space-unit) * 0.5);
 }
 
 .user-name-text {
@@ -1332,6 +1389,11 @@ onUnmounted(() => {
 
   .menu-toggle {
     display: inline-flex;
+    /* 4.19.0：图标是 20px，但按钮本体只有 32.4px —— 与搜索按钮的 44 不一致，
+     * 拇指在顶栏右端最容易点空。补齐到 44×44，三个落点命中区同高。 */
+    min-width: var(--ec-control-h-md);
+    min-height: var(--ec-control-h-md);
+    justify-content: center;
   }
 
   /* 移动端缩放：导航高度 ×0.85 */
@@ -1345,16 +1407,16 @@ onUnmounted(() => {
   .navbar {
     --glass-nav-blur: 18px;
     --glass-nav-blur-strong: 24px;
-    /* 头像（4.18.0）：36px。
-     * 32px 在 47.6px 的顶栏里比两侧的图标还小，读起来像「缩水的桌面头像」；
-     * 36px 与 20px 图标、48px 汉堡在同一行里是「点 / 线 / 面」三个层级的中间档，
-     * 再加一圈 surface 色的外描边，头像才从玻璃上「立」起来。
-     * 命中区由 ::before 补到 48×48（比 44 再多 2px，圆形目标手指更容易压中）。 */
-    --navbar-avatar-size: 36px;
+    /* 头像（4.19.0）：28px。
+     * 4.18.0 的 36px 比旁边的 20px 图标重太多，一行里它成了唯一的「大色块」；
+     * 28px 恰是 20px 图标的 1.4 倍——眼睛认得出这是个人，但不抢搜索与菜单。
+     * 描边从 2px 收到 1.5px（小圆上 2px 描边会吃掉一圈脸），
+     * 命中区由 ::before 补到 44×44（28 + 8×2），符合触控下限。 */
+    --navbar-avatar-size: 28px;
   }
 
   /* 三个落点（搜索 / 身份 / 菜单）在窄屏上间距 8px：
-   * 4px 时 48px 的命中区几乎贴在一起，拇指容易点错邻居。 */
+   * 4px 时命中区几乎贴在一起，拇指容易点错邻居。 */
   .navbar-actions {
     gap: var(--space-unit);
   }
@@ -1362,7 +1424,7 @@ onUnmounted(() => {
   .user-avatar-btn::before {
     content: '';
     position: absolute;
-    inset: -6px;
+    inset: -8px;
     border-radius: inherit;
   }
 
@@ -1370,16 +1432,16 @@ onUnmounted(() => {
     width: var(--navbar-avatar-size);
     height: var(--navbar-avatar-size);
     /* 外描边：玻璃是半透的，头像边缘若没有一圈表面色，遇到深色内容会「融」进去 */
-    box-shadow: 0 0 0 2px var(--ec-bg-surface);
+    box-shadow: 0 0 0 1.5px var(--ec-bg-surface);
   }
 
-  /* 头像回到 36 后，状态点回到 9px / 2.5px 描边，贴在圆形边缘的右下 45° */
+  /* 头像 28 后，状态点 7px / 2px 描边，贴在圆形边缘的右下 45° */
   .navbar-avatar-status {
     right: -1px;
     bottom: -1px;
-    width: 9px;
-    height: 9px;
-    box-shadow: 0 0 0 2.5px var(--ec-bg-surface);
+    width: 7px;
+    height: 7px;
+    box-shadow: 0 0 0 2px var(--ec-bg-surface);
   }
 
   /* ── 抽屉：手机上是「从顶栏垂下来的面板」，不是铺满屏的菜单 ──
@@ -1413,25 +1475,24 @@ onUnmounted(() => {
     border-radius: var(--ec-radius-xl);
   }
 
-  /* 三列资产网格：六项从「竖排 6 行」变成「2 行 × 3 列」，
-   * 面板高度少一半，拇指不用滑就能看全 —— 这是移动端该有的密度。
-   * 格子 76px：图标 + 一行标签刚好站稳，再高就变成一屏卡片墙。 */
+  /* 两列入口（4.19.0）：六个目的地从「3 列方格墙」改成「2 列横条」。
+   * 方格墙的问题是六格等重、每格 76px，像一块仪表盘而不是菜单；
+   * 横条 44px 高、图标 + 标签一行读完，面板高度少了约 40%，拇指一屏看全。 */
   .user-menu-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: calc(var(--space-unit) * 1.5);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-unit);
     margin-top: calc(var(--space-unit) * 1.5);
   }
 
   .user-menu-grid .u-dropdown-item {
-    flex-direction: column;
-    justify-content: center;
-    gap: calc(var(--space-unit) * 0.75);
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: calc(var(--space-unit) * 1.25);
     height: auto;
-    min-height: calc(var(--space-unit) * 9.5);
-    padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 0.5);
+    min-height: var(--ec-control-h-md);
+    padding: 0 calc(var(--space-unit) * 1.5);
     font-size: var(--fs-label);
-    text-align: center;
     background: var(--bg-soft);
     border-radius: var(--ec-radius-lg);
   }
@@ -1445,10 +1506,6 @@ onUnmounted(() => {
   }
 
   /* 游客的登录按钮与退出登录仍占整行：它们不是「资产」，是动作 */
-  .user-dropdown :deep(.user-info) {
-    padding-inline: calc(var(--space-unit) * 1.5);
-  }
-
   .navbar-actions :deep(.theme-switch) {
     display: none;
   }

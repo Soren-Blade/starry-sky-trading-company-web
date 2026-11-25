@@ -12,6 +12,9 @@ export default {
     current: '当前语言：{language}',
     zh: '简体中文',
     en: 'English',
+    feedbackTitle: '没有你的语言？',
+    feedbackDesc: '告诉我们你想用哪种语言，或哪句读着别扭。',
+    feedbackCta: '反馈语言问题',
   },
   navbar: {
     accountMenu: '账号菜单',

@@ -416,6 +416,9 @@ export default {
     current: 'Current language: {language}',
     zh: '简体中文',
     en: 'English',
+    feedbackTitle: 'Missing your language?',
+    feedbackDesc: 'Tell us which language you need, or which line reads wrong.',
+    feedbackCta: 'Report a language issue',
   },
   common: {
     close: 'Close',

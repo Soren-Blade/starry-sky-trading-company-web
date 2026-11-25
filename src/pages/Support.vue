@@ -70,6 +70,31 @@
       </div>
 
       <form v-else class="ui-card support-form" novalidate @submit.prevent="handleSubmit">
+        <!--
+          语言反馈模式（4.19.0）：从语言切换抽屉的「反馈语言问题」带 ?topic=language 进来。
+          分类由服务端 CHECK 钉死，所以这里不新增取值，只用三个预设把标题与正文骨架填好。
+        -->
+        <div v-if="languageTopic" class="u-field support-field support-presets">
+          <span class="u-field-label" id="support-presets-label">
+            {{ SUPPORT.languageTopicsLabel }}
+          </span>
+          <div class="support-chip-row" role="group" aria-labelledby="support-presets-label">
+            <button
+              v-for="preset in LANGUAGE_PRESETS"
+              :key="preset.key"
+              type="button"
+              class="support-chip"
+              :class="{ 'is-active': activePreset === preset.key }"
+              :aria-pressed="activePreset === preset.key"
+              :disabled="supportStore.creating"
+              @click="applyLanguagePreset(preset.key)"
+            >
+              {{ preset.label }}
+            </button>
+          </div>
+          <span class="u-field-hint">{{ SUPPORT.languageTopicsHint }}</span>
+        </div>
+
         <div class="u-field support-field">
           <label class="u-field-label" for="support-category">{{ SUPPORT.categoryLabel }}</label>
           <SelectField
@@ -402,6 +427,29 @@ const replyValidation = ref('')
 const copied = ref(false)
 const copyError = ref('')
 
+/**
+ * 语言反馈模式（4.19.0）
+ *
+ * 入口是语言切换抽屉里的「反馈语言问题」，带 `?topic=language` 过来。
+ * 分类只有服务端 CHECK 允许的六种，语言问题归到 other；
+ * 预设负责把标题与正文骨架填好，用户只补细节（详情、页面位置、原文）。
+ */
+const languageTopic = computed(() => route.query.topic === 'language')
+const activePreset = ref('')
+const LANGUAGE_PRESETS = computed(() => [
+  { key: 'missing', label: SUPPORT.languagePresets.missing },
+  { key: 'wrong', label: SUPPORT.languagePresets.wrong },
+  { key: 'layout', label: SUPPORT.languagePresets.layout },
+])
+
+function applyLanguagePreset(key) {
+  activePreset.value = key
+  form.category = 'other'
+  form.subject = SUPPORT.languageSubjects[key] || ''
+  form.body = SUPPORT.languageBodies[key] || ''
+  validationError.value = ''
+}
+
 /** 会话列表是否拉过（页签来回切不重复请求；下拉「刷新」仍可强制拉） */
 const threadsLoaded = ref(false)
 /** 详情拉取失败（404 之类），页面据此补一句「回执号抄错一位就找不到」 */
@@ -631,6 +679,50 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 0.5);
+}
+
+/* 语言反馈预设（4.19.0）：三枚可换行的胶囊，选中态用强调色描边 + 淡底 */
+.support-presets {
+  padding: calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--ec-radius-lg);
+  background: var(--bg-soft);
+}
+
+.support-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 0.75);
+  margin-top: calc(var(--space-unit) * 0.25);
+}
+
+.support-chip {
+  min-height: var(--ec-control-h-sm);
+  padding: 0 calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-label);
+  cursor: pointer;
+  transition:
+    background var(--transition-interactive),
+    border-color var(--transition-interactive),
+    color var(--transition-interactive);
+}
+
+.support-chip:hover,
+.support-chip:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.support-chip.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--fw-label);
 }
 
 .support-form,

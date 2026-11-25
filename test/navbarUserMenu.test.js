@@ -171,7 +171,7 @@ test('尺寸与动效：桌面端不限高、宽度下限消费共享令牌、�
   assert.match(block, /animation: enterUp 180ms var\(--enter-ease\)/, '展开动画必须落在 150–200ms')
 })
 
-test('窄屏触控：767 断点下身份面板改成整宽卡片 + 三列资产网格', () => {
+test('窄屏触控：767 断点下身份面板改成整宽卡片 + 两列入口', () => {
   const mobileAt = NAVBAR_SOURCE.indexOf('@media (max-width: 767px)')
   assert.ok(mobileAt > -1, '找不到 767 断点')
   const block = NAVBAR_SOURCE.slice(
@@ -185,10 +185,16 @@ test('窄屏触控：767 断点下身份面板改成整宽卡片 + 三列资产�
   assert.match(block, /\.user-dropdown \{[\s\S]*?width: auto/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(100dvh/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?overflow-y: auto/)
-  // 六项竖排改成 2 行 × 3 列：面板高度少一半，拇指不用滑就看全
-  assert.match(block, /\.user-menu-grid \{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
-  // 9.5 单位 = 76px：图标 + 一行标签刚好站稳，再高就变成一屏卡片墙
-  assert.match(block, /\.user-menu-grid \.u-dropdown-item \{[\s\S]*?min-height: calc\(var\(--space-unit\) \* 9\.5\)/)
+  // 4.19.0：六格方格墙改成 2 列横条，44px 一行 —— 面板更矮，读起来像菜单而不是仪表盘
+  assert.match(block, /\.user-menu-grid \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(block, /\.user-menu-grid \.u-dropdown-item \{[\s\S]*?min-height: var\(--ec-control-h-md\)/)
+})
+
+test('身份卡抬头：头像 + 昵称/徽标 + 创建时间，底色是品牌色洗染', () => {  assert.match(NAVBAR_SOURCE, /class="u-avatar user-card-avatar"/)
+  assert.match(NAVBAR_SOURCE, /class="user-card-body"/)
+  assert.match(NAVBAR_SOURCE, /\.user-info \{[\s\S]*?display: flex;/)
+  assert.match(NAVBAR_SOURCE, /\.user-info \{[\s\S]*?linear-gradient\(\s*135deg,/)
+  assert.match(NAVBAR_SOURCE, /\.user-card-avatar \{[\s\S]*?width: calc\(var\(--space-unit\) \* 5\);/)
 })
 
 test('头像与长昵称：失败回退成图标占位，昵称溢出用省略号而不是撑破面板', () => {
@@ -213,4 +219,11 @@ test('游客与用户共用同一个面板：登录条目只在游客身份下�
   const userHtml = await renderNavbar(REGISTERED)
   assert.match(guestHtml, /aria-haspopup="menu"/)
   assert.match(userHtml, /aria-haspopup="menu"/)
+})
+
+test('抽屉在路由变化后自己收起：站内链接点完不会盖住新页面', () => {
+  assert.match(NAVBAR_SOURCE, /watch\(\s*\(\) => route\.fullPath,/)
+  const watcher = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.indexOf('() => route.fullPath'))
+  assert.match(watcher.slice(0, 260), /menuOpen\.value = false/)
+  assert.match(watcher.slice(0, 260), /userMenuOpen\.value = false/)
 })
