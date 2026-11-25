@@ -86,11 +86,15 @@
           游客也有 userId，但后端 `enqueue_notification` 对非注册用户直接返回
           false —— 游客的站内通知永远是空的。给游客一个信封图标，等于给了一个
           点进去什么都没有的入口；他的诉求（问客服）在 /support，那里对游客开放。
+
+          4.18.0：手机端收起。窄屏顶栏只留「搜索 / 身份 / 菜单」三个落点，
+          信封与购物车、会员一样是**账号类**入口，搬进身份面板里（同一个目标，
+          不再在 390px 的顶栏里挤第四个图标）。
         -->
         <router-link
           v-if="userStore.isLoggedIn"
           to="/mail"
-          class="u-icon-btn navbar-mail"
+          class="u-icon-btn navbar-mail hide-below-768"
           :aria-label="mailLabel"
         >
           <AppIcon name="mail" />
@@ -229,6 +233,12 @@
                  组名保留为 visually-hidden —— role="menu" 的条目仍需要一个分组上下文，
                  读屏用户听到的是「账号资产，个人中心」，而不是一串没有归属的跳转。 -->
             <p class="visually-hidden">{{ t('navbar.assetsGroup') }}</p>
+            <!--
+              4.18.0：这六项在窄屏改成一格一图标的三列网格（见文末 @767）。
+              桌面仍是一列文字列表 —— 同一个菜单，两种形态：
+              手指下比手指上更需要「看得见的目标」，横向铺开比纵向排队少滑两屏。
+            -->
+            <div class="user-menu-grid">
             <router-link
               role="menuitem"
               class="u-dropdown-item user-menu-first-item"
@@ -294,6 +304,7 @@
               <span class="dropdown-item-icon" aria-hidden="true"><AppIcon name="calendar" /></span>
               {{ t('navbar.checkin') }}
             </router-link>
+            </div>
 
             <!--
               消息中心**刻意不在这里**：顶栏信封（`.navbar-mail`）已经是同一个入口
@@ -321,7 +332,10 @@
           </div>
         </div>
 
-        <!-- 移动端菜单切换按钮 -->
+        <!--
+          移动端菜单切换按钮（4.18.0）：两道横线 → 展开后交叉成 ×。
+          三条横线在 18px 内挤成三行会糊成一片灰，两条在各尺寸下都读得出「菜单」。
+        -->
         <button
           type="button"
           class="u-icon-btn menu-toggle show-mobile"
@@ -331,36 +345,76 @@
           @click="toggleMenu"
         >
           <span class="menu-toggle-bars" aria-hidden="true">
-            <i></i><i></i><i></i>
+            <i></i><i></i>
           </span>
         </button>
       </div>
     </div>
 
-    <!-- 移动端抽屉（导航入口；搜索已统一收到顶栏的图标里） -->
-    <div class="navbar-drawer" :class="{ active: menuOpen }">
+    <!--
+      移动端抽屉（4.18.0 重做）。
+
+      设计判断：抽屉此前是**桌面导航的竖排复制**（五条纯文字 + 下边框），
+      而底部悬浮栏已经有「首页 / 分类」两个一级入口 —— 同一个目标在一屏里
+      出现两次，抽屉就变成了「桌面菜单的手机备份」。
+
+      现在的取舍：
+        · 只保留底部栏没有的三项（热门推荐 / 工具分享 / 关于我们）；
+        · 每条是「图标 + 文案 + 箭头」的一行 48px 触控行，而不是带分隔线的纯文字；
+        · 账号类入口（消息中心）只出现在这里，注册用户才看得到；
+        · 偏好（主题 / 语言）收在同一张面板底部，与导航之间用一条分组标题隔开。
+    -->
+    <div
+      class="navbar-drawer"
+      :class="{ active: menuOpen }"
+      role="dialog"
+      :aria-label="t('navbar.menuTitle')"
+      :aria-hidden="menuOpen ? 'false' : 'true'"
+    >
+      <p class="drawer-group-title">{{ t('navbar.discoverGroup') }}</p>
       <ul class="drawer-list">
-        <li v-for="item in navMenu" :key="item.id">
+        <li v-for="item in drawerMenu" :key="item.id">
           <router-link :to="item.path" class="drawer-link" @click="handleMenuClick">
-            {{ item.label }}
+            <span class="drawer-link-icon" aria-hidden="true">
+              <AppIcon :name="item.icon" />
+            </span>
+            <span class="drawer-link-text">{{ item.label }}</span>
+            <span class="drawer-link-hint" aria-hidden="true">
+              <AppIcon name="chevron-right" />
+            </span>
           </router-link>
         </li>
       </ul>
 
+      <!-- 消息中心：窄屏顶栏不挂信封之后，这里是它的唯一入口。
+           角标沿用顶栏那套未读数，避免出现「入口有了、未读看不见」。 -->
+      <router-link
+        v-if="userStore.isLoggedIn"
+        to="/mail"
+        class="drawer-link drawer-link--account"
+        @click="handleMenuClick"
+      >
+        <span class="drawer-link-icon" aria-hidden="true"><AppIcon name="mail" /></span>
+        <span class="drawer-link-text">{{ mailLabel }}</span>
+        <span v-if="mailStore.hasUnread" class="u-badge drawer-link-badge" aria-hidden="true">
+          {{ mailStore.unreadLabel }}
+        </span>
+        <span class="drawer-link-hint" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+      </router-link>
+
       <!--
-        明暗切换在窄屏搬进抽屉。
+        偏好区：明暗切换与语言切换。
 
         为什么不在顶栏硬留：三档控件约 80px 宽，390px 的顶栏里已经挤着
-        搜索 / 购物车 / 会员 / 消息 / 头像 / 汉堡六个入口，再加一组必然溢出。
-        抽屉是移动端唯一有纵向余量的地方，且它是「设置类」控件，
-        放在导航列表末尾符合「导航 → 偏好」的阅读顺序。
+        搜索 / 身份 / 菜单三个落点；抽屉是移动端唯一有纵向余量的地方，
+        且它们是「设置类」控件，放在导航之后符合「导航 → 偏好」的阅读顺序。
       -->
+      <p class="drawer-group-title drawer-group-title--spaced">{{ t('navbar.preferencesGroup') }}</p>
       <div class="drawer-theme">
         <span class="drawer-theme-label">{{ THEME_SWITCH.label }}</span>
         <ThemeSwitch />
       </div>
 
-      <!-- 语言切换：抽屉是移动端唯一有纵向余量的地方，与明暗切换同属「偏好」 -->
       <div class="drawer-lang">
         <LanguageSwitch variant="drawer" />
       </div>
@@ -453,6 +507,20 @@ const userMenuOpen = ref(false)
 const userMenuPanel = ref(null)
 const navMenu = NAV_MENU
 
+/**
+ * 抽屉里展示哪些导航项（4.18.0）。
+ *
+ * 首页与商品分类在移动端已经是底部悬浮栏的一级入口，抽屉再列一遍就是
+ * 同一个目标的第二个入口 —— 触屏上「同一件事只在一处出现」比「到处都能到」更重要。
+ * 图标按目标配：热门推荐=火苗、工具分享=扳手、关于我们=信息。
+ */
+const DRAWER_ICONS = { '/hot': 'flame', '/tool': 'wrench', '/about': 'info' }
+const drawerMenu = computed(() =>
+  navMenu
+    .filter((item) => item.path !== '/home' && item.path !== '/categories')
+    .map((item) => ({ ...item, icon: DRAWER_ICONS[item.path] || 'sparkles' })),
+)
+
 /** 购物车角标：来自 cart store，登录后由 App.vue 拉取 */
 const cartCount = computed(() => cartStore.count)
 const cartLabel = computed(() =>
@@ -506,6 +574,8 @@ const handleScroll = throttle(() => {
 
 const toggleMenu = () => {
   menuOpen.value = !menuOpen.value
+  //  drawers 与身份面板同占顶栏下方那块空间，同时展开会叠在一起
+  if (menuOpen.value) userMenuOpen.value = false
 }
 
 /** 收起所有菜单（抽屉与用户下拉） */
@@ -597,8 +667,13 @@ const onMenuKeydown = (event) => {
 }
 
 const toggleUserMenu = () => {
-  if (userMenuOpen.value) closeUserMenu()
-  else openUserMenu()
+  if (userMenuOpen.value) {
+    closeUserMenu()
+    return
+  }
+  // 身份面板与抽屉同占顶栏下方那块空间，先收起抽屉
+  menuOpen.value = false
+  openUserMenu()
 }
 
 /**
@@ -1065,28 +1140,26 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: calc(var(--space-unit) * 0.5);
+  gap: calc(var(--space-unit) * 0.75);
   width: var(--icon-btn-icon-size);
 }
 
 .menu-toggle-bars i {
   display: block;
-  height: calc(var(--space-unit) * 0.25);
+  height: calc(var(--space-unit) * 0.3);
   background: currentColor;
   border-radius: var(--radius-pill);
   transition: transform var(--transition-interactive), opacity var(--transition-interactive);
 }
 
+/* 4.18.0：两道横线 → ×（原来三道线，18px 内挤成三条 1.2px 的灰杠，读不出「菜单」）。
+ * 两道线的中线正好落在盒心，因此两条各转 ±45° 就是干净的叉号，不需要位移补偿。 */
 .menu-toggle.active .menu-toggle-bars i:nth-child(1) {
-  transform: translateY(calc(var(--space-unit) * 0.75)) rotate(45deg);
+  transform: translateY(calc(var(--space-unit) * 0.53)) rotate(45deg);
 }
 
 .menu-toggle.active .menu-toggle-bars i:nth-child(2) {
-  opacity: 0;
-}
-
-.menu-toggle.active .menu-toggle-bars i:nth-child(3) {
-  transform: translateY(calc(var(--space-unit) * -0.75)) rotate(-45deg);
+  transform: translateY(calc(var(--space-unit) * -0.52)) rotate(-45deg);
 }
 
 /* ── 移动端抽屉 ─────────────────────────────────────────── */
@@ -1097,6 +1170,7 @@ onUnmounted(() => {
   right: 0;
   max-height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: calc(var(--space-unit) * 2) var(--nav-padding-x) calc(var(--space-unit) * 3);
   background: var(--bg-elevated);
   border-bottom: var(--stroke-width) solid var(--stroke-color);
@@ -1115,23 +1189,84 @@ onUnmounted(() => {
   visibility: visible;
 }
 
+/* 分组标题：抽屉从「一列纯文字」变成「两组」，需要一行小字说明第一组是什么 */
+.drawer-group-title {
+  margin: 0 0 calc(var(--space-unit) * 1);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.drawer-group-title--spaced {
+  margin-top: calc(var(--space-unit) * 3);
+}
+
 .drawer-list {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--space-unit) * 0.75);
 }
 
+/* 4.18.0 抽屉行：图标 + 文案 + 箭头，48px 触控高度。
+ * 不再是「纯文字 + 下边框」——那种列表在触屏上没有可指认的目标边界。 */
 .drawer-link {
-  display: block;
-  padding: calc(var(--space-unit) * 1.5) 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.5);
+  min-height: 48px;
+  padding: 0 calc(var(--space-unit) * 1.5);
   font-size: var(--fs-body);
   font-weight: var(--fw-label);
   letter-spacing: var(--tracking-label);
   color: var(--text-secondary);
-  border-bottom: var(--stroke-width) solid var(--divider);
+  border-radius: var(--ec-radius-lg);
+  transition: background-color var(--transition-interactive), color var(--transition-interactive);
+}
+
+.drawer-link:hover,
+.drawer-link:focus-visible {
+  background: var(--bg-soft);
+  color: var(--text-primary);
 }
 
 .drawer-link.router-link-active {
   color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.drawer-link-icon {
+  display: inline-flex;
+  flex: none;
+  font-size: var(--icon-btn-icon-size);
+  color: var(--text-muted);
+}
+
+.drawer-link.router-link-active .drawer-link-icon {
+  color: currentColor;
+}
+
+.drawer-link-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.drawer-link-hint {
+  display: inline-flex;
+  flex: none;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.drawer-link-badge {
+  flex: none;
+}
+
+/* 账号类入口与「发现」组之间留一道气口，避免读成同一组 */
+.drawer-link--account {
+  margin-top: calc(var(--space-unit) * 2);
+  background: var(--bg-soft);
 }
 
 /* ── 抽屉里的明暗切换（仅窄屏出现，宽屏隐藏） ──
@@ -1210,9 +1345,18 @@ onUnmounted(() => {
   .navbar {
     --glass-nav-blur: 18px;
     --glass-nav-blur-strong: 24px;
-    /* 头像：桌面 36px 在 47.6px 高的手机顶栏里占 76%，压着 logo 与汉堡；
-     * 收到 32px（67%）后一行里三个落点才等重，命中区由 ::before 补到 44。 */
-    --navbar-avatar-size: 32px;
+    /* 头像（4.18.0）：36px。
+     * 32px 在 47.6px 的顶栏里比两侧的图标还小，读起来像「缩水的桌面头像」；
+     * 36px 与 20px 图标、48px 汉堡在同一行里是「点 / 线 / 面」三个层级的中间档，
+     * 再加一圈 surface 色的外描边，头像才从玻璃上「立」起来。
+     * 命中区由 ::before 补到 48×48（比 44 再多 2px，圆形目标手指更容易压中）。 */
+    --navbar-avatar-size: 36px;
+  }
+
+  /* 三个落点（搜索 / 身份 / 菜单）在窄屏上间距 8px：
+   * 4px 时 48px 的命中区几乎贴在一起，拇指容易点错邻居。 */
+  .navbar-actions {
+    gap: var(--space-unit);
   }
 
   .user-avatar-btn::before {
@@ -1225,39 +1369,85 @@ onUnmounted(() => {
   .user-avatar-btn .u-avatar {
     width: var(--navbar-avatar-size);
     height: var(--navbar-avatar-size);
+    /* 外描边：玻璃是半透的，头像边缘若没有一圈表面色，遇到深色内容会「融」进去 */
+    box-shadow: 0 0 0 2px var(--ec-bg-surface);
   }
 
-  /* 头像缩到 32 后，6px 的状态点按比例收到 5px，仍贴着头像右下角 */
+  /* 头像回到 36 后，状态点回到 9px / 2.5px 描边，贴在圆形边缘的右下 45° */
   .navbar-avatar-status {
-    width: 5px;
-    height: 5px;
+    right: -1px;
+    bottom: -1px;
+    width: 9px;
+    height: 9px;
+    box-shadow: 0 0 0 2.5px var(--ec-bg-surface);
   }
 
+  /* ── 抽屉：手机上是「从顶栏垂下来的面板」，不是铺满屏的菜单 ── */
   .navbar-drawer {
     top: calc(var(--navbar-height) * var(--mobile-nav-scale));
-    max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale));
-    padding-left: calc(var(--nav-padding-x) * 0.6);
-    padding-right: calc(var(--nav-padding-x) * 0.6);
+    left: calc(var(--space-unit) * 2);
+    right: calc(var(--space-unit) * 2);
+    max-height: calc(100dvh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 6);
+    padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
+    background: var(--ec-bg-raised);
+    border: var(--stroke-width) solid var(--stroke-color);
+    border-radius: var(--ec-radius-xl);
+    box-shadow: var(--ec-shadow-xl);
   }
 
-  /* 窄屏下把下拉限制在视口内：顶栏右侧还挂着图标入口，200px 面板会顶出屏幕。
-     触屏设备横屏可用高度可能只有 350px 左右，这里才真正需要滚动轴。 */
+  /* ── 身份面板：窄屏从这里展开成一张「账号卡 + 三列资产网格」 ──
+   * 桌面那版是 224px 的右侧小下拉；在 390px 上它只有 224px 宽、条目挤在
+   * 右上角，手指够不到底部两行。窄屏改成与抽屉同一张面板的宽度与圆角。 */
   .user-dropdown {
-    max-width: calc(100vw - var(--space-unit) * 4);
-    max-height: calc(100vh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 4);
+    position: fixed;
+    top: calc(var(--navbar-height) * var(--mobile-nav-scale) + var(--space-unit) * 1.5);
+    left: calc(var(--space-unit) * 2);
+    right: calc(var(--space-unit) * 2);
+    width: auto;
+    max-width: none;
+    max-height: calc(100dvh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 6);
+    padding: calc(var(--space-unit) * 1.5);
     overflow-y: auto;
     overscroll-behavior: contain;
+    border-radius: var(--ec-radius-xl);
   }
 
-  /* 触控目标：桌面 36px 的条目在手指下太窄，窄屏放宽到 44px 并允许换行 */
-  .user-dropdown .u-dropdown-item {
+  /* 三列资产网格：六项从「竖排 6 行」变成「2 行 × 3 列」，
+   * 面板高度少一半，拇指不用滑就能看全 —— 这是移动端该有的密度。
+   * 格子 76px：图标 + 一行标签刚好站稳，再高就变成一屏卡片墙。 */
+  .user-menu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: calc(var(--space-unit) * 1.5);
+    margin-top: calc(var(--space-unit) * 1.5);
+  }
+
+  .user-menu-grid .u-dropdown-item {
+    flex-direction: column;
+    justify-content: center;
+    gap: calc(var(--space-unit) * 0.75);
     height: auto;
-    min-height: 44px;
+    min-height: calc(var(--space-unit) * 9.5);
+    padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 0.5);
+    font-size: var(--fs-label);
+    text-align: center;
+    background: var(--bg-soft);
+    border-radius: var(--ec-radius-lg);
   }
 
-  /* 明暗切换：顶栏让位、抽屉接管。
-   * 390px 宽的顶栏要放下搜索 / 购物车 / 会员 / 消息 / 头像 / 汉堡六个入口，
-   * 再塞一组 80px 的三档控件必然溢出（会挤压 logo 或把汉堡顶出屏幕）。 */
+  .user-menu-grid .user-menu-first-item {
+    margin-top: 0;
+  }
+
+  .user-menu-grid .dropdown-item-icon {
+    font-size: calc(var(--icon-btn-icon-size) * 1.1);
+  }
+
+  /* 游客的登录按钮与退出登录仍占整行：它们不是「资产」，是动作 */
+  .user-dropdown :deep(.user-info) {
+    padding-inline: calc(var(--space-unit) * 1.5);
+  }
+
   .navbar-actions :deep(.theme-switch) {
     display: none;
   }
@@ -1267,13 +1457,12 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: calc(var(--space-unit) * 2);
-    margin-top: calc(var(--space-unit) * 2);
-    padding-top: calc(var(--space-unit) * 2);
-    border-top: var(--stroke-width) solid var(--divider);
+    padding: 0 calc(var(--space-unit) * 1.5);
   }
 
   .drawer-lang {
-    margin-top: calc(var(--space-unit) * 2);
+    margin-top: calc(var(--space-unit) * 1.5);
+    padding: 0 calc(var(--space-unit) * 1.5);
   }
 }
 

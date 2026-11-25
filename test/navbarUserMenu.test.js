@@ -27,10 +27,10 @@ const read = (relative) => readFileSync(join(WEB_ROOT, relative), 'utf8')
 
 const NAVBAR_SOURCE = read('src/components/Navbar.vue')
 
-/** 下拉主体：从面板的 id 切到移动端抽屉按钮之前的注释（id 在 class 之前，所以锚在 id 上） */
+/** 下拉主体：从面板的 id 切到移动端抽屉按钮的 class 之前（id 在 class 之前，所以锚在 id 上） */
 const DROPDOWN = NAVBAR_SOURCE.slice(
   NAVBAR_SOURCE.indexOf('id="user-menu"'),
-  NAVBAR_SOURCE.indexOf('<!-- 移动端菜单切换按钮 -->')
+  NAVBAR_SOURCE.indexOf('class="u-icon-btn menu-toggle')
 )
 
 const REGISTERED = {
@@ -86,7 +86,8 @@ test('去重：会员与消息的入口只在顶栏，下拉里连会员子页�
   // 顶栏那两处入口是唯一的（会员中心=皇冠，消息中心=信封）；
   // 4.8.0 起会员入口在移动端交给底部 Tab Bar，所以允许额外的 hide-below-768。
   assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-member[^"]*"/)
-  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail"/)
+  // 4.18.0 起消息入口在窄屏交给抽屉，因此这里同样只钉类名前缀
+  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail[^"]*"/)
 
   assert.doesNotMatch(DROPDOWN, /to="\/member"/, '会员中心的唯一入口是顶栏皇冠')
   assert.doesNotMatch(DROPDOWN, /to="\/mail"/, '消息中心的唯一入口是顶栏信封')
@@ -170,7 +171,7 @@ test('尺寸与动效：桌面端不限高、宽度下限消费共享令牌、�
   assert.match(block, /animation: enterUp 180ms var\(--enter-ease\)/, '展开动画必须落在 150–200ms')
 })
 
-test('窄屏触控：767 断点下不溢出视口、条目高度 ≥44px、放不下时才滚动', () => {
+test('窄屏触控：767 断点下身份面板改成整宽卡片 + 三列资产网格', () => {
   const mobileAt = NAVBAR_SOURCE.indexOf('@media (max-width: 767px)')
   assert.ok(mobileAt > -1, '找不到 767 断点')
   const block = NAVBAR_SOURCE.slice(
@@ -178,10 +179,16 @@ test('窄屏触控：767 断点下不溢出视口、条目高度 ≥44px、放�
     NAVBAR_SOURCE.indexOf('@media (max-width: 575px)', mobileAt)
   )
 
-  assert.match(block, /\.user-dropdown \{[\s\S]*?max-width: calc\(100vw - var\(--space-unit\) \* 4\)/)
-  assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(100vh/)
+  // 4.18.0：桌面那版 224px 的右侧小下拉在 390px 上够不到，窄屏改为与抽屉同一张卡片
+  assert.match(block, /\.user-dropdown \{[\s\S]*?position: fixed/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?left: calc\(var\(--space-unit\) \* 2\)/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?width: auto/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(100dvh/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?overflow-y: auto/)
-  assert.match(block, /\.user-dropdown \.u-dropdown-item \{[\s\S]*?min-height: 44px/)
+  // 六项竖排改成 2 行 × 3 列：面板高度少一半，拇指不用滑就看全
+  assert.match(block, /\.user-menu-grid \{[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
+  // 9.5 单位 = 76px：图标 + 一行标签刚好站稳，再高就变成一屏卡片墙
+  assert.match(block, /\.user-menu-grid \.u-dropdown-item \{[\s\S]*?min-height: calc\(var\(--space-unit\) \* 9\.5\)/)
 })
 
 test('头像与长昵称：失败回退成图标占位，昵称溢出用省略号而不是撑破面板', () => {

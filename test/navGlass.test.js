@@ -93,23 +93,24 @@ test('手机端玻璃把模糊收一档换帧率，且用令牌覆盖而不是�
   )
 })
 
-test('手机端头像收到 32px，命中区仍由伪元素补到 44', () => {
-  assert.match(NAVBAR, /--navbar-avatar-size: 32px;/)
+test('手机端头像 36px 并带一圈 surface 描边，命中区由伪元素补到 48', () => {
+  assert.match(NAVBAR, /--navbar-avatar-size: 36px;/)
   assert.match(
     NAVBAR,
     /\.user-avatar-btn::before \{\s*content: '';\s*position: absolute;\s*inset: -6px;/
   )
-  // 视觉尺寸跟随令牌，状态点按比例收到 5px
+  // 视觉尺寸跟随令牌；外描边让头像在半透玻璃与深色内容上都能立住
   assert.match(NAVBAR, /\.user-avatar-btn \.u-avatar \{[\s\S]*?width: var\(--navbar-avatar-size\);/)
-  assert.match(NAVBAR, /\.navbar-avatar-status \{\s*width: 5px;\s*height: 5px;/)
+  assert.match(NAVBAR, /\.user-avatar-btn \.u-avatar \{[\s\S]*?box-shadow: 0 0 0 2px var\(--ec-bg-surface\);/)
+  assert.match(NAVBAR, /\.navbar-avatar-status \{\s*right: -1px;\s*bottom: -1px;\s*width: 9px;\s*height: 9px;/)
 })
 
 
 test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar', () => {
   assert.match(NAVBAR, /class="u-icon-btn navbar-cart hide-below-768"/)
   assert.match(NAVBAR, /class="u-icon-btn navbar-member hide-below-768"/)
-  // 消息入口保留：它不在底部 Tab Bar 里
-  assert.match(NAVBAR, /class="u-icon-btn navbar-mail"/)
+  // 消息入口保留在顶栏（桌面），4.18.0 起窄屏由抽屉接管，故只钉前缀
+  assert.match(NAVBAR, /class="u-icon-btn navbar-mail[^"]*"/)
 })
 
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {

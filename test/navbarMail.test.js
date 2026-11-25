@@ -101,14 +101,14 @@ test('未读角标：数字与 99+ 收敛都写进 aria-label，角标本身是�
 })
 
 test('入口本体是 router-link，不是「button 里包 router-link」（顶栏踩过的坑）', () => {
-  const at = NAVBAR_SOURCE.indexOf('class="u-icon-btn navbar-mail"')
+  const at = NAVBAR_SOURCE.indexOf('class="u-icon-btn navbar-mail')
   assert.ok(at > -1, '源码里找不到消息入口')
   const tagStart = NAVBAR_SOURCE.lastIndexOf('<', at)
   assert.match(NAVBAR_SOURCE.slice(tagStart, tagStart + 20), /^<router-link[\s>]/)
 })
 
 test('入口守卫是 isLoggedIn，游客的 userId 不能让它显形', () => {
-  const at = NAVBAR_SOURCE.indexOf('class="u-icon-btn navbar-mail"')
+  const at = NAVBAR_SOURCE.indexOf('class="u-icon-btn navbar-mail')
   const block = NAVBAR_SOURCE.slice(NAVBAR_SOURCE.lastIndexOf('<!--', at), at)
   assert.match(block, /v-if="userStore\.isLoggedIn"/)
   assert.doesNotMatch(block, /v-if="userStore\.userId"/)
@@ -117,7 +117,7 @@ test('入口守卫是 isLoggedIn，游客的 userId 不能让它显形', () => {
 test('用户下拉里**不再**重复「消息中心」：同一个目标只保留顶栏信封这一个入口', () => {
   const dropdown = NAVBAR_SOURCE.slice(
     NAVBAR_SOURCE.indexOf('class="u-dropdown user-dropdown"'),
-    NAVBAR_SOURCE.indexOf('<!-- 移动端菜单切换按钮 -->')
+    NAVBAR_SOURCE.indexOf('class="u-icon-btn menu-toggle')
   )
   assert.ok(dropdown.length > 0, '源码里找不到用户下拉主体')
 
@@ -125,7 +125,7 @@ test('用户下拉里**不再**重复「消息中心」：同一个目标只保�
   assert.doesNotMatch(dropdown, /mailStore\.hasUnread/, '未读角标只属于顶栏信封')
 
   // 去重之后「有没有新消息」只剩信封这一个出口，不能再丢了它
-  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail"/)
+  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail[^"]*"/)
   assert.match(NAVBAR_SOURCE, /navbar-mail-badge/)
 })
 
