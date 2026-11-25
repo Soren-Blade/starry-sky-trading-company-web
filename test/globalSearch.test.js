@@ -85,8 +85,9 @@ test('移动端是全屏玻璃面板：无快捷入口、无键盘提示，桌�
   // 4.10.0：手机端去掉快捷入口与键盘提示，背景改成 Liquid Glass
   assert.match(SEARCH, /\.gs-group--quick \{\s*display: none;/)
   assert.match(SEARCH, /\.gs-foot \{\s*display: none;/)
-  assert.match(SEARCH, /background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\);/)
-  assert.match(SEARCH, /backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/)
+  assert.match(SEARCH, /background: var\(--glass-nav-specular\), var\(--glass-nav-bg\);/)
+  assert.match(SEARCH, /backdrop-filter: blur\(calc\(var\(--glass-nav-blur\) \* 1\.2\)\) saturate\(var\(--glass-nav-saturate\)\);/)
+  assert.match(SEARCH, /background: color-mix\(in srgb, var\(--ec-bg-surface\) 16%, transparent\);/)
 })
 
 test('中英文案齐备：pages.searchGlobal.*', () => {

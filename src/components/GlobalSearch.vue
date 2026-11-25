@@ -661,14 +661,15 @@ defineExpose({ open: openSearch, close })
 }
 
 @media (max-width: 767px) {
-  /* 手机端：不再是一块实色地板，而是与导航同源的 Liquid Glass ——
-   * 页面在面板后面仍然可感知；上缘 specular 让面板不像一张白纸。 */
+  /* 手机端：一块会「透」的模态玻璃，而不是实色满屏。
+   * 遮罩只留很薄的一层 tint + 轻模糊，面板自身用导航同一档 66% 底色与更重的模糊，
+   * 页面里的卡片、标题在背后仍然可感知，但不至于和输入/结果抢字。 */
   .gs-overlay {
     padding: 0;
     align-items: stretch;
-    background: color-mix(in srgb, var(--ec-bg-surface) 24%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
+    background: color-mix(in srgb, var(--ec-bg-surface) 16%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
   }
 
   .gs-panel {
@@ -677,10 +678,10 @@ defineExpose({ open: openSearch, close })
     height: 100dvh;
     border: 0;
     border-radius: 0;
-    background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
+    background: var(--glass-nav-specular), var(--glass-nav-bg);
     box-shadow: var(--glass-nav-highlight);
-    -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
-    backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+    -webkit-backdrop-filter: blur(calc(var(--glass-nav-blur) * 1.2)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(calc(var(--glass-nav-blur) * 1.2)) saturate(var(--glass-nav-saturate));
     padding-top: env(safe-area-inset-top);
   }
 
