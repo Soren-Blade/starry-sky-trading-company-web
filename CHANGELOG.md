@@ -9,6 +9,27 @@
 
 ---
 
+## [4.17.0] — 2026-11-25
+
+给悬浮导航补上「光」，并把模糊调回「认得出内容」的档位。反馈原话：「背景太模糊了达不到模态玻璃的效果，也没有发光效果」。
+
+### 修复
+
+- **太模糊**：手机悬浮 Tab Bar 的 `backdrop-filter` 从 `blur(32px)` 换成 `blur(20px)`（新令牌 `--glass-nav-blur-float`）。32px 会把后面的商品图糊成一片色块——「认不出下面是内容」就不再是模态玻璃，只是一块会变色的白塑料。20px 仍压得住文字噪点，但大形状与主色留得住，「透」靠认得出内容。
+- **没有发光**：`box-shadow` 原来只有内高光 / 内描边 / 投影三层，全是「描边式」的亮，玻璃自己没有在发光。新增两层：
+  - `--glass-nav-sheen` 冠光：`radial-gradient(130% 140% at 50% -35%, 高光膜 72%, transparent 62%)`，面状高光，和 specular 的棱线不同，它才是「整块在发光」的来源；
+  - `--glass-nav-glow` 外发光：`0 0 22px -10px accent 34%, 0 16px 42px -20px accent 28%`。用品牌色而不是白/黑——白在黑底上像雾，黑在白底上像脏，只有品牌色在明暗两端都成立。
+
+### 变更
+
+- `BottomNav.vue` 的 `background-image` 变四层（sheen → specular → floor → wash），`box-shadow` 变四段（highlight → rim → lift-strong → glow），其余（56% 底色、胶囊、软尾、图标上浮、减少动效分支）不动。
+
+### 测试
+
+- `test/navGlass.test.js`：新增 `flat()` 压平空白后断言多行声明；「底部悬浮 Tab Bar」用例改为四层背景 + 四段阴影 + `blur(var(--glass-nav-blur-float))`；新增用例「玻璃要有光：冠光 + 外发光，且浮空块用更轻的模糊」。
+- `npm test` 1271 条全部通过；`npm run lint` / `npm run build` 通过。
+- BrowserSkill（bsk 0.5.0，iPhone-14 模拟）：`.bottom-nav` 计算值 `color(srgb 1 1 1 / 0.56)`、`blur(20px) saturate(1.9)`、末段阴影 `color(srgb 0.357 0.424 1 / 0.34)`（品牌色外发光）；压在深色商品图上时，下方卡片的轮廓与主色仍可辨认；暗色下 `blur(20px)`、底色 `color(srgb 0.071 0.086 0.122 / 0.56)`。
+
 ## [4.16.0] — 2026-11-25
 
 悬浮导航再透一档，并且暗色下也「发亮」——把地板光的颜色来源从「表面色」换成会随主题翻转的**高光膜**。只动令牌与一处样式。

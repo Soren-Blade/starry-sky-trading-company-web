@@ -175,17 +175,22 @@ const activeIndex = computed(() => items.value.findIndex((item) => isActive(item
     max-width: 520px;
     padding: 5px;
     transform: translateX(-50%);
-    /* 与顶栏同一套拆法：底色走 background-color，specular 与品牌洗染走图层。
+    /* 与顶栏同一套拆法：底色走 background-color，光与洗染走图层。
      * 4.15.0：底色 84% → 66%、模糊 24 → 32，悬浮栏开始像玻璃；
-     * 4.16.0：再收到 56%（--glass-nav-bg-float），地板光换成会随主题翻转的
-     * 高光膜（暗色下同样发亮），标签用一级文字换回对比度。 */
+     * 4.16.0：再收到 56%（--glass-nav-bg-float），地板光换成会随主题翻转的高光膜；
+     * 4.17.0：模糊回到 20px（32px 会把后面的内容糊成色块，认不出就不叫玻璃），
+     *         并补上「冠光 + 外发光」两层才真正读得出「在发光」。 */
     background-color: var(--glass-nav-bg-float);
-    background-image: var(--glass-nav-specular), var(--glass-nav-floor), var(--glass-nav-wash);
+    background-image:
+      var(--glass-nav-sheen), var(--glass-nav-specular), var(--glass-nav-floor),
+      var(--glass-nav-wash);
     border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
-    box-shadow: var(--glass-nav-highlight), var(--glass-nav-rim), var(--glass-nav-lift-strong);
-    -webkit-backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
-    backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
+    box-shadow:
+      var(--glass-nav-highlight), var(--glass-nav-rim), var(--glass-nav-lift-strong),
+      var(--glass-nav-glow);
+    -webkit-backdrop-filter: blur(var(--glass-nav-blur-float)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(var(--glass-nav-blur-float)) saturate(var(--glass-nav-saturate));
     /* 胶囊与软尾都是绝对定位，锚在这层玻璃的 padding box 上 */
     isolation: isolate;
   }

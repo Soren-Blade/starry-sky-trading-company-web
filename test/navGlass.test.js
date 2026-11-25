@@ -23,6 +23,8 @@ const NAVBAR = read('src/components/Navbar.vue')
 const BOTTOM_NAV = read('src/components/BottomNav.vue')
 const SEMANTIC = read('src/assets/ec/tokens/semantic.css')
 const THEME_DARK = read('src/assets/ec/tokens/theme-dark.css')
+// 多行声明的断言先压平空白，省得为换行位置维护正则
+const flat = (text) => text.replace(/\s+/g, ' ')
 
 test('玻璃令牌只在导航层定义，且带模糊、饱和与顶部 specular', () => {
   assert.match(VARIABLES, /--glass-nav-bg:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 66%, transparent\)/)
@@ -111,13 +113,25 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
 })
 
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
-  // 4.15.0：悬浮栏单独一档底色（比顶栏更薄）、模糊换 32px 档、并加一层地板光
+  // 4.17.0：单独一档底色（比顶栏薄）、冠光 + specular + 地板光 + 洗染四层、
+  // 模糊换更轻的浮空档 20px（32px 会把后面的内容糊成色块）
   assert.match(
-    BOTTOM_NAV,
-    /background-color: var\(--glass-nav-bg-float\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-floor\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur-strong\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    flat(BOTTOM_NAV),
+    /background-color: var\(--glass-nav-bg-float\);[\s\S]*?background-image: var\(--glass-nav-sheen\), var\(--glass-nav-specular\), var\(--glass-nav-floor\), var\(--glass-nav-wash\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\), var\(--glass-nav-glow\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur-float\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
+})
+
+test('玻璃要有光：冠光 + 外发光，且浮空块用更轻的模糊', () => {
+  // 冠光是面状高光（径向），specular 只是棱线：两者叠起来才像「在发光」
+  assert.match(
+    flat(VARIABLES),
+    /--glass-nav-sheen: radial-gradient\( 130% 140% at 50% -35%, color-mix\(in srgb, var\(--ec-highlight-soft\) 72%, transparent\) 0%, transparent 62% \)/
+  )
+  // 外发光用品牌色：白在黑底像雾、黑在白底像脏，只有品牌色两端都成立
+  assert.match(VARIABLES, /--glass-nav-glow:[\s\S]*?color-mix\(in srgb, var\(--accent\) 34%, transparent\)/)
+  assert.match(VARIABLES, /--glass-nav-blur-float: 20px/)
 })
 
 test('地板光用会随主题翻转的高光膜，标签用一级文字在玻璃上保读', () => {

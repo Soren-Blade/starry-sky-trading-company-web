@@ -194,6 +194,23 @@
     color-mix(in srgb, var(--accent) 10%, transparent)
   );
   --glass-nav-rim: inset 0 0 0 1px color-mix(in srgb, var(--ec-bg-surface) 32%, transparent);
+  /* 冠光（4.17.0）：玻璃顶部蓄的一层光。它是一条从上方中心散开的径向渐变，
+   * 边缘落在 62% —— 与 specular 的「棱线高光」不同，这层是面状的，
+   * 只有它能让整块玻璃看起来在「发光」，而不是只描了一条亮边。 */
+  --glass-nav-sheen: radial-gradient(
+    130% 140% at 50% -35%,
+    color-mix(in srgb, var(--ec-highlight-soft) 72%, transparent) 0%,
+    transparent 62%
+  );
+  /* 外发光（4.17.0）：玻璃是浮在内容上的一层光，边上会溢出一圈极淡的品牌色。
+   * 用 accent 而不是白/黑：白在黑底上像雾，黑在白底上像脏，只有品牌色两端都成立。 */
+  --glass-nav-glow:
+    0 0 22px -10px color-mix(in srgb, var(--accent) 34%, transparent),
+    0 16px 42px -20px color-mix(in srgb, var(--accent) 28%, transparent);
+  /* 浮空块用更轻的模糊：32px 会把后面的商品图糊成一片色块，
+   * 看不出「下面是内容」就不叫模态玻璃了。20px 仍能压住文字噪点，
+   * 但轮廓与主色留得住 —— 玻璃的「透」靠认得出内容，不靠糊得干净。 */
+  --glass-nav-blur-float: 20px;
   /* 地板光（4.13.0 引入，4.16.0 改成高光膜）：浮空的玻璃除了上缘受光，
    * 下缘也会吃到一次漫反射。它是从底边往上、62% 处消失的一道亮光，落在 Tab 标签那一行——
    * 既让玻璃有厚度，也让 10px 的标签在透上来的内容上有稳定底色。

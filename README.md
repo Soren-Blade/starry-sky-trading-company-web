@@ -4,11 +4,17 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.16.0`**（2026-11-25 发布）：**悬浮导航再透一档 + 暗色也发亮** ——
-> ① 手机悬浮 Tab Bar 底色 66% → **56%**（新令牌 `--glass-nav-bg-float`），模糊保持 32px；
-> ② 地板光不再取 `--ec-bg-surface`（暗色下那是深色，会把下缘压成暗边），改用语义层高光膜
-> `--ec-highlight-soft`（亮色 `rgba(255,255,255,.55)`、暗色 `.09`），暗色下下缘重新泛光；
-> ③ 玻璃更透后标签改用一级文字（二级 #6B7280 在 56% 合成底上只剩约 3.1:1），亮/暗两套实测约 9.9:1 / 14:1。
+> **当前版本 `4.17.0`**（2026-11-25 发布）：**悬浮导航补光 + 模糊退回到能认出内容的档位** ——
+> ① 模糊 32px → **20px**（新令牌 `--glass-nav-blur-float`）：32px 把后面的商品图糊成色块，
+> 认不出内容就不再是模态玻璃；
+> ② 新增**冠光** `--glass-nav-sheen`（面状径向高光，顶部蓄光）与**外发光** `--glass-nav-glow`
+> （品牌色 34%/28%，白在黑底像雾、黑在白底像脏，只有品牌色两端都成立）；
+> ③ 合成四层背景（sheen → specular → floor → wash）与四段阴影（highlight → rim → lift-strong → glow），
+> 56% 底色、胶囊、软尾、图标上浮全部保留。
+>
+> **上一版 `4.16.0`**：悬浮栏再透一档（底色 66% → 56%，新令牌 `--glass-nav-bg-float`），地板光不再取
+> `--ec-bg-surface`（暗色下那是深色，会把下缘压成暗边），改用语义层高光膜 `--ec-highlight-soft`
+> （亮色白 55% / 暗色 9%），玻璃更透后标签改用一级文字（亮/暗约 9.9:1 / 14:1）。
 >
 > **上一版 `4.15.0`**（2026-11-25 发布）：**悬浮导航背景换模态玻璃 + 手机顶栏头像收尺寸** ——
 > 悬浮栏底色 84% → 66%、模糊 24 → 32px、加地板光图层；底部标签改二级文字；
@@ -1902,7 +1908,7 @@ test/
 ├── appIcon.test.js                    # 线性图标体系：颜色只来自 currentColor、模板引用的名字都存在
 ├── globalSearch.test.js              # 全站搜索：旧搜索实现已删、对话/combobox/listbox 语义、Ctrl+K 与路由收起、商品/工具接口参数、键盘路径、手机抽屉（抓握条/72px/速度阈值/取消/清空键）、最近搜索、抽屉不透明帽（不再让顶栏退场）、中英文案
 ├── navbarMember.test.js              # 顶栏会员入口：有身份即显示（游客也算）、等级徽标只对会员渲染并读进 aria-label、入口本体不是 button 套 router-link
-├── navGlass.test.js                  # 导航玻璃：色/光/影令牌（wash/specular/highlight/rim/lift/floor/float/highlight-soft）、顶栏「底色 + 图层」两段式与新阴影、滚动态加深模糊、手机 blur 覆盖、`backdrop-filter` 缺失与降透明回退、底部 Tab Bar 56% 底色 + 高光膜地板光 + 32px 模糊、共享胶囊 / 软尾 / 图标上浮、手机头像 32px 与命中区补足、移动端隐藏购物车 / 会员、我的服务一张分组卡
+├── navGlass.test.js                  # 导航玻璃：色/光/影令牌（wash/specular/highlight/rim/lift/floor/float/sheen/glow/highlight-soft）、顶栏「底色 + 图层」两段式与新阴影、滚动态加深模糊、手机 blur 覆盖、`backdrop-filter` 缺失与降透明回退、底部 Tab Bar 56% 底色 + 冠光 + 高光膜地板光 + 品牌色外发光 + 20px 模糊、共享胶囊 / 软尾 / 图标上浮、手机头像 32px 与命中区补足、移动端隐藏购物车 / 会员、我的服务一张分组卡
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线
