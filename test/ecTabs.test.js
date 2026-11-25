@@ -46,11 +46,12 @@ test('选中态只有 ARIA 一条来源，不再有 u-tab--active 类名分支',
   }
 })
 
-test('Profile 的胶囊分段选择器保留（设计系统没有该变体）', () => {
+test('Profile 的日志时间范围不再复用页签变体，改走自研滑轨', () => {
   const src = readPage('Profile.vue')
 
-  assert.match(src, /u-tabs--pill/, 'Profile 的范围选择器仍是自研胶囊变体')
-  assert.doesNotMatch(src, /class="ec-tabs/, 'Profile 未切到 .ec-tabs —— 它不是页签')
+  assert.doesNotMatch(src, /u-tabs--pill/, '4.14.0 起不再使用胶囊页签')
+  assert.doesNotMatch(src, /class="ec-tabs/, '它不是页签，也不该切到 .ec-tabs')
+  assert.match(src, /class="profile-logs-range"/, '范围选择是独立的分段滑轨')
 })
 
 test('EC 页签的选中指示条由设计系统提供，页面不重复画下划线', () => {

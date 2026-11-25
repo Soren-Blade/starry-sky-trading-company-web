@@ -608,9 +608,13 @@
           <p class="profile-logs-title">{{ PAGES.profile.logsTitle }}</p>
           <p class="profile-logs-desc">{{ PAGES.profile.logsDesc }}</p>
         </div>
+        <!--
+          导出是低频动作：不再用主色实心按钮和页面里的「签到」抢焦点，
+          改成安静的文字按钮，放在标题右侧。
+        -->
         <button
           type="button"
-          class="u-btn-primary"
+          class="profile-logs-export"
           :disabled="downloadingLogs"
           :aria-busy="downloadingLogs"
           @click="handleDownloadLogs"
@@ -621,14 +625,14 @@
       </div>
 
       <!-- 时间范围同时作用于「页面上的时间线」与「导出的 CSV」 -->
-      <div class="u-tabs u-tabs--pill profile-logs-tabs" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
+      <div class="profile-logs-range" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
         <button
           v-for="item in LOG_RANGES"
           :key="item.value"
           type="button"
           role="tab"
-          class="u-tab"
-          :class="{ 'u-tab--active': logRange === item.value }"
+          class="profile-logs-range-btn"
+          :class="{ 'is-active': logRange === item.value }"
           :aria-selected="logRange === item.value"
           @click="selectLogRange(item.value)"
         >
@@ -659,13 +663,23 @@
           class="profile-log-item"
           :class="{ 'profile-log-item--extra': index >= 3 }"
         >
-          <time class="profile-log-time" :datetime="item.created_at">{{ formatLogTime(item.created_at) }}</time>
-          <span class="profile-log-category">{{ item.category_label }}</span>
-          <span class="profile-log-action">{{ item.action_label }}</span>
-          <span class="profile-log-detail" :title="item.detail">{{ item.detail || '—' }}</span>
-          <span class="profile-log-outcome" :class="logOutcomeClass(item.outcome)">
-            {{ item.outcome_label || '—' }}
+          <span class="profile-log-icon" aria-hidden="true">
+            <AppIcon :name="logIcon(item)" />
           </span>
+          <div class="profile-log-body">
+            <div class="profile-log-line">
+              <span class="profile-log-action">{{ item.action_label }}</span>
+              <span class="profile-log-outcome" :class="logOutcomeClass(item.outcome)">
+                {{ item.outcome_label || '—' }}
+              </span>
+            </div>
+            <p class="profile-log-meta">
+              <time class="profile-log-time" :datetime="item.created_at">{{ formatLogTime(item.created_at) }}</time>
+              <span class="profile-log-sep" aria-hidden="true">·</span>
+              <span class="profile-log-category">{{ item.category_label }}</span>
+            </p>
+            <p v-if="item.detail" class="profile-log-detail" :title="item.detail">{{ item.detail }}</p>
+          </div>
         </li>
       </ol>
 
@@ -1577,6 +1591,21 @@ const logOutcomeClass = (outcome) => {
   return 'profile-log-outcome--muted'
 }
 
+/**
+ * 时间线左侧的类别字形。
+ * 图标只承担「这是哪一类事」的扫读，不承担装饰；未知类别退回时钟。
+ */
+const logIcon = (item) => {
+  const category = String(item?.category_label || '')
+  if (category.includes('账号') || category.includes('登录')) return 'user'
+  if (category.includes('订单')) return 'package'
+  if (category.includes('卡密')) return 'key'
+  if (category.includes('积分')) return 'star'
+  if (category.includes('签到')) return 'calendar'
+  if (category.includes('会员') || category.includes('成长')) return 'crown'
+  return 'clock'
+}
+
 const loadLogs = async () => {
   if (!userStore.isLoggedIn) {
     logItems.value = []
@@ -1665,21 +1694,28 @@ onMounted(() => {
 /* ── 会员权益摘要：单栏页面里的一条横向概览 ───────────────────── */
 /* 两个类名合写提高优先级：global.css 的 .ui-card 是纵向 flex 卡片，
    这里要的是「标题在左、按钮在右、数字独占下一行」的网格，
-/* ── 账号摘要：身份 + 会员 + 统计 + 邀请，合成一张卡 ───────────── */
-/* 一张卡内部三段：身份行（谁）、会员行（什么等级）、统计行（有什么）。
-   用 border-top 分段而不再给每段套一张卡 —— 少两张底板就少两层边框与阴影。 */
+/* ── 账号摘要：一张「通行证」卡 ─────────────────────────────────
+ * 4.14.0：不再是一张白卡里堆五段 —— 顶部做成带品牌色的「通行证封面」，
+ * 头像与身份压在上面；下半部分才是等级、数字与邀请。
+ * 一张卡只有一处挥霍：封面渐变；数字用等宽大字，其余保持安静。 */
 .ui-card.profile-summary {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-unit) * 2.5);
-  padding: calc(var(--space-unit) * 2.5);
+  gap: 0;
+  padding: 0;
   margin-bottom: calc(var(--space-unit) * 3);
+  overflow: hidden;
 }
 
 .profile-summary-head {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 2.5);
+  background:
+    radial-gradient(120% 150% at 0% 0%, var(--accent-soft) 0%, transparent 58%),
+    var(--bg-elevated);
+  border-bottom: var(--stroke-width) solid var(--divider);
 }
 
 .profile-summary-avatar {
@@ -1765,7 +1801,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit));
-  width: 100%;
+  width: auto;
+  margin: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
 }
 
 .profile-summary-skeleton-line {
@@ -1782,7 +1819,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit) * 1.5);
-  margin: 0;
+  margin: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5);
   font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
@@ -1792,18 +1829,23 @@ onMounted(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: calc(var(--space-unit) * 3);
-  padding-top: calc(var(--space-unit) * 2);
-  border-top: var(--stroke-width) solid var(--divider);
+  margin: 0;
+  padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5) 0;
 }
 
+/* 等级名做成小徽章：它是一张「通行证」的编号，不是标题 */
 .profile-summary-plan-name {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
+  gap: calc(var(--space-unit) * 0.5);
+  width: fit-content;
   margin: 0;
-  font-size: var(--fs-body);
+  padding: calc(var(--space-unit) * 0.25) calc(var(--space-unit) * 1);
+  font-size: var(--fs-label);
   font-weight: var(--fw-heading);
-  color: var(--text-primary);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
 }
 
 .profile-summary-plan-note {
@@ -1855,9 +1897,9 @@ onMounted(() => {
 .profile-summary-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  column-gap: calc(var(--space-unit) * 4);
+  column-gap: 0;
   row-gap: calc(var(--space-unit) * 2);
-  margin: 0;
+  margin: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5) 0;
   padding-top: calc(var(--space-unit) * 2);
   border-top: var(--stroke-width) solid var(--divider);
 }
@@ -1869,6 +1911,17 @@ onMounted(() => {
   flex-direction: column;
   gap: calc(var(--space-unit) * 0.75);
   min-width: 0;
+  padding-inline: calc(var(--space-unit) * 1.5);
+  border-left: var(--stroke-width) solid var(--divider);
+}
+
+.profile-member-stat:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.profile-member-stat:last-child {
+  padding-right: 0;
 }
 
 .profile-member-term {
@@ -1887,9 +1940,10 @@ onMounted(() => {
 /* 数字是数据：等宽 + 大字，便于竖排/横排对齐。 */
 .profile-member-link {
   font-family: var(--font-mono);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-variant-numeric: tabular-nums;
   font-weight: var(--fw-heading);
+  letter-spacing: var(--tracking-display);
   color: inherit;
   text-decoration: none;
 }
@@ -1922,11 +1976,12 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: calc(var(--space-unit));
-  margin: 0;
-  padding-top: calc(var(--space-unit) * 1.5);
-  border-top: var(--stroke-width) solid var(--divider);
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
+  margin: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5) 0;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-label);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-input);
 }
 
 /* ── 账号状态警示条（仅 banned / deleted 出现） ───────────────── */
@@ -2370,13 +2425,14 @@ onMounted(() => {
 .profile-member-invite {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: calc(var(--space-unit) * 0.75);
-  margin: 0;
-  padding-top: calc(var(--space-unit) * 1.5);
+  margin: calc(var(--space-unit) * 2) 0 0;
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2.5);
   border-top: var(--stroke-width) solid var(--divider);
+  background: var(--bg-soft);
   font-size: var(--fs-label);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .profile-member-invite-text {
@@ -2397,10 +2453,10 @@ onMounted(() => {
   text-underline-offset: 2px;
 }
 
-/* ── 操作日志：时间线（`GET /userLogsApi/?format=json`） ─────────
-   日志的读法是「最近发生了什么」，不是「导出一份表格」：
-   一行 = 时间 · 类别 · 动作 · 细节 · 结果，桌面五列、手机两行。
-   导出按钮保留在标题右侧，数据口径仍在服务端。 */
+/* ── 操作日志：一条活动轨迹（`GET /userLogsApi/?format=json`） ─────
+   4.14.0：不再把日志画成五列表格。移动端读的是「最近发生了什么」：
+   一条 = 类别字形 + 动作 + 结果 + 时间/类别 + 细节；桌面同样走这条轨迹，
+   只是行更宽。导出降级为文字按钮，时间范围改成滑轨分段控件。 */
 .ui-card.profile-logs {
   display: flex;
   flex-direction: column;
@@ -2429,64 +2485,176 @@ onMounted(() => {
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
-/* 胶囊 tab 自带上下内边距，这里压到 32px 行高 —— 与工具页模式页签一致，
-   默认高度放在这张卡里显得比「下载日志」按钮重。 */
-.profile-logs-tabs {
-  margin: 0;
-}
-.profile-logs-tabs .u-tab {
-  height: 32px;
-  padding: 0 calc(var(--space-unit) * 1.75);
+
+/* 导出：一条安静的描边按钮，不跟页面主按钮抢重量 */
+.profile-logs-export {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.5);
+  flex: 0 0 auto;
+  min-height: calc(var(--space-unit) * 4);
+  padding: 0 calc(var(--space-unit) * 1.5);
+  font-family: var(--font-body);
   font-size: var(--fs-label);
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--stroke-width) solid var(--divider);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    background-color var(--transition-interactive);
 }
 
-/* 时间线本体 */
+.profile-logs-export:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.profile-logs-export:focus-visible {
+  outline: 2px solid var(--ec-border-focus);
+  outline-offset: 2px;
+}
+
+.profile-logs-export:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* 时间范围：一条滑轨，选中段是抬起的小胶囊，不是三个独立按钮 */
+.profile-logs-range {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  max-width: 22rem;
+  padding: 3px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-pill);
+}
+
+.profile-logs-range-btn {
+  min-height: calc(var(--space-unit) * 3.5);
+  padding: 0 calc(var(--space-unit));
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive),
+    box-shadow var(--transition-interactive);
+}
+
+.profile-logs-range-btn.is-active {
+  color: var(--text-primary);
+  font-weight: var(--fw-heading);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+}
+
+.profile-logs-range-btn:focus-visible {
+  outline: 2px solid var(--ec-border-focus);
+  outline-offset: 2px;
+}
+
+/* 轨迹本体：左字形 + 右侧文本，行与行之间只有一条发丝线 */
 .profile-log-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--divider);
 }
 .profile-log-item {
   display: grid;
-  grid-template-columns: 6.5rem 6rem minmax(6rem, 9rem) minmax(0, 1fr) auto;
+  grid-template-columns: calc(var(--space-unit) * 4) minmax(0, 1fr);
+  align-items: start;
+  column-gap: calc(var(--space-unit) * 1.25);
+  padding: calc(var(--space-unit) * 1.5) 0;
+  border-top: var(--stroke-width) solid var(--divider);
+}
+.profile-log-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.profile-log-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--space-unit) * 4);
+  height: calc(var(--space-unit) * 4);
+  color: var(--text-secondary);
+  background: var(--bg-soft);
+  border-radius: var(--radius-pill);
+}
+.profile-log-icon .app-icon {
+  font-size: var(--fs-body);
+}
+.profile-log-body {
+  min-width: 0;
+}
+.profile-log-line {
+  display: flex;
   align-items: baseline;
-  column-gap: calc(var(--space-unit) * 2);
-  row-gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 1.25) 0;
-  border-bottom: 1px solid var(--divider);
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+}
+.profile-log-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: calc(var(--space-unit) * 0.5);
+  margin: calc(var(--space-unit) * 0.35) 0 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
 }
 .profile-log-time {
   font-family: var(--font-mono);
-  font-size: var(--fs-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
 }
+.profile-log-sep {
+  color: var(--divider);
+}
 .profile-log-category {
   font-size: var(--fs-label);
   color: var(--text-muted);
-  white-space: nowrap;
 }
 .profile-log-action {
-  font-size: var(--fs-label);
+  font-size: var(--fs-body);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
-  white-space: nowrap;
 }
 .profile-log-detail {
-  min-width: 0;
+  margin: calc(var(--space-unit) * 0.5) 0 0;
   font-size: var(--fs-label);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 结果不是一枚满色胶囊：小圆点 + 文案，安静地落在动作行右端 */
 .profile-log-outcome {
-  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  flex: 0 0 auto;
   font-size: var(--fs-label);
   color: var(--text-muted);
   white-space: nowrap;
+}
+.profile-log-outcome::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
 }
 .profile-log-outcome--ok {
   color: var(--success);
@@ -2633,53 +2801,28 @@ onMounted(() => {
     grid-column: 1 / -1;
   }
 
-  /* 时间线在窄屏收成三行：时间 + 结果 / 动作 + 类别 / 细节。
-     五列硬塞只会每列挤出省略号；类别跟随动作在一行，读者先看到「做了什么」。 */
+  .profile-logs-range {
+    max-width: none;
+  }
+
+  /* 手机端轨迹再收一档：字形 3.5 单位、行距 1.25，结果仍靠右 */
   .profile-log-item {
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: calc(var(--space-unit) * 1.5);
-    align-items: center;
+    grid-template-columns: calc(var(--space-unit) * 3.5) minmax(0, 1fr);
+    column-gap: var(--space-unit);
+    padding: calc(var(--space-unit) * 1.25) 0;
   }
 
-  .profile-log-time {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .profile-log-outcome {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
-    padding: 2px calc(var(--space-unit) * 0.75);
-    font-size: var(--fs-label);
-    border-radius: var(--radius-pill);
-    background: var(--bg-soft);
-  }
-
-  .profile-log-outcome--ok {
-    background: var(--success-bg);
-  }
-
-  .profile-log-outcome--bad {
-    background: var(--danger-bg);
+  .profile-log-icon {
+    width: calc(var(--space-unit) * 3.5);
+    height: calc(var(--space-unit) * 3.5);
   }
 
   .profile-log-action {
-    grid-column: 1;
-    grid-row: 2;
-    font-size: var(--fs-sm);
-  }
-
-  .profile-log-category {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: end;
     font-size: var(--fs-label);
   }
 
-  .profile-log-detail {
-    grid-column: 1 / -1;
-    grid-row: 3;
+  .profile-log-line {
+    gap: var(--space-unit);
   }
 }
 
@@ -2760,13 +2903,21 @@ onMounted(() => {
     padding: calc(var(--space-unit) * 2);
   }
 
-  /* 摘要卡：手机先让身份行与动作分行，再把统计压成「成长值整行 + 积分/优惠券并排」 */
+  /* 摘要卡：手机保留封面内边距，把统计压成「成长值整行 + 积分/优惠券并排」 */
   .ui-card.profile-summary {
-    padding: calc(var(--space-unit) * 2);
+    padding: 0;
   }
 
   .profile-summary-head {
     flex-wrap: wrap;
+    padding: calc(var(--space-unit) * 2);
+    gap: calc(var(--space-unit) * 1.5);
+  }
+
+  .profile-summary-avatar {
+    width: calc(var(--space-unit) * 7);
+    height: calc(var(--space-unit) * 7);
+    font-size: var(--fs-h3);
   }
 
   .profile-summary-actions {
@@ -2778,6 +2929,10 @@ onMounted(() => {
     flex: 1 1 auto;
   }
 
+  .profile-summary-plan {
+    padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
+  }
+
   .profile-summary-plan-actions {
     justify-content: flex-start;
     gap: calc(var(--space-unit) * 2);
@@ -2785,11 +2940,24 @@ onMounted(() => {
 
   .profile-summary-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: calc(var(--space-unit) * 2);
+    column-gap: 0;
+    row-gap: calc(var(--space-unit) * 1.5);
+    margin: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
   }
 
   .profile-summary-stats > .profile-member-stat:first-child {
     grid-column: 1 / -1;
+    padding-bottom: calc(var(--space-unit) * 1.5);
+    border-bottom: var(--stroke-width) solid var(--divider);
+  }
+
+  .profile-summary-remind {
+    margin: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
+  }
+
+  .profile-member-invite {
+    margin-top: calc(var(--space-unit) * 1.5);
+    padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
   }
 
   /* 编辑弹层在手机上贴满可用宽度，纵向自己滚动 */
@@ -2827,7 +2995,7 @@ onMounted(() => {
     align-items: stretch;
   }
 
-  .profile-logs-head .u-btn-primary {
+  .profile-logs-head .profile-logs-export {
     align-self: flex-start;
   }
 }

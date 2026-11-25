@@ -60,11 +60,15 @@ test('源码：会员数字与说明有明确间距，数字等宽、说明走�
   assert.match(ruleBody('.profile-member-sub {'), /font-family: var\(--font-body\)/)
   assert.match(ruleBody('.profile-member-sub {'), /white-space: nowrap/)
 
-  // 身份、会员、统计、邀请合并在同一张摘要卡里：纵向分三段，间距由卡片统一给
+  // 身份、会员、统计、邀请合并在同一张「通行证」里：封面 + 身体两段
   const summary = ruleBody('.ui-card.profile-summary {')
   assert.match(summary, /flex-direction: column/)
-  assert.match(summary, /gap: calc\(var\(--space-unit\) \* 2\.5\)/)
+  assert.match(summary, /gap: 0/)
+  assert.match(summary, /padding: 0/)
+  assert.match(summary, /overflow: hidden/)
   assert.match(summary, /margin-bottom: calc\(var\(--space-unit\) \* 3\)/)
+  assert.match(ruleBody('.profile-summary-head {'), /padding: calc\(var\(--space-unit\) \* 2\.5\)/, '封面自带内边距')
+  assert.match(ruleBody('.profile-summary-head {'), /radial-gradient/, '封面是唯一允许挥霍的视觉层')
   assert.match(ruleBody('.profile-summary-plan {'), /grid-template-columns: minmax\(0, 1fr\) auto/)
   assert.match(ruleBody('.profile-summary-plan-actions {'), /justify-content: flex-end/)
 })
@@ -137,12 +141,14 @@ test('源码：手机上只读值去掉盒状底板，label + 文本靠 dl 间�
   assert.match(block, /font-family: var\(--font-body\)/)
 })
 
-test('源码：邀请收进摘要卡最后一行（说明左、入口右），窄屏入口换行', () => {
+test('源码：邀请收进摘要卡最后一行，做成安静的全宽页脚', () => {
   const body = ruleBody('.profile-member-invite {')
   assert.match(body, /display: flex/, '邀请行与统计同处一张卡，用分隔线分段即可')
   assert.ok(!body.includes('grid-column'), '合并后不再需要跨会员卡整行')
-  assert.match(body, /align-items: baseline/)
+  assert.match(body, /align-items: center/)
   assert.match(body, /border-top: var\(--stroke-width\) solid var\(--divider\)/, '用分隔线区分运营位')
+  assert.match(body, /background: var\(--bg-soft\)/, '邀请是页脚运营位，用浅底与数字区分')
+  assert.match(body, /padding: calc\(var\(--space-unit\) \* 1\.5\) calc\(var\(--space-unit\) \* 2\.5\)/)
 
   assert.match(ruleBody('.profile-member-invite-link {'), /margin-left: auto/)
 
@@ -262,12 +268,20 @@ test('源码：操作日志是时间线，按范围加载最近几条并能重�
   assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsEmpty/)
   assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsRetry/)
   assert.match(PROFILE_SOURCE, /@click="selectLogRange\(item\.value\)"/)
+  assert.match(PROFILE_SOURCE, /class="profile-logs-range"/, '范围选择是自研滑轨，不再复用 u-tabs 胶囊')
+  assert.match(PROFILE_SOURCE, /class="profile-logs-export"/, '导出是安静的文字按钮，不抢页面主按钮')
+  assert.match(PROFILE_SOURCE, /const logIcon = \(item\) =>/, '轨迹左侧按类别给字形')
   assert.match(PROFILE_SOURCE, /const selectLogRange = \(value\) => \{[\s\S]{0,200}?loadLogs\(\)/, '切范围要同时刷新列表')
 
-  // 时间线网格：桌面五列、窄屏两列
-  assert.match(ruleBody('.profile-log-item {'), /grid-template-columns: 6\.5rem 6rem minmax\(6rem, 9rem\) minmax\(0, 1fr\) auto/)
+  // 轨迹：字形 + 文本两列，手机再收一档；不再是五列表格
+  assert.match(
+    ruleBody('.profile-log-item {'),
+    /grid-template-columns: calc\(var\(--space-unit\) \* 4\) minmax\(0, 1fr\)/
+  )
+  assert.match(ruleBody('.profile-log-icon {'), /background: var\(--bg-soft\)/)
+  assert.match(ruleBody('.profile-log-outcome::before'), /border-radius: 50%/, '结果是小圆点，不是整枚胶囊')
   const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
-  assert.match(tablet, /\.profile-log-item \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) auto/)
+  assert.match(tablet, /\.profile-log-item \{[\s\S]*?calc\(var\(--space-unit\) \* 3\.5\) minmax\(0, 1fr\)/)
 })
 
 test('源码：身份与会员合并成一张摘要卡，旧的两张卡不再存在', () => {
@@ -384,15 +398,20 @@ test('源码：操作日志手机端默认 3 条，展开后请求 24 条', () =
   assert.match(phone, /\.profile-log-list\.is-expanded \.profile-log-item--extra \{\s*display: grid;/)
 })
 
-test('源码：手机端账号行改成两行一组，日志结果变胶囊', () => {
+test('源码：手机端账号行两行一组，摘要封面与统计改版', () => {
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.lastIndexOf('@media (max-width: 575px)'))
   assert.match(phone, /\.profile-row \{\s*grid-template-columns: minmax\(0, 1fr\);/)
   assert.match(phone, /padding-block: calc\(var\(--space-unit\) \* 1\.1\)/)
   assert.match(phone, /border-top: 1px solid var\(--divider\)/)
 
-  const mobileLog = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
-  assert.match(mobileLog, /\.profile-log-outcome \{[\s\S]*?border-radius: var\(--radius-pill\)/)
-  assert.match(mobileLog, /\.profile-log-outcome--ok \{\s*background: var\(--success-bg\);/)
+  // 封面自带内边距；卡片本身不再有 padding，渐变才能压到圆角
+  assert.match(phone, /\.ui-card\.profile-summary \{\s*padding: 0;/)
+  assert.match(phone, /\.profile-summary-head \{[\s\S]*?padding: calc\(var\(--space-unit\) \* 2\);/)
+  assert.match(phone, /\.profile-summary-avatar \{[\s\S]*?calc\(var\(--space-unit\) \* 7\)/)
+
+  // 成长值独占一行，积分与优惠券并排，靠发丝线分栏
+  assert.match(phone, /\.profile-summary-stats \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(phone, /\.profile-summary-stats > \.profile-member-stat:first-child \{\s*grid-column: 1 \/ -1;/)
 })
 
 test('源码：页脚在手机上不再沿用桌面 section-gap', () => {
