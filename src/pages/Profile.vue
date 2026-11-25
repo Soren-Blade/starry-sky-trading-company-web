@@ -502,12 +502,19 @@
         {{ PAGES.profile.guestNote }}
       </p>
 
-      <dl class="profile-fields">
+      <dl
+        id="profile-account-list"
+        class="profile-fields"
+        :class="{ 'is-open': accountMoreOpen }"
+      >
         <div
           v-for="row in readonlyRows"
           :key="row.key"
           class="profile-row"
-          :class="{ 'profile-row--wide': row.key === 'uuid' }"
+          :class="{
+            'profile-row--wide': row.key === 'uuid',
+            'profile-row--extra': !ACCOUNT_PRIMARY_KEYS.includes(row.key),
+          }"
         >
           <dt>{{ row.label }}</dt>
 
@@ -552,6 +559,26 @@
           <dd v-else class="profile-field-value u-field-value">{{ row.value }}</dd>
         </div>
       </dl>
+
+      <!--
+        手机端渐进披露：默认只留 UID / 用户名 / 邮箱 / 手机号这四条主信息，
+        账号类型、注册时间、最后登录收进「更多账号信息」。桌面端 CSS 始终展开，
+        按钮本身也只在 ≤767 出现 —— 空间足够时没必要多点一次。
+      -->
+      <button
+        type="button"
+        class="profile-more profile-account-toggle"
+        :aria-expanded="accountMoreOpen ? 'true' : 'false'"
+        aria-controls="profile-account-list"
+        @click="accountMoreOpen = !accountMoreOpen"
+      >
+        <span>{{ accountMoreOpen ? PAGES.profile.accountCollapse : PAGES.profile.accountExpand }}</span>
+        <AppIcon
+          name="chevron-down"
+          class="profile-more-icon"
+          :class="{ 'is-open': accountMoreOpen }"
+        />
+      </button>
 
       <!-- 说明文字里直接给出路：改绑与二次验证、联系客服都做成行内文本链接，
            不再占一排按钮 —— 这是说明，不是主操作。 -->
@@ -625,11 +652,12 @@
 
       <p v-else-if="!logItems.length" class="profile-log-state">{{ PAGES.profile.logsEmpty }}</p>
 
-      <ol v-else class="profile-log-list">
+      <ol v-else id="profile-log-list" class="profile-log-list" :class="{ 'is-expanded': logsExpanded }">
         <li
-          v-for="item in logItems"
+          v-for="(item, index) in logItems"
           :key="`${item.created_at}-${item.action}-${item.target_id}`"
           class="profile-log-item"
+          :class="{ 'profile-log-item--extra': index >= 3 }"
         >
           <time class="profile-log-time" :datetime="item.created_at">{{ formatLogTime(item.created_at) }}</time>
           <span class="profile-log-category">{{ item.category_label }}</span>
@@ -641,12 +669,28 @@
         </li>
       </ol>
 
+      <!--
+        手机端先给最近 3 条，想继续看再展开并重新拉 24 条；
+        桌面端 CSS 始终显示全部预览条数，按钮只在 ≤767 出现。
+      -->
+      <button
+        v-if="logItems.length > 3"
+        type="button"
+        class="profile-more profile-logs-more"
+        :aria-expanded="logsExpanded ? 'true' : 'false'"
+        aria-controls="profile-log-list"
+        @click="toggleLogs"
+      >
+        <span>{{ logsExpanded ? PAGES.profile.logsCollapse : PAGES.profile.logsExpand }}</span>
+        <AppIcon
+          name="chevron-down"
+          class="profile-more-icon"
+          :class="{ 'is-open': logsExpanded }"
+        />
+      </button>
+
       <p v-if="logItems.length" class="profile-log-preview-note">
-        {{
-          translate('pages.profile.logsPreviewNote', PAGES.profile.logsPreviewNote, {
-            count: LOG_PREVIEW_LIMIT,
-          })
-        }}
+        {{ PAGES.profile.logsPreviewNote }}
       </p>
 
       <p class="page-note profile-logs-note">{{ PAGES.profile.logsFootnote }}</p>
@@ -1251,6 +1295,13 @@ const lastLoginText = computed(() => {
   return date
 })
 
+/**
+ * 手机端账号信息只默认展示这四行；其余行收进「更多账号信息」。
+ * 桌面端不受影响（CSS 始终展开）。
+ */
+const ACCOUNT_PRIMARY_KEYS = ['uuid', 'username', 'email', 'phone']
+const accountMoreOpen = ref(false)
+
 const readonlyRows = computed(() => {
   const data = userInfo.value || {}
   const fields = TRADE.profileFields
@@ -1497,9 +1548,12 @@ const handleDownloadLogs = async () => {
  * 两个动作共用 `logRange`，切换范围会同时刷新列表。
  */
 const LOG_PREVIEW_LIMIT = 6
+const LOG_EXPANDED_LIMIT = 24
 const logItems = ref([])
 const logsLoading = ref(false)
 const logsError = ref('')
+const logsExpanded = ref(false)
+const logLimit = ref(LOG_PREVIEW_LIMIT)
 let logRequestSeq = 0
 
 /** 列表时间用「月/日 时:分」：同一年内的记录，年份是噪音 */
@@ -1532,10 +1586,10 @@ const loadLogs = async () => {
   logsLoading.value = true
   logsError.value = ''
   try {
-    const result = await getMyLogs({ range: logRange.value, limit: LOG_PREVIEW_LIMIT })
+    const result = await getMyLogs({ range: logRange.value, limit: logLimit.value })
     if (seq !== logRequestSeq) return
     const items = Array.isArray(result?.data?.items) ? result.data.items : []
-    logItems.value = items.slice(0, LOG_PREVIEW_LIMIT)
+    logItems.value = items.slice(0, logLimit.value)
   } catch (error) {
     if (seq !== logRequestSeq) return
     logItems.value = []
@@ -1545,11 +1599,25 @@ const loadLogs = async () => {
   }
 }
 
-/** 切换范围：先刷新列表，再让导出跟着当前范围走 */
+/** 切换范围：先刷新列表，再让导出跟着当前范围走；展开态回到默认的 3 条 */
 const selectLogRange = (value) => {
   if (logRange.value === value) return
   logRange.value = value
+  logsExpanded.value = false
+  logLimit.value = LOG_PREVIEW_LIMIT
   loadLogs()
+}
+
+/**
+ * 手机端「查看全部 / 收起」。
+ *
+ * 展开时把 limit 提到 24 条并重新请求；收起时回到 6 条预览，
+ * 这样即使服务器之后清掉了旧数据，页面也不会留着一份过期的长列表。
+ */
+const toggleLogs = async () => {
+  logsExpanded.value = !logsExpanded.value
+  logLimit.value = logsExpanded.value ? LOG_EXPANDED_LIMIT : LOG_PREVIEW_LIMIT
+  await loadLogs()
 }
 
 /* 首屏在挂载后再拉日志：SSR 不需要它，也避免登录态尚未 hydrate 时发请求 */
@@ -2073,6 +2141,39 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 2.5);
 }
 
+/* ── 渐进披露：账号信息 / 操作日志的「更多」 ─────────────────────────────
+ * 桌面端不需要二次点击，按钮只在 ≤767 出现；手机端把次要行收起来，
+ * 首屏给主信息与最近 3 条日志，想看再展开。 */
+.profile-more {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-unit) * 0.75);
+  width: 100%;
+  margin-top: calc(var(--space-unit) * 1.5);
+  padding: calc(var(--space-unit) * 0.75) 0;
+  font-size: var(--fs-label);
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.profile-more-icon {
+  font-size: var(--fs-body);
+  transition: transform var(--transition-interactive);
+}
+
+.profile-more-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.profile-more:focus-visible {
+  outline: 2px solid var(--ec-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-input);
+}
+
 /* 游客态：表头下面先给一句「登录能换来什么」，再让只读行登场 */
 .profile-account-guest {
   margin-top: calc(var(--space-unit) * 1);
@@ -2475,13 +2576,9 @@ onMounted(() => {
     margin-top: 2px;
   }
 
-  /* 底部悬浮 Tab 占 66px + 12px 边距，全站 page-shell 的 38.4px 收尾不够：
-   * 滚到底时最后一行会压在 Tab 底下。这里留出「Tab 高度 + 边距 + 一档呼吸」。 */
-  .profile-page {
-    padding-bottom: calc(
-      var(--bottom-nav-height, 64px) + 12px + env(safe-area-inset-bottom, 0px) + var(--ec-space-4)
-    );
-  }
+  /* 底部悬浮 Tab 的空间由 App.vue 的 .app-container 统一预留一次
+   * （高度 + 12px + safe-area）。这里不再重复加 padding，否则最后一张卡
+   * 到页脚会多出近 110px 的空白。 */
 
   /* UID 行的眼睛 / 复制：28px 在手指下太小，撑到 44 并让卡片跟着长高 */
   .profile-field-value--code .ec-icon-btn {
@@ -2505,6 +2602,29 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* 账号信息：主四行常驻，次三行收进「更多账号信息」 */
+  .profile-row--extra {
+    display: none;
+  }
+
+  .profile-fields.is-open .profile-row--extra {
+    display: grid;
+  }
+
+  .profile-account-toggle,
+  .profile-logs-more {
+    display: flex;
+  }
+
+  /* 日志：最近 3 条常驻，展开后显示到 24 条 */
+  .profile-log-item--extra {
+    display: none;
+  }
+
+  .profile-log-list.is-expanded .profile-log-item--extra {
+    display: grid;
+  }
+
   .profile-field-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2513,47 +2633,78 @@ onMounted(() => {
     grid-column: 1 / -1;
   }
 
-  /* 时间线在窄屏收成两行两列：第一行「时间 + 结果」，第二行动作 + 细节，
-     类别退到次要位置。五列硬塞只会每列挤出省略号。 */
+  /* 时间线在窄屏收成三行：时间 + 结果 / 动作 + 类别 / 细节。
+     五列硬塞只会每列挤出省略号；类别跟随动作在一行，读者先看到「做了什么」。 */
   .profile-log-item {
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: calc(var(--space-unit) * 1.5);
+    align-items: center;
   }
 
   .profile-log-time {
     grid-column: 1;
+    grid-row: 1;
   }
 
   .profile-log-outcome {
     grid-column: 2;
     grid-row: 1;
+    justify-self: end;
+    padding: 2px calc(var(--space-unit) * 0.75);
+    font-size: var(--fs-label);
+    border-radius: var(--radius-pill);
+    background: var(--bg-soft);
   }
 
-  .profile-log-category {
-    grid-column: 1;
-    grid-row: 2;
+  .profile-log-outcome--ok {
+    background: var(--success-bg);
+  }
+
+  .profile-log-outcome--bad {
+    background: var(--danger-bg);
   }
 
   .profile-log-action {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 2;
+    font-size: var(--fs-sm);
+  }
+
+  .profile-log-category {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    font-size: var(--fs-label);
   }
 
   .profile-log-detail {
     grid-column: 1 / -1;
-    grid-row: 4;
+    grid-row: 3;
   }
 }
 
 @media (max-width: 575px) {
   /*
-   * 手机：账号信息不再一行一个 36px 的盒子（六行约 600px），
-   * 改成「标签 + 文本」的紧凑行，靠 dl 的行间距分组。
+   * 手机：账号信息不再「标签列 + 值」横排（八行会把屏幕拉成一张表单）。
+   * 改成两行一组：小号标签在上、值在下，行与行之间用发丝线分隔，
+   * 这一屏更像原生设置页，扫读顺序也更自然。
    */
   .profile-row {
-    grid-template-columns: calc(var(--space-unit) * 8) minmax(0, 1fr);
-    gap: calc(var(--space-unit) * 1.25);
-    align-items: baseline;
+    grid-template-columns: minmax(0, 1fr);
+    gap: calc(var(--space-unit) * 0.35);
+    align-items: start;
+    padding-block: calc(var(--space-unit) * 1.1);
+    border-top: 1px solid var(--divider);
+  }
+
+  .profile-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .profile-row dt {
+    font-size: var(--fs-label);
+    letter-spacing: 0.02em;
   }
 
   .profile-field-value,

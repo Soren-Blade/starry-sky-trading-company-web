@@ -253,10 +253,10 @@ test('源码：邮箱 / 手机号可在弹层里直接改，且校验格式与�
 })
 
 test('源码：操作日志是时间线，按范围加载最近几条并能重试', () => {
-  assert.match(PROFILE_SOURCE, /getMyLogs\(\{ range: logRange\.value, limit: LOG_PREVIEW_LIMIT \}\)/)
+  assert.match(PROFILE_SOURCE, /getMyLogs\(\{ range: logRange\.value, limit: logLimit\.value \}\)/)
   assert.match(PROFILE_SOURCE, /const LOG_PREVIEW_LIMIT = 6/)
   assert.match(PROFILE_SOURCE, /class="profile-log-list"/)
-  assert.match(PROFILE_SOURCE, /v-for="item in logItems"/)
+  assert.match(PROFILE_SOURCE, /v-for="\(item, index\) in logItems"/)
   assert.match(PROFILE_SOURCE, /formatLogTime\(item\.created_at\)/)
   assert.match(PROFILE_SOURCE, /item\.outcome_label/)
   assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsEmpty/)
@@ -336,13 +336,69 @@ test('源码：UID 复制成功有 toast，按钮本身也变成功态', () => {
  *   ② 游客徽标被全局 column 断点挤到描述下面，独占一行像第二个眉标；
  *   ③ UID 行的眼睛/复制按钮视觉 28px，拇指点不准。
  */
-test('源码：手机端给悬浮 Tab 让位，最后一行内容不被压住', () => {
-  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
-  assert.match(
-    phone,
-    /\.profile-page \{[\s\S]*?padding-bottom: calc\(\s*var\(--bottom-nav-height[\s\S]*?env\(safe-area-inset-bottom/,
-    '下边距要按 Tab Bar 实际占位算，不能沿用 page-shell 的固定值'
+test('源码：手机端给悬浮 Tab 让位，但留白只由 App.vue 预留一次', () => {
+  // 4.11.0 起 Profile 不再重复给 .profile-page 加 padding-bottom：
+  // App.vue 的 .app-container 已经按 Tab Bar 高度 + 12px + safe-area 预留，
+  // 两处叠加会让最后一张卡到页脚多出近 110px 空白。
+  assert.doesNotMatch(
+    PROFILE_SOURCE,
+    /\.profile-page\s*\{[^}]*padding-bottom:/,
+    'Profile 页面不再重复预留底部 Tab 空间'
   )
+  const app = readFileSync('src/App.vue', 'utf8')
+  assert.match(
+    app,
+    /padding-bottom:\s*calc\(\s*var\(--bottom-nav-height[\s\S]*?env\(safe-area-inset-bottom/,
+    '全站容器按 Tab Bar 实际占位统一预留'
+  )
+})
+
+test('源码：手机端账号信息默认只展示主四行，其余进「更多」', () => {
+  assert.match(
+    PROFILE_SOURCE,
+    /const ACCOUNT_PRIMARY_KEYS = \['uuid', 'username', 'email', 'phone'\]/
+  )
+  assert.match(
+    PROFILE_SOURCE,
+    /class="profile-more profile-account-toggle"[\s\S]{0,200}aria-controls="profile-account-list"/
+  )
+  assert.match(PROFILE_SOURCE, /:aria-expanded="accountMoreOpen \? 'true' : 'false'"/)
+  assert.match(PROFILE_SOURCE, /'profile-row--extra': !ACCOUNT_PRIMARY_KEYS\.includes\(row\.key\)/)
+
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(phone, /\.profile-row--extra \{\s*display: none;/)
+  assert.match(phone, /\.profile-fields\.is-open \.profile-row--extra \{\s*display: grid;/)
+})
+
+test('源码：操作日志手机端默认 3 条，展开后请求 24 条', () => {
+  assert.match(PROFILE_SOURCE, /const LOG_EXPANDED_LIMIT = 24/)
+  assert.match(
+    PROFILE_SOURCE,
+    /logLimit\.value = logsExpanded\.value \? LOG_EXPANDED_LIMIT : LOG_PREVIEW_LIMIT/
+  )
+  assert.match(PROFILE_SOURCE, /:class="\{ 'profile-log-item--extra': index >= 3 \}"/)
+  assert.match(PROFILE_SOURCE, /class="profile-more profile-logs-more"[\s\S]{0,200}aria-controls="profile-log-list"/)
+
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(phone, /\.profile-log-item--extra \{\s*display: none;/)
+  assert.match(phone, /\.profile-log-list\.is-expanded \.profile-log-item--extra \{\s*display: grid;/)
+})
+
+test('源码：手机端账号行改成两行一组，日志结果变胶囊', () => {
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.lastIndexOf('@media (max-width: 575px)'))
+  assert.match(phone, /\.profile-row \{\s*grid-template-columns: minmax\(0, 1fr\);/)
+  assert.match(phone, /padding-block: calc\(var\(--space-unit\) \* 1\.1\)/)
+  assert.match(phone, /border-top: 1px solid var\(--divider\)/)
+
+  const mobileLog = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(mobileLog, /\.profile-log-outcome \{[\s\S]*?border-radius: var\(--radius-pill\)/)
+  assert.match(mobileLog, /\.profile-log-outcome--ok \{\s*background: var\(--success-bg\);/)
+})
+
+test('源码：页脚在手机上不再沿用桌面 section-gap', () => {
+  const footer = readFileSync(new URL('../src/components/Footer.vue', import.meta.url), 'utf8')
+  const phone = footer.slice(footer.indexOf('@media (max-width: 767px)'))
+  assert.match(phone, /\.footer \{\s*margin-top: calc\(var\(--space-unit\) \* 2\);/, '手机页脚与卡片同节奏')
 })
 
 test('源码：手机端页头保持行向，徽标回到标题右侧', () => {

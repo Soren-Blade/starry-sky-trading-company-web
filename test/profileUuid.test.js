@@ -266,7 +266,7 @@ test('结构：__label / __value / __act 是标识行 <dd> 的直接子元素', 
 
 test('统一性：profile-fields 下每一行共用一套字段值类名', async () => {
   const html = await renderProfile()
-  const from = html.indexOf('<dl class="profile-fields">')
+  const from = html.indexOf('class="profile-fields"')
   const to = html.indexOf('</dl>', from)
   const rows = html.slice(from, to).match(/<dd [^>]*>/g) || []
 

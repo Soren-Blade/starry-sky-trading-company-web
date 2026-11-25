@@ -278,6 +278,13 @@ import { SITE, FOOTER, CONTACT } from '@/constants/index.js';
 
 /* 移动端：页脚留白 ×--mobile-section-scale，两侧内边距再按 ×0.8 收 */
 @media (max-width: 767px) {
+  /* 页脚本身是收尾，不是新章节：桌面 38.4px 的 section-gap 放到手机上
+   * 会把最后一屏拉出一段空跑。收到 2 个 space-unit（约 16px），
+   * 与卡片间距同一节奏。 */
+  .footer {
+    margin-top: calc(var(--space-unit) * 2);
+  }
+
   .footer-container {
     padding: calc(var(--section-gap) * 0.4 * var(--mobile-section-scale))
       calc(var(--container-padding) * var(--mobile-padding-scale));
