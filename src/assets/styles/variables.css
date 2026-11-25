@@ -167,7 +167,26 @@
   --glass-nav-border: color-mix(in srgb, var(--ec-border-subtle) 70%, transparent);
   --glass-nav-blur: 24px;
   --glass-nav-saturate: 190%;
-  --nav-scrolled-shadow: var(--ec-shadow-sm);
+  /* ── Liquid Glass（4.11.0）：把「玻璃」拆成四件可单独调的事 ────────────
+   * 4.10 的玻璃只有「半透明底色 + 模糊」，在白底页面上约等于一块白：
+   * 没有边缘、没有光、也没有厚度，材质读不出来。这一版按光的顺序补齐：
+   *   ① 色 tint    —— 底色里掺一点品牌色，白底上也能认出这是玻璃；
+   *   ② 光 specular—— 上缘受光 + 内缘 1px 高光，棱边才有厚度；
+   *   ③ 影 lift    —— 玻璃是浮在内容上的，投影要贴着内容一侧落；
+   *   ④ 变 morph   —— 内容滚过时模糊与底色一起加深，玻璃「活着」靠联动，
+   *                   不靠一条花哨的动画曲线（动效只解释变化）。
+   * 边缘折射（feDisplacementMap 位移后背内容）没有进这一版：实测当前
+   * Chromium 对 backdrop-filter: url(#filter) 的色彩合成会在边缘渗出紫色，
+   * 且全宽滤镜的绘制开销与视觉收益不成比例 —— 取舍写在 CHANGELOG 4.11.0。 */
+  --glass-nav-tint: color-mix(in srgb, var(--accent) 7%, transparent);
+  --glass-nav-tint-strong: color-mix(in srgb, var(--accent) 10%, transparent);
+  --glass-nav-rim: inset 0 0 0 1px color-mix(in srgb, var(--ec-bg-surface) 32%, transparent);
+  /* 影：玻璃是浮起来的一层，落影要比普通卡片更远更浅；
+   * 直接复用 EC 的两档大阴影，暗色主题自动跟着换，不再写死 rgba。 */
+  --glass-nav-lift: var(--ec-shadow-lg);
+  --glass-nav-lift-strong: var(--ec-shadow-xl);
+  --glass-nav-blur-strong: 32px;
+  --nav-scrolled-shadow: var(--glass-nav-lift);
 
   /* ── A12. 阴影 ────────────────────────────────────────────── */
   --shadow-card: var(--ec-shadow-xs);

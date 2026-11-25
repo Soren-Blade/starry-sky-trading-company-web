@@ -679,7 +679,9 @@ onUnmounted(() => {
   top: 0;
   /* 规范：z-index 100。低于模态框（400）与提示框（500） */
   z-index: var(--z-nav);
-  transition: box-shadow var(--transition-surface);
+  transition:
+    box-shadow var(--transition-surface),
+    opacity 0.18s var(--ec-ease-out);
 }
 
 /* 表面 + 底部边框（都放在同一个伪元素上，保证铺满整高）
@@ -693,16 +695,24 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--glass-nav-specular), var(--glass-nav-bg);
+  /* 三层叠出玻璃：品牌色渗透（tint）在最下，上缘 specular 居中，
+   * 半透明表面色压在最上。顺序就是光穿过玻璃的顺序。 */
+  background: var(--glass-nav-specular), var(--glass-nav-tint), var(--glass-nav-bg);
   border-bottom: var(--stroke-width) solid var(--glass-nav-border);
-  box-shadow: var(--glass-nav-highlight);
+  box-shadow: var(--glass-nav-highlight), var(--glass-nav-rim);
   -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
   backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+  transition:
+    background-color var(--transition-surface),
+    box-shadow var(--transition-surface);
 }
 
-/* 滚动后：玻璃底色加密，让文字在长页面上仍然稳定可读 */
+/* 滚动后：玻璃变「厚」一档 —— 底色加密、模糊加深、投影落下。
+ * 三件事一起变，用户读到的是「有一层东西压上来了」，而不是某一项数值在动。 */
 .navbar-scrolled::before {
-  background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
+  background: var(--glass-nav-specular), var(--glass-nav-tint-strong), var(--glass-nav-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
+  backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
 }
 
 /* 不支持背景模糊 / 用户要求降低透明度时退回实底，不做「假玻璃」 */
@@ -1164,6 +1174,16 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
+  /* 手机搜索抽屉从顶边铺下来时，顶栏让位。
+   * 抽屉本身就是那块玻璃，顶栏留在下面会从玻璃里透出幽灵图标，
+   * 看上去像渲染没画完；退场之后「一个头」的说法才成立。
+   * 状态类挂在 <html> 上（Teleport 到 body 的抽屉够不到导航组件），
+   * 所以整条选择器交给 :global —— 只包裹前半段会让 html 自己吃到样式。 */
+  :global(html.gs-open .navbar) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
   .hide-below-768 {
     display: none;
   }
@@ -1180,6 +1200,13 @@ onUnmounted(() => {
   .navbar-inner {
     height: calc(var(--navbar-height) * var(--mobile-nav-scale));
     gap: calc(var(--space-unit) * 2);
+  }
+
+  /* 手机：玻璃面积小、滚动又长，模糊收一档换帧率（令牌覆盖，不动规则本身，
+   * 滚动态与常驻态一起缩放，级联顺序不会互相盖掉）。 */
+  .navbar {
+    --glass-nav-blur: 18px;
+    --glass-nav-blur-strong: 24px;
   }
 
   .navbar-drawer {

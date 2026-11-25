@@ -9,6 +9,36 @@
 
 ---
 
+## [4.11.0] — 2026-11-25
+
+材质再进一档，交互补上「出口」与「记忆」：顶栏与悬浮 Tab Bar 在原有四层之上加入**品牌色 tint、内缘 rim、分层浮起阴影**，并给手机端搜索重做了一套可从顶边拉下、可下拉收起、带最近搜索的抽屉；个人中心页同步修掉底部被 Tab Bar 压住、徽标孤行、游客态空转三处问题。
+
+### 新增
+
+- **玻璃三层补全**（`variables.css`）：`--glass-nav-tint` / `--glass-nav-tint-strong`（`color-mix` 品牌色 7% / 10%）、`--glass-nav-rim`（`inset 0 0 0 1px` 内缘描边，32% 表层色）、`--glass-nav-lift` / `--glass-nav-lift-strong`（`--ec-shadow-lg` / `--ec-shadow-xl`，暗色自动跟随）、`--glass-nav-blur-strong`（32px）。顶栏与底栏背景改为 `specular + tint + bg` 三层，滚动/常态在两档之间过渡。
+- **手机端搜索抽屉**（`GlobalSearch.vue`）：面板从「全屏铺满、只能点 ×」改为顶部下拉抽屉——顶部 40×5 抓握条、`max-height: min(82dvh, 720px)`、`border-radius: 0 0 --ec-radius-2xl`；**下拉手势收起**（超过 72px 或速度 > 0.6px/ms）、**「取消」文字按钮**、输入后出现**圆形清空键**，共三个出口。
+- **最近搜索**：点开结果或「查看全部」时记入 `localStorage['sstc.search.recent']`（上限 6 条、去重前置），空输入时以 chip 呈现，并提供「清除」；隐私模式下写入失败退化为会话内。
+- **品牌色 tint 让玻璃可读**：白底页面上单靠模糊与阴影读不出材质，加入 7% 品牌色后玻璃在浅色页面也能被指认。
+
+### 修复
+
+- **个人中心页底部遮挡**：`.profile-page` 的 `padding-bottom` 原先 38.4px，小于底部悬浮 Tab 占位（66 + 12 + safe-area），滚到底最后约 40px 内容被压住；改为 `calc(var(--bottom-nav-height) + 12px + env(safe-area-inset-bottom) + var(--ec-space-4))`（实测 92px）。
+- **游客徽标孤行**：`≤767px` 下全局 `.page-shell-head--row` 被改成 `column`，徽标被挤到描述下方独占一行；个人中心页单独恢复 `row` 并对徽标 `flex: none`，徽标回到标题右侧。
+- **游客态空转**：账号信息块对游客只是一屏「未设置 / 未绑定 / 未链接」，补一句「登录后可绑定邮箱与手机号，订单、卡密、收藏与优惠券也会同步到这里。」把七行空值变成可预期的收益。
+- **UID 行触控区**：眼睛 / 复制按钮视觉约 28px，`--ec-control-h-lg`（44px）撑到达标。
+- **搜索抽屉打开时顶栏幽灵图标**：`html.gs-open` 时隐藏 `.navbar`（270ms 后恢复）。修法踩过一次坑：`:global(html.gs-open) .navbar` 会把 `opacity: 0` 落到 `<html>` 本身导致整页空白，正确写法是把整条选择器交给 `:global(html.gs-open .navbar)`。
+
+### 不采用（含实测证据）
+
+- **几何折射（Snell / feDisplacementMap）不引入**。掘金实现方案的核心是用 `backdrop-filter: url(#filter)` 只扭曲边缘像素。实测 Chrome 158：`CSS.supports('backdrop-filter','url(#x) blur(20px) saturate(190%)')` 为 true、computed 值正常回显，但注入 8×64 位移图（圆角 SDF + `feDisplacementMap scale=26`，缩到 10 也一样）后，顶栏与底栏上缘出现**紫色渗边与弯曲涂抹**，不是干净的边缘折射——`backdrop-filter` 与 SVG 滤镜链的合成拿不到可靠色彩空间。全宽滤镜的开销与这点收益不成比例，因此只保留纯 CSS 的光学四层（色 / 光 / 影 / 变），把取舍写在这里。
+
+### 测试
+
+- `test/navGlass.test.js`：三层令牌、三层背景 + rim、滚动态同时加深模糊、手机端 `--glass-nav-blur: 18px` / `--glass-nav-blur-strong: 24px` 覆盖、底栏新阴影三元组、当前项内缘高光。
+- `test/globalSearch.test.js`：手机抽屉几何（`min(82dvh, 720px)`、下缘圆角）、三个出口（抓握条 / 72px / 0.6px·ms⁻¹）、最近搜索（键名、上限、chip、记录时机）、清空键、顶栏退场，以及中英文案键。
+- `test/profilePage.test.js`：新增 5 条手机端断言（页头 `row`、徽标 `flex: none`、`padding-bottom`、游客说明、44px 触控区）。
+- `npm test` 1264 条全部通过；`npm run lint` / `npm run build` 通过。BrowserSkill（bsk 0.5.0）逐项走查：抽屉开合、下拉收起、取消、清空、最近搜索与清除、Esc 与焦点归还、桌面命令面板、暗色、个人中心三处修复。
+
 ## [4.10.1] — 2026-11-25
 
 手机端搜索的玻璃回退一档：面板底色从 84% 的强档降到与顶栏同档的 66%，模糊 24px → 28.8px（`calc(24px * 1.2)`），遮罩 tint 24% → 16% 且只留 12px 轻模糊。结果是背后的卡片与标题仍可感知，但结果行与输入框文字不受干扰。

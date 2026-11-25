@@ -327,3 +327,47 @@ test('源码：UID 复制成功有 toast，按钮本身也变成功态', () => {
   assert.match(PROFILE_SOURCE, /notify\.success\(PAGES\.profile\.uidCopied\)/, '复制成功要有即时反馈')
   assert.match(ruleBody('.profile-field-value--code .ec-icon-btn.is-ok {'), /color: var\(--success\)/)
 })
+
+/**
+ * 4.11.0 移动端三处返工
+ *
+ * 都是「手机上看得见、但不该那样」的问题，用源码锁定比截图回归便宜：
+ *   ① 底部悬浮 Tab 压住最后一行内容（page-shell 只有 38px 下边距）；
+ *   ② 游客徽标被全局 column 断点挤到描述下面，独占一行像第二个眉标；
+ *   ③ UID 行的眼睛/复制按钮视觉 28px，拇指点不准。
+ */
+test('源码：手机端给悬浮 Tab 让位，最后一行内容不被压住', () => {
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(
+    phone,
+    /\.profile-page \{[\s\S]*?padding-bottom: calc\(\s*var\(--bottom-nav-height[\s\S]*?env\(safe-area-inset-bottom/,
+    '下边距要按 Tab Bar 实际占位算，不能沿用 page-shell 的固定值'
+  )
+})
+
+test('源码：手机端页头保持行向，徽标回到标题右侧', () => {
+  assert.match(
+    PROFILE_SOURCE,
+    /\.profile-page \.page-shell-head--row \{[\s\S]*?flex-direction: row;[\s\S]*?\}/
+  )
+  assert.match(PROFILE_SOURCE, /\.profile-page \.page-shell-head--row > \.u-tag \{[\s\S]*?flex: none/)
+})
+
+test('源码：手机端 UID 操作按钮按 44px 触控区，不再缩到 28px', () => {
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
+  assert.match(
+    phone,
+    /\.profile-field-value--code \.ec-icon-btn \{[\s\S]*?width: var\(--ec-control-h-lg\);[\s\S]*?height: var\(--ec-control-h-lg\);/
+  )
+})
+
+test('源码：游客在账号信息顶部先看到「登录能得到什么」，而不是七行空值', () => {
+  const at = PROFILE_SOURCE.indexOf('class="page-panel profile-account"')
+  const block = PROFILE_SOURCE.slice(at, PROFILE_SOURCE.indexOf('</section>', at))
+  assert.match(block, /v-if="!userStore\.isLoggedIn"/, '说明只在游客态出现')
+  assert.match(block, /PAGES\.profile\.guestNote/)
+  assert.ok(
+    block.indexOf('profile-account-guest') < block.indexOf('profile-fields'),
+    '说明必须在字段列表之前，否则又变成结尾的补丁'
+  )
+})

@@ -32,18 +32,59 @@ test('玻璃令牌只在导航层定义，且带模糊、饱和与顶部 specula
   assert.match(VARIABLES, /--glass-nav-saturate:\s*190%/)
 })
 
-test('顶栏是玻璃表面，滚动后加深，且有不支持模糊时的实底回退', () => {
+/**
+ * 4.11.0 Liquid Glass 光学四件套
+ *
+ * 4.10 的玻璃只有「半透明底色 + 模糊」，在白底页面上等于一块白。这一版补的是
+ * 光（specular + rim）、深（lift）、色（tint）三样，并让滚动时三者一起变化。
+ * 这里锁住「三样都在、且都不是随手写的十六进制」——令牌必须从 --ec-* 派生，
+ * 换明暗主题时才不会跳出第二套颜色。
+ */
+test('玻璃新增色/光/影三层令牌，且全部从设计令牌派生', () => {
+  assert.match(
+    VARIABLES,
+    /--glass-nav-tint:\s*color-mix\(in srgb, var\(--accent\) 7%, transparent\)/
+  )
+  assert.match(
+    VARIABLES,
+    /--glass-nav-tint-strong:\s*color-mix\(in srgb, var\(--accent\) 10%, transparent\)/
+  )
+  assert.match(
+    VARIABLES,
+    /--glass-nav-rim:\s*inset 0 0 0 1px color-mix\(in srgb, var\(--ec-bg-surface\) 32%, transparent\)/
+  )
+  assert.match(VARIABLES, /--glass-nav-lift:\s*var\(--ec-shadow-lg\)/)
+  assert.match(VARIABLES, /--glass-nav-lift-strong:\s*var\(--ec-shadow-xl\)/)
+  assert.match(VARIABLES, /--glass-nav-blur-strong:\s*32px/)
+  // 滚动后的投影改用玻璃专用投影，不再复用通用 --ec-shadow-sm
+  assert.match(VARIABLES, /--nav-scrolled-shadow:\s*var\(--glass-nav-lift\)/)
+})
+
+test('顶栏是三层玻璃表面，滚动后加深，且有不支持模糊时的实底回退', () => {
   assert.match(
     NAVBAR,
-    /\.navbar::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-bg\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /\.navbar::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-tint\), var\(--glass-nav-bg\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(
     NAVBAR,
-    /\.navbar-scrolled::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\)/
+    /\.navbar-scrolled::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-tint-strong\), var\(--glass-nav-bg-strong\);[\s\S]?/
+  )
+  // 滚动态同时加深模糊：三件事一起变，用户读到的是「玻璃变厚」
+  assert.match(
+    NAVBAR,
+    /\.navbar-scrolled::before \{[\s\S]*?blur\(var\(--glass-nav-blur-strong\)\)/
   )
   assert.match(NAVBAR, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(NAVBAR, /@media \(prefers-reduced-transparency: reduce\)/)
 })
+
+test('手机端玻璃把模糊收一档换帧率，且用令牌覆盖而不是复制规则', () => {
+  assert.match(
+    NAVBAR,
+    /@media \(max-width: 767px\) \{[\s\S]*?\.navbar \{\s*--glass-nav-blur: 18px;\s*--glass-nav-blur-strong: 24px;\s*\}/
+  )
+})
+
 
 test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar', () => {
   assert.match(NAVBAR, /class="u-icon-btn navbar-cart hide-below-768"/)
@@ -55,10 +96,17 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
   assert.match(
     BOTTOM_NAV,
-    /background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--shadow-float\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /background: var\(--glass-nav-specular\), var\(--glass-nav-tint\), var\(--glass-nav-bg-strong\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
+})
+
+test('选中项是玻璃上的一枚凸起：上缘补一道内高光', () => {
+  assert.match(
+    BOTTOM_NAV,
+    /\.bottom-nav-item\.is-active \{[\s\S]*?box-shadow: inset 0 1px 0 color-mix\(in srgb, var\(--ec-bg-surface\) 72%, transparent\);/
+  )
 })
 
 test('我的服务收成一张分组卡，不再四张独立卡片', () => {

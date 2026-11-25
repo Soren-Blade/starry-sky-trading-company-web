@@ -4,7 +4,19 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.10.1`**（2026-11-25 发布）：**Liquid Glass 导航 + 手机端搜索精简** ——
+> **当前版本 `4.11.0`**（2026-11-25 发布）：**玻璃补完 + 手机搜索抽屉 + 个人中心三修** ——
+> ① 玻璃从四层补到六层：在底色 / 上缘 specular / 内缘高光 / 描边之外，加**品牌色 tint**（7% 常态、10% 滚动）
+> 与**内缘 rim**，浮起阴影换 `--ec-shadow-lg` / `--ec-shadow-xl`（暗色自动跟随），模糊滚动态升到 32px；
+> ② 手机端搜索从「全屏铺满、只能点 ×」改成**顶部下拉抽屉**：40×5 抓握条、下缘圆角、
+> `max-height: min(82dvh, 720px)`，三个出口——下拉 >72px（或 >0.6px/ms）、「取消」、Esc；
+> ③ 输入后出现圆形清空键；空输入给**最近搜索** chip（`localStorage['sstc.search.recent']`，上限 6 条，可清除）；
+> ④ 抽屉打开时 `html.gs-open` 淡出顶栏，避免图标从玻璃后面透出来；
+> ⑤ 个人中心：底部不再被悬浮 Tab Bar 压住（实测 padding-bottom 92px）、游客徽标回到标题右侧、
+> 游客态补一句「登录后…会同步到这里」、UID 行眼睛 / 复制撑到 44px；
+> ⑥ **不采用几何折射**：`backdrop-filter: url(#filter)` 在 Chrome 158 实测出现紫色渗边（见 CHANGELOG 4.11.0）；
+> ⑦ 不支持 `backdrop-filter` 或开启「降低透明度」时仍回退实底，不做假玻璃。
+>
+> **上一版 `4.10.1`**（2026-11-25 发布）：**Liquid Glass 导航 + 手机端搜索精简** ——
 > ① 顶栏与手机悬浮 Tab Bar 从「半透明 + 模糊」升级为四层 Liquid Glass：底色、上缘 specular、
 > 内缘 `inset 0 1px 0` 高光、半透明描边，配合 `blur(24px) saturate(190%)`；
 > ② 底栏再叠 `--shadow-float`，让悬浮 pill 与页面之间有真实距离；
@@ -199,7 +211,7 @@
 > ③ 本月账本 + 可点的「签到规则与补签说明」），宽度固定 320px；
 > **没有选择加高卡片**（高度由 7 × 64px 日历格决定，加高只会让留白更大）。
 > 再上一版 `2.6.2`：签到页档位并入月历卡 + 日期筛选（只筛显示不改统计，被筛掉的格子留小圆点占位）。
-> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端与服务端均为 `4.1.0`）。
+> 完整清单见 [CHANGELOG.md](CHANGELOG.md)。版本号两仓库共用（当前前端为 `4.11.0`；服务端未随本次改动升级）。
 >
 > **`2.6.0`**（2026-10-28）：会员两张表的表头对齐、购物车券下拉只列可用券、永久会员文案、
 > `.u-mm-benefit-next` 去 `margin-top`、跨端修复「完成订单不发成长值」（`sstc.complete_order` 迁移重建）。
@@ -807,9 +819,16 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 **顶栏不再内嵌输入框**：旧的展开式 `SearchBar` 一次只能搜商品，还要挤占 Logo 与图标的位置；
 现在顶栏只有一枚放大镜，桌面与移动端走同一个对话面板（移动端为全屏）。
 
-**手机端只做「输入 → 结果」。** 4.10.0 起 ≤767px 不再显示 12 个快捷入口与底部键盘提示：
-屏幕就这么大，一进门先给一列导航等于把「搜索」变成「另一个首页」。面板与遮罩改为与导航同源的
-Liquid Glass（66% 底色 + 28.8px 模糊 / 190% 饱和），背后的页面仍然可感知，输入框是第一落点。
+**手机端只做「输入 → 结果」，出口不止一个 ×。** 4.11.0 起 ≤767px 是一张从顶边拉下的抽屉：
+40×5 抓握条 + 输入行 + 右侧「取消」，`max-height: min(82dvh, 720px)`、下缘圆角，
+背后的页面仍可点（点遮罩即关）。三个出口：**下拉收起**（位移 >72px 或速度 >0.6px/ms）、
+**「取消」文字按钮**、**Esc**；输入后另有圆形清空键。空输入时给**最近搜索** chip
+（`localStorage['sstc.search.recent']`，上限 6 条，去重前置，点开结果才记录，可一键清除；
+隐私模式写入失败退化为会话内），抽屉打开时顶栏淡出，避免图标从玻璃后面透出来。
+
+**为什么改掉全屏面板**：4.10.x 的手机面板铺满 `100dvh`，遮罩被自己盖住，
+于是「怎么退出去」只剩右上角一个 ×——用户的原话是「目前只能通过点击 × 取消搜索」。
+把面板收回成顶部抽屉后，遮罩、手势、按钮三条路同时存在，× 不再是唯一答案（桌面仍保留 ×）。
 
 **关键词刻意不进 store。** 它一度双向绑定到 `shopStore.searchKeyword`，
 而首页/热卖榜的商品栅格会按那个字段持续过滤 —— 于是
@@ -1076,7 +1095,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 
 | 组件 | 说明 |
 | --- | --- |
-| `Navbar.vue` | 固定顶栏（**4.10.0 起为四层 Liquid Glass**：`.navbar::before` 用 `--glass-nav-specular` 叠 `--glass-nav-bg`、`box-shadow: var(--glass-nav-highlight)` 做内缘高光，`backdrop-filter: blur(24px) saturate(190%)`；滚动后换 `--glass-nav-bg-strong`；`@supports not` 与 `prefers-reduced-transparency` 回退实底。**≤767px 隐藏购物车与会员入口**，它们由底部 Tab Bar 承担，顶栏只留搜索、消息、头像与菜单）：品牌、`NAV_MENU` 导航、**全站搜索按钮**（4.9.0 起：只负责打开 `GlobalSearch` 命令面板，`Ctrl / Cmd + K` 同效；旧的展开式输入框、焦点抢占与整套宽度动画已删除，顶栏不再内嵌 `SearchBar`）、`ThemeSwitch`（EC 三档明暗控件；≤767px 搬进抽屉）、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（「账号资产」组含 个人中心 / 我的订单 / 我的收藏 / 卡密管理 / 每日签到，「会员权益」组含 会员套餐 / 积分中心 / **成长值** / 我的优惠券，末尾是退出登录。**会员中心与消息中心刻意不放进下拉** —— 顶栏皇冠与信封已经是它们，同一个目标两个入口会让人怀疑哪个是真的。面板 `role="menu"`、条目 `role="menuitem"`、触发器 `aria-haspopup`/`aria-controls`/`aria-expanded`，`↓` 展开落焦首项、`↑/↓` 循环、`Esc` 关闭并还焦；`max-height: var(--dropdown-max-height)` + `overflow-y: auto` 解决短视口看不到底；展开动画 180ms）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数。**游客看不到这个信封**：游客的站内通知永远是空的（服务端 `enqueue_notification` 对非注册用户直接返回 false），给一个点进去什么都没有的入口不如不给 —— 游客的诉求（问客服）走 `/support`，入口在页脚与帮助弹窗里）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
+| `Navbar.vue` | 固定顶栏（**4.11.0 起为六层 Liquid Glass**：`.navbar::before` 的 `background` 是 `--glass-nav-specular` + `--glass-nav-tint` + `--glass-nav-bg` 三层，`box-shadow` 是 `--glass-nav-highlight` + `--glass-nav-rim`（内缘描边）两段，`backdrop-filter: blur(24px) saturate(190%)`；滚动后 tint 换 `-strong`、底色换 `-strong`、模糊升到 `--glass-nav-blur-strong`（32px）；≤767px 令牌覆盖为 18/24px；`@supports not` 与 `prefers-reduced-transparency` 回退实底。**不做 `backdrop-filter: url(#filter)` 几何折射** —— Chrome 158 实测出现紫色渗边，见 CHANGELOG 4.11.0。`html.gs-open` 时整条淡出，避免搜索抽屉背后冒出幽灵图标。**≤767px 隐藏购物车与会员入口**，它们由底部 Tab Bar 承担，顶栏只留搜索、消息、头像与菜单）：品牌、`NAV_MENU` 导航、**全站搜索按钮**（4.9.0 起：只负责打开 `GlobalSearch` 命令面板，`Ctrl / Cmd + K` 同效；旧的展开式输入框、焦点抢占与整套宽度动画已删除，顶栏不再内嵌 `SearchBar`）、`ThemeSwitch`（EC 三档明暗控件；≤767px 搬进抽屉）、**会员入口**（`crown` 图标 + `/member`，`v-if="userStore.userId"` —— 与购物车同一条「有身份就显示」，游客也算：未开通的人也要找得到会员中心。等级徽标 `navbar-member-badge` 与购物车件数共用一套微型角标样式，`memberStore.levelName` 为空（未开通）时整块不渲染；等级只由 `aria-label` 读出来，徽标是装饰）、登录/注册按钮或用户头像下拉（「账号资产」组含 个人中心 / 我的订单 / 我的收藏 / 卡密管理 / 每日签到，「会员权益」组含 会员套餐 / 积分中心 / **成长值** / 我的优惠券，末尾是退出登录。**会员中心与消息中心刻意不放进下拉** —— 顶栏皇冠与信封已经是它们，同一个目标两个入口会让人怀疑哪个是真的。面板 `role="menu"`、条目 `role="menuitem"`、触发器 `aria-haspopup`/`aria-controls`/`aria-expanded`，`↓` 展开落焦首项、`↑/↓` 循环、`Esc` 关闭并还焦；`max-height: var(--dropdown-max-height)` + `overflow-y: auto` 解决短视口看不到底；展开动画 180ms）、**消息入口**（信封图标 + `/mail`，`v-if="userStore.isLoggedIn"` —— 未读数是登录才有的概念，游客不显示。角标与会员等级徽标共用一套微型角标样式，未读为 0 时不渲染数字块；未读只由 `aria-label` 读出来，角标是装饰。点开下拉时顺带静默刷新一次未读数。**游客看不到这个信封**：游客的站内通知永远是空的（服务端 `enqueue_notification` 对非注册用户直接返回 false），给一个点进去什么都没有的入口不如不给 —— 游客的诉求（问客服）走 `/support`，入口在页脚与帮助弹窗里）、移动端汉堡 + 抽屉。**不自己拉会员概览**：由 `App.vue` 在身份就绪后统一取（登录 / 换号 / 首屏各一次），顶栏只消费 `memberStore`。毛玻璃写在 `.navbar::before` 上 —— 写在 `.navbar` 上会让 `backdrop-filter` 成为 fixed 后代的包含块，弹窗会被"钉"进导航栏 |
 | `SearchBar.vue` | 受控搜索栏（`v-model` + `@submit`），并通过 `defineExpose` 暴露 `focus()` / `blur()` —— 顶栏点搜索图标要能把光标直接送进来。本身不碰 store，过滤规则属于数据层（`shopStore.filteredProducts`） |
 | `ThemeSwitch.vue` | 导航栏右侧的明暗切换：EC 的 `.theme-switch` 三档分段控件（浅色 / 深色 / 跟随系统）。结构契约 `data-set-theme` + `aria-pressed` + `role="group"`，与设计系统行为层（`js/ec.js`）一致；点击只调 `themeStore.setMode()`，不持有任何视觉值。窄屏（≤767px）在顶栏隐藏、改由抽屉底部的同一组件承担 —— 390px 的顶栏放不下 80px 的三档控件 |
 | `Footer.vue` | 页脚：品牌、简介、社交链接、支付方式、版权与法务链接，文案取自 `constants/content.js` 的 `FOOTER` / `SITE`。底部链接的第一项是**客服中心 `/support`** —— 顶栏信封只给注册用户，游客要有一个不带身份门槛的入口 |
@@ -1861,9 +1880,9 @@ test/
 ├── noEmojiIcons.test.js                # 界面不得再用 emoji 当图标（剥注释后全仓扫描）+ 映射表覆盖数据库实际取值
 ├── useToken.test.js                  # token 双存储读写与响应头提取
 ├── appIcon.test.js                    # 线性图标体系：颜色只来自 currentColor、模板引用的名字都存在
-├── globalSearch.test.js              # 全站搜索：旧搜索实现已删、对话/combobox/listbox 语义、Ctrl+K 与路由收起、商品/工具接口参数、键盘路径、移动端全屏、中英文案
+├── globalSearch.test.js              # 全站搜索：旧搜索实现已删、对话/combobox/listbox 语义、Ctrl+K 与路由收起、商品/工具接口参数、键盘路径、手机抽屉（抓握条/72px/速度阈值/取消/清空键）、最近搜索、顶栏退场、中英文案
 ├── navbarMember.test.js              # 顶栏会员入口：有身份即显示（游客也算）、等级徽标只对会员渲染并读进 aria-label、入口本体不是 button 套 router-link
-├── navGlass.test.js                  # 4.8.0 导航玻璃：令牌定义、顶栏 / 底部 Tab Bar 的 backdrop-filter 与实底回退、移动端隐藏购物车 / 会员、我的服务一张分组卡
+├── navGlass.test.js                  # 导航玻璃：六层令牌（底色/specular/highlight/rim/tint/lift）、顶栏与底部 Tab Bar 的三层背景与新阴影、滚动态加深模糊、手机 blur 覆盖、`backdrop-filter` 缺失与降透明回退、移动端隐藏购物车 / 会员、我的服务一张分组卡
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
 ├── bootOverlay.test.js               # 启动遮罩与路由进度条在 App.vue 上的接线

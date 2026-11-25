@@ -493,6 +493,15 @@
     <section class="page-panel profile-account" :aria-label="PAGES.profile.accountAria">
       <h2 class="page-panel-head">{{ TRADE.profileBasic }}</h2>
 
+      <!--
+        游客态：这一块七行全是「未设置 / 未绑定」。只读表格本身没错，
+        错在它只说明「你没有」，不说明「登录后会有」。给它一句话的出口，
+        用户才知道点上面的「去登录」能换来什么。
+      -->
+      <p v-if="!userStore.isLoggedIn" class="page-note profile-account-guest">
+        {{ PAGES.profile.guestNote }}
+      </p>
+
       <dl class="profile-fields">
         <div
           v-for="row in readonlyRows"
@@ -2064,6 +2073,12 @@ onMounted(() => {
   margin-top: calc(var(--space-unit) * 2.5);
 }
 
+/* 游客态：表头下面先给一句「登录能换来什么」，再让只读行登场 */
+.profile-account-guest {
+  margin-top: calc(var(--space-unit) * 1);
+  margin-bottom: calc(var(--space-unit) * 2);
+}
+
 /* 说明里的「改绑与验证」入口做成行内文本链接：
  * 这是补充说明，不是主操作，不该有一排按钮的重量。 */
 .profile-note-links {
@@ -2439,6 +2454,39 @@ onMounted(() => {
   .profile-field-value {
     min-height: calc(var(--ec-control-h-md) * var(--mobile-control-scale));
     padding-inline: calc(var(--ec-input-px) * var(--mobile-padding-scale));
+  }
+
+  /* 页头徽标：全站在窄屏把 --row 页头改成竖排（标题 + 动作各占一行），
+   * 但「游客 / V7 / 注册 N 天」是**状态**，不是动作。竖排之后它掉到描述下面
+   * 独占一行，和描述之间空出一段，读起来像第二个眉标。这里把它收回标题右侧。 */
+  .profile-page .page-shell-head--row {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--ec-space-3);
+  }
+
+  .profile-page .page-shell-head--row > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .profile-page .page-shell-head--row > .u-tag {
+    flex: none;
+    margin-top: 2px;
+  }
+
+  /* 底部悬浮 Tab 占 66px + 12px 边距，全站 page-shell 的 38.4px 收尾不够：
+   * 滚到底时最后一行会压在 Tab 底下。这里留出「Tab 高度 + 边距 + 一档呼吸」。 */
+  .profile-page {
+    padding-bottom: calc(
+      var(--bottom-nav-height, 64px) + 12px + env(safe-area-inset-bottom, 0px) + var(--ec-space-4)
+    );
+  }
+
+  /* UID 行的眼睛 / 复制：28px 在手指下太小，撑到 44 并让卡片跟着长高 */
+  .profile-field-value--code .ec-icon-btn {
+    width: var(--ec-control-h-lg);
+    height: var(--ec-control-h-lg);
   }
 
   /* 窄屏兜底：标识行必须留在栏宽以内 —— 卡片宽度上限钉在 100%，

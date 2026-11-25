@@ -151,10 +151,10 @@ function isActive(item) {
     max-width: 520px;
     padding: 4px;
     transform: translateX(-50%);
-    background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
+    background: var(--glass-nav-specular), var(--glass-nav-tint), var(--glass-nav-bg-strong);
     border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
-    box-shadow: var(--glass-nav-highlight), var(--shadow-float);
+    box-shadow: var(--glass-nav-highlight), var(--glass-nav-rim), var(--glass-nav-lift-strong);
     -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
     backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
   }
@@ -225,6 +225,8 @@ function isActive(item) {
 .bottom-nav-item.is-active {
   color: var(--accent);
   background: var(--accent-soft);
+  /* 选中项是玻璃上的一枚「凸起」：上缘再补一道高光，它才像从液面里浮出来 */
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ec-bg-surface) 72%, transparent);
 }
 
 /* 当前项的第三重提示：顶部短指示条（颜色 + 字重之外） */

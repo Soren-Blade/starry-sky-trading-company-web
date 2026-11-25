@@ -60,6 +60,100 @@ const { modalRef, activate, deactivate } = useModalA11y({
 })
 
 const trimmed = computed(() => query.value.trim())
+
+/**
+ * 最近搜索：手机端空态的唯一内容。
+ *
+ * 命令面板在桌面靠「快捷入口」就够用；手机上那一排入口会把首屏变成一张菜单，
+ * 4.10 已经砍掉，于是空态只剩一句提示 —— 每开一次面板都像第一次打开。
+ * 这里改成本地最近搜索：只记录用户自己搜过的词，不占接口、不猜喜好，
+ * 搜过一次之后第二次就是一次点击。写不进去（隐私模式）就静默跳过，
+ * 最近搜索是锦上添花，不能打断搜索本身。
+ */
+const RECENT_KEY = 'sstc.search.recent'
+const RECENT_LIMIT = 6
+const recent = ref([])
+
+function readRecent() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]')
+    recent.value = Array.isArray(raw)
+      ? raw.filter((item) => typeof item === 'string' && item.trim()).slice(0, RECENT_LIMIT)
+      : []
+  } catch {
+    recent.value = []
+  }
+}
+
+function rememberRecent(text) {
+  const value = (text || '').trim()
+  if (!value) return
+  recent.value = [value, ...recent.value.filter((item) => item !== value)].slice(0, RECENT_LIMIT)
+  try {
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(recent.value))
+  } catch {
+    /* 隐私模式下写不了 localStorage：最近搜索降级为本次会话内可用 */
+  }
+}
+
+function clearRecent() {
+  recent.value = []
+  try {
+    window.localStorage.removeItem(RECENT_KEY)
+  } catch {
+    /* 同上：清不掉也不影响搜索 */
+  }
+}
+
+function useRecent(text) {
+  query.value = text
+}
+
+// ── 手机端下拉收起 ────────────────────────────────────────────
+// 4.10 的手机面板铺满 100dvh，遮罩被盖住，唯一退出口是右上角那个 ×。
+// 这一版把面板改成「顶部抽屉」：顶边留一条抓握条，按住往下拖超过阈值
+// （或甩出一段速度）就收起，没到阈值弹回；面板下方留出的页面可以直接点掉。
+// 手势只绑在抓握条与头部，不拦截结果列表的滚动。
+const DRAG_CLOSE_PX = 72
+const DRAG_CLOSE_VELOCITY = 0.6
+const dragOffset = ref(0)
+const dragging = ref(false)
+let dragStartY = 0
+let dragStartAt = 0
+
+function isPhone() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+}
+
+function onDragStart(event) {
+  // 鼠标拖动与桌面端不参与：桌面已经有 Esc 与点外部
+  if (!isPhone() || event.pointerType === 'mouse') return
+  dragging.value = true
+  dragStartY = event.clientY
+  dragStartAt = window.performance.now()
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+}
+
+function onDragMove(event) {
+  if (!dragging.value) return
+  const delta = event.clientY - dragStartY
+  // 往下跟手、往上只给 1/4 阻尼：告诉手指「这个方向没有内容」
+  dragOffset.value = delta > 0 ? Math.min(delta, 240) : delta / 4
+}
+
+function onDragEnd() {
+  if (!dragging.value) return
+  dragging.value = false
+  const distance = dragOffset.value
+  const elapsed = Math.max(1, window.performance.now() - dragStartAt)
+  dragOffset.value = 0
+  if (distance > DRAG_CLOSE_PX || distance / elapsed > DRAG_CLOSE_VELOCITY) close()
+}
+
+function clearQuery() {
+  query.value = ''
+}
+
 const quickLinks = computed(() =>
   PAGE_LINKS.map((item) => ({
     ...item,
@@ -195,13 +289,19 @@ function openSearch() {
   query.value = ''
   activeIndex.value = 0
   resetResults()
+  // 每次打开都重新读一遍：别的标签页清过最近搜索时这里不会拿到旧值
+  readRecent()
   open.value = true
+  // 手机抽屉铺在顶栏上方，两套「头」叠在一起会从玻璃里透出幽灵图标：
+  // 用 html 上的状态类让顶栏退场，退场动画由 Navbar 自己的 transition 负责。
+  document.documentElement.classList.add('gs-open')
   activate()
 }
 
 function close() {
   if (!open.value) return
   open.value = false
+  document.documentElement.classList.remove('gs-open')
   deactivate()
   query.value = ''
   resetResults()
@@ -214,6 +314,9 @@ function go(path) {
 
 function activateEntry(entry) {
   if (!entry) return
+  // 只有「真的拿这个关键词走了」才记进最近搜索：点开结果、看全部结果。
+  // 光是打字不算 —— 否则最近搜索里全是打了一半的半截词。
+  rememberRecent(query.value)
   if (entry.kind === 'page') {
     go(entry.path)
     return
@@ -274,6 +377,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   window.clearTimeout(searchTimer)
+  // 组件被卸载时（比如整页刷新期间的 HMR）别把顶栏永久留在退场态
+  document.documentElement.classList.remove('gs-open')
 })
 
 defineExpose({ open: openSearch, close })
@@ -287,13 +392,34 @@ defineExpose({ open: openSearch, close })
           id="global-search"
           ref="modalRef"
           class="gs-panel"
+          :class="{ 'is-dragging': dragging }"
+          :style="dragOffset ? { transform: `translateY(${dragOffset}px)` } : null"
           role="dialog"
           aria-modal="true"
           aria-labelledby="gs-title"
         >
           <h2 id="gs-title" class="visually-hidden">{{ PAGES.searchGlobal.title }}</h2>
 
-          <header class="gs-head">
+          <!-- 手机端把手：往下拖即可收起。桌面端被 CSS 隐藏；
+               手势是快捷方式，不是唯一退出口 —— 取消按钮与 Esc 一直都在。 -->
+          <div
+            class="gs-grab"
+            aria-hidden="true"
+            @pointerdown="onDragStart"
+            @pointermove="onDragMove"
+            @pointerup="onDragEnd"
+            @pointercancel="onDragEnd"
+          >
+            <span class="gs-grab-bar"></span>
+          </div>
+
+          <header
+            class="gs-head"
+            @pointerdown="onDragStart"
+            @pointermove="onDragMove"
+            @pointerup="onDragEnd"
+            @pointercancel="onDragEnd"
+          >
             <AppIcon name="search" class="gs-head-icon" aria-hidden="true" />
             <input
               id="global-search-input"
@@ -310,19 +436,55 @@ defineExpose({ open: openSearch, close })
               :placeholder="PAGES.searchGlobal.placeholder"
               @keydown="onInputKeydown"
             />
+            <button
+              v-if="query"
+              type="button"
+              class="gs-clear"
+              :aria-label="PAGES.searchGlobal.clearInput"
+              @click="clearQuery"
+            >
+              <AppIcon name="x" aria-hidden="true" />
+            </button>
             <kbd class="gs-kbd gs-kbd--desktop">Esc</kbd>
             <button
               type="button"
-              class="ec-icon-btn gs-close"
+              class="ec-icon-btn gs-close gs-close--desktop"
               :aria-label="PAGES.searchGlobal.close"
               @click="close"
             >
               <AppIcon name="x" />
             </button>
+            <button type="button" class="gs-cancel" @click="close">
+              {{ PAGES.searchGlobal.cancel }}
+            </button>
           </header>
 
           <div class="gs-body">
-            <p v-if="!trimmed" class="gs-hint">{{ PAGES.searchGlobal.hint }}</p>
+            <div v-if="!trimmed && recent.length" class="gs-recent">
+              <div class="gs-recent-head">
+                <p class="gs-group-title">{{ PAGES.searchGlobal.recent }}</p>
+                <button type="button" class="gs-recent-clear" @click="clearRecent">
+                  {{ PAGES.searchGlobal.clearRecent }}
+                </button>
+              </div>
+              <div class="gs-chips">
+                <button
+                  v-for="item in recent"
+                  :key="item"
+                  type="button"
+                  class="gs-chip"
+                  @click="useRecent(item)"
+                >
+                  {{ item }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 有最近搜索时不再叠一句用法说明：空态只留一样东西，
+                 否则「最近搜索 + 提示」两段文字互相稀释。 -->
+            <p v-if="!trimmed && !recent.length" class="gs-hint">
+              {{ PAGES.searchGlobal.hint }}
+            </p>
             <p v-else-if="loading" class="gs-hint">{{ PAGES.searchGlobal.loading }}</p>
             <p v-else-if="failed" class="gs-hint gs-hint--error">
               {{ PAGES.searchGlobal.failed }}
@@ -380,7 +542,7 @@ defineExpose({ open: openSearch, close })
               v-if="trimmed && !loading"
               class="gs-all"
               :to="{ path: '/search', query: { q: trimmed } }"
-              @click="close"
+              @click="rememberRecent(trimmed); close()"
             >
               {{ PAGES.searchGlobal.viewAll }}
               <AppIcon name="chevron-right" aria-hidden="true" />
@@ -477,6 +639,110 @@ defineExpose({ open: openSearch, close })
 
 .gs-close {
   flex: none;
+}
+
+/* 取消：手机端的退出口。桌面不显示（那里有 Esc 与右上角 ×）。 */
+.gs-cancel {
+  display: none;
+  flex: none;
+  min-height: var(--ec-control-h-md);
+  padding: 0 var(--ec-space-1);
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--fs-body);
+  cursor: pointer;
+}
+
+.gs-clear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--ec-radius-full);
+  background: var(--ec-bg-wash);
+  color: var(--text-muted);
+  font-size: var(--fs-label);
+  cursor: pointer;
+}
+
+.gs-clear:hover {
+  background: var(--bg-soft);
+  color: var(--text-primary);
+}
+
+/* 手机端抓握手柄：只做手势入口，不参与读屏（退出口有取消按钮与 Esc） */
+.gs-grab {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  touch-action: none;
+}
+
+.gs-grab-bar {
+  width: 40px;
+  height: 5px;
+  border-radius: var(--ec-radius-full);
+  background: color-mix(in srgb, var(--text-muted) 42%, transparent);
+}
+
+.gs-recent {
+  padding-bottom: var(--ec-space-1);
+}
+
+.gs-recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ec-space-2);
+  padding-right: var(--ec-space-4);
+}
+
+.gs-recent-clear {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-label);
+  cursor: pointer;
+}
+
+.gs-recent-clear:hover {
+  color: var(--accent);
+}
+
+.gs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ec-space-2);
+  padding: 0 var(--ec-space-4);
+}
+
+.gs-chip {
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 var(--ec-space-3);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--ec-radius-full);
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gs-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .gs-body {
@@ -660,33 +926,87 @@ defineExpose({ open: openSearch, close })
   opacity: 0;
 }
 
+/* 面板入场：桌面从上方 16px 浮入；手机上在下面的断点里改成「整条从顶边滑下」。
+ * 基线写在断点之前，断点里只覆盖需要变的那一条，避免同一层出现两个 767 块。 */
+.gs-fade-enter-active .gs-panel,
+.gs-fade-leave-active .gs-panel {
+  transition:
+    transform 0.24s var(--ec-ease-out),
+    opacity 0.18s ease;
+}
+
+.gs-fade-enter-from .gs-panel,
+.gs-fade-leave-to .gs-panel {
+  opacity: 0;
+  transform: translateY(-16px);
+}
+
 @media (max-width: 767px) {
-  /* 手机端：一块会「透」的模态玻璃，而不是实色满屏。
-   * 遮罩只留很薄的一层 tint + 轻模糊，面板自身用导航同一档 66% 底色与更重的模糊，
-   * 页面里的卡片、标题在背后仍然可感知，但不至于和输入/结果抢字。 */
+  /* 手机端：从顶边「长出来」的一张玻璃抽屉，而不是铺满 100dvh 的全屏页。
+   *
+   * 4.10 的面板铺满整屏，遮罩被压在底下点不到，唯一退出口是右上角那个 × ——
+   * 手指要横跨整屏去够它。这一版把退出口做成三重的、都更近：
+   *   ① 顶部抓握条，往下拖过 72px（或甩出速度）收起；
+   *   ② 头部右侧「取消」，拇指自然落点；
+   *   ③ 面板不占满屏，下方留出的页面本身就是遮罩，点一下即关。
+   * 高度按内容走（min(82dvh)），键盘弹出时由浏览器压缩视口，面板跟着变矮。 */
   .gs-overlay {
     padding: 0;
-    align-items: stretch;
-    background: color-mix(in srgb, var(--ec-bg-surface) 16%, transparent);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
-    backdrop-filter: blur(12px) saturate(150%);
+    align-items: flex-start;
+    background: color-mix(in srgb, var(--ec-bg-base) 22%, transparent);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
   }
 
   .gs-panel {
     width: 100%;
-    max-height: none;
-    height: 100dvh;
+    max-height: min(82dvh, 720px);
+    height: auto;
     border: 0;
-    border-radius: 0;
-    background: var(--glass-nav-specular), var(--glass-nav-bg);
-    box-shadow: var(--glass-nav-highlight);
-    -webkit-backdrop-filter: blur(calc(var(--glass-nav-blur) * 1.2)) saturate(var(--glass-nav-saturate));
-    backdrop-filter: blur(calc(var(--glass-nav-blur) * 1.2)) saturate(var(--glass-nav-saturate));
+    border-radius: 0 0 var(--ec-radius-2xl) var(--ec-radius-2xl);
+    /* 与导航同一档玻璃：品牌色渗透 + 上缘 specular + 84% 表面，
+     * 面板因此读作「导航栏拉下来的一层」，而不是另一个界面。 */
+    background: var(--glass-nav-specular), var(--glass-nav-tint), var(--glass-nav-bg-strong);
+    box-shadow: var(--glass-nav-highlight), var(--glass-nav-lift-strong);
+    -webkit-backdrop-filter: blur(calc(var(--glass-nav-blur) * 0.9)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(calc(var(--glass-nav-blur) * 0.9)) saturate(var(--glass-nav-saturate));
     padding-top: env(safe-area-inset-top);
+    transition: transform 0.26s var(--ec-ease-out);
+    will-change: transform;
+  }
+
+  /* 手机入场：整条抽屉从顶边滑下来，不再是从上浮 16px 的「小弹窗」 */
+  .gs-fade-enter-from .gs-panel,
+  .gs-fade-leave-to .gs-panel {
+    transform: translateY(-100%);
+  }
+
+  /* 跟手拖动时不要过渡，松手才有回弹 */
+  .gs-panel.is-dragging {
+    transition: none;
+  }
+
+  .gs-grab {
+    display: flex;
+  }
+
+  .gs-cancel {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .gs-close--desktop {
+    display: none;
   }
 
   .gs-head {
-    padding: var(--ec-space-3) var(--ec-space-3);
+    padding: var(--ec-space-2) var(--ec-space-3);
+    /* 头部同时是手感区：让纵向拖动交给面板，横向留给输入框光标 */
+    touch-action: pan-x;
+  }
+
+  .gs-input {
+    height: var(--ec-control-h-lg);
   }
 
   /* 手机端不摆快捷入口：一屏只做「输入 → 结果」，少一层选择 */
@@ -698,12 +1018,40 @@ defineExpose({ open: openSearch, close })
   .gs-foot {
     display: none;
   }
+
+  /* 结果行在手指下要够高：44px 是下限，这里给到 56px 并让副标题不挤标题 */
+  .gs-option {
+    min-height: 56px;
+    padding: var(--ec-space-3);
+  }
+
+  .gs-all {
+    justify-content: space-between;
+    margin: var(--ec-space-2) var(--ec-space-3) var(--ec-space-3);
+    padding: var(--ec-space-3);
+    border: 1px solid var(--divider);
+    border-radius: var(--ec-radius-lg);
+    background: color-mix(in srgb, var(--ec-bg-surface) 55%, transparent);
+    font-size: var(--fs-body);
+  }
 }
 
+/* 面板的入场与退场跟着遮罩走：遮罩淡入，面板自己从上方 16px 处落位并回正，
+ * 用户看到的是「它从导航栏里长出来」，而不是「一个弹窗突然出现」。
+ * 规则写在手机断点之前，手机端那条覆盖在断点里。 */
 @media (prefers-reduced-motion: reduce) {
   .gs-fade-enter-active,
   .gs-fade-leave-active {
     transition: none;
+  }
+
+  .gs-panel {
+    transition: none;
+  }
+
+  .gs-fade-enter-from .gs-panel,
+  .gs-fade-leave-to .gs-panel {
+    transform: none;
   }
 
   .gs-skeleton-row {
