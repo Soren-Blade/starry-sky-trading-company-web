@@ -32,6 +32,12 @@
 - 抽屉与身份面板互斥：打开一个会自动收起另一个（`toggleMenu()` / `toggleUserMenu()` 里各关一张），两个浮层不再叠在一起。
 - `.drawer-group-title` 误用未定义的 `--tracking-overline`（designTokens 门禁抓到），改用 `--tracking-label`。
 
+### BrowserSkill 兼容性（bsk 0.5.0 / protocol 1.9，扩展与 CLI 同 build `361da1d`）
+
+- `bsk_interact evaluate` 在页面刚 reload 或 HMR 重编译后立刻执行，会报「The strict observation changed before this action」——此时页面还在变，sync 出来的 observation 立刻作废。正确做法是**不带 `observationId`、只带 `unverified: true`** 并让脚本自己校验前置条件；两者同时传会被拒：「unverified skips page verification; omit observationId, expect and dependsOn」。
+- 对**非活动标签页**截图（`tabId` 指向后台标签）拿到的是浏览器的标签总览缩略图，不是页面本身；需先 `bsk_tabs select <tabId>` 再截图。
+- 会话空闲约 5 分钟被 daemon 回收（`session not registered or already stopped`），一个任务跨多阶段时要重开 `bsk_session start`；这不是版本不兼容，doctor 全绿。
+
 ### 测试
 
 - `test/navGlass.test.js`：「手机端头像」用例改为 36px + 表面色描边 + 状态点 9px；`navbar-mail` 断言改为类名前缀正则（允许追加 `hide-below-768`）。
