@@ -1382,9 +1382,10 @@ onUnmounted(() => {
     box-shadow: 0 0 0 2.5px var(--ec-bg-surface);
   }
 
-  /* ── 抽屉：手机上是「从顶栏垂下来的面板」，不是铺满屏的菜单 ── */
+  /* ── 抽屉：手机上是「从顶栏垂下来的面板」，不是铺满屏的菜单 ──
+   * 与身份面板同一套几何：离顶栏 1.5 单位、左右各 2 单位，两张浮层因此能互换。 */
   .navbar-drawer {
-    top: calc(var(--navbar-height) * var(--mobile-nav-scale));
+    top: calc(var(--navbar-height) * var(--mobile-nav-scale) + var(--space-unit) * 1.5);
     left: calc(var(--space-unit) * 2);
     right: calc(var(--space-unit) * 2);
     max-height: calc(100dvh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 6);
