@@ -9,6 +9,27 @@
 
 ---
 
+## [4.16.0] — 2026-11-25
+
+悬浮导航再透一档，并且暗色下也「发亮」——把地板光的颜色来源从「表面色」换成会随主题翻转的**高光膜**。只动令牌与一处样式。
+
+### 新增
+
+- **语义层高光膜 `--ec-highlight-soft`**（`semantic.css` / `theme-dark.css`）：比表面更亮的一层，只给浮空材质的下缘受光用。亮色 `rgba(255,255,255,.55)`，暗色 `rgba(255,255,255,.09)`。这是 4.15.0 遗留问题的根：地板光原本取 `--ec-bg-surface`，而暗色主题的 surface 是深色（`--ec-ink-850`），于是「地板光」在暗色下变成一道更暗的边。
+- **`--glass-nav-bg-float`**（`variables.css`）：浮空块的独立底色档，`--ec-bg-surface` 56%（常驻顶栏仍 66%、滚动态 84%）。
+
+### 变更
+
+- **手机悬浮 Tab Bar 底色 66% → 56%**（`BottomNav.vue`）：浮空的那一块四周都是内容，比常驻顶栏薄一档更符合「浮在内容上」的直觉；模糊仍是 `--glass-nav-blur-strong` 32px。
+- **`--glass-nav-floor` 改用高光膜**：`linear-gradient(0deg, var(--ec-highlight-soft) 0%, transparent 62%)`。亮色下与原来的白膜等价（视觉几乎无差），暗色下由「压暗」变成「提亮」，下缘重新泛光。
+- **底部标签改用一级文字**：玻璃再透之后，二级文字（#6B7280）在 56% 的合成底上只剩约 3.1:1；改用 `--text-primary` 后亮色约 9.9:1、暗色约 14:1。层级差交给字号、图标与选中色，不靠降低文字对比度。
+
+### 测试
+
+- `test/navGlass.test.js`：悬浮栏断言改 `--glass-nav-bg-float`；「地板光」用例改名并新增三条——高光膜在 `semantic.css` / `theme-dark.css` 都有定义（.55 / .09）、floor 只引用 `--ec-highlight-soft`、标签用 `--text-primary`、float 令牌为 56%。
+- `npm test` 1270 条全部通过；`npm run lint` / `npm run build` 通过。
+- BrowserSkill（bsk 0.5.0，iPhone-14 模拟）：亮色 `.bottom-nav` 计算值 `color(srgb 1 1 1 / 0.56)`、floor 图层 `rgba(255,255,255,0.55) 0% → 62%`；暗色 `data-theme="dark"` 下底色 `color(srgb 0.0706 0.0863 0.1216 / 0.56)`、floor 图层 `rgba(255,255,255,0.09)`，下缘可见提亮；两套主题下标签与胶囊均清晰。
+
 ## [4.15.0] — 2026-11-25
 
 悬浮导航的**背景**换成真正的模态玻璃（选中胶囊保留不动），手机顶栏头像收到与一行图标等重的尺寸。只动样式与一个令牌，接口与结构不变。

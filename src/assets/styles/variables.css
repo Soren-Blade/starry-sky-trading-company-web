@@ -155,6 +155,10 @@
    * 普通弹层、下拉仍用实底，避免底下内容干扰阅读。 */
   --glass-nav-bg: color-mix(in srgb, var(--ec-bg-surface) 66%, transparent);
   --glass-nav-bg-strong: color-mix(in srgb, var(--ec-bg-surface) 84%, transparent);
+  /* 浮空的那一块（手机底部 Tab Bar）比常驻顶栏更薄：它四周都是内容，
+   * 66% 在深色商品图上仍像一层白纱，4.16.0 收到 56% —— 更透的那部分
+   * 由高光膜地板光与更深的标签色去换可读性。 */
+  --glass-nav-bg-float: color-mix(in srgb, var(--ec-bg-surface) 56%, transparent);
   /* 顶部 specular：上缘亮、往下 24% 快速衰减，模拟光从上方打在玻璃棱上 */
   --glass-nav-specular: linear-gradient(
     180deg,
@@ -190,15 +194,12 @@
     color-mix(in srgb, var(--accent) 10%, transparent)
   );
   --glass-nav-rim: inset 0 0 0 1px color-mix(in srgb, var(--ec-bg-surface) 32%, transparent);
-  /* 地板光（4.13.0）：浮空的玻璃除了上缘受光，下缘也会吃到一次漫反射。
-   * 它是从底边往上 44% 的一道浅光，落在 Tab 标签那一行——
-   * 既让玻璃有厚度，也让 10px 的标签在透上来的内容上有稳定的底色；
-   * 再深就把 66% 的玻璃又糊成 84% 的实底，材质反而看不出来。 */
-  --glass-nav-floor: linear-gradient(
-    0deg,
-    color-mix(in srgb, var(--ec-bg-surface) 44%, transparent) 0%,
-    transparent 62%
-  );
+  /* 地板光（4.13.0 引入，4.16.0 改成高光膜）：浮空的玻璃除了上缘受光，
+   * 下缘也会吃到一次漫反射。它是从底边往上、62% 处消失的一道亮光，落在 Tab 标签那一行——
+   * 既让玻璃有厚度，也让 10px 的标签在透上来的内容上有稳定底色。
+   * 4.16.0 起不再用 `--ec-bg-surface`（暗色下那是深色，地板光会变成一道暗边），
+   * 改用语义层的高光膜 `--ec-highlight-soft`：亮色是白光叠浅表面，暗色是低透明白光。 */
+  --glass-nav-floor: linear-gradient(0deg, var(--ec-highlight-soft) 0%, transparent 62%);
   /* 影：玻璃是浮起来的一层，落影要比普通卡片更远更浅；
    * 直接复用 EC 的两档大阴影，暗色主题自动跟着换，不再写死 rgba。 */
   --glass-nav-lift: var(--ec-shadow-lg);

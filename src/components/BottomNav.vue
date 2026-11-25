@@ -176,10 +176,10 @@ const activeIndex = computed(() => items.value.findIndex((item) => isActive(item
     padding: 5px;
     transform: translateX(-50%);
     /* 与顶栏同一套拆法：底色走 background-color，specular 与品牌洗染走图层。
-     * 4.13.0：底色从 84% 降到 66%（与顶栏常态同一档），模糊从 24 提到 32 ——
-     * 悬浮栏不再像「贴了一块白砖」，内容从玻璃后面透上来，才是模态玻璃。
-     * 透上来之后标签那一行需要自己的底：加一层从下往上 58% 的地板光。 */
-    background-color: var(--glass-nav-bg);
+     * 4.15.0：底色 84% → 66%、模糊 24 → 32，悬浮栏开始像玻璃；
+     * 4.16.0：再收到 56%（--glass-nav-bg-float），地板光换成会随主题翻转的
+     * 高光膜（暗色下同样发亮），标签用一级文字换回对比度。 */
+    background-color: var(--glass-nav-bg-float);
     background-image: var(--glass-nav-specular), var(--glass-nav-floor), var(--glass-nav-wash);
     border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
@@ -290,9 +290,10 @@ const activeIndex = computed(() => items.value.findIndex((item) => isActive(item
   min-height: 56px;
   padding: 6px 2px;
   border-radius: 17px;
-  /* 玻璃后面有内容时，三级文字（#5F6878）在暗色商品图上只有 2.4:1；
-   * 这一行用二级文字，配合地板光把 10px 标签拉回到可读区间。 */
-  color: var(--text-secondary);
+  /* 玻璃越透，标签色就越要承担可读性：
+   * 三级文字在半透明底上遇到暗色商品图只有约 2.4:1；二级（#6B7280）在 56% 的
+   * 玻璃上约 3.1:1 仍不够 4.5:1；这里直接用一级文字，把层级差交给字号与选中色。 */
+  color: var(--text-primary);
   text-decoration: none;
   transition:
     color var(--transition-interactive),

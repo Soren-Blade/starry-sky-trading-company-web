@@ -21,6 +21,8 @@ const read = (relPath) =>
 const VARIABLES = read('src/assets/styles/variables.css')
 const NAVBAR = read('src/components/Navbar.vue')
 const BOTTOM_NAV = read('src/components/BottomNav.vue')
+const SEMANTIC = read('src/assets/ec/tokens/semantic.css')
+const THEME_DARK = read('src/assets/ec/tokens/theme-dark.css')
 
 test('玻璃令牌只在导航层定义，且带模糊、饱和与顶部 specular', () => {
   assert.match(VARIABLES, /--glass-nav-bg:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 66%, transparent\)/)
@@ -109,19 +111,24 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
 })
 
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
-  // 4.13.0：底色降到 66%（与顶栏常态同档）、模糊换 32px 档、并加一层地板光
+  // 4.15.0：悬浮栏单独一档底色（比顶栏更薄）、模糊换 32px 档、并加一层地板光
   assert.match(
     BOTTOM_NAV,
-    /background-color: var\(--glass-nav-bg\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-floor\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur-strong\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /background-color: var\(--glass-nav-bg-float\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-floor\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur-strong\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
 })
 
-test('地板光是一层渐变图层，标签用二级文字在玻璃上保读', () => {
-  assert.match(VARIABLES, /--glass-nav-floor: linear-gradient\([\s\S]*?44%, transparent\)/)
-  // 半透明底上不再用三级文字（暗色商品图上只有 2.4:1）
-  assert.match(BOTTOM_NAV, /\.bottom-nav-item \{[\s\S]*?color: var\(--text-secondary\);/)
+test('地板光用会随主题翻转的高光膜，标签用一级文字在玻璃上保读', () => {
+  // 暗色下 --ec-bg-surface 是深色，地板光若用它就会变成一道暗边
+  assert.match(VARIABLES, /--glass-nav-floor: linear-gradient\(0deg, var\(--ec-highlight-soft\) 0%, transparent 62%\)/)
+  assert.match(SEMANTIC, /--ec-highlight-soft: rgba\(255, 255, 255, \.55\)/)
+  assert.match(THEME_DARK, /--ec-highlight-soft: rgba\(255, 255, 255, \.09\)/)
+  // 半透明底上不再用三级/二级文字
+  assert.match(BOTTOM_NAV, /\.bottom-nav-item \{[\s\S]*?color: var\(--text-primary\);/)
+  // 悬浮栏比顶栏更薄：单独一档底色令牌
+  assert.match(VARIABLES, /--glass-nav-bg-float: color-mix\(in srgb, var\(--ec-bg-surface\) 56%, transparent\)/)
 })
 
 test('选中态是一枚共享胶囊：滑动 + 软尾 + 图标上浮', () => {
