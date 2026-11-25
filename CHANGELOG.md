@@ -9,6 +9,45 @@
 
 ---
 
+## [4.19.0] — 2026-11-25
+
+手机顶栏的「一眼重量」与两张浮层的内容排布。用户反馈原话：「重新调整移动端顶部导航栏头像的大小，头像太大了和左右图标对比太明显」「重新设计 lang-switch--drawer 的内容…后续可能增加其他语言，增加反馈按钮」「重新设计 user-menu，优化布局及排版，采用新颖的设计」。
+
+### 变更
+
+- **头像 36 → 28px**：4.18.0 的 36px 在一行 20px 图标里是唯一的「大色块」，放大到 1.8 倍就不像同一行的控件了。28px 是 20px 图标的 1.4 倍——眼睛认得出这是人，但不抢搜索与菜单。描边 2 → 1.5px（小圆上 2px 会吃掉一圈脸），状态点 9 → 7px。命中区补到 44×44（`::before inset: -8px`，28 + 8×2）。
+- **汉堡按钮命中区 32.4 → 44px**：它与搜索按钮同排，之前却只有图标那么大，拇指在顶栏右端最容易点空。
+- **身份面板头部改成身份卡**：`.user-info` 从两行文字变成「40px 头像 + 昵称/徽标 + 创建时间」的横向卡片，底色是品牌色洗染 + `--bg-soft`（与个人中心的通行证同一套语言）。它不承接点击——个人中心在下面第一格，同面板不放两个同目的地入口。
+- **六个目的地从「3 列方格墙」改成「2 列横条」**：`.user-menu-grid` 在 767 断点下 `repeat(2, 1fr)`，条目 `flex-direction: row`、`min-height: var(--ec-control-h-md)`=44px。方格墙六格等重、每格 76px，像仪表盘而不是菜单；横条一行读完，面板高度少约 40%。桌面端仍是一列 `.u-dropdown-item`。
+
+### 新增
+
+- **语言切换抽屉重做**：两枚平分宽度的胶囊换成「语言行列表」（`role="radiogroup"` + 每行 `role="radio"` + 右侧勾）。理由是语言只会增加、不会减少——第三种语言出现时胶囊会掉行，行式列表只增加行数、不改版式。行高 44，选中行用 `--accent-soft` + 勾（不只靠颜色）。
+- **语言反馈出口**：抽屉底部一条「没有你的语言？」的描边卡，CTA 直达客服中心的语言反馈模式（`/support?topic=language`）。
+- **客服中心语言反馈模式**：`?topic=language` 时表单顶部出现三个预设（没有我的语言 / 翻译意思不对 / 文字显示异常），点一下把分类落到 `other`、标题与正文骨架填好，用户只补细节。**不新增反馈分类**——分类由服务端 CHECK 约束为 order/member/points/coupon/account/other 六种。
+- 文案：`language.feedbackTitle` / `feedbackDesc` / `feedbackCta`（中英各一份）；`SUPPORT.languageTopicsLabel` / `languageTopicsHint` / `languagePresets` / `languageSubjects` / `languageBodies`。
+
+### 修复
+
+- **抽屉在路由变化后自己收起**：抽屉不在 `RouterView` 里，4.19.0 新增的「反馈语言问题」链接点完会落在「新页面被菜单盖住」的状态。加 `watch(() => route.fullPath)` 同时收起抽屉与身份面板。
+- 语言反馈卡描述过长导致三行换行，收成一句（「告诉我们你想用哪种语言，或哪句读着别扭。」）。
+- `.lang-feedback-desc` 误用未定义的 `--fs-caption`（designTokens 门禁抓到），改用 `--fs-label`。
+
+### 测试
+
+- 新增 `test/languageDrawer.test.js`（行列表契约、可扩展性、反馈出口）与 `test/supportLanguageTopic.test.js`（不新增分类、`?topic=language` 才出现预设、标题正文骨架 + 英文镜像）。
+- `test/navGlass.test.js` 头像用例改 28px/1.5px/7px/44 命中；新增「三个落点命中区同高 44」。
+- `test/navbarUserMenu.test.js` 窄屏用例改「整宽卡片 + 两列入口」，新增「身份卡抬头」与「抽屉路由变化后收起」。
+- `npm test` 1280/1280 通过。
+
+### BrowserSkill 兼容性（bsk 0.5.0）
+
+- `bsk_interact click` 在 HMR 刚重编译后偶发「The pointer target is covered or unavailable」——页面结构正在替换，同步一次再点即可；**不要重放**（重放会点到旧坐标）。
+- `bsk click` 用类选择器点被遮挡的触发器时会失败，改用「元素 + 标签」选择器（`button#user-menu-trigger`）或先关闭覆盖层。
+- 会话在任务中途被回收（`session does not belong to this plugin`）时，`bsk_session list` 为空即表示已回收，重新 `start` 并把 emulation 与主题重新设一遍。
+
+---
+
 ## [4.18.0] — 2026-11-25
 
 手机顶栏从「把桌面那一排缩小」改成「只有三个落点」，抽屉与身份面板按手机的操作方式重排。用户反馈原话：「重新调整移动端顶部导航栏头像的大小 目前不美观」「button 按钮重设计」「drawer-list 要不要在移动端展示」「user-menu 有没有必要在移动端展示」。
