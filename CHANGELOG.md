@@ -9,6 +9,21 @@
 
 ---
 
+## [4.10.0] — 2026-11-25
+
+导航与搜索的材质收口：顶栏和悬浮 Tab Bar 从「半透明 + 模糊」升级为四层 Liquid Glass（底色 / 上缘 specular / 内缘高光 / 描边），手机端搜索去掉快捷入口与键盘提示，只保留输入与结果。
+
+### 新增
+
+- **Liquid Glass 令牌**：`--glass-nav-specular`（上缘受光、向下衰减）、`--glass-nav-highlight`（`inset 0 1px 0` 内缘高光），与现有 `--glass-nav-bg` / `--glass-nav-bg-strong` / `--glass-nav-border` / `--glass-nav-blur` / `--glass-nav-saturate` 组成四层材质。
+- **顶栏与底栏同时升级**：`.navbar::before`、`.navbar-scrolled::before` 与 `.bottom-nav` 使用 specular + 高光 + 24px 模糊 / 190% 饱和；底栏再叠一层 `--shadow-float` 做悬浮感。
+- **手机端搜索精简**：`≤767px` 隐藏快捷入口分组与底部键盘提示，只保留搜索框、一行说明与结果；面板与遮罩改为同源玻璃（半透明底 + 模糊），不再是实色地板。
+
+### 测试
+
+- `test/navGlass.test.js` 覆盖 Liquid Glass 令牌（66% / 84% / specular / highlight / 24px / 190%）、顶栏 `background` 与 `box-shadow`、底栏 specular + `--shadow-float` 组合；`test/globalSearch.test.js` 增加手机端「无快捷入口、无键盘提示、玻璃面板」契约。
+- `npm test` 1253 条全部通过；`npm run lint` / `npm run build` 通过。
+
 ## [4.9.0] — 2026-11-25
 
 顶栏那个「点一下才展开的输入框」被整个换掉了：搜索收敛为一个全站命令面板（Ctrl / Cmd + K 或点放大镜），页面、商品、工具同屏出结果；移动端直接是全屏抽屉，键盘与触控都走同一条路径。

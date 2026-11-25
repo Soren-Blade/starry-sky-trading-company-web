@@ -684,23 +684,25 @@ onUnmounted(() => {
 
 /* 表面 + 底部边框（都放在同一个伪元素上，保证铺满整高）
  * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释）。
- * 4.8.0：顶栏改成「浮在内容上」的玻璃表面 —— 苹果式 modal glass：
- * 半透明表面 + 背景模糊/增饱和 + 发丝级描边，滚动后底色再收一档。
+ * 4.8.0：顶栏改成「浮在内容上」的玻璃表面；
+ * 4.10.0：按 Liquid Glass 补一层顶部 specular 与内缘高光，
+ * 玻璃不再是一块均匀的半透明色，上缘有光、往下衰减。
  * backdrop-filter 只写在这个伪元素上，不会给导航内部的下拉制造包含块。 */
 .navbar::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--glass-nav-bg);
+  background: var(--glass-nav-specular), var(--glass-nav-bg);
   border-bottom: var(--stroke-width) solid var(--glass-nav-border);
+  box-shadow: var(--glass-nav-highlight);
   -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
   backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
 }
 
 /* 滚动后：玻璃底色加密，让文字在长页面上仍然稳定可读 */
 .navbar-scrolled::before {
-  background: var(--glass-nav-bg-strong);
+  background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
 }
 
 /* 不支持背景模糊 / 用户要求降低透明度时退回实底，不做「假玻璃」 */

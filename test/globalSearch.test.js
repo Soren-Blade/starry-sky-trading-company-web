@@ -78,11 +78,15 @@ test('键盘 ↑↓ 在结果上移动，Enter 打开当前项', () => {
   assert.match(SEARCH, /scrollIntoView\(\{ block: 'nearest' \}\)/)
 })
 
-test('移动端是全屏面板，桌面是居中命令面板', () => {
+test('移动端是全屏玻璃面板：无快捷入口、无键盘提示，桌面是居中命令面板', () => {
   assert.match(SEARCH, /@media \(max-width: 767px\) \{[\s\S]*?\.gs-panel \{[\s\S]*?height: 100dvh/)
   assert.match(SEARCH, /padding-top: env\(safe-area-inset-top\)/)
-  assert.match(SEARCH, /padding-bottom: calc\(var\(--ec-space-2\) \+ env\(safe-area-inset-bottom\)\)/)
   assert.match(SEARCH, /width: min\(680px, 100%\)/)
+  // 4.10.0：手机端去掉快捷入口与键盘提示，背景改成 Liquid Glass
+  assert.match(SEARCH, /\.gs-group--quick \{\s*display: none;/)
+  assert.match(SEARCH, /\.gs-foot \{\s*display: none;/)
+  assert.match(SEARCH, /background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\);/)
+  assert.match(SEARCH, /backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/)
 })
 
 test('中英文案齐备：pages.searchGlobal.*', () => {

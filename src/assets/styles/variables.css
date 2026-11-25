@@ -148,14 +148,25 @@
   --nav-menu-gap: var(--ec-space-5);
   --nav-link-size: var(--ec-body-size);
   /* 暗色层级铁律：靠表面提亮 + 1px 描边，阴影只做「沉下去」。
-   * 导航玻璃只给常驻悬浮导航（顶栏 / 底部 Tab Bar）用：
-   * 它本身就「压」在页面内容上，透出模糊背景是在表达层级；
-   * 弹层、下拉仍用实底，避免底下内容干扰阅读。 */
-  --glass-nav-bg: color-mix(in srgb, var(--ec-bg-surface) 72%, transparent);
-  --glass-nav-bg-strong: color-mix(in srgb, var(--ec-bg-surface) 88%, transparent);
+   * Liquid Glass（4.10.0）：常驻悬浮导航是「一层会折光的玻璃」——
+   * 半透明底色负责让内容透上来，顶部高光负责边缘的厚度，
+   * 描边负责把玻璃从内容里切出来，模糊 + 增饱和负责「折射感」。
+   * 只给常驻导航（顶栏 / 底部 Tab Bar）与移动端搜索面板用；
+   * 普通弹层、下拉仍用实底，避免底下内容干扰阅读。 */
+  --glass-nav-bg: color-mix(in srgb, var(--ec-bg-surface) 66%, transparent);
+  --glass-nav-bg-strong: color-mix(in srgb, var(--ec-bg-surface) 84%, transparent);
+  /* 顶部 specular：上缘亮、往下 24% 快速衰减，模拟光从上方打在玻璃棱上 */
+  --glass-nav-specular: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ec-bg-surface) 92%, transparent) 0%,
+    color-mix(in srgb, var(--ec-bg-surface) 34%, transparent) 24%,
+    transparent 62%
+  );
+  --glass-nav-highlight: inset 0 1px 0
+    color-mix(in srgb, var(--ec-bg-surface) 82%, transparent);
   --glass-nav-border: color-mix(in srgb, var(--ec-border-subtle) 70%, transparent);
-  --glass-nav-blur: 22px;
-  --glass-nav-saturate: 180%;
+  --glass-nav-blur: 24px;
+  --glass-nav-saturate: 190%;
   --nav-scrolled-shadow: var(--ec-shadow-sm);
 
   /* ── A12. 阴影 ────────────────────────────────────────────── */

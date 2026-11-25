@@ -342,7 +342,12 @@ defineExpose({ open: openSearch, close })
               role="listbox"
               :aria-label="PAGES.searchGlobal.title"
             >
-              <section v-for="group in groups" :key="group.key" class="gs-group">
+              <section
+                v-for="group in groups"
+                :key="group.key"
+                class="gs-group"
+                :class="`gs-group--${group.key}`"
+              >
                 <p v-if="group.title" class="gs-group-title">{{ group.title }}</p>
                 <button
                   v-for="item in group.items"
@@ -656,12 +661,14 @@ defineExpose({ open: openSearch, close })
 }
 
 @media (max-width: 767px) {
+  /* 手机端：不再是一块实色地板，而是与导航同源的 Liquid Glass ——
+   * 页面在面板后面仍然可感知；上缘 specular 让面板不像一张白纸。 */
   .gs-overlay {
     padding: 0;
     align-items: stretch;
-    background: var(--bg-page);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    background: color-mix(in srgb, var(--ec-bg-surface) 24%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
   }
 
   .gs-panel {
@@ -670,7 +677,10 @@ defineExpose({ open: openSearch, close })
     height: 100dvh;
     border: 0;
     border-radius: 0;
-    box-shadow: none;
+    background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
+    box-shadow: var(--glass-nav-highlight);
+    -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
     padding-top: env(safe-area-inset-top);
   }
 
@@ -678,13 +688,14 @@ defineExpose({ open: openSearch, close })
     padding: var(--ec-space-3) var(--ec-space-3);
   }
 
-  .gs-kbd--desktop,
-  .gs-foot-esc {
+  /* 手机端不摆快捷入口：一屏只做「输入 → 结果」，少一层选择 */
+  .gs-group--quick {
     display: none;
   }
 
+  .gs-kbd--desktop,
   .gs-foot {
-    padding-bottom: calc(var(--ec-space-2) + env(safe-area-inset-bottom));
+    display: none;
   }
 }
 

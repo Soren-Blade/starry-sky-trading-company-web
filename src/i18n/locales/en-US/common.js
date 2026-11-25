@@ -254,10 +254,10 @@ export default {
     searchGlobal: {
       title: 'Search everything',
       placeholder: 'Search products, tools, or pages',
-      hint: 'Search products, tools, and pages in one place. Or jump straight to a shortcut below.',
+      hint: 'Search products, tools, and pages in one place.',
       close: 'Close search',
       empty: 'No matching results',
-      emptyHint: 'Try another keyword, or use a shortcut below.',
+      emptyHint: 'Try another keyword.',
       pages: 'Pages',
       products: 'Products',
       tools: 'Tools',

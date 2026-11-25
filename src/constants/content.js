@@ -340,10 +340,10 @@ const PAGES_RAW = {
   searchGlobal: {
     title: '全站搜索',
     placeholder: '搜索商品、工具或页面',
-    hint: '输入关键词，搜索商品、工具与站内页面；也可以直接走下面的快捷入口。',
+    hint: '输入关键词搜索商品、工具与站内页面。',
     close: '关闭搜索',
     empty: '没有找到匹配结果',
-    emptyHint: '换个关键词，或直接走下面的快捷入口。',
+    emptyHint: '换个关键词再试一次。',
     pages: '页面',
     products: '商品',
     tools: '工具',

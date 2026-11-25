@@ -138,8 +138,9 @@ function isActive(item) {
 }
 
 @media (max-width: 767px) {
-  /* 悬浮 Tab Bar：苹果式 modal glass —— 半透明表面 + 背景模糊，
-   * 浮在内容上方时不切断页面，又不会像实底那样「贴一块砖」。 */
+  /* 悬浮 Tab Bar：Liquid Glass —— 半透明表面 + 背景模糊 + 顶部 specular。
+   * 上缘亮、往下衰减，再用内缘高光把圆角「折」出来；
+   * 浮在内容上方时不切断页面，也不会像实底那样「贴一块砖」。 */
   .bottom-nav {
     position: fixed;
     left: 50%;
@@ -150,10 +151,10 @@ function isActive(item) {
     max-width: 520px;
     padding: 4px;
     transform: translateX(-50%);
-    background: var(--glass-nav-bg-strong);
+    background: var(--glass-nav-specular), var(--glass-nav-bg-strong);
     border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
-    box-shadow: var(--shadow-float);
+    box-shadow: var(--glass-nav-highlight), var(--shadow-float);
     -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
     backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
   }

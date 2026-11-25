@@ -22,20 +22,25 @@ const VARIABLES = read('src/assets/styles/variables.css')
 const NAVBAR = read('src/components/Navbar.vue')
 const BOTTOM_NAV = read('src/components/BottomNav.vue')
 
-test('玻璃令牌只在导航层定义，且带模糊与饱和两档', () => {
-  assert.match(VARIABLES, /--glass-nav-bg:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 72%, transparent\)/)
-  assert.match(VARIABLES, /--glass-nav-bg-strong:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 88%, transparent\)/)
+test('玻璃令牌只在导航层定义，且带模糊、饱和与顶部 specular', () => {
+  assert.match(VARIABLES, /--glass-nav-bg:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 66%, transparent\)/)
+  assert.match(VARIABLES, /--glass-nav-bg-strong:\s*color-mix\(in srgb, var\(--ec-bg-surface\) 84%, transparent\)/)
+  assert.match(VARIABLES, /--glass-nav-specular:\s*linear-gradient\(/)
+  assert.match(VARIABLES, /--glass-nav-highlight:\s*inset 0 1px 0\s*color-mix\(in srgb, var\(--ec-bg-surface\) 82%, transparent\)/)
   assert.match(VARIABLES, /--glass-nav-border:\s*color-mix\(in srgb, var\(--ec-border-subtle\) 70%, transparent\)/)
-  assert.match(VARIABLES, /--glass-nav-blur:\s*22px/)
-  assert.match(VARIABLES, /--glass-nav-saturate:\s*180%/)
+  assert.match(VARIABLES, /--glass-nav-blur:\s*24px/)
+  assert.match(VARIABLES, /--glass-nav-saturate:\s*190%/)
 })
 
 test('顶栏是玻璃表面，滚动后加深，且有不支持模糊时的实底回退', () => {
   assert.match(
     NAVBAR,
-    /\.navbar::before \{[\s\S]*?background: var\(--glass-nav-bg\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /\.navbar::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-bg\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
-  assert.match(NAVBAR, /\.navbar-scrolled::before \{[\s\S]*?background: var\(--glass-nav-bg-strong\)/)
+  assert.match(
+    NAVBAR,
+    /\.navbar-scrolled::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\)/
+  )
   assert.match(NAVBAR, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(NAVBAR, /@media \(prefers-reduced-transparency: reduce\)/)
 })
@@ -47,10 +52,10 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
   assert.match(NAVBAR, /class="u-icon-btn navbar-mail"/)
 })
 
-test('底部悬浮 Tab Bar 使用同一套玻璃令牌与回退', () => {
+test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
   assert.match(
     BOTTOM_NAV,
-    /background: var\(--glass-nav-bg-strong\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /background: var\(--glass-nav-specular\), var\(--glass-nav-bg-strong\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--shadow-float\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
