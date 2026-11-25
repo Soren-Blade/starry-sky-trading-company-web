@@ -38,6 +38,12 @@
 - `test/supportLanguageTopic.test.js` 新增「正文骨架自动带上当前界面语言（?from=en-US）」，并断言 `languageLocaleLine` 不再存在。
 - `test/globalSearch.test.js`、`test/navbarThemePolish.test.js`、`test/renderIdentity.test.js` 的类名断言跟着 `navbar-action` / 身份按钮的新类名走。
 
+### BrowserSkill 验证备注（bsk 0.5.0，daemon protocol 1.9）
+
+- `bsk doctor` 全绿：daemon 7876、扩展已连接、协议兼容、feature availability 通过；auto-update 0.4.0 → 0.5.0 仍报 `read update response body: error decoding response body: operation timed out`，**文件未被改动**（与 4.11.0 记录一致），不影响使用。
+- 本轮新遇到的两条摩擦：① HMR 刚重编译时 `click` 报 `The pointer target is covered or unavailable`，重新 `sync` 后再点即可，不要重放；被遮挡的触发器用「元素 + 标签」选择器（`button.menu-toggle`）。② 关掉再开 emulation 后截图会拿到标签页网格图，需先 `bsk_tabs select` 选定目标标签页。
+- 抽屉展开时 VOM 会带 `warning geometry incomplete: some page or frame content has no top-level coordinates`，属观察层的坐标补齐提示，不影响点击与截图。
+
 ## [4.19.0] — 2026-11-25
 
 手机顶栏的「一眼重量」与两张浮层的内容排布。用户反馈原话：「重新调整移动端顶部导航栏头像的大小，头像太大了和左右图标对比太明显」「重新设计 lang-switch--drawer 的内容…后续可能增加其他语言，增加反馈按钮」「重新设计 user-menu，优化布局及排版，采用新颖的设计」。
