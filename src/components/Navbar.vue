@@ -1031,6 +1031,15 @@ onUnmounted(() => {
   border-radius: inherit;
 }
 
+/* 图标尺寸（4.21.0）：AppIcon 渲染成 `.app-icon`，不吃 `.ec-icon-btn .ic` 的 18px，
+ * 于是搜索那枚只有 13.3px、汉堡却是 20px —— 同排两个图标一大一小，正是这套按钮
+ * 最刺眼的破绽。这里给三个落点同一把尺子：桌面 18、手机 20；身份里的箭头单独 9。
+ */
+.navbar-action .app-icon:not(.navbar-identity-caret) {
+  width: 18px;
+  height: 18px;
+}
+
 /* ── 用户菜单 ───────────────────────────────────────────── */
 .navbar-user {
   position: relative;
@@ -1555,10 +1564,14 @@ onUnmounted(() => {
     --navbar-avatar-size: 24px;
   }
 
-  /* 三个落点（搜索 / 身份 / 菜单）在窄屏上视觉盒 40、间距 8：
+  /* 三个落点（搜索 / 身份 / 菜单）在窄屏上视觉盒一律 40×40、间距 10：
+   * 4.21.0 起身份也不再是「头像 + 箭头」的宽胶囊 —— 它在 40 的盒子里装
+   * 24 的头像与 9 的箭头，于是三枚盒子等宽等高，眼睛读到的是同一排动作。
    * 命中区由 `.navbar-action::after` 撑到 44，拇指不会点错邻居。 */
   .navbar-actions {
-    gap: var(--space-unit);
+    gap: calc(var(--space-unit) * 1.25);
+    /* 三个落点的图标统一 20（原来是 18，比 24 的头像轻一档，看着不是一个量级） */
+    --icon-btn-icon-size: 20px;
   }
 
   .navbar-action {
@@ -1566,8 +1579,33 @@ onUnmounted(() => {
     height: 40px;
   }
 
+  /* 手机图标 20：与 24 的头像同一量级（18 配 24 时，头像明显更重） */
+  .navbar-action .app-icon:not(.navbar-identity-caret) {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* 身份按钮：定宽 40，内部 24 头像 + 9 箭头居中对齐，宽度不再随内容漂移 */
   .user-avatar-btn {
-    width: auto;
+    width: 40px;
+    gap: 2px;
+    padding: 0;
+  }
+
+  .navbar-identity-caret {
+    font-size: 9px;
+    opacity: 0.6;
+  }
+
+  /* 打开态：与悬停同一套底色，外加一枚强调色内环 —— 箭头很小，
+   * 「点开了」这件事交给底色和内环来说。 */
+  .user-avatar-btn[aria-expanded='true'] {
+    background: var(--bg-soft);
+    color: var(--text-primary);
+  }
+
+  .user-avatar-btn[aria-expanded='true'] .u-avatar {
+    box-shadow: 0 0 0 1.5px var(--accent);
   }
 
   .user-avatar-btn .u-avatar {

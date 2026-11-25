@@ -93,7 +93,7 @@ test('手机端玻璃把模糊收一档换帧率，且用令牌覆盖而不是�
   )
 })
 
-test('手机端三个落点共用一个动作盒：36/40 视觉盒 + 44 命中，头像缩成胶囊里的 24', () => {
+test('手机端三个落点共用一个动作盒：40 视觉盒 + 44 命中，头像 24 收进定宽 40 的盒里', () => {
   // 4.20.0：搜索 / 身份 / 菜单改成同一个 .navbar-action 语法
   assert.match(NAVBAR, /\.navbar-action \{[\s\S]*?width: 36px;[\s\S]*?height: 36px;/)
   assert.match(NAVBAR, /\.navbar-action::after \{\s*content: '';[\s\S]*?inset: -4px;/)
@@ -102,12 +102,19 @@ test('手机端三个落点共用一个动作盒：36/40 视觉盒 + 44 命中�
   assert.match(NAVBAR, /class="ec-icon-btn navbar-search-trigger navbar-action"/)
   assert.match(NAVBAR, /class="user-avatar-btn navbar-action navbar-identity"/)
   assert.match(NAVBAR, /class="u-icon-btn menu-toggle show-mobile navbar-action"/)
-  // 头像不再是一枚裸圆，而是「头像 + 箭头」的胶囊
+  // 4.21.0：身份按钮定宽 40（头像 24 + 箭头 9），三枚盒子等宽等高
+  assert.match(NAVBAR, /\.user-avatar-btn \{\s*width: 40px;[\s\S]*?padding: 0;/)
+  assert.match(NAVBAR, /\.navbar-identity-caret \{[\s\S]*?font-size: 9px;/)
   assert.match(NAVBAR, /class="navbar-identity-caret"/)
   assert.match(NAVBAR, /--navbar-avatar-size: 24px;/)
   assert.match(
     NAVBAR,
     /\.user-avatar-btn \.u-avatar \{[\s\S]*?box-shadow: 0 0 0 1\.5px var\(--ec-bg-surface\);/
+  )
+  // 打开态用强调色内环补「点开了」的反馈（箭头很小，不能只靠它）
+  assert.match(
+    NAVBAR,
+    /\.user-avatar-btn\[aria-expanded='true'\] \.u-avatar \{[\s\S]*?var\(--accent\)/
   )
   assert.match(NAVBAR, /\.navbar-avatar-status \{\s*right: -1px;\s*bottom: -1px;\s*width: 7px;\s*height: 7px;/)
 })

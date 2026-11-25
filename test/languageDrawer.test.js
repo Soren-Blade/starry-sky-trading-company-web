@@ -5,12 +5,13 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /**
- * 4.20.0 抽屉里的语言控件
+ * 4.21.0 抽屉里的语言控件
  *
- * 形态从「一列语言行」改成「左标签 + 右分段」的偏好行：
- * - 与同面板的「外观」一行同构（都是 [ 标签 ][ 控件 ]），两行左边缘对齐；
- * - 分段只放短码（中文 / EN），右半区约 150px，全名在第三种语言时就会换行；
- * - 反馈出口搬去抽屉脚注，并带上当前语言 `?topic=language&from=<locale>`。
+ * 形态从「左标签 + 右分段」再改成「左标签 + 右单选下拉」：
+ * - 分段把选项摊在行里，两门语言刚好，第三门就开始挤；下拉只占一个触发器宽度；
+ * - 面板 `role="listbox"` + `role="option"` + `aria-selected`，当前项带勾（不只靠颜色）；
+ * - 选完收起并把焦点还给触发器；点面板外也收起。
+ * - 反馈出口仍在抽屉脚注，链接带 `?topic=language&from=<locale>`。
  */
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const WEB_ROOT = join(__dirname, '..')
@@ -19,27 +20,45 @@ const read = (relPath) => readFileSync(join(WEB_ROOT, relPath), 'utf8')
 const SWITCH = read('src/components/LanguageSwitch.vue')
 const NAVBAR = read('src/components/Navbar.vue')
 
-test('抽屉版语言控件是分段单选：radiogroup + 每枚 radio + 短码', () => {
-  assert.match(SWITCH, /class="lang-segments" role="radiogroup"/)
-  assert.match(SWITCH, /v-for="item in options"[\s\S]*?role="radio"/)
-  assert.match(SWITCH, /:aria-checked="current === item\.code"/)
-  // 屏幕上是短码，全名走 aria-label（不靠颜色、也不靠长文案区分）
-  assert.match(SWITCH, /\{\{ item\.short \}\}/)
-  assert.match(SWITCH, /:aria-label="item\.label"/)
+test('抽屉版语言控件是单选下拉：触发器 + listbox + option', () => {
+  assert.match(SWITCH, /class="lang-select-trigger"/)
+  assert.match(SWITCH, /aria-haspopup="listbox"/)
+  assert.match(SWITCH, /:aria-expanded="open"/)
+  // 触发器显示当前语言的全名，箭头说明「可以展开」
+  assert.match(SWITCH, /\{\{ currentLabel \}\}/)
+  assert.match(SWITCH, /class="lang-select-caret"/)
+  assert.match(SWITCH, /class="lang-picker"[\s\S]*?role="listbox"/)
+  assert.match(SWITCH, /role="option"/)
+  assert.match(SWITCH, /:aria-selected="current === item\.code"/)
+  // 当前项有勾，不靠颜色单独表达
+  assert.match(SWITCH, /name="check-circle"/)
 })
 
-test('旧的整列语言行彻底退役，不会与分段控件并存', () => {
+test('分段控件彻底退役，不会与下拉并存', () => {
+  assert.doesNotMatch(SWITCH, /class="lang-segments"/)
+  assert.doesNotMatch(SWITCH, /\.lang-segment\b/)
+  assert.doesNotMatch(SWITCH, /\{\{ item\.short \}\}/)
   assert.doesNotMatch(SWITCH, /class="lang-rows"/)
-  assert.doesNotMatch(SWITCH, /\.lang-row\b/)
   assert.doesNotMatch(SWITCH, /lang-row-check/)
 })
 
-test('分段控件与同面板的三档外观开关同高同圆角', () => {
-  assert.match(SWITCH, /\.lang-segments \{[\s\S]*?border-radius: var\(--radius-pill\);/)
+test('触发器与同面板的三档外观开关同高同圆角', () => {
   assert.match(
     SWITCH,
-    /\.lang-segment \{[\s\S]*?height: calc\(var\(--ec-control-h-sm\) - 4px\);/
+    /\.lang-select-trigger \{[\s\S]*?height: var\(--ec-control-h-sm\);/
   )
+  assert.match(SWITCH, /\.lang-select-trigger \{[\s\S]*?border-radius: var\(--radius-pill\);/)
+  // 面板贴触发器下方右对齐，语言增加时向下生长
+  assert.match(SWITCH, /\.lang-picker \{[\s\S]*?position: absolute;/)
+  assert.match(SWITCH, /\.lang-picker \{[\s\S]*?right: 0;/)
+})
+
+test('键盘与焦点：↑↓/Home/End 移动，选完焦点回到触发器', () => {
+  assert.match(SWITCH, /@keydown\.down\.prevent="moveActive\(1\)"/)
+  assert.match(SWITCH, /@keydown\.up\.prevent="moveActive\(-1\)"/)
+  assert.match(SWITCH, /@keydown\.home\.prevent="focusItem\(0\)"/)
+  assert.match(SWITCH, /@keydown\.end\.prevent="focusItem\(-1\)"/)
+  assert.match(SWITCH, /function choose\(code\) \{[\s\S]*?closeMenu\(true\)/)
 })
 
 test('语言反馈出口在抽屉脚注，并带上当前界面语言', () => {
