@@ -4,26 +4,24 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.20.0`**（2026-11-26 发布）：**顶栏三个落点收敛成一套动作盒 + 抽屉改两张卡** ——
-> ① 搜索 / 身份 / 汉堡共用 `.navbar-action`（36×36 视觉盒、胶囊圆角、透明底、`::after` 撑到 44 命中；
-> 手机 40×40），身份按钮做成「24px 头像 + 下拉箭头」的胶囊（48.6×40）——之前是 40 / 28 圆盘 / 40
-> 三个不同高度与圆角的控件，读起来不像一排动作；
-> ② 头像从 36px 圆盘变 **24px**（20px 图标的 1.2 倍），状态点挂到头像定位盒上（`.u-avatar`
-> 是 `overflow:hidden` 的圆，挂里面会被裁成月牙）；
-> ③ **抽屉改成两张卡**：`发现`（3 条目的地，注册用户多一条带未读点的站内消息）与 `偏好`
-> （明暗模式、语言、语言反馈脚注），卡片 `--ec-bg-surface` + 1px 描边 + `--ec-radius-lg`；
-> ④ **语言改成「左标签 + 右分段」**：`.lang-segments[role=radiogroup]` 两枚 `role=radio`（中文 / EN），
-> 选中白底胶囊 + 阴影，与右侧明暗模式三档控件同构；语言增加时只增一枚片段，不改行高；
-> ⑤ **反馈骨架带当前界面语言**：抽屉脚注链接 `?topic=language&from=<locale>`，客服中心把它写成
-> 正文末尾的「English (en-US)」；
-> ⑥ 修抽屉在桌面泄漏（窄屏打开后拉宽窗口会盖住首屏，`@media (min-width: 768px)` 直接不渲染）
-> 与 `{language}` 占位符被 i18n 插值吃掉的问题（改存前缀、由页面拼接）。
+> **当前版本 `4.21.0`**（2026-11-26 发布）：**动作盒真正等宽 + 语言换成单选下拉** ——
+> ① 三个落点的尺寸来源终于对齐：`AppIcon` 渲染的是 `.app-icon`，不吃 `.ec-icon-btn .ic` 的 18px，
+> 因此搜索那枚一直只有 **13.3px**、汉堡却是 20px。现在 `.navbar-action .app-icon:not(.navbar-identity-caret)`
+> 明确给尺子（桌面 18 / 手机 20），箭头单独 9px；
+> ② 身份按钮从 48.6×40 收回 **40×40**（定宽 + 内部 24px 头像 + 9px 箭头居中），三枚动作盒的
+> `getBoundingClientRect()` 完全一致（实测 235.6 / 285.6 / 335.6，间距 10）；打开态用
+> `--bg-soft` 底 + 头像内环换 `--accent` 补「点开了」的反馈；
+> ③ **抽屉里的语言从分段控件改成单选下拉**：触发器 `[ 简体中文 ⌄ ]`（32 高、胶囊、展开时描边转
+> 强调色、箭头旋转），面板 `role="listbox"` + `role="option"` + `aria-selected` + `check-circle` 勾；
+> 分段把选项摊在行里，两门语言刚好，第三门就要挤，下拉只占一个触发器宽度；
+> ④ 键盘与焦点：打开落在**当前项**，↑↓ 循环、Home/End 跳首尾、Esc 收起并把焦点还给触发器，
+> 点面板外收起（两个形态都注册了外部 `pointerdown`）；
+> ⑤ 面板底色 `--bg-elevated`（与卡片同用 `--ec-bg-surface` 时暗色下几乎同色，只靠边框分辨）。
 >
-> **上一版 `4.19.0`**：头像 36 → **28px**（20px 图标的 1.4 倍），描边 2 → 1.5px、状态点 9 → 7px，
-> 命中区补到 44×44；汉堡命中区 32.4 → **44px**；语言抽屉从两枚平分胶囊改成语言行列表
-> （`radiogroup` + 右侧勾）并加「没有你的语言？」入口；客服中心新增语言反馈模式
-> （`/support?topic=language`，三个预设填好分类/标题/正文）；身份面板头部改成身份卡，
-> 六个目的地从 3 列方格墙改成 **2 列横条**；抽屉与身份面板在路由变化后自动收起。
+> **上一版 `4.20.0`**：搜索 / 身份 / 汉堡共用 `.navbar-action`（36×36 视觉盒、胶囊圆角、`::after`
+> 撑到 44 命中，手机 40×40），身份做成「24px 头像 + 下拉箭头」胶囊；抽屉改成 `发现` / `偏好`
+> 两张卡，语言改成「左标签 + 右分段」，反馈脚注带 `?topic=language&from=<locale>`；
+> 修抽屉在桌面泄漏与 `{language}` 被 i18n 插值吃掉的问题。
 >
 > **上一版 `4.18.0`**：手机顶栏收成**三个落点**（搜索 / 身份 / 菜单，消息入口进抽屉），
 > 汉堡改两条杠拼 ×，抽屉重做为浮动卡片（发现 / 偏好两组），身份面板改成整宽卡片 + 3×2 网格。
@@ -1927,8 +1925,8 @@ test/
 ├── appIcon.test.js                    # 线性图标体系：颜色只来自 currentColor、模板引用的名字都存在
 ├── globalSearch.test.js              # 全站搜索：旧搜索实现已删、对话/combobox/listbox 语义、Ctrl+K 与路由收起、商品/工具接口参数、键盘路径、手机抽屉（抓握条/72px/速度阈值/取消/清空键）、最近搜索、抽屉不透明帽（不再让顶栏退场）、中英文案
 ├── navbarMember.test.js              # 顶栏会员入口：有身份即显示（游客也算）、等级徽标只对会员渲染并读进 aria-label、入口本体不是 button 套 router-link
-├── navGlass.test.js                  # 导航玻璃：色/光/影令牌（wash/specular/highlight/rim/lift/floor/float/sheen/glow/highlight-soft）、顶栏「底色 + 图层」两段式与新阴影、滚动态加深模糊、手机 blur 覆盖、`backdrop-filter` 缺失与降透明回退、底部 Tab Bar 56% 底色 + 冠光 + 高光膜地板光 + 品牌色外发光 + 20px 模糊、共享胶囊 / 软尾 / 图标上浮、手机头像 28px / 1.5px 描边 / 44 命中、三个落点命中区同高、移动端隐藏购物车 / 会员、我的服务一张分组卡
-├── languageDrawer.test.js            # 语言抽屉：行列表（radiogroup + radio + 勾）与可扩展性、语言反馈出口 (/support?topic=language)
+├── navGlass.test.js                  # 导航玻璃：色/光/影令牌（wash/specular/highlight/rim/lift/floor/float/sheen/glow/highlight-soft）、顶栏「底色 + 图层」两段式与新阴影、滚动态加深模糊、手机 blur 覆盖、`backdrop-filter` 缺失与降透明回退、底部 Tab Bar 56% 底色 + 冠光 + 高光膜地板光 + 品牌色外发光 + 20px 模糊、共享胶囊 / 软尾 / 图标上浮、手机头像 24px / 1.5px 描边 / 44 命中、三个落点 40 视觉盒等宽（图标 20、箭头 9）、移动端隐藏购物车 / 会员、我的服务一张分组卡
+├── languageDrawer.test.js            # 语言抽屉：单选下拉（listbox + option + aria-selected + 勾）、键盘 ↑↓/Home/End/Esc 与焦点归还、语言反馈出口 (/support?topic=language)
 ├── supportLanguageTopic.test.js      # 语言反馈模式：不新增反馈分类、?topic=language 才出现预设、标题/正文骨架与英文镜像
 ├── categoryProducts.test.js          # 分类为空时退回子分类商品的规则（本分类有货时绝不混入子分类的）
 ├── bootScreen.test.js                # 首屏遮罩时序：假时钟测延迟/最短停留/最长等待
