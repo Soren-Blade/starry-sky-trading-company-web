@@ -331,6 +331,43 @@ const PAGES_RAW = {
     title: '我的资产',
     description: '购买的数字商品、卡密与已激活工具；实物商品的订单仍在「订单管理」查看',
   },
+  /**
+   * 全站搜索（Ctrl / Cmd + K）
+   *
+   * 顶栏只留一枚放大镜，真正的搜索是覆盖全站的命令面板：
+   * 页面 / 商品 / 工具三类结果同屏，键盘可以一路走完。
+   */
+  searchGlobal: {
+    title: '全站搜索',
+    placeholder: '搜索商品、工具或页面',
+    hint: '输入关键词，搜索商品、工具与站内页面；也可以直接走下面的快捷入口。',
+    close: '关闭搜索',
+    empty: '没有找到匹配结果',
+    emptyHint: '换个关键词，或直接走下面的快捷入口。',
+    pages: '页面',
+    products: '商品',
+    tools: '工具',
+    quick: '快捷入口',
+    viewAll: '在搜索结果页查看全部',
+    loading: '正在搜索…',
+    failed: '搜索失败，请稍后重试',
+    retry: '重新搜索',
+    navHome: '首页',
+    navCategories: '商品分类',
+    navHot: '热门推荐',
+    navTools: '工具分享',
+    navMember: '会员中心',
+    navOrders: '我的订单',
+    navKami: '我的卡密',
+    navFavorites: '我的收藏',
+    navCoupons: '我的优惠券',
+    navCheckin: '每日签到',
+    navProfile: '个人中心',
+    navMail: '消息中心',
+    arrowHint: '选择',
+    enterHint: '打开',
+    escHint: '关闭',
+  },
 }
 
 /** 商品网格 */

@@ -55,22 +55,13 @@ test('搜索结果页有独立路由，关键词走 query（可分享、可收�
   assert.match(SEARCH_SOURCE, /route\.query\.q/, '页面从 query 读关键词')
 })
 
-test('导航提交改为跳搜索结果页，且空关键词不跳', () => {
-  const at = NAVBAR_SOURCE.indexOf('const handleSearchSubmit = () => {')
-  assert.ok(at > -1)
-  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
-
-  assert.match(body, /name: 'SearchResults'/, '提交应打开结果页')
-  assert.match(body, /query: \{ q: text \}/, '关键词要带过去')
-  // 空关键词跳过去只会把用户从一个空输入框送到另一个空页面
-  assert.match(body, /if \(!text\) return/)
-  assert.equal(/name: 'Hot'/.test(body), false, '旧的「跳热卖榜」应已移除')
-})
-
-test('搜索占位文案改为「搜索商品或工具」', () => {
-  // 原文案是「搜索商品或分类」：既漏了工具，「或分类」也与实际搜索字段（标题）不符
-  assert.match(NAVBAR_SOURCE, /PRODUCT_GRID\.searchPlaceholder/)
-  assert.match(read('src/constants/content.js'), /searchPlaceholder: '搜索商品或工具'/)
+test('搜索占位文案仍然是「搜索商品或工具」，但入口已收进全局搜索', () => {
+  const CONTENT = read('src/constants/content.js')
+  assert.match(CONTENT, /searchPlaceholder: '搜索商品或工具'/)
+  assert.match(CONTENT, /placeholder: '搜索商品、工具或页面'/)
+  // 顶栏不再内嵌输入框：入口按钮由 GlobalSearch 统一接管
+  assert.equal(/class="navbar-search"/.test(NAVBAR_SOURCE), false, '旧的展开式搜索框应已删除')
+  assert.match(NAVBAR_SOURCE, /<GlobalSearch ref="globalSearchRef" \/>/)
 })
 
 // ══════════════════════════════════════════════════════════
@@ -234,9 +225,11 @@ test('搜索关键词不得进 store：否则首页商品列表会一直按它�
   assert.equal(/filteredProducts/.test(SHOP_SOURCE), false, '也不该再有按关键词过滤的 getter')
   assert.equal(/setSearchKeyword/.test(SHOP_SOURCE), false, '更不该留有写入它的 action')
 
-  // 导航栏必须是组件内的局部状态
-  assert.match(NAVBAR_SOURCE, /const keyword = ref\(''\)/, '导航栏关键词应是局部 ref')
+  // 关键词是组件内的局部状态：顶栏交给 GlobalSearch，搜索页自己读 query
+  const GLOBAL_SEARCH = read('src/components/GlobalSearch.vue')
+  assert.match(GLOBAL_SEARCH, /const query = ref\(''\)/, '全局搜索关键词应是局部 ref')
   assert.equal(/shopStore\.setSearchKeyword/.test(NAVBAR_SOURCE), false, '导航栏不该再写 store')
+  assert.equal(/const keyword = ref\(''\)/.test(NAVBAR_SOURCE), false, '旧的局部 keyword 应已删除')
 
   // 首页区块直接读完整列表。断言前先去掉注释 ——
   // 说明「曾经读过 filteredProducts」的注释不算残留引用
@@ -245,13 +238,11 @@ test('搜索关键词不得进 store：否则首页商品列表会一直按它�
   assert.equal(/filteredProducts/.test(HOT_PRODUCTS_SOURCE), false, '首页区块不该再读过滤后的列表')
 })
 
-test('提交搜索用局部关键词（而不是 store）', () => {
-  const at = NAVBAR_SOURCE.indexOf('const handleSearchSubmit = () => {')
-  const body = NAVBAR_SOURCE.slice(at, NAVBAR_SOURCE.indexOf('\n}', at))
+test('全局搜索把关键词带到结果页：/search?q=，空关键词不跳', () => {
+  const GLOBAL_SEARCH = read('src/components/GlobalSearch.vue')
 
-  assert.match(body, /keyword\.value\.trim\(\)/, '应读组件内的 ref')
-  assert.equal(/shopStore\.searchKeyword/.test(body), false, '不该再读 store 里的关键词')
-  assert.match(body, /query: \{ q: text \}/)
+  assert.match(GLOBAL_SEARCH, /path: '\/search', query: \{ q: trimmed \}/, '结果页关键词走 query')
+  assert.equal(/shopStore\.searchKeyword/.test(GLOBAL_SEARCH), false, '不该读 store 里的关键词')
 })
 
 // ══════════════════════════════════════════════════════════

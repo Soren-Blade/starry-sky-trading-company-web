@@ -26,57 +26,19 @@
 
       <div class="navbar-actions">
         <!--
-          搜索收成一个图标：**点击**展开（悬停不再展开），展开后光标直接落进输入框。
-
-          **放大镜在展开前后停在原地** —— 这是靠两点做到的：
-            1. 浮层 .search-field 是 `right: 0`，右边缘永远与图标格对齐；
-            2. 放大镜是浮层的**最后一个**子元素，于是它右贴浮层右缘，
-               浮层向**左**生长时它一动不动。
-          （此前放大镜是浮层的第一个子元素，浮层一展开它就被推到左边去了。）
-
-          展开后放大镜内嵌在输入框右侧，同时抹掉它自身的按钮外观 ——
-          外层 .search-field 负责输入框的底、描边、圆角与聚焦态。
-          因此视觉上始终只有一个放大镜，也没有单独的「搜索」提交按钮
-          （回车 / 手机键盘的搜索键都能提交）。
-
-          收起有三种途径：再点一次图标、按 Escape、焦点离开整块（点了别处）。
-          提交之后也会收起 —— 结果已经在页面上了，留着只是占地方。
+          全站搜索：顶栏只留一枚放大镜，点击或 Ctrl / Cmd + K 打开命令面板。
+          面板里同时给页面、商品与工具三类结果，见 GlobalSearch.vue。
         -->
-        <div
-          ref="searchRoot"
-          class="navbar-search"
-          :class="{ 'search-open': searchOpen }"
-          @focusin="handleSearchFocusIn"
-          @focusout="handleSearchFocusOut"
-          @keydown.esc="closeSearch"
+        <button
+          type="button"
+          class="ec-icon-btn navbar-search-trigger"
+          :aria-label="PAGES.searchGlobal.title"
+          :title="PAGES.searchGlobal.title"
+          @click="openGlobalSearch"
         >
-          <!-- 这一格始终占住图标宽度：浮层是绝对定位的，
-               没有它的话展开瞬间后面几个图标会整体跳一下 -->
-          <span class="search-slot" aria-hidden="true"></span>
-
-          <div class="search-field">
-            <SearchBar
-              ref="searchBarRef"
-              v-model="keyword"
-              :label="PRODUCT_GRID.searchLabel"
-              :placeholder="PRODUCT_GRID.searchPlaceholder"
-              :show-icon="false"
-              :show-submit="false"
-              @submit="handleSearchSubmit"
-            />
-
-            <button
-              ref="searchToggleRef"
-              type="button"
-              class="u-icon-btn search-toggle"
-              :aria-label="PRODUCT_GRID.searchLabel"
-              :aria-expanded="searchOpen"
-              @click="toggleSearch"
-            >
-              <AppIcon name="search" />
-            </button>
-          </div>
-        </div>
+          <AppIcon name="search" />
+        </button>
+        <GlobalSearch ref="globalSearchRef" />
 
         <!-- 语言切换：只占一枚图标的位置；移动端搬进抽屉（顶栏放不下第二组设置） -->
         <LanguageSwitch class="hide-below-768" />
@@ -433,12 +395,12 @@ import { useCartStore } from '@/stores/cart'
 import { useMailStore } from '@/stores/mail'
 import { throttle } from '@/utils/index.js'
 import { createClickGuard } from '@/utils/rateLimit.js'
-import SearchBar from './SearchBar.vue'
 import ThemeSwitch from './ThemeSwitch.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import AppIcon from './AppIcon.vue'
+import GlobalSearch from './GlobalSearch.vue'
 import SmartImage from './SmartImage.vue'
-import { NAV_MENU, PRODUCT_GRID, SITE, AUTH, BOOT, THEME_SWITCH } from '@/constants/index.js'
+import { NAV_MENU, PAGES, SITE, AUTH, BOOT, THEME_SWITCH } from '@/constants/index.js'
 import { toDate } from '@/hooks/useSimpleTimeFormatter/index.js'
 const userStore = useUserStore()
 const cartStore = useCartStore()
@@ -523,19 +485,20 @@ const mailLabel = computed(() =>
 )
 
 /**
- * 搜索关键词：**组件自己的状态**，不写进 shop store。
+ * 全局搜索：顶栏只留一枚放大镜，真正的搜索面板由 GlobalSearch 承担。
  *
- * 这里原先双向绑定到 `shopStore.searchKeyword`，而首页/热卖榜的商品栅格
- * 会按那个字段持续过滤 —— 于是「搜完再点首页，商品列表还是搜索后的结果」
- * （用户报的 bug）。
- *
- * 根因不是「忘了清空」，而是**把一个瞬态的输入框内容放进了全局状态**：
- * 只要它还在 store 里，任何读它的列表就会一直受它影响，而导航栏的输入框
- * 与「首页要展示哪些商品」本来是两件不相干的事。
- *
- * 所以这里改成组件内的 ref。搜索这个动作由 `/search?q=` 承担（见下）。
+ * 为什么不再把输入框塞进顶栏：
+ *   - 展开式输入框一次只能搜商品，工具在另一个接口里；
+ *   - 手机上展开要挤掉 Logo 与图标，收起后又只剩一个图标；
+ *   - 结果还要跳到结果页，等于把「输入」和「看结果」拆成两页。
+ * 现在点击或 Ctrl / Cmd + K 打开命令面板，页面 / 商品 / 工具同屏。
  */
-const keyword = ref('')
+const globalSearchRef = ref(null)
+
+const openGlobalSearch = () => {
+  menuOpen.value = false
+  globalSearchRef.value?.open()
+}
 
 const handleScroll = throttle(() => {
   isScrolled.value = window.scrollY > 50
@@ -636,91 +599,6 @@ const onMenuKeydown = (event) => {
 const toggleUserMenu = () => {
   if (userMenuOpen.value) closeUserMenu()
   else openUserMenu()
-}
-
-/**
- * 提交搜索：跳到搜索结果页，**商品与工具一起搜**。
- *
- * 此前这里的行为是「当前不在首页/热卖榜就跳热卖榜，否则什么都不做」——
- * 也就是说它从来没有发起过一次搜索，只是把用户送到一个会被客户端过滤的栅格前，
- * 而且那个栅格只有商品。工具的数据在另一个接口里，客户端过滤拿不到。
- *
- * 关键词由 URL 携带（`/search?q=`），因此：
- *   · 结果页可以直接分享/收藏链接；
- *   · 用户离开结果页后，首页的商品列表**不会**再受这次搜索影响
- *     （关键词不再进 store，见上面 `keyword` 的说明）。
- */
-const handleSearchSubmit = () => {
-  menuOpen.value = false
-  // 收起搜索框：结果已经在页面上了，留着展开只是占地方
-  closeSearch()
-
-  const text = keyword.value.trim()
-  // 空关键词不跳：结果页没有关键词时只会显示引导语，跳过去等于把用户从一个
-  // 空输入框送到另一个空页面
-  if (!text) return
-
-  router.push({ name: 'SearchResults', query: { q: text } })
-}
-
-// ── 搜索图标的展开 / 收起 ──────────────────────────────────────
-//
-// 点击展开（悬停**不**展开，按要求改掉）。三件事必须一起成立，
-// 只做其中一件都会让这块变得难用：
-//   1. 点开时把光标落进输入框 —— 否则用户还得再点一次输入框
-//   2. 键盘 Tab 进来也要展开 —— 收起态宽度为 0，不展开就是往一个看不见的框里打字
-//   3. 焦点只是在**这块之内**移动（输入框 ⇄ 放大镜按钮）时不能收起 ——
-//      否则「再点一次图标收起」会先被 focusout 关掉、再被 click 打开，
-//      看起来就是「点了没反应」
-
-const searchRoot = ref(null)
-const searchBarRef = ref(null)
-const searchToggleRef = ref(null)
-const searchOpen = ref(false)
-
-const closeSearch = () => {
-  searchOpen.value = false
-  // 收起时同时把焦点移走：只改状态的话，界面已收起而键盘输入仍打进看不见的框里。
-  // 元素本来就未聚焦时 blur() 是空操作，不会再触发 focusout，因此不会递归。
-  searchBarRef.value?.blur()
-}
-
-/** 点图标：展开则收起，收起则展开并把光标送进输入框 */
-const toggleSearch = async () => {
-  if (searchOpen.value) {
-    closeSearch()
-    return
-  }
-  searchOpen.value = true
-  await nextTick()
-  searchBarRef.value?.focus()
-}
-
-/**
- * 焦点进入这块时展开（键盘 Tab 过来用）。
- *
- * ⚠ **必须忽略来自放大镜按钮自身的 focusin。**
- *
- * 浏览器在 mousedown 时就会把焦点给按钮，而 focusin 冒泡到 wrapper 时
- * click 还没发生。若这里无条件置 true，点一下就会变成：
- *   mousedown → focusin → 展开
- *   click     → toggleSearch 看到已展开 → 收起
- * 净效果是「闪一下又没了」，看起来像有个莫名的动画。
- *
- * 忽略按钮自身之后：点按钮只走 click 的切换逻辑，展开时再把光标送进输入框；
- * 键盘用户第一下 Tab 落在按钮上（它本来就是展开/收起的开关），
- * 第二下 Tab 进输入框时展开，回车/Space 也仍然有效。
- */
-const handleSearchFocusIn = (event) => {
-  if (event.target === searchToggleRef.value) return
-  searchOpen.value = true
-}
-
-const handleSearchFocusOut = (event) => {
-  // relatedTarget 为 null 表示焦点落到了不可聚焦的地方（例如点了页面空白）
-  if (!event.relatedTarget || !searchRoot.value?.contains(event.relatedTarget)) {
-    closeSearch()
-  }
 }
 
 /**
@@ -940,194 +818,6 @@ onUnmounted(() => {
 .menu-link:hover::after,
 .menu-link.router-link-active::after {
   transform: scaleX(1);
-}
-
-/* ── 搜索：收起是一个图标，展开后输入框从图标**左侧**长出来 ──────
- *
- * 结构：.navbar-search（定位锚点）
- *         ├─ .search-slot   占位格，始终占住图标宽度
- *         └─ .search-field  绝对定位的「框」，内部是 [输入框][放大镜按钮]
- *
- * 为什么这样搭：
- *   - 浮层是**绝对定位**的，不参与文档流。否则 1024px 与手机宽度下
- *     Logo + 菜单 + 五组图标的总宽会超视口，把主导航挤变形。
- *   - 它 `right: 0` 与占位格右缘对齐、向**左**生长，因此永远不会顶出屏幕右边；
- *     而放大镜是框的最后一个子元素，右贴框缘 ——
- *     于是**展开前后放大镜一动不动**，长出来的是它左边的输入区。
- *
- * ⚠⚠ 收起态与展开态**必须共用同一套尺寸令牌**，只允许宽度变。
- *
- * 这里踩过一次：收起态用 `--icon-btn-size` / `--icon-btn-radius` /
- * `--bg-surface`，展开态用 `--input-height` / `--radius-input` / `--bg-surface-2`。
- * 这两组令牌的取值并不相等（底色一深一浅、描边一有一无、圆角不同档）。
- * 于是**一点击盒子就明显变样**，明暗两套主题全中。
- *
- * 现在统一锚在图标按钮那一组上（它是顶栏里的一员，收起时就该和左右邻居
- * 一模一样），展开只加宽：
- *   height / border-radius / background / border  → 两个状态完全相同
- *   width                                        → 唯一变化的属性
- * 阴影也不再在展开时凭空出现（那同样是一次「明显差异」），
- * 只在真正聚焦时给一圈焦点环 —— 那是用户主动操作的结果，不是点击的副作用。
- */
-.navbar-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex: none;
-}
-
-.search-slot {
-  display: block;
-  width: var(--icon-btn-size);
-  height: var(--icon-btn-size);
-}
-
-.search-field {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  /*
-   * 框里**只有一个参与文档流的子元素**（输入区），放大镜是绝对定位的
-   * —— 见下方 .search-toggle 的说明。因此这里不需要 flex 排版，
-   * 也不需要 gap：任何「按状态切换间距」的写法都会在动画首帧造成溢出。
-   */
-  width: var(--icon-btn-size);
-  /* 与左右邻居（主题 / 购物车 / 头像）逐值相同的图标按钮外观 */
-  height: var(--icon-btn-size);
-  /*
-   * 用 clip 而不是 hidden：hidden 只隐藏滚动条，容器**仍可被程序滚动**，
-   * 而聚焦一个溢出其容器的输入框时浏览器会滚动它 —— 那会让整个框的内容
-   * 横向位移。clip 彻底禁止滚动，从根上排除这类位移。
-   */
-  overflow: clip;
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--stroke-color);
-  border-radius: var(--icon-btn-radius);
-  transform: translateY(-50%);
-  transition:
-    width var(--transition-surface),
-    color var(--transition-interactive),
-    border-color var(--transition-interactive),
-    /* box-shadow 必须一起过渡：聚焦环是「描边变色 + 外发光」两件事，
-     * 只过渡 border-color 的话，外发光会**瞬间出现**而描边在淡入 ——
-     * 一个渐变一个硬切，看起来就是一次莫名的闪动。 */
-    box-shadow var(--transition-interactive);
-}
-
-.navbar-search.search-open .search-field {
-  /* **唯一**的几何变化：变宽。
-   * 宽度按图标格换算（36px × 8 = 288px），同时不超过视口。 */
-  width: min(calc(var(--icon-btn-size) * 8), calc(100vw - var(--space-unit) * 6));
-}
-
-/* 悬停反馈照搬 .u-icon-btn:hover:not(:disabled)（只变字色与描边色）——
- * 盒子已经移到外框上，这套反馈也要跟着上来，否则鼠标移上去毫无反应。
- * 字形靠按钮的 color: inherit 跟着变色。 */
-.navbar-search .search-field:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-/* 展开后它已经是输入框：描边不再随悬停变色，字色仍随悬停提亮
- * （提示右端的放大镜仍可点击收起）。 */
-.navbar-search.search-open .search-field:hover {
-  border-color: var(--stroke-color);
-}
-
-/* 聚焦时给一圈焦点环。这是用户主动把光标放进来才有的，
- * 与「点击展开」无关，因此不算上面说的那种差异。放在悬停规则之后才盖得住。 */
-.navbar-search.search-open .search-field:focus-within {
-  border-color: var(--input-focus-border);
-  box-shadow: var(--input-focus-shadow);
-}
-
-/* 放大镜：**绝对定位贴框的右缘**，不参与文档流。
- *
- * 这是为了彻底消灭「点击时图标闪一下」这类问题。此前按钮是框的 flex 子元素，
- * 它的位置与尺寸取决于框**正在变化的宽度** —— 于是任何一帧的排版细节
- * （首帧溢出、被裁、重排）都会表现在按钮上，表现为闪动或抖动。
- *
- * 拿出来之后：框的右缘是固定的（right: 0 且外层宽度恒定），按钮贴右缘，
- * 于是它的位置**在数学上与宽度动画无关** —— 宽度怎么变它都不动，
- * 也不可能被裁（它始终落在内边距盒之内）。
- *
- * 同时满足「展开前后按钮位置不变」：右缘对齐，向左侧生长的是输入区。
- *
- * 按钮**永远不画自己的底与描边**（盒子统一由外框承担）：收起时若两层都画，
- * 描边会错位 1px 并在右侧被裁掉（粗野主题 2px 更明显）；展开时若还画着，
- * 框里就多出一个方按钮。尺寸取内容盒大小，字形才在外框里真正居中。
- * 写到三层选择器，确保压得过 .u-icon-btn 自身的 width/height/color。 */
-.navbar-search .search-field .search-toggle {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  width: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
-  height: calc(var(--icon-btn-size) - var(--stroke-width) * 2);
-  color: inherit;
-  background: transparent;
-  border-color: transparent;
-  cursor: pointer;
-  transform: translateY(-50%);
-}
-
-.navbar-search .search-field .search-toggle:hover {
-  background: transparent;
-  border-color: transparent;
-}
-
-/* 内层：SearchBar 自带的外框全部抹掉（由 .search-field 承担），
- * 图标也让位（放大镜就是外面那个按钮）。
- * 左右留白**全部由这一层给**（见下方 .u-input 的注释），右侧留出
- * 「按钮宽 + 一点间距」，文字才不会钻到放大镜底下。 */
-.search-field :deep(.u-search) {
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  padding-left: var(--input-padding-x);
-  padding-right: calc(var(--icon-btn-size) - var(--stroke-width) * 2 + var(--input-padding-x));
-}
-
-/* 输入框自己不留横向内边距：内边距会把它的盒子撑得比内容宽，
- * 收起时就是这个「看不见的盒子」压在绝对定位的放大镜底下，并给原生的
- * 清除按钮（✕）提供了绘制位置。留白改由外层 .u-search 承担后，
- * 输入框的盒子 = 表单的内容盒，收起时真正是 0。 */
-.search-field :deep(.u-input) {
-  height: 100%;
-  padding-left: 0;
-  padding-right: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  /* 收起时输入框会和放大镜重叠：input 的 min-width: auto 会把它撑到
-   * 浏览器默认宽度（约 170px），而按钮压在它右边。置 0 让它真正收缩掉，
-   * 避免一个看不见的输入框盖在按钮上。 */
-  min-width: 0;
-}
-
-/* 输入框自己的聚焦态也抹掉 —— 高亮统一由 .search-field:focus-within 表达 */
-.search-field :deep(.u-input:focus) {
-  border-color: transparent;
-  box-shadow: none;
-}
-
-/* ── 收起态：原生清除按钮必须消失 ──────────────────────────────
- *
- * 输入框是 type="search"，Chromium 会在里面画一个原生的 ✕
- * （::-webkit-search-cancel-button，位于内容盒右缘）。收起后输入框只剩
- * 图标那样宽，而这个 ✕ 仍然会在「鼠标停留在框内 / 框仍有焦点」时被画出来，
- * 正好落在绝对定位的放大镜上 —— 就是用户看到的图标重叠。
- *
- * 收起态直接不画它；展开态照旧（那里有足够的空间，位置在放大镜左侧十几像素）。
- * 这里只隐藏 UA 装饰、不动任何间距，因此不存在「按状态切换间距导致首帧溢出」
- * 那一类老问题。 */
-.navbar-search:not(.search-open) .search-field :deep(.u-input::-webkit-search-cancel-button) {
-  display: none;
-  -webkit-appearance: none;
-  appearance: none;
 }
 
 /* ── 操作区 ─────────────────────────────────────────────── */

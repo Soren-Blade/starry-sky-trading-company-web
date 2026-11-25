@@ -213,7 +213,6 @@
 
   /* ── B2. 图标按钮 ─────────────────────────────────────────── */
   --icon-btn-size: var(--ec-control-h-md);
-  --icon-btn-radius: var(--ec-radius-md);
   --icon-btn-icon-size: 18px;
 
   /* ── B3. 商品卡片 ─────────────────────────────────────────── */
