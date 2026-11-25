@@ -9,6 +9,30 @@
 
 ---
 
+## [4.15.0] — 2026-11-25
+
+悬浮导航的**背景**换成真正的模态玻璃（选中胶囊保留不动），手机顶栏头像收到与一行图标等重的尺寸。只动样式与一个令牌，接口与结构不变。
+
+### 新增
+
+- **玻璃「地板光」令牌 `--glass-nav-floor`**（`variables.css`）：从底边往上 44%、62% 处消失的一道浅光。浮空玻璃除了上缘受光，下缘也会吃一次漫反射；它同时给 10px 的 Tab 标签压出稳定底色——再深的会把 66% 的玻璃糊回 84% 的实底，材质反而看不出来。
+
+### 变更
+
+- **手机悬浮 Tab Bar 的背景换成模态玻璃**（`BottomNav.vue`）：
+  - 底色 `--glass-nav-bg-strong`（84%）→ `--glass-nav-bg`（66%，与顶栏常态同一档）；
+  - 模糊 `--glass-nav-blur`（24px）→ `--glass-nav-blur-strong`（32px），饱和仍 190%；
+  - `background-image` 增加地板光层：`specular, floor, wash`（拆法与顶栏一致，底色走 `background-color`）；
+  - 选中胶囊、软尾、指示条、图标上浮、`prefers-reduced-motion` 全部保持 4.12.0 的行为不变。
+- **底部标签在玻璃上改用二级文字**：`--text-muted`（#5F6878，白底 5.47:1）在半透明玻璃后面遇到暗色商品图只剩约 2.4:1；改用 `--text-secondary` 并配合地板光，标签与图标在「内容透上来」的前提下仍读得清。
+- **手机顶栏头像 36px → 32px**（`Navbar.vue` @767 块 + 新令牌 `--navbar-avatar-size`）：桌面 36px 在 47.6px 高的手机顶栏里占 76%，压着 logo 与汉堡；收到 32px（67%）后一行三个落点等重。命中区用 `.user-avatar-btn::before { inset: -6px }` 补到 44×44（实测四角仍命中按钮），状态点 6px → 5px 并贴着头像右下角。
+
+### 测试
+
+- `test/navGlass.test.js`：悬浮栏断言改为「66% 底色 + specular/floor/wash 三层 + 32px 模糊」；新增「地板光是渐变图层、标签用二级文字」与「手机头像 32px + 伪元素补命中区 + 状态点 5px」两条。
+- `npm test` 1270 条全部通过；`npm run lint` / `npm run build` 通过。
+- BrowserSkill（bsk 0.5.0，iPhone-14 模拟）实测：`.bottom-nav` 计算值 `color(srgb 1 1 1 / 0.66)`、`backdrop-filter: blur(32px) saturate(1.9)`；`--navbar-avatar-size` 生效后头像 32×32、顶栏 47.6px、伪元素 `inset: -6px`，`elementFromPoint` 在四角与中心均命中 `.user-avatar-btn`。
+
 ## [4.14.0] — 2026-11-25
 
 个人中心的两块「读起来像后台表」的内容重做成**有主次的阅读界面**：摘要卡变成一张带品牌封面的「通行证」，操作日志从五列表格改成一条活动轨迹。只动前端，接口与数据口径不变。

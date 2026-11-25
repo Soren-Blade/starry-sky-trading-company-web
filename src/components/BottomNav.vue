@@ -175,14 +175,17 @@ const activeIndex = computed(() => items.value.findIndex((item) => isActive(item
     max-width: 520px;
     padding: 5px;
     transform: translateX(-50%);
-    /* 与顶栏同一套拆法：底色走 background-color，specular 与品牌洗染走图层 */
-    background-color: var(--glass-nav-bg-strong);
-    background-image: var(--glass-nav-specular), var(--glass-nav-wash);
+    /* 与顶栏同一套拆法：底色走 background-color，specular 与品牌洗染走图层。
+     * 4.13.0：底色从 84% 降到 66%（与顶栏常态同一档），模糊从 24 提到 32 ——
+     * 悬浮栏不再像「贴了一块白砖」，内容从玻璃后面透上来，才是模态玻璃。
+     * 透上来之后标签那一行需要自己的底：加一层从下往上 58% 的地板光。 */
+    background-color: var(--glass-nav-bg);
+    background-image: var(--glass-nav-specular), var(--glass-nav-floor), var(--glass-nav-wash);
     border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
     box-shadow: var(--glass-nav-highlight), var(--glass-nav-rim), var(--glass-nav-lift-strong);
-    -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
-    backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
     /* 胶囊与软尾都是绝对定位，锚在这层玻璃的 padding box 上 */
     isolation: isolate;
   }
@@ -287,7 +290,9 @@ const activeIndex = computed(() => items.value.findIndex((item) => isActive(item
   min-height: 56px;
   padding: 6px 2px;
   border-radius: 17px;
-  color: var(--text-muted);
+  /* 玻璃后面有内容时，三级文字（#5F6878）在暗色商品图上只有 2.4:1；
+   * 这一行用二级文字，配合地板光把 10px 标签拉回到可读区间。 */
+  color: var(--text-secondary);
   text-decoration: none;
   transition:
     color var(--transition-interactive),

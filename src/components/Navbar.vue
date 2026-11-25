@@ -1210,6 +1210,27 @@ onUnmounted(() => {
   .navbar {
     --glass-nav-blur: 18px;
     --glass-nav-blur-strong: 24px;
+    /* 头像：桌面 36px 在 47.6px 高的手机顶栏里占 76%，压着 logo 与汉堡；
+     * 收到 32px（67%）后一行里三个落点才等重，命中区由 ::before 补到 44。 */
+    --navbar-avatar-size: 32px;
+  }
+
+  .user-avatar-btn::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: inherit;
+  }
+
+  .user-avatar-btn .u-avatar {
+    width: var(--navbar-avatar-size);
+    height: var(--navbar-avatar-size);
+  }
+
+  /* 头像缩到 32 后，6px 的状态点按比例收到 5px，仍贴着头像右下角 */
+  .navbar-avatar-status {
+    width: 5px;
+    height: 5px;
   }
 
   .navbar-drawer {

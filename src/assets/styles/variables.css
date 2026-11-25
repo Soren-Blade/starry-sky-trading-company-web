@@ -190,6 +190,15 @@
     color-mix(in srgb, var(--accent) 10%, transparent)
   );
   --glass-nav-rim: inset 0 0 0 1px color-mix(in srgb, var(--ec-bg-surface) 32%, transparent);
+  /* 地板光（4.13.0）：浮空的玻璃除了上缘受光，下缘也会吃到一次漫反射。
+   * 它是从底边往上 44% 的一道浅光，落在 Tab 标签那一行——
+   * 既让玻璃有厚度，也让 10px 的标签在透上来的内容上有稳定的底色；
+   * 再深就把 66% 的玻璃又糊成 84% 的实底，材质反而看不出来。 */
+  --glass-nav-floor: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--ec-bg-surface) 44%, transparent) 0%,
+    transparent 62%
+  );
   /* 影：玻璃是浮起来的一层，落影要比普通卡片更远更浅；
    * 直接复用 EC 的两档大阴影，暗色主题自动跟着换，不再写死 rgba。 */
   --glass-nav-lift: var(--ec-shadow-lg);
@@ -317,6 +326,8 @@
 
   /* ── B11. 头像 ────────────────────────────────────────────── */
   --avatar-size: var(--ec-avatar-md);
+  /* 顶栏头像：桌面 36，手机在组件里覆写到 32（见 Navbar.vue 的 @767 块） */
+  --navbar-avatar-size: var(--ec-avatar-md);
   --avatar-radius: var(--ec-radius-full);
   /* 描边宽度与颜色随 EC 的 Avatar 一起省略：EC 头像不带描边，
      需要分离感时用 --ec-bg-wash 的环（见 .u-badge--ring）。 */

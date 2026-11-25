@@ -85,8 +85,19 @@ test('顶栏的玻璃表面：底色与图层分开写，滚动后加深，且�
 test('手机端玻璃把模糊收一档换帧率，且用令牌覆盖而不是复制规则', () => {
   assert.match(
     NAVBAR,
-    /@media \(max-width: 767px\) \{[\s\S]*?\.navbar \{\s*--glass-nav-blur: 18px;\s*--glass-nav-blur-strong: 24px;\s*\}/
+    /@media \(max-width: 767px\) \{[\s\S]*?\.navbar \{\s*--glass-nav-blur: 18px;\s*--glass-nav-blur-strong: 24px;/
   )
+})
+
+test('手机端头像收到 32px，命中区仍由伪元素补到 44', () => {
+  assert.match(NAVBAR, /--navbar-avatar-size: 32px;/)
+  assert.match(
+    NAVBAR,
+    /\.user-avatar-btn::before \{\s*content: '';\s*position: absolute;\s*inset: -6px;/
+  )
+  // 视觉尺寸跟随令牌，状态点按比例收到 5px
+  assert.match(NAVBAR, /\.user-avatar-btn \.u-avatar \{[\s\S]*?width: var\(--navbar-avatar-size\);/)
+  assert.match(NAVBAR, /\.navbar-avatar-status \{\s*width: 5px;\s*height: 5px;/)
 })
 
 
@@ -98,12 +109,19 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
 })
 
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
+  // 4.13.0：底色降到 66%（与顶栏常态同档）、模糊换 32px 档、并加一层地板光
   assert.match(
     BOTTOM_NAV,
-    /background-color: var\(--glass-nav-bg-strong\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /background-color: var\(--glass-nav-bg\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-floor\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur-strong\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
+})
+
+test('地板光是一层渐变图层，标签用二级文字在玻璃上保读', () => {
+  assert.match(VARIABLES, /--glass-nav-floor: linear-gradient\([\s\S]*?44%, transparent\)/)
+  // 半透明底上不再用三级文字（暗色商品图上只有 2.4:1）
+  assert.match(BOTTOM_NAV, /\.bottom-nav-item \{[\s\S]*?color: var\(--text-secondary\);/)
 })
 
 test('选中态是一枚共享胶囊：滑动 + 软尾 + 图标上浮', () => {
