@@ -9,6 +9,36 @@
 
 ---
 
+## [4.18.0] — 2026-11-25
+
+手机顶栏从「把桌面那一排缩小」改成「只有三个落点」，抽屉与身份面板按手机的操作方式重排。用户反馈原话：「重新调整移动端顶部导航栏头像的大小 目前不美观」「button 按钮重设计」「drawer-list 要不要在移动端展示」「user-menu 有没有必要在移动端展示」。
+
+### 变更
+
+- **头像 32 → 36px，并加一圈表面色描边**（`--navbar-avatar-size: 36px` + `box-shadow: 0 0 0 2px var(--ec-bg-surface)`）：32px 时头像与旁边 20px 的线性图标几乎等重，还缺少与玻璃的分界，看起来像「贴上去的贴纸」；36px 配 2px 描边后它是一个明确的身份入口。状态点 5 → 9px 并骑在描边上（`right/bottom: -1px`），命中区仍是 48px（`::before inset: -6px`）。
+- **顶栏落点收到三个**：搜索 / 身份 / 菜单。消息入口加 `hide-below-768`——它的内容在抽屉里，不必和另外两个抢位置；购物车与会员早在 4.8.0 就交给底部 Tab Bar。
+- **操作区间距 12 → 8px**：三个落点、48px 命中区，8px 是「不误触邻居」的下限。
+- **汉堡两条杠**：`.menu-toggle-bars` 从三条减到两条（gap 0.75 单位、条高 0.3 单位），展开时两条各 `translateY(±0.53 单位) rotate(±45deg)` 拼成 ×。三条杠在 47px 的栏里太密，两条更像「菜单」而不是「更多」。
+
+### 新增
+
+- **抽屉重做为浮动卡片**（`.navbar-drawer`，`role="dialog"` + `aria-label="站内菜单"`）：左右各 2 单位内边距、`--ec-bg-raised` 底、1px 边、`--ec-radius-xl`、`--ec-shadow-xl`，与身份面板同一张卡片的语言。
+- **抽屉只放「发现」与「偏好」两组**：`drawerMenu` = `navMenu` 去掉 `/home`、`/categories`（这两项在底部 Tab Bar 里已经有了，抽屉再列一遍就是重复的四级入口），剩下热门推荐 / 工具分享 / 关于我们，各带图标与 chevron；已登录用户多一行「消息」(`/mail`)，带未读角标。组标题用 `--fs-label` + `--tracking-label` 大写。
+- **身份面板改成整宽卡片 + 3×2 资产网格**：`.user-dropdown` 在 767 断点下从「右侧 224px 小下拉」变成 `position: fixed`、左右 2 单位、`width: auto`、`max-height: calc(100dvh - …)` 的卡片；六项资产（个人中心 / 订单 / 收藏 / 资产 / 卡密 / 签到）排成 3 列、格子 `min-height: 9.5 单位`=76px。桌面端保持原来的一列下拉不变。
+- **文案**：`navbar.menuTitle` / `navbar.discoverGroup` / `navbar.preferencesGroup`（中文与英文各一份）。
+
+### 修复
+
+- 抽屉与身份面板互斥：打开一个会自动收起另一个（`toggleMenu()` / `toggleUserMenu()` 里各关一张），两个浮层不再叠在一起。
+- `.drawer-group-title` 误用未定义的 `--tracking-overline`（designTokens 门禁抓到），改用 `--tracking-label`。
+
+### 测试
+
+- `test/navGlass.test.js`：「手机端头像」用例改为 36px + 表面色描边 + 状态点 9px；`navbar-mail` 断言改为类名前缀正则（允许追加 `hide-below-768`）。
+- `test/navbarMail.test.js` / `test/navbarUserMenu.test.js`：下拉切片终点改到 `class="u-icon-btn menu-toggle`；「窄屏触控」用例重写为「身份面板改成整宽卡片 + 三列资产网格」（含 `position: fixed`、`calc(100dvh`、`repeat(3, minmax(0, 1fr))`、`min-height: calc(var(--space-unit) * 9.5)`）。
+- `npm test` 1271 条全部通过；`npm run lint` / `npm run build` 通过。
+- BrowserSkill（bsk 0.5.0，iPhone-14 模拟）：顶栏三个落点中心同在 y=24、相邻间距 8px；头像 36px、状态点 9px、描边 `rgb(255,255,255) 0 0 0 2px`；抽屉为浮动卡片（发现三行 + 偏好两组），汉堡变 ×；身份面板整宽、六格 76px；暗色下两张卡片均为 `--ec-bg-raised` 深色底、文字与边框正常；桌面 1264px 下身份菜单仍是 224px 右侧下拉、抽屉不出现。
+
 ## [4.17.0] — 2026-11-25
 
 给悬浮导航补上「光」，并把模糊调回「认得出内容」的档位。反馈原话：「背景太模糊了达不到模态玻璃的效果，也没有发光效果」。
