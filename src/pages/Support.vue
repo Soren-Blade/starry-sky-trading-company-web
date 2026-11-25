@@ -395,7 +395,7 @@ import {
   supportStatusTag,
   supportTabLabel,
 } from '@/constants/support.js'
-import { translate } from '@/i18n/index.js'
+import { translate, SUPPORTED_LOCALES } from '@/i18n/index.js'
 import { toDateTime } from '@/hooks/useSimpleTimeFormatter/index.js'
 import { useSupportStore } from '@/stores/support.js'
 import { useUserStore } from '@/stores/user.js'
@@ -428,11 +428,14 @@ const copied = ref(false)
 const copyError = ref('')
 
 /**
- * 语言反馈模式（4.19.0）
+ * 语言反馈模式（4.19.0，4.20.0 补「界面语言」）
  *
- * 入口是语言切换抽屉里的「反馈语言问题」，带 `?topic=language` 过来。
+ * 入口是语言切换抽屉里的「语言或翻译有问题？」，带 `?topic=language&from=<locale>` 过来。
  * 分类只有服务端 CHECK 允许的六种，语言问题归到 other；
  * 预设负责把标题与正文骨架填好，用户只补细节（详情、页面位置、原文）。
+ *
+ * `from` 是链接带上来的当前界面语言：把它写进骨架的首行，
+ * 用户就不必自己解释「我在哪个语言下看到的问题」，客服也不必再问一遍。
  */
 const languageTopic = computed(() => route.query.topic === 'language')
 const activePreset = ref('')
@@ -442,11 +445,22 @@ const LANGUAGE_PRESETS = computed(() => [
   { key: 'layout', label: SUPPORT.languagePresets.layout },
 ])
 
+/** `?from=en-US` → `English (en-US)`；未知或缺省时返回空串，骨架只写「未携带」 */
+const fromLocale = computed(() => {
+  const code = String(route.query.from || '').trim()
+  if (!code) return ''
+  const match = SUPPORTED_LOCALES.find((item) => item.code === code)
+  return match ? `${match.label} (${match.code})` : code
+})
+
 function applyLanguagePreset(key) {
   activePreset.value = key
   form.category = 'other'
   form.subject = SUPPORT.languageSubjects[key] || ''
-  form.body = SUPPORT.languageBodies[key] || ''
+  const base = SUPPORT.languageBodies[key] || ''
+  // 前缀与值分开拼：文案层走 i18n 的 `{}` 插值，`{language}` 写在词条里会被吃掉
+  const localeLine = fromLocale.value ? `${SUPPORT.languageLocalePrefix}${fromLocale.value}` : ''
+  form.body = localeLine ? `${base}\n\n${localeLine}` : base
   validationError.value = ''
 }
 

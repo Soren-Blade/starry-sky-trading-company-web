@@ -93,14 +93,18 @@ test('手机端玻璃把模糊收一档换帧率，且用令牌覆盖而不是�
   )
 })
 
-test('手机端头像 28px 并带一圈 surface 描边，命中区由伪元素补到 44', () => {
-  assert.match(NAVBAR, /--navbar-avatar-size: 28px;/)
-  assert.match(
-    NAVBAR,
-    /\.user-avatar-btn::before \{\s*content: '';\s*position: absolute;\s*inset: -8px;/
-  )
-  // 视觉尺寸跟随令牌；外描边让头像在半透玻璃与深色内容上都能立住
-  assert.match(NAVBAR, /\.user-avatar-btn \.u-avatar \{[\s\S]*?width: var\(--navbar-avatar-size\);/)
+test('手机端三个落点共用一个动作盒：36/40 视觉盒 + 44 命中，头像缩成胶囊里的 24', () => {
+  // 4.20.0：搜索 / 身份 / 菜单改成同一个 .navbar-action 语法
+  assert.match(NAVBAR, /\.navbar-action \{[\s\S]*?width: 36px;[\s\S]*?height: 36px;/)
+  assert.match(NAVBAR, /\.navbar-action::after \{\s*content: '';[\s\S]*?inset: -4px;/)
+  assert.match(NAVBAR, /\.navbar-action \{[\s\S]*?width: 40px;[\s\S]*?height: 40px;/)
+  // 三个按钮都挂了同一个类
+  assert.match(NAVBAR, /class="ec-icon-btn navbar-search-trigger navbar-action"/)
+  assert.match(NAVBAR, /class="user-avatar-btn navbar-action navbar-identity"/)
+  assert.match(NAVBAR, /class="u-icon-btn menu-toggle show-mobile navbar-action"/)
+  // 头像不再是一枚裸圆，而是「头像 + 箭头」的胶囊
+  assert.match(NAVBAR, /class="navbar-identity-caret"/)
+  assert.match(NAVBAR, /--navbar-avatar-size: 24px;/)
   assert.match(
     NAVBAR,
     /\.user-avatar-btn \.u-avatar \{[\s\S]*?box-shadow: 0 0 0 1\.5px var\(--ec-bg-surface\);/

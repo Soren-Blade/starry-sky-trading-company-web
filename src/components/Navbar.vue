@@ -31,7 +31,7 @@
         -->
         <button
           type="button"
-          class="ec-icon-btn navbar-search-trigger"
+          class="ec-icon-btn navbar-search-trigger navbar-action"
           :aria-label="PAGES.searchGlobal.title"
           :title="PAGES.searchGlobal.title"
           @click="openGlobalSearch"
@@ -131,12 +131,20 @@
           <span class="show-below-768">{{ t('auth.loginShort', '登录') }}</span>
         </button>
 
-        <!-- 有身份（游客或注册用户）：头像与下拉菜单 -->
+        <!-- 有身份（游客或注册用户）：身份胶囊 + 下拉菜单 -->
         <div v-else class="navbar-user">
+          <!--
+            4.20.0：头像从「一枚裸圆」改成「身份胶囊」——头像 + 一个下拉箭头，
+            高、圆角、悬停底色都与左侧搜索、右侧菜单同一套（.navbar-action）。
+            改之前三个落点是三种语法：一枚裸图标、一个 28px 的实心圆、两根横杠，
+            圆的下缘比两根横杠低半格，眼睛读到的是「一个大头像夹着两个小图标」。
+            现在三者共用一个 36px 的视觉盒（手机 40，命中区一律 44），
+            头像因此不再是最重的那个，但它多了一个「点开是菜单」的箭头。
+          -->
           <button
             id="user-menu-trigger"
             type="button"
-            class="user-avatar-btn"
+            class="user-avatar-btn navbar-action navbar-identity"
             :aria-label="identityLabel"
             aria-haspopup="menu"
             aria-controls="user-menu"
@@ -145,30 +153,33 @@
             @keydown.down.prevent="openUserMenu(true)"
             @keydown.esc="closeUserMenu(true)"
           >
-            <span class="u-avatar">
-              <!-- 没有头像地址、或头像地址加载失败（外链图床不可达）时，
-                   都退化为一个字形占位 —— 不再出现「碎图」，
-                   也不会渲染空 src（空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
-              <SmartImage
-                v-if="avatarUrl"
-                :src="avatarUrl"
-                :alt="nickname || t('navbar.avatarFallback')"
-                fallback-icon="user"
-                fallback-class="avatar-fallback"
-                loading="eager"
-              />
-              <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
+            <span class="navbar-identity-avatar">
+              <span class="u-avatar">
+                <!-- 没有头像地址、或头像地址加载失败（外链图床不可达）时，
+                     都退化为一个字形占位 —— 不再出现「碎图」，
+                     也不会渲染空 src（空 src 会被浏览器当作「请求当前页面」再发一次请求） -->
+                <SmartImage
+                  v-if="avatarUrl"
+                  :src="avatarUrl"
+                  :alt="nickname || t('navbar.avatarFallback')"
+                  fallback-icon="user"
+                  fallback-class="avatar-fallback"
+                  loading="eager"
+                />
+                <span v-else class="avatar-fallback"><AppIcon name="user" /></span>
+              </span>
+              <!-- 在线状态圆点：有身份就常驻头像右下角，呼吸光晕表达「在线」。
+                   条件用 hasIdentity 而不是 userStore.isLoggedIn —— 后者是
+                   `user_type === 'registered'`，会把游客判成未登录而让圆点消失，
+                   而游客同样是已解析出来的身份（有 userId），也该显示在线点。
+                   纯装饰：语义由头像按钮的 aria-label 承担，读屏不必多读一遍。 -->
+              <span
+                v-if="hasIdentity"
+                class="navbar-avatar-status"
+                aria-hidden="true"
+              ></span>
             </span>
-            <!-- 在线状态圆点：有身份就常驻头像右下角，呼吸光晕表达「在线」。
-                 条件用 hasIdentity 而不是 userStore.isLoggedIn —— 后者是
-                 `user_type === 'registered'`，会把游客判成未登录而让圆点消失，
-                 而游客同样是已解析出来的身份（有 userId），也该显示在线点。
-                 纯装饰：语义由头像按钮的 aria-label 承担，读屏不必多读一遍。 -->
-            <span
-              v-if="hasIdentity"
-              class="navbar-avatar-status"
-              aria-hidden="true"
-            ></span>
+            <AppIcon class="navbar-identity-caret" name="chevron-down" aria-hidden="true" />
           </button>
 
           <div
@@ -357,7 +368,7 @@
         -->
         <button
           type="button"
-          class="u-icon-btn menu-toggle show-mobile"
+          class="u-icon-btn menu-toggle show-mobile navbar-action"
           :class="{ active: menuOpen }"
           :aria-expanded="menuOpen"
           :aria-label="t('navbar.toggleMenu')"
@@ -383,6 +394,14 @@
         · 账号类入口（消息中心）只出现在这里，注册用户才看得到；
         · 偏好（主题 / 语言）收在同一张面板底部，与导航之间用一条分组标题隔开。
     -->
+    <!--
+      抽屉（4.20.0）：从「一列带下划线的链接」改成两段卡片。
+
+      为什么分卡：导航（去哪）与偏好（怎么显示）是两件事，之前只靠一条分组标题
+      分隔，滚动时标题会滑出视野，链接和开关就混成一片。卡片给了它们各自的边界。
+      为什么偏好行是「左标签 + 右控件」：外观三档与语言两枚短码，控件都在右侧，
+      两行的左边缘对齐，读起来是一张设置表，而不是两个不同的组件拼在一起。
+    -->
     <div
       class="navbar-drawer"
       :class="{ active: menuOpen }"
@@ -390,53 +409,69 @@
       :aria-label="t('navbar.menuTitle')"
       :aria-hidden="menuOpen ? 'false' : 'true'"
     >
-      <p class="drawer-group-title">{{ t('navbar.discoverGroup') }}</p>
-      <ul class="drawer-list">
-        <li v-for="item in drawerMenu" :key="item.id">
-          <router-link :to="item.path" class="drawer-link" @click="handleMenuClick">
-            <span class="drawer-link-icon" aria-hidden="true">
-              <AppIcon :name="item.icon" />
-            </span>
-            <span class="drawer-link-text">{{ item.label }}</span>
-            <span class="drawer-link-hint" aria-hidden="true">
-              <AppIcon name="chevron-right" />
-            </span>
-          </router-link>
-        </li>
-      </ul>
+      <section class="drawer-card">
+        <p class="drawer-group-title">{{ t('navbar.discoverGroup') }}</p>
+        <ul class="drawer-list">
+          <li v-for="item in drawerMenu" :key="item.id">
+            <router-link :to="item.path" class="drawer-link" @click="handleMenuClick">
+              <span class="drawer-link-icon" aria-hidden="true">
+                <AppIcon :name="item.icon" />
+              </span>
+              <span class="drawer-link-text">{{ item.label }}</span>
+              <span class="drawer-link-hint" aria-hidden="true">
+                <AppIcon name="chevron-right" />
+              </span>
+            </router-link>
+          </li>
+        </ul>
 
-      <!-- 消息中心：窄屏顶栏不挂信封之后，这里是它的唯一入口。
-           角标沿用顶栏那套未读数，避免出现「入口有了、未读看不见」。 -->
-      <router-link
-        v-if="userStore.isLoggedIn"
-        to="/mail"
-        class="drawer-link drawer-link--account"
-        @click="handleMenuClick"
-      >
-        <span class="drawer-link-icon" aria-hidden="true"><AppIcon name="mail" /></span>
-        <span class="drawer-link-text">{{ mailLabel }}</span>
-        <span v-if="mailStore.hasUnread" class="u-badge drawer-link-badge" aria-hidden="true">
-          {{ mailStore.unreadLabel }}
-        </span>
-        <span class="drawer-link-hint" aria-hidden="true"><AppIcon name="chevron-right" /></span>
-      </router-link>
+        <!-- 消息中心：窄屏顶栏不挂信封之后，这里是它的唯一入口。
+             角标沿用顶栏那套未读数，避免出现「入口有了、未读看不见」。 -->
+        <router-link
+          v-if="userStore.isLoggedIn"
+          to="/mail"
+          class="drawer-link drawer-link--account"
+          @click="handleMenuClick"
+        >
+          <span class="drawer-link-icon" aria-hidden="true"><AppIcon name="mail" /></span>
+          <span class="drawer-link-text">{{ mailLabel }}</span>
+          <span v-if="mailStore.hasUnread" class="u-badge drawer-link-badge" aria-hidden="true">
+            {{ mailStore.unreadLabel }}
+          </span>
+          <span class="drawer-link-hint" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+        </router-link>
+      </section>
 
-      <!--
-        偏好区：明暗切换与语言切换。
+      <section class="drawer-card drawer-card--prefs">
+        <p class="drawer-group-title">{{ t('navbar.preferencesGroup') }}</p>
 
-        为什么不在顶栏硬留：三档控件约 80px 宽，390px 的顶栏里已经挤着
-        搜索 / 身份 / 菜单三个落点；抽屉是移动端唯一有纵向余量的地方，
-        且它们是「设置类」控件，放在导航之后符合「导航 → 偏好」的阅读顺序。
-      -->
-      <p class="drawer-group-title drawer-group-title--spaced">{{ t('navbar.preferencesGroup') }}</p>
-      <div class="drawer-theme">
-        <span class="drawer-theme-label">{{ THEME_SWITCH.label }}</span>
-        <ThemeSwitch />
-      </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">{{ THEME_SWITCH.label }}</span>
+          <ThemeSwitch />
+        </div>
 
-      <div class="drawer-lang">
-        <LanguageSwitch variant="drawer" />
-      </div>
+        <div class="drawer-row">
+          <span class="drawer-row-label">{{ t('language.label') }}</span>
+          <LanguageSwitch variant="drawer" />
+        </div>
+
+        <!--
+          语言反馈的出口：放在语言行的正下方，因为它是「这一行不够用」时才会想到的东西。
+          链接带 `from`（当前界面语言），客服中心据此把正文骨架写成「界面语言：English (en-US)」，
+          用户不必自己描述「我在用哪个语言看到的问题」。
+        -->
+        <router-link
+          class="drawer-note"
+          :to="{ path: '/support', query: { topic: 'language', from: locale } }"
+          @click="handleMenuClick"
+        >
+          <span class="drawer-note-text">{{ t('language.feedbackTitle') }}</span>
+          <span class="drawer-note-cta">
+            {{ t('language.feedbackCta') }}
+            <AppIcon name="chevron-right" aria-hidden="true" />
+          </span>
+        </router-link>
+      </section>
     </div>
   </header>
 </template>
@@ -481,7 +516,7 @@ const memberStore = useMemberStore()
 const mailStore = useMailStore()
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // isGuest 用于游客标记与文案；顶栏的「显示头像还是登录按钮」判断走的是
 // hasIdentity（游客也算有身份），因此这里不需要 isLoggedIn。
@@ -952,20 +987,72 @@ onUnmounted(() => {
   margin-left: auto;
 }
 
+/*
+ * 操作区的三个落点（4.20.0）：共用一个「动作盒」。
+ *
+ * 4.19.0 之前它们是三种语法：一枚裸图标、一个 28px 实心圆、两根横杠。
+ * 视觉重量不同、下缘也对不齐，读起来像三个来源不同的控件。
+ * 现在：同一个 36px 视觉盒（手机 40）+ 同一个圆角 + 同一套悬停底色，
+ * 图标统一 20px；头像缩成 24px 的圆形子元素，右侧再补一枚 14px 的箭头
+ * —— 它于是变成「身份胶囊」，是这个家庭里的一员，而不是一个更大的头像。
+ *
+ * 命中区：盒子里是 36/40，但 `::after` 撑到 44×44（触控下限），
+ * 所以看起来轻、点起来不费劲。
+ */
+.navbar-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-interactive),
+    color var(--transition-interactive);
+}
+
+.navbar-action:hover,
+.navbar-action:focus-visible {
+  background: var(--bg-soft);
+  color: var(--text-primary);
+}
+
+.navbar-action::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+}
+
 /* ── 用户菜单 ───────────────────────────────────────────── */
 .navbar-user {
   position: relative;
 }
 
+/* 身份胶囊：宽度由内容决定（头像 + 箭头），高度仍与两侧图标一致 */
 .user-avatar-btn {
-  position: relative;
-  display: block;
-  border-radius: var(--avatar-radius);
-  transition: opacity var(--transition-interactive);
+  width: auto;
+  padding: 0 calc(var(--space-unit) * 0.75) 0 calc(var(--space-unit) * 0.5);
 }
 
-.user-avatar-btn:hover {
-  opacity: 0.85;
+.navbar-identity-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  border-radius: var(--avatar-radius);
+}
+
+.navbar-identity-caret {
+  flex: none;
+  font-size: calc(var(--icon-btn-icon-size) * 0.7);
+  opacity: 0.7;
 }
 
 /* 无头像地址时的退化字形：尺寸跟随 .u-avatar 的令牌 */
@@ -980,11 +1067,11 @@ onUnmounted(() => {
   background: var(--bg-soft);
 }
 
-/* 在线状态圆点：头像右下角的 6px 绿点。
+/* 在线状态圆点：头像右下角的小绿点。
  *
- * 为什么挂在 .user-avatar-btn 而不是 .u-avatar 里面：
+ * 为什么挂在 `.navbar-identity-avatar`（头像的定位盒）而不是 `.u-avatar` 里面：
  *   `.u-avatar` 是 `overflow: hidden` + 圆形，挂在里面会被裁成半个月牙。
- *   按钮本身就是头像盒子的相对定位容器，圆点贴它的右下角，天然落在头像边缘。
+ *   4.20.0 起头像外面多了一层定位盒，圆点贴盒的右下角，恰好落在头像边缘。
  *
  * 为什么只动 box-shadow / opacity：
  *   顶栏是 flex 行，`transform: scale` 会把圆点算进布局或触发相邻图标的
@@ -1246,6 +1333,14 @@ onUnmounted(() => {
   visibility: visible;
 }
 
+/* 抽屉只属于窄屏。桌面没有汉堡，但「在窄屏打开后再拉宽窗口」会把这层留
+ * 在页面上（4.20.0 实测：整宽两张卡盖住首屏），所以桌面直接不渲染。 */
+@media (min-width: 768px) {
+  .navbar-drawer {
+    display: none;
+  }
+}
+
 /* 分组标题：抽屉从「一列纯文字」变成「两组」，需要一行小字说明第一组是什么 */
 .drawer-group-title {
   margin: 0 0 calc(var(--space-unit) * 1);
@@ -1254,10 +1349,6 @@ onUnmounted(() => {
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-muted);
-}
-
-.drawer-group-title--spaced {
-  margin-top: calc(var(--space-unit) * 3);
 }
 
 .drawer-list {
@@ -1326,16 +1417,69 @@ onUnmounted(() => {
   background: var(--bg-soft);
 }
 
-/* ── 抽屉里的明暗切换（仅窄屏出现，宽屏隐藏） ──
- * 默认 display:none —— 宽屏时顶栏已经有那组三档控件，
- * 抽屉本身也只在 ≤991 才会被汉堡打开。 */
-.drawer-theme {
-  display: none;
+/* ── 抽屉里的分组卡片（4.20.0） ──
+ * 抽屉外层已经是一张浮起的面板，里面再套卡片的唯一理由是**分组**：
+ * 导航（去哪）与偏好（怎么显示）不是一件事，各自有一块边界之后，
+ * 滚动时分组标题滑出视野也不会让两类内容混成一片。 */
+.drawer-card {
+  padding: calc(var(--space-unit) * 1.5);
+  border: 1px solid var(--border);
+  border-radius: var(--ec-radius-lg);
+  background: var(--ec-bg-surface);
 }
 
-.drawer-theme-label {
+.drawer-card--prefs {
+  margin-top: calc(var(--space-unit) * 1.5);
+}
+
+/* 偏好行：左标签 + 右控件。
+ * 与「外观」一行同构 —— 两行左边缘对齐、控件右对齐，读起来是一张设置表，
+ * 而不是「一行文字 + 一列语言」和「一行文字 + 三枚图标」拼起来的两个组件。 */
+.drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  min-height: var(--ec-control-h-lg);
+}
+
+.drawer-row + .drawer-row {
+  margin-top: calc(var(--space-unit) * 0.5);
+}
+
+.drawer-row-label {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
+}
+
+/* 脚注：语言反馈的出口。做成一条轻链接，不做卡片 ——
+ * 它是「这一行不够用」时的补充路径，不该与上面的导航行争视觉重量。 */
+.drawer-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--space-unit) * 1.5);
+  margin-top: calc(var(--space-unit) * 1);
+  padding: calc(var(--space-unit) * 0.75) 0 0;
+  border-top: 1px solid var(--divider);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.drawer-note:hover,
+.drawer-note:focus-visible {
+  color: var(--text-primary);
+}
+
+.drawer-note-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  font-weight: var(--fw-label);
+  color: var(--accent);
+  white-space: nowrap;
 }
 
 /* ── 响应式 ─────────────────────────────────────────────── */
@@ -1389,8 +1533,7 @@ onUnmounted(() => {
 
   .menu-toggle {
     display: inline-flex;
-    /* 4.19.0：图标是 20px，但按钮本体只有 32.4px —— 与搜索按钮的 44 不一致，
-     * 拇指在顶栏右端最容易点空。补齐到 44×44，三个落点命中区同高。 */
+    /* 视觉盒由 .navbar-action 给（手机 40），这里只保证它排得下 */
     min-width: var(--ec-control-h-md);
     min-height: var(--ec-control-h-md);
     justify-content: center;
@@ -1407,25 +1550,24 @@ onUnmounted(() => {
   .navbar {
     --glass-nav-blur: 18px;
     --glass-nav-blur-strong: 24px;
-    /* 头像（4.19.0）：28px。
-     * 4.18.0 的 36px 比旁边的 20px 图标重太多，一行里它成了唯一的「大色块」；
-     * 28px 恰是 20px 图标的 1.4 倍——眼睛认得出这是个人，但不抢搜索与菜单。
-     * 描边从 2px 收到 1.5px（小圆上 2px 描边会吃掉一圈脸），
-     * 命中区由 ::before 补到 44×44（28 + 8×2），符合触控下限。 */
-    --navbar-avatar-size: 28px;
+    /* 头像（4.20.0）：24px，是 20px 图标略大一号，但整枚胶囊仍是 40 高，
+     * 所以它在行里不再比搜索与菜单「重」。 */
+    --navbar-avatar-size: 24px;
   }
 
-  /* 三个落点（搜索 / 身份 / 菜单）在窄屏上间距 8px：
-   * 4px 时命中区几乎贴在一起，拇指容易点错邻居。 */
+  /* 三个落点（搜索 / 身份 / 菜单）在窄屏上视觉盒 40、间距 8：
+   * 命中区由 `.navbar-action::after` 撑到 44，拇指不会点错邻居。 */
   .navbar-actions {
     gap: var(--space-unit);
   }
 
-  .user-avatar-btn::before {
-    content: '';
-    position: absolute;
-    inset: -8px;
-    border-radius: inherit;
+  .navbar-action {
+    width: 40px;
+    height: 40px;
+  }
+
+  .user-avatar-btn {
+    width: auto;
   }
 
   .user-avatar-btn .u-avatar {
@@ -1435,7 +1577,7 @@ onUnmounted(() => {
     box-shadow: 0 0 0 1.5px var(--ec-bg-surface);
   }
 
-  /* 头像 28 后，状态点 7px / 2px 描边，贴在圆形边缘的右下 45° */
+  /* 头像 24 后，状态点 7px / 2px 描边，贴在圆形边缘的右下 45° */
   .navbar-avatar-status {
     right: -1px;
     bottom: -1px;
@@ -1505,22 +1647,9 @@ onUnmounted(() => {
     font-size: calc(var(--icon-btn-icon-size) * 1.1);
   }
 
-  /* 游客的登录按钮与退出登录仍占整行：它们不是「资产」，是动作 */
+  /* 顶栏自带的那组三档控件在窄屏收进抽屉，这里把它藏掉，避免出现两份外观开关 */
   .navbar-actions :deep(.theme-switch) {
     display: none;
-  }
-
-  .drawer-theme {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: calc(var(--space-unit) * 2);
-    padding: 0 calc(var(--space-unit) * 1.5);
-  }
-
-  .drawer-lang {
-    margin-top: calc(var(--space-unit) * 1.5);
-    padding: 0 calc(var(--space-unit) * 1.5);
   }
 }
 

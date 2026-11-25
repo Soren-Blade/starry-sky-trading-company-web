@@ -39,10 +39,29 @@ test('?topic=language 才出现预设：三个意图 + 选中态', () => {
 
 test('预设把标题与正文骨架填好，用户只补细节', () => {
   assert.match(SUPPORT_PAGE, /form\.subject = SUPPORT\.languageSubjects\[key\] \|\| ''/)
-  assert.match(SUPPORT_PAGE, /form\.body = SUPPORT\.languageBodies\[key\] \|\| ''/)
+  assert.match(SUPPORT_PAGE, /const base = SUPPORT\.languageBodies\[key\] \|\| ''/)
   assert.match(CONTENT, /languageSubjects: \{/)
   assert.match(CONTENT, /languageBodies: \{/)
   // 英文版必须跟着有，否则切到 EN 会回退中文
   assert.match(EN_TOOLS, /languageSubjects: \{/)
   assert.match(EN_TOOLS, /languageBodies: \{/)
+})
+
+test('正文骨架自动带上当前界面语言（?from=en-US）', () => {
+  // 抽屉链接带 from，页面把它解析成「English (en-US)」
+  assert.match(SUPPORT_PAGE, /const code = String\(route\.query\.from \|\| ''\)\.trim\(\)/)
+  assert.match(
+    SUPPORT_PAGE,
+    /SUPPORTED_LOCALES\.find\(\(item\) => item\.code === code\)/
+  )
+  // 前缀与值分开拼：词条里写 `{language}` 会被 i18n 插值吃掉占位符
+  assert.match(CONTENT, /languageLocalePrefix: '界面语言：'/)
+  assert.match(EN_TOOLS, /languageLocalePrefix: 'Interface language: '/)
+  assert.doesNotMatch(CONTENT, /languageLocaleLine/)
+  assert.match(
+    SUPPORT_PAGE,
+    /const localeLine = fromLocale\.value \? `\$\{SUPPORT\.languageLocalePrefix\}\$\{fromLocale\.value\}` : ''/
+  )
+  // 没有 from 时不写空行，骨架保持原样
+  assert.match(SUPPORT_PAGE, /form\.body = localeLine \? `\$\{base\}\\n\\n\$\{localeLine\}` : base/)
 })

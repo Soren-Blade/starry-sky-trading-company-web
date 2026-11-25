@@ -5,39 +5,51 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /**
- * 4.19.0 抽屉里的语言选择
+ * 4.20.0 抽屉里的语言控件
  *
- * 语言只会增加、不会减少，所以形态必须是「一列可加的行」，不是「一排平分宽度的胶囊」：
- * 两枚胶囊在第三种语言出现时就会掉行，行式列表只增加行数、不改版式。
- * 选中态除颜色外必须有第二个标记（WCAG 1.4.1），这里右侧的勾就是那个标记。
- * 底部还要有一个出口：没有我的语言 / 翻译读着别扭 → /support?topic=language。
+ * 形态从「一列语言行」改成「左标签 + 右分段」的偏好行：
+ * - 与同面板的「外观」一行同构（都是 [ 标签 ][ 控件 ]），两行左边缘对齐；
+ * - 分段只放短码（中文 / EN），右半区约 150px，全名在第三种语言时就会换行；
+ * - 反馈出口搬去抽屉脚注，并带上当前语言 `?topic=language&from=<locale>`。
  */
-
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const WEB_ROOT = join(__dirname, '..')
 const read = (relPath) => readFileSync(join(WEB_ROOT, relPath), 'utf8')
 
 const SWITCH = read('src/components/LanguageSwitch.vue')
+const NAVBAR = read('src/components/Navbar.vue')
 
-test('抽屉版是语言行列表：radiogroup + 每行 radio + 右侧勾', () => {
-  assert.match(SWITCH, /class="lang-rows" role="radiogroup"/)
+test('抽屉版语言控件是分段单选：radiogroup + 每枚 radio + 短码', () => {
+  assert.match(SWITCH, /class="lang-segments" role="radiogroup"/)
   assert.match(SWITCH, /v-for="item in options"[\s\S]*?role="radio"/)
   assert.match(SWITCH, /:aria-checked="current === item\.code"/)
-  assert.match(SWITCH, /name="check-circle"/)
-  // 旧的分段胶囊必须彻底退役，否则两套语言控件会同时存在
-  assert.doesNotMatch(SWITCH, /lang-segments/)
-  assert.doesNotMatch(SWITCH, /lang-segment\b/)
+  // 屏幕上是短码，全名走 aria-label（不靠颜色、也不靠长文案区分）
+  assert.match(SWITCH, /\{\{ item\.short \}\}/)
+  assert.match(SWITCH, /:aria-label="item\.label"/)
 })
 
-test('行式列表可以继续加语言：行高 44、只增行数不改版式', () => {
-  assert.match(SWITCH, /\.lang-rows \{[\s\S]*?flex-direction: column;/)
-  assert.match(SWITCH, /\.lang-row \{[\s\S]*?min-height: var\(--ec-control-h-md\);/)
-  assert.match(SWITCH, /\.lang-row\.is-active \{[\s\S]*?background: var\(--accent-soft\);/)
+test('旧的整列语言行彻底退役，不会与分段控件并存', () => {
+  assert.doesNotMatch(SWITCH, /class="lang-rows"/)
+  assert.doesNotMatch(SWITCH, /\.lang-row\b/)
+  assert.doesNotMatch(SWITCH, /lang-row-check/)
 })
 
-test('抽屉底部有一个语言反馈出口，落到客服中心的语言模式', () => {
-  assert.match(SWITCH, /class="lang-feedback"/)
-  assert.match(SWITCH, /:to="\{ path: '\/support', query: \{ topic: 'language' \} \}"/)
-  assert.match(SWITCH, /t\('language\.feedbackTitle'\)/)
-  assert.match(SWITCH, /t\('language\.feedbackCta'\)/)
+test('分段控件与同面板的三档外观开关同高同圆角', () => {
+  assert.match(SWITCH, /\.lang-segments \{[\s\S]*?border-radius: var\(--radius-pill\);/)
+  assert.match(
+    SWITCH,
+    /\.lang-segment \{[\s\S]*?height: calc\(var\(--ec-control-h-sm\) - 4px\);/
+  )
+})
+
+test('语言反馈出口在抽屉脚注，并带上当前界面语言', () => {
+  assert.match(NAVBAR, /class="drawer-note"/)
+  assert.match(
+    NAVBAR,
+    /:to="\{ path: '\/support', query: \{ topic: 'language', from: locale \} \}"/
+  )
+  assert.match(NAVBAR, /t\('language\.feedbackTitle'\)/)
+  assert.match(NAVBAR, /t\('language\.feedbackCta'\)/)
+  // 组件自己不再画那张反馈卡，抽屉只有一条脚注
+  assert.doesNotMatch(SWITCH, /class="lang-feedback"/)
 })

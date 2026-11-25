@@ -109,6 +109,7 @@ export default {
       'Up to 5 submissions per identity in 24 hours. After submitting you can keep replying in the thread; no need to open a new one.',
     languageTopicsLabel: 'What kind of language issue is it?',
     languageTopicsHint: 'Pick one — we fill in the subject and details so you only add specifics.',
+    languageLocalePrefix: 'Interface language: ',
     languagePresets: {
       missing: 'My language is missing',
       wrong: 'Translation is inaccurate',

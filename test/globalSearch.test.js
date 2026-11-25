@@ -28,7 +28,7 @@ const CONTENT = read('src/constants/content.js')
 const EN = read('src/i18n/locales/en-US/common.js')
 
 test('顶栏搜索只剩触发按钮，旧展开式实现与样式全部删除', () => {
-  assert.match(NAVBAR, /class="ec-icon-btn navbar-search-trigger"/)
+  assert.match(NAVBAR, /class="ec-icon-btn navbar-search-trigger navbar-action"/)
   assert.match(NAVBAR, /:aria-label="PAGES\.searchGlobal\.title"/)
   assert.match(NAVBAR, /@click="openGlobalSearch"/)
   assert.match(NAVBAR, /<GlobalSearch ref="globalSearchRef" \/>/)

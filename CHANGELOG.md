@@ -9,6 +9,35 @@
 
 ---
 
+## [4.20.0] — 2026-11-26
+
+手机顶栏「三个控件像三家人」与抽屉的第二轮收敛。用户反馈原话：「左边搜索图标比最右边图标小？中间头像比左右图标都要大？重新调整尺寸、布局、图标」「语言反馈的正文骨架自动带上当前界面语言」「重新设计 navbar-drawer active 的布局和排版及内容」「语言下方 lang-rows 改成单选的选择器，同 drawer-theme 一样左右结构排版」。
+
+### 变更
+
+- **顶栏三个落点共用一套动作盒 `.navbar-action`**：36×36 视觉盒、`border-radius: var(--radius-pill)`、透明底、`::after inset: -4px` 把命中区撑到 44。手机 40×40、桌面 36×36；搜索与汉堡同尺寸，身份按钮做成「24px 头像 + 12.6px 下拉箭头」的胶囊（48.6×40）。原因是 4.19.0 里搜索是 40、头像是 28 的圆盘、汉堡 40，三者高度与圆角各不相同，读起来是三个独立控件而不是一排动作。
+- **头像从「顶端 36px 圆盘」改成「胶囊里的 24px 头像」**：36px 头像配 20px 图标是 1.8 倍，24px 是 1.2 倍；状态点因此挂到 `.navbar-identity-avatar` 定位盒上（`.u-avatar` 是 `overflow: hidden` 的圆，挂在里面会被裁成月牙）。
+- **抽屉改成两张卡**：`发现`（3 条目的地，注册用户多一条「站内消息」，带未读点）与 `偏好`（明暗模式、语言、语言反馈脚注）。卡片用 `--ec-bg-surface` + 1px 描边 + `--ec-radius-lg`，分隔线只留在脚注上方——之前是「一列纯文字 + 三组控件混排」，层次全靠间距。
+- **语言从两枚平分胶囊改为「左标签 + 右分段控件」**：`.lang-segments[role="radiogroup"]` 内两枚 `role="radio"`（文本用 `shortLabel`：中文 / EN），选中态白底胶囊 + 阴影。与右侧「明暗模式」的三档控件同构，两个偏好条目看起来是同一类东西；语言增加时只增加一枚片段，不改行高。
+
+### 新增
+
+- **反馈骨架带上当前界面语言**：抽屉脚注链接 `?topic=language&from=<locale>`，客服中心把它解析成「English (en-US)」写进正文末尾，客服不必再问「你当时用的哪个语言」。
+- 文案：`SUPPORT.languageLocalePrefix`（界面语言： / Interface language: ），值由页面拼接。
+
+### 修复
+
+- **抽屉在桌面泄漏**：窄屏打开抽屉后拉宽窗口，整宽两张卡会盖住首屏（桌面没有汉堡，用户无法关掉）。加 `@media (min-width: 768px) { .navbar-drawer { display: none } }`。
+- **占位符被 i18n 吃掉**：`languageLocaleLine: '界面语言：{language}'` 走 i18n 的 `{}` 插值，取词时占位符就被替换成空串，正文末尾只剩「Interface language: 」。改为只存前缀、由页面拼接。
+- `.drawer-card` / `.drawer-row` / `.drawer-note` 替换 `.drawer-group-title--spaced`、`.drawer-theme`、`.drawer-theme-label`、`.drawer-lang` 的旧规则。
+
+### 测试
+
+- `test/languageDrawer.test.js` 重写为分段控件契约（`role="radiogroup"`、`role="radio"`、`aria-label`、`shortLabel` 文本、旧 `lang-rows`/`lang-row` 已退役）。
+- `test/navGlass.test.js` 头像用例改为「三个落点共用一个动作盒：36/40 视觉盒 + 44 命中，头像缩成胶囊里的 24」。
+- `test/supportLanguageTopic.test.js` 新增「正文骨架自动带上当前界面语言（?from=en-US）」，并断言 `languageLocaleLine` 不再存在。
+- `test/globalSearch.test.js`、`test/navbarThemePolish.test.js`、`test/renderIdentity.test.js` 的类名断言跟着 `navbar-action` / 身份按钮的新类名走。
+
 ## [4.19.0] — 2026-11-25
 
 手机顶栏的「一眼重量」与两张浮层的内容排布。用户反馈原话：「重新调整移动端顶部导航栏头像的大小，头像太大了和左右图标对比太明显」「重新设计 lang-switch--drawer 的内容…后续可能增加其他语言，增加反馈按钮」「重新设计 user-menu，优化布局及排版，采用新颖的设计」。

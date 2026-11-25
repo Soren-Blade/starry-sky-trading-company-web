@@ -7,47 +7,33 @@
     @focusout="onFocusOut"
   >
     <!--
-      抽屉版（4.19.0）：从「两枚大胶囊」改成「一列语言行 + 一条反馈入口」。
-      理由：
-      - 胶囊在两种语言时刚好，第三种语言就开始挤压（加一种就掉一行），
-        而语言是只会增加、不会减少的清单 —— 行式列表天然可加，不重排版面；
-      - 行的右侧留一个「勾」作为选中标记（WCAG 1.4.1：不只靠颜色）；
-      - 底部给「没有你的语言 / 翻译读着别扭」一个出口，直接带到客服中心的
-        语言反馈模式（/support?topic=language），不让人自己找路径。
+      抽屉版（4.20.0）：一列语言行改成「左标签 + 右分段」的偏好行控件，
+      与同面板的「外观」一行同构：两行都是 [ 标签 ][ 控件 ]，眼睛只要认一次结构。
+
+      为什么是短码（中文 / EN）而不是全名：
+      - 这一行只有约 150px 的右半区，全名（简体中文 / English）在三种语言时就会换行，
+        短码两枚 48px，加到第四种也还站得住；
+      - 全名交给 `aria-label` 与顶栏的语言菜单，屏幕上不需要重复。
+
+      反馈出口不在这里：抽屉底部有一条「语言或翻译有问题？」的脚注，
+      链接带 `from`（当前界面语言），客服中心据此把正文骨架填好。
     -->
     <template v-if="variant === 'drawer'">
-      <span class="lang-drawer-label">{{ t('language.label') }}</span>
-      <div class="lang-rows" role="radiogroup" :aria-label="t('a11y.languageMenu')">
+      <div class="lang-segments" role="radiogroup" :aria-label="t('a11y.languageMenu')">
         <button
           v-for="item in options"
           :key="item.code"
           type="button"
           role="radio"
-          class="lang-row"
+          class="lang-segment"
           :class="{ 'is-active': current === item.code }"
           :aria-checked="current === item.code"
+          :aria-label="item.label"
           @click="choose(item.code)"
         >
-          <span class="lang-row-label">{{ item.label }}</span>
-          <AppIcon
-            v-if="current === item.code"
-            class="lang-row-check"
-            name="check-circle"
-            aria-hidden="true"
-          />
+          {{ item.short }}
         </button>
       </div>
-
-      <router-link class="lang-feedback" :to="{ path: '/support', query: { topic: 'language' } }">
-        <span class="lang-feedback-text">
-          <strong class="lang-feedback-title">{{ t('language.feedbackTitle') }}</strong>
-          <span class="lang-feedback-desc">{{ t('language.feedbackDesc') }}</span>
-        </span>
-        <span class="lang-feedback-cta">
-          {{ t('language.feedbackCta') }}
-          <AppIcon name="chevron-right" aria-hidden="true" />
-        </span>
-      </router-link>
     </template>
 
     <!-- 顶栏版：一枚地球图标 + 当前语言缩写，点开是菜单 -->
@@ -130,6 +116,8 @@ const options = computed(() =>
   SUPPORTED_LOCALES.map((item) => ({
     code: item.code,
     label: item.code === 'zh-CN' ? t('language.zh') : t('language.en'),
+    // 抽屉里的分段只放短码：右半区约 150px，全名在第三种语言时就会换行
+    short: item.shortLabel || item.code,
   }))
 )
 
@@ -239,114 +227,49 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
 }
 
-/* 抽屉形态（4.19.0）：语言行 + 反馈入口 */
+/* 抽屉形态（4.20.0）：只输出一枚分段控件，标签由抽屉那一行提供 */
 .lang-switch--drawer {
-  flex-direction: column;
-  align-items: stretch;
-  gap: calc(var(--space-unit) * 1);
-  width: 100%;
+  flex: 0 0 auto;
 }
 
-.lang-drawer-label {
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-}
-
-/* 语言行：一行一种语言，右侧勾 = 当前选中。行高 44 起，多语言时只增行数不改排版 */
-.lang-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.lang-row {
-  display: flex;
+/* 分段控件：与同面板的三档外观开关同高同圆角，两枚短码并排。
+ * 选中态用实底 + 强调字色；未选中只有字色 —— 一深一浅就是「当前值」。 */
+.lang-segments {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-  width: 100%;
-  min-height: var(--ec-control-h-md);
-  padding: 0 calc(var(--space-unit) * 1.5);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-soft);
+}
+
+.lang-segment {
+  min-width: calc(var(--space-unit) * 6);
+  height: calc(var(--ec-control-h-sm) - 4px);
+  padding: 0 calc(var(--space-unit) * 0.75);
   border: 0;
-  border-radius: var(--ec-radius-md);
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font: inherit;
-  font-size: var(--fs-sm);
-  text-align: left;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  line-height: 1;
   cursor: pointer;
   transition:
     background var(--transition-interactive),
     color var(--transition-interactive);
 }
 
-.lang-row:hover,
-.lang-row:focus-visible {
-  background: var(--bg-soft);
-}
-
-.lang-row.is-active {
-  color: var(--accent);
-  font-weight: var(--fw-label);
-  background: var(--accent-soft);
-}
-
-.lang-row-check {
-  flex: none;
-  font-size: calc(var(--icon-btn-icon-size) * 0.8);
-}
-
-/* 反馈入口：与语言行同宽的一条描边行，文字两行、右侧一个动作 */
-.lang-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-  margin-top: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
-  border: 1px solid var(--border);
-  border-radius: var(--ec-radius-lg);
-  background: var(--bg-surface);
-  text-decoration: none;
-  transition:
-    border-color var(--transition-interactive),
-    background var(--transition-interactive);
-}
-
-.lang-feedback:hover,
-.lang-feedback:focus-visible {
-  border-color: var(--accent);
-  background: var(--bg-soft);
-}
-
-.lang-feedback-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.lang-feedback-title {
-  font-size: var(--fs-label);
-  font-weight: var(--fw-heading);
+.lang-segment:hover,
+.lang-segment:focus-visible {
   color: var(--text-primary);
 }
 
-.lang-feedback-desc {
-  font-size: var(--fs-label);
-  line-height: var(--leading-body);
-  color: var(--text-muted);
-}
-
-.lang-feedback-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  flex: none;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
+.lang-segment.is-active {
+  background: var(--ec-bg-surface);
   color: var(--accent);
-  white-space: nowrap;
+  box-shadow: var(--ec-shadow-xs);
 }
 
 .lang-pop-enter-active,

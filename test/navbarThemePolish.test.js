@@ -86,7 +86,7 @@ function scanSrc(pattern) {
 
 // ── ① 在线状态圆点：结构与渲染条件 ──────────────────────────
 test('在线圆点挂在头像按钮上，条件来自身份而不是「已登录」', () => {
-  const avatarAt = NAVBAR.indexOf('class="user-avatar-btn"')
+  const avatarAt = NAVBAR.indexOf('class="user-avatar-btn')
   const dotAt = NAVBAR.indexOf('class="navbar-avatar-status"')
   const menuAt = NAVBAR.indexOf('id="user-menu"')
 
@@ -192,7 +192,7 @@ test('游客也显示在线圆点（isLoggedIn 会把游客判成未登录）', 
   assert.match(html, /class="navbar-avatar-status"/, '游客也算有身份，应显示在线圆点')
   assert.equal(html.includes('navbar-avatar-status--guest'), false, '游客徽标已移除，不该有让位修饰')
   assert.ok(
-    html.indexOf('class="navbar-avatar-status') > html.indexOf('class="user-avatar-btn"'),
+    html.indexOf('class="navbar-avatar-status') > html.indexOf('class="user-avatar-btn'),
     '渲染顺序上圆点应在头像按钮之后（参与绝对定位的基准是按钮）',
   )
 })

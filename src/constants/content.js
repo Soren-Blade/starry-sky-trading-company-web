@@ -1116,6 +1116,11 @@ const SUPPORT_RAW = {
    * 所以这里统一落到 other，预设只决定标题与正文本。 */
   languageTopicsLabel: '语言问题类型',
   languageTopicsHint: '选一个，标题和正文会先填好，你只需补充细节。',
+  /* 4.20.0：抽屉的反馈链接会带 `?from=<locale>` 过来，
+   * 这一行把它写成骨架的首行，客服不必再问「你当时用的哪个语言」。
+   * 这里只放前缀：值由页面拼在后面 —— 文案层走 i18n 的 `{}` 插值，
+   * 写成 `界面语言：{language}` 会在取词时就被吃掉占位符。 */
+  languageLocalePrefix: '界面语言：',
   languagePresets: {
     missing: '没有我的语言',
     wrong: '翻译意思不对',
