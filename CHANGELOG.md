@@ -39,6 +39,15 @@
 - `test/profilePage.test.js`：新增 5 条手机端断言（页头 `row`、徽标 `flex: none`、`padding-bottom`、游客说明、44px 触控区）。
 - `npm test` 1264 条全部通过；`npm run lint` / `npm run build` 通过。BrowserSkill（bsk 0.5.0）逐项走查：抽屉开合、下拉收起、取消、清空、最近搜索与清除、Esc 与焦点归还、桌面命令面板、暗色、个人中心三处修复。
 
+### BrowserSkill 兼容性
+
+- `bsk doctor` 全绿：daemon 0.5.0 / protocol 1.9、扩展已连接且 protocol 兼容、feature availability 通过、local pairing 可用；`bsk --version` 与 daemon 同时为 0.5.0（无 version skew）。auto-update 有一条历史记录：0.4.0 → 0.5.0 时下载响应体超时，**未改动任何文件**，之后照常升到 0.5.0。
+- 本轮验证踩到、但属**设计行为**的四处摩擦（写在这里省下一次重走）：
+  1. 每个动作前都要重新 `cooperate sync`，并把返回值的**顶层** `observation_id` 显式传 `observationId`；复用同一个会报 `requires an unused strict observation`，只传 `contextId` 会报 `requires a valid control context`。
+  2. 会话空闲约 5 分钟被 daemon 回收（旧会话报 `session not registered or already stopped`）——分阶段验证要重开一个会话，不要以为浏览器掉了。
+  3. `bsk_tabs borrow` 借用真人标签页需要人工确认；approvals 关闭时它会静默超时（本次借登录态标签就失败了），改用独立会话 + 游客态取证。
+  4. 入场/退场过渡（`transform`/`backdrop-filter`）进行中截图偶尔整张全白，稍后重拍即正常；它不是渲染缺陷，别据此改样式。
+
 ## [4.10.1] — 2026-11-25
 
 手机端搜索的玻璃回退一档：面板底色从 84% 的强档降到与顶栏同档的 66%，模糊 24px → 28.8px（`calc(24px * 1.2)`），遮罩 tint 24% → 16% 且只留 12px 轻模糊。结果是背后的卡片与标题仍可感知，但结果行与输入框文字不受干扰。
