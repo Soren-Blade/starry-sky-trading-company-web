@@ -84,13 +84,12 @@ test('移动端是顶部玻璃抽屉：无快捷入口、无键盘提示，桌�
   assert.match(SEARCH, /border-radius: 0 0 var\(--ec-radius-2xl\) var\(--ec-radius-2xl\)/)
   assert.match(SEARCH, /padding-top: env\(safe-area-inset-top\)/)
   assert.match(SEARCH, /width: min\(680px, 100%\)/)
-  // 手机端去掉快捷入口与键盘提示，背景改成 Liquid Glass（与导航同一档）
+  // 手机端去掉快捷入口与键盘提示，背景改成 Liquid Glass（与导航同一档），
+  // 最上层再压一段不透明帽盖住顶栏那一行（4.12.0）
   assert.match(SEARCH, /\.gs-group--quick \{\s*display: none;/)
   assert.match(SEARCH, /\.gs-foot \{\s*display: none;/)
-  assert.match(
-    SEARCH,
-    /background: var\(--glass-nav-specular\), var\(--glass-nav-tint\), var\(--glass-nav-bg-strong\);/
-  )
+  assert.match(SEARCH, /background-color: var\(--glass-nav-bg-strong\);/)
+  assert.match(SEARCH, /var\(--glass-nav-specular\),\s*var\(--glass-nav-wash\);/)
   assert.match(
     SEARCH,
     /backdrop-filter: blur\(calc\(var\(--glass-nav-blur\) \* 0\.9\)\) saturate\(var\(--glass-nav-saturate\)\);/
@@ -142,24 +141,25 @@ test('输入框有独立的清空键：清关键词 ≠ 关面板', () => {
 })
 
 /**
- * 手机抽屉与顶栏只能有一个「头」。
+ * 手机抽屉与顶栏的关系：抽屉盖住顶栏那一行，但顶栏本身不动。
  *
- * 抽屉铺在顶栏上方、本身就是一块玻璃，顶栏留在下面会从玻璃里透出幽灵图标
- * （截图里能看见店标、头像、汉堡的淡影），读起来像渲染没画完。
- * 打开时给 html 挂 gs-open，由 Navbar 的 767 断点让顶栏退场。
+ * 4.11.0 曾让顶栏退场（html.gs-open + opacity 0）。抽屉背后确实干净了，
+ * 但顶栏是页面的固定结构：关抽屉时它要淡入 180ms，读起来是「背景突然出现」。
+ * 4.12.0 改为顶栏始终保持原样，由抽屉自己用不透明帽盖住那一行。
  */
-test('手机搜索打开时顶栏退场：html.gs-open + 顶栏透明', () => {
-  assert.match(SEARCH, /document\.documentElement\.classList\.add\('gs-open'\)/)
-  assert.match(SEARCH, /document\.documentElement\.classList\.remove\('gs-open'\)/)
-  // 卸载时也要摘掉，否则 HMR / 路由切换会把顶栏永久留在退场态
-  assert.match(
-    SEARCH,
-    /onBeforeUnmount\(\(\) => \{[\s\S]{0,240}?classList\.remove\('gs-open'\)/
-  )
+test('手机搜索不再让顶栏退场：没有 gs-open，抽屉自己盖实顶部', () => {
+  assert.ok(!SEARCH.includes("classList.add('gs-open')"))
+  assert.ok(!SEARCH.includes("classList.remove('gs-open')"))
 
   const NAV = readFileSync(new URL('../src/components/Navbar.vue', import.meta.url), 'utf8')
-  assert.match(NAV, /:global\(html\.gs-open \.navbar\) \{[\s\S]*?opacity: 0;/)
-  assert.match(NAV, /transition:\s*box-shadow var\(--transition-surface\),\s*opacity/)
+  assert.ok(!NAV.includes(':global(html.gs-open .navbar)'))
+  assert.ok(!NAV.includes('opacity 0.18s'))
+
+  // 抽屉顶部的不透明帽：两层不透明停靠点到 96px 渐隐（作为 background-image 的第一层）
+  assert.match(
+    SEARCH,
+    /background-image:\s*linear-gradient\(\s*to bottom,\s*var\(--ec-bg-surface\) 0,\s*var\(--ec-bg-surface\) 74px,\s*transparent 96px\s*\),/
+  )
 })
 
 

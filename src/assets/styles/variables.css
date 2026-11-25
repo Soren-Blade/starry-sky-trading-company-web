@@ -178,8 +178,17 @@
    * 边缘折射（feDisplacementMap 位移后背内容）没有进这一版：实测当前
    * Chromium 对 backdrop-filter: url(#filter) 的色彩合成会在边缘渗出紫色，
    * 且全宽滤镜的绘制开销与视觉收益不成比例 —— 取舍写在 CHANGELOG 4.11.0。 */
-  --glass-nav-tint: color-mix(in srgb, var(--accent) 7%, transparent);
-  --glass-nav-tint-strong: color-mix(in srgb, var(--accent) 10%, transparent);
+  /* 洗染必须是「图层」才能参与叠加：CSS 的 background 简写里只有最后一层能放颜色，
+   * 中间层放颜色会让整条声明在计算值阶段作废（4.10–4.11 的玻璃因此一直没有底色）。
+   * 所以这里直接定义成同色两停的线性渐变，组件用 background-image 叠上。 */
+  --glass-nav-wash: linear-gradient(
+    color-mix(in srgb, var(--accent) 7%, transparent),
+    color-mix(in srgb, var(--accent) 7%, transparent)
+  );
+  --glass-nav-wash-strong: linear-gradient(
+    color-mix(in srgb, var(--accent) 10%, transparent),
+    color-mix(in srgb, var(--accent) 10%, transparent)
+  );
   --glass-nav-rim: inset 0 0 0 1px color-mix(in srgb, var(--ec-bg-surface) 32%, transparent);
   /* 影：玻璃是浮起来的一层，落影要比普通卡片更远更浅；
    * 直接复用 EC 的两档大阴影，暗色主题自动跟着换，不再写死 rgba。 */

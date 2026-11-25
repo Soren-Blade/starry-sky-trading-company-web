@@ -679,9 +679,7 @@ onUnmounted(() => {
   top: 0;
   /* 规范：z-index 100。低于模态框（400）与提示框（500） */
   z-index: var(--z-nav);
-  transition:
-    box-shadow var(--transition-surface),
-    opacity 0.18s var(--ec-ease-out);
+  transition: box-shadow var(--transition-surface);
 }
 
 /* 表面 + 底部边框（都放在同一个伪元素上，保证铺满整高）
@@ -695,9 +693,14 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   z-index: -1;
-  /* 三层叠出玻璃：品牌色渗透（tint）在最下，上缘 specular 居中，
-   * 半透明表面色压在最上。顺序就是光穿过玻璃的顺序。 */
-  background: var(--glass-nav-specular), var(--glass-nav-tint), var(--glass-nav-bg);
+  /* 玻璃 = 背景色（表面）+ 背景图层（上缘 specular、品牌色洗染）。
+   *
+   * 4.12.0 修正：这里原本写成一串 `background: specular, tint, bg`，
+   * 但 CSS 的 background 简写里**只有最后一层能放颜色**，中间两层是颜色 → 整条声明
+   * 在计算值阶段作废（既不报错也不生效），于是顶栏一直没有底色，只剩模糊与投影。
+   * 拆成 background-color + background-image 之后，洗染以线性渐变（合法的图层）参与叠加。 */
+  background-color: var(--glass-nav-bg);
+  background-image: var(--glass-nav-specular), var(--glass-nav-wash);
   border-bottom: var(--stroke-width) solid var(--glass-nav-border);
   box-shadow: var(--glass-nav-highlight), var(--glass-nav-rim);
   -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
@@ -710,7 +713,8 @@ onUnmounted(() => {
 /* 滚动后：玻璃变「厚」一档 —— 底色加密、模糊加深、投影落下。
  * 三件事一起变，用户读到的是「有一层东西压上来了」，而不是某一项数值在动。 */
 .navbar-scrolled::before {
-  background: var(--glass-nav-specular), var(--glass-nav-tint-strong), var(--glass-nav-bg-strong);
+  background-color: var(--glass-nav-bg-strong);
+  background-image: var(--glass-nav-specular), var(--glass-nav-wash-strong);
   -webkit-backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
   backdrop-filter: blur(var(--glass-nav-blur-strong)) saturate(var(--glass-nav-saturate));
 }
@@ -719,14 +723,16 @@ onUnmounted(() => {
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .navbar::before,
   .navbar-scrolled::before {
-    background: var(--bg-nav);
+    background-color: var(--bg-nav);
+    background-image: none;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .navbar::before,
   .navbar-scrolled::before {
-    background: var(--bg-nav);
+    background-color: var(--bg-nav);
+    background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -1174,15 +1180,12 @@ onUnmounted(() => {
 }
 
 @media (max-width: 767px) {
-  /* 手机搜索抽屉从顶边铺下来时，顶栏让位。
-   * 抽屉本身就是那块玻璃，顶栏留在下面会从玻璃里透出幽灵图标，
-   * 看上去像渲染没画完；退场之后「一个头」的说法才成立。
-   * 状态类挂在 <html> 上（Teleport 到 body 的抽屉够不到导航组件），
-   * 所以整条选择器交给 :global —— 只包裹前半段会让 html 自己吃到样式。 */
-  :global(html.gs-open .navbar) {
-    opacity: 0;
-    pointer-events: none;
-  }
+  /* 手机搜索抽屉从顶边铺下来时，顶栏**不再让位**。
+   *
+   * 4.11.0 曾用 `html.gs-open` 把顶栏 opacity 归零：抽屉背后确实干净了，
+   * 但顶栏那块玻璃是页面的固定结构 —— 关抽屉时它要重新淡入 180ms，
+   * 读起来就是「背景突然出现」。改成让抽屉自己盖住顶栏那一行：
+   * 顶栏始终保持原样，进出抽屉时只有抽屉在动，页面背景不再闪。 */
 
   .hide-below-768 {
     display: none;

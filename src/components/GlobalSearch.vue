@@ -292,16 +292,12 @@ function openSearch() {
   // 每次打开都重新读一遍：别的标签页清过最近搜索时这里不会拿到旧值
   readRecent()
   open.value = true
-  // 手机抽屉铺在顶栏上方，两套「头」叠在一起会从玻璃里透出幽灵图标：
-  // 用 html 上的状态类让顶栏退场，退场动画由 Navbar 自己的 transition 负责。
-  document.documentElement.classList.add('gs-open')
   activate()
 }
 
 function close() {
   if (!open.value) return
   open.value = false
-  document.documentElement.classList.remove('gs-open')
   deactivate()
   query.value = ''
   resetResults()
@@ -377,8 +373,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onGlobalKeydown)
   window.clearTimeout(searchTimer)
-  // 组件被卸载时（比如整页刷新期间的 HMR）别把顶栏永久留在退场态
-  document.documentElement.classList.remove('gs-open')
 })
 
 defineExpose({ open: openSearch, close })
@@ -964,9 +958,22 @@ defineExpose({ open: openSearch, close })
     height: auto;
     border: 0;
     border-radius: 0 0 var(--ec-radius-2xl) var(--ec-radius-2xl);
-    /* 与导航同一档玻璃：品牌色渗透 + 上缘 specular + 84% 表面，
-     * 面板因此读作「导航栏拉下来的一层」，而不是另一个界面。 */
-    background: var(--glass-nav-specular), var(--glass-nav-tint), var(--glass-nav-bg-strong);
+    /* 与导航同一档玻璃：品牌色洗染 + 上缘 specular + 84% 表面，
+     * 面板因此读作「导航栏拉下来的一层」，而不是另一个界面。
+     *
+     * 顶栏不再让位（见 Navbar 的注释），所以最上面这一截要自己盖实：
+     * 第一层是不透明帽，正好覆盖顶栏那一行的高度，往下 22px 渐隐到玻璃。
+     * 顶栏的图标因此不会从 84% 的表面里透出来，关抽屉时也不必再让它淡入。 */
+    background-color: var(--glass-nav-bg-strong);
+    background-image:
+      linear-gradient(
+        to bottom,
+        var(--ec-bg-surface) 0,
+        var(--ec-bg-surface) 74px,
+        transparent 96px
+      ),
+      var(--glass-nav-specular),
+      var(--glass-nav-wash);
     box-shadow: var(--glass-nav-highlight), var(--glass-nav-lift-strong);
     -webkit-backdrop-filter: blur(calc(var(--glass-nav-blur) * 0.9)) saturate(var(--glass-nav-saturate));
     backdrop-filter: blur(calc(var(--glass-nav-blur) * 0.9)) saturate(var(--glass-nav-saturate));

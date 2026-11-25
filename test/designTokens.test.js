@@ -125,6 +125,9 @@ const RUNTIME_SCOPED_VARS = [
   // 徽标描边色，.u-badge--ring 消费；默认 --bg-surface，
   // 顶栏/工具卡等「底色不是 --bg-surface」的位置就地覆盖
   '--badge-ring-color',
+  // 底部 Tab Bar 选中项序号，BottomNav 用 :style="{ '--nav-index': activeIndex }"
+  // 注入，供共享胶囊与其软尾做 translateX 位移
+  '--nav-index',
 ]
 
 /** 统一断点（见 variables.css 末尾的文档注释与 project-ui-system Skill） */

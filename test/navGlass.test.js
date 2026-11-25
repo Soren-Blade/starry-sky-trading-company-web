@@ -40,14 +40,15 @@ test('玻璃令牌只在导航层定义，且带模糊、饱和与顶部 specula
  * 这里锁住「三样都在、且都不是随手写的十六进制」——令牌必须从 --ec-* 派生，
  * 换明暗主题时才不会跳出第二套颜色。
  */
-test('玻璃新增色/光/影三层令牌，且全部从设计令牌派生', () => {
+test('玻璃的色/光/影三层令牌，且全部从设计令牌派生', () => {
+  // 品牌洗染是「图层」而不是裸颜色：background 简写里中间层放颜色会让整条声明作废
   assert.match(
     VARIABLES,
-    /--glass-nav-tint:\s*color-mix\(in srgb, var\(--accent\) 7%, transparent\)/
+    /--glass-nav-wash:\s*linear-gradient\(\s*color-mix\(in srgb, var\(--accent\) 7%, transparent\),\s*color-mix\(in srgb, var\(--accent\) 7%, transparent\)\s*\)/
   )
   assert.match(
     VARIABLES,
-    /--glass-nav-tint-strong:\s*color-mix\(in srgb, var\(--accent\) 10%, transparent\)/
+    /--glass-nav-wash-strong:\s*linear-gradient\(\s*color-mix\(in srgb, var\(--accent\) 10%, transparent\),\s*color-mix\(in srgb, var\(--accent\) 10%, transparent\)\s*\)/
   )
   assert.match(
     VARIABLES,
@@ -60,15 +61,18 @@ test('玻璃新增色/光/影三层令牌，且全部从设计令牌派生', () 
   assert.match(VARIABLES, /--nav-scrolled-shadow:\s*var\(--glass-nav-lift\)/)
 })
 
-test('顶栏是三层玻璃表面，滚动后加深，且有不支持模糊时的实底回退', () => {
+test('顶栏的玻璃表面：底色与图层分开写，滚动后加深，且有不支持模糊时的实底回退', () => {
+  // 4.12.0：background 简写里只有最后一层能放颜色，中间层放颜色会让整条声明作废
+  // （4.10–4.11 的玻璃因此一直没有底色）。所以必须 background-color + background-image。
   assert.match(
     NAVBAR,
-    /\.navbar::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-tint\), var\(--glass-nav-bg\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\);[\s\S]*?-webkit-backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /\.navbar::before \{[\s\S]*?background-color: var\(--glass-nav-bg\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-wash\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(
     NAVBAR,
-    /\.navbar-scrolled::before \{[\s\S]*?background: var\(--glass-nav-specular\), var\(--glass-nav-tint-strong\), var\(--glass-nav-bg-strong\);[\s\S]?/
+    /\.navbar-scrolled::before \{[\s\S]*?background-color: var\(--glass-nav-bg-strong\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-wash-strong\);/
   )
+  // 洗染是「图层」而不是裸颜色（令牌层的措辞见上一个测试）
   // 滚动态同时加深模糊：三件事一起变，用户读到的是「玻璃变厚」
   assert.match(
     NAVBAR,
@@ -96,16 +100,36 @@ test('移动端顶栏不再出现购物车 / 会员，它们交给底部 Tab Bar
 test('底部悬浮 Tab Bar 使用同一套 Liquid Glass 令牌与回退', () => {
   assert.match(
     BOTTOM_NAV,
-    /background: var\(--glass-nav-specular\), var\(--glass-nav-tint\), var\(--glass-nav-bg-strong\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
+    /background-color: var\(--glass-nav-bg-strong\);[\s\S]*?background-image: var\(--glass-nav-specular\), var\(--glass-nav-wash\);[\s\S]*?border: 1px solid var\(--glass-nav-border\);[\s\S]*?box-shadow: var\(--glass-nav-highlight\), var\(--glass-nav-rim\), var\(--glass-nav-lift-strong\);[\s\S]*?backdrop-filter: blur\(var\(--glass-nav-blur\)\) saturate\(var\(--glass-nav-saturate\)\);/
   )
   assert.match(BOTTOM_NAV, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/)
   assert.match(BOTTOM_NAV, /@media \(prefers-reduced-transparency: reduce\)/)
 })
 
-test('选中项是玻璃上的一枚凸起：上缘补一道内高光', () => {
+test('选中态是一枚共享胶囊：滑动 + 软尾 + 图标上浮', () => {
+  // 胶囊按 --nav-index 平移，宽度固定 1/5（格位无间隙才不累积错位）
   assert.match(
     BOTTOM_NAV,
-    /\.bottom-nav-item\.is-active \{[\s\S]*?box-shadow: inset 0 1px 0 color-mix\(in srgb, var\(--ec-bg-surface\) 72%, transparent\);/
+    /\.bottom-nav-thumb \{[\s\S]*?width: calc\(\(100% - 10px\) \/ 5\);[\s\S]*?transform: translateX\(calc\(var\(--nav-index, 0\) \* 100%\)\);[\s\S]*?transition: transform 320ms/
+  )
+  // 软尾慢 240ms，用更缓的曲线追上来
+  assert.match(
+    BOTTOM_NAV,
+    /\.bottom-nav-flow \{[\s\S]*?filter: blur\(7px\);[\s\S]*?transition: transform 560ms/
+  )
+  // 指示条跟着胶囊，不再由每项各长一条
+  assert.match(BOTTOM_NAV, /\.bottom-nav-thumb::after \{[\s\S]*?background: var\(--accent\);[\s\S]*?transform: translateX\(-50%\);/)
+  assert.ok(!BOTTOM_NAV.includes('.bottom-nav-item.is-active::before'))
+  assert.ok(!/\.bottom-nav-item\.is-active \{[^}]*background/.test(BOTTOM_NAV))
+  // 图标上浮是「位移 + 形状」提示，不只依赖颜色
+  assert.match(
+    BOTTOM_NAV,
+    /\.bottom-nav-item\.is-active \.bottom-nav-icon \{\s*transform: translateY\(-1px\) scale\(1\.06\);/
+  )
+  // 减弱动效时胶囊一帧到位，软尾直接不画
+  assert.match(
+    BOTTOM_NAV,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.bottom-nav-thumb,[\s\S]*?transition: none;[\s\S]*?\.bottom-nav-flow \{\s*display: none;/
   )
 })
 
