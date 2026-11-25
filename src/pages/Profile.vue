@@ -226,8 +226,12 @@
       我的服务：订单 / 卡密 / 收藏 / 优惠券。
       这四项此前只能从顶栏下拉进，个人中心「我有什么」反而没有入口 —— 补回来。
     -->
-    <nav v-if="userStore.isLoggedIn" class="profile-services" :aria-label="PAGES.profile.servicesAria">
-      <router-link v-for="item in serviceEntries" :key="item.to" :to="item.to" class="ui-card profile-service">
+    <nav
+      v-if="userStore.isLoggedIn"
+      class="ui-card profile-services"
+      :aria-label="PAGES.profile.servicesAria"
+    >
+      <router-link v-for="item in serviceEntries" :key="item.to" :to="item.to" class="profile-service">
         <span class="profile-service-icon"><AppIcon :name="item.icon" aria-hidden="true" /></span>
         <span class="profile-service-text">
           <span class="profile-service-name">{{ item.name }}</span>
@@ -1861,27 +1865,40 @@ onMounted(() => {
 }
 
 
-/* ── 我的服务：订单 / 卡密 / 收藏 / 优惠券 ───────────────────── */
-.profile-services {
+/* ── 我的服务：订单 / 卡密 / 收藏 / 优惠券 ─────────────────────
+ * 4.8.0：不再让四个入口各自顶一张卡（四层边框 + 四层阴影太吵），
+ * 收成一张分组卡：桌面 4 列、平板 2×2，靠发丝分隔线分组。
+ * 这是移动端最常见、也最安静的分组列表形态。 */
+.ui-card.profile-services {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 3);
+  gap: 0;
+  padding: 0;
+  margin-bottom: calc(var(--space-unit) * 2);
+  overflow: hidden;
 }
 
-.ui-card.profile-service {
-  flex-direction: row;
+.profile-service {
+  display: flex;
   align-items: center;
   gap: calc(var(--space-unit) * 1.5);
   padding: calc(var(--space-unit) * 1.75) calc(var(--space-unit) * 2);
   color: inherit;
   text-decoration: none;
-  transition: border-color var(--transition-interactive), transform var(--transition-interactive);
+  border-left: 1px solid var(--divider);
+  transition: background-color var(--transition-interactive);
 }
 
-.ui-card.profile-service:hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
+.profile-service:nth-child(4n + 1) {
+  border-left: 0;
+}
+
+.profile-service:hover {
+  background: var(--bg-soft);
+}
+
+.profile-service:active {
+  background: var(--ec-bg-muted);
 }
 
 .profile-service-icon {
@@ -2386,9 +2403,23 @@ onMounted(() => {
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
 @media (max-width: 991px) {
-  /* 平板：服务四宫格降到两列；摘要卡的会员行把按钮收到文字下方 */
-  .profile-services {
+  /* 平板：服务分组卡降成 2×2，分隔线也跟着改到第一列与第二行
+   * （选择器必须带上 .ui-card：基础规则是 .ui-card.profile-services，
+   *  单类选择器在媒体查询里赢不了它 —— 4.8.0 首次上线就踩过） */
+  .ui-card.profile-services {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-service {
+    border-left: 0;
+  }
+
+  .profile-service:nth-child(2n) {
+    border-left: 1px solid var(--divider);
+  }
+
+  .profile-service:nth-child(n + 3) {
+    border-top: 1px solid var(--divider);
   }
 
   .profile-summary-plan {
@@ -2504,13 +2535,12 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* 手机：服务入口改 2×2，只留图标 + 名称 + 箭头，描述行隐藏 */
-  .profile-services {
+  /* 手机：服务分组卡 2×2，只留图标 + 名称 + 箭头，描述行隐藏 */
+  .ui-card.profile-services {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: calc(var(--space-unit) * 1.5);
   }
 
-  .ui-card.profile-service {
+  .profile-service {
     gap: calc(var(--space-unit));
     padding: calc(var(--space-unit) * 1.5);
   }
@@ -2519,8 +2549,20 @@ onMounted(() => {
     display: none;
   }
 
+  /* 手机端节奏：卡片之间从 24 收到 16，卡片内边距也收一档，整屏更接近原生列表 */
+  .ui-card.profile-summary,
+  .profile-account,
+  .ui-card.profile-logs {
+    margin-bottom: calc(var(--space-unit) * 2);
+  }
+
+  .page-panel.profile-account,
+  .ui-card.profile-logs {
+    padding: calc(var(--space-unit) * 2);
+  }
+
   /* 摘要卡：手机先让身份行与动作分行，再把统计压成「成长值整行 + 积分/优惠券并排」 */
-  .profile-summary {
+  .ui-card.profile-summary {
     padding: calc(var(--space-unit) * 2);
   }
 

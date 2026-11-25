@@ -138,6 +138,8 @@ function isActive(item) {
 }
 
 @media (max-width: 767px) {
+  /* 悬浮 Tab Bar：苹果式 modal glass —— 半透明表面 + 背景模糊，
+   * 浮在内容上方时不切断页面，又不会像实底那样「贴一块砖」。 */
   .bottom-nav {
     position: fixed;
     left: 50%;
@@ -148,10 +150,27 @@ function isActive(item) {
     max-width: 520px;
     padding: 4px;
     transform: translateX(-50%);
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
+    background: var(--glass-nav-bg-strong);
+    border: 1px solid var(--glass-nav-border);
     border-radius: 22px;
     box-shadow: var(--shadow-float);
+    -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+    backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+  }
+
+  /* 不支持背景模糊时退回实底；降低透明度偏好同理 */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .bottom-nav {
+      background: var(--bg-elevated);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .bottom-nav {
+      background: var(--bg-elevated);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
   }
 }
 

@@ -83,8 +83,9 @@ test('默认收起：渲染结果里只有触发器，面板不进 DOM（也就�
 })
 
 test('去重：会员与消息的入口只在顶栏，下拉里连会员子页也不出现', () => {
-  // 顶栏那两处入口是唯一的（会员中心=皇冠，消息中心=信封）
-  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-member"/)
+  // 顶栏那两处入口是唯一的（会员中心=皇冠，消息中心=信封）；
+  // 4.8.0 起会员入口在移动端交给底部 Tab Bar，所以允许额外的 hide-below-768。
+  assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-member[^"]*"/)
   assert.match(NAVBAR_SOURCE, /class="u-icon-btn navbar-mail"/)
 
   assert.doesNotMatch(DROPDOWN, /to="\/member"/, '会员中心的唯一入口是顶栏皇冠')

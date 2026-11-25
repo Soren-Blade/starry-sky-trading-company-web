@@ -144,13 +144,18 @@
   /* 移动端底部悬浮导航：图标 22 + 10px 标签 + 上下内边距，64 是可用下限 */
   --bottom-nav-height: 64px;
   --nav-padding-x: var(--ec-space-6);
-  --nav-border-color: var(--ec-border-subtle);
   --nav-logo-height: 24px;
   --nav-menu-gap: var(--ec-space-5);
   --nav-link-size: var(--ec-body-size);
   /* 暗色层级铁律：靠表面提亮 + 1px 描边，阴影只做「沉下去」。
-   * EC 不用毛玻璃（backdrop-filter）—— 那会让浮层底下的内容透上来，
-   * 与「表面层级」的思路冲突，因此这里没有 backdrop 一档。 */
+   * 导航玻璃只给常驻悬浮导航（顶栏 / 底部 Tab Bar）用：
+   * 它本身就「压」在页面内容上，透出模糊背景是在表达层级；
+   * 弹层、下拉仍用实底，避免底下内容干扰阅读。 */
+  --glass-nav-bg: color-mix(in srgb, var(--ec-bg-surface) 72%, transparent);
+  --glass-nav-bg-strong: color-mix(in srgb, var(--ec-bg-surface) 88%, transparent);
+  --glass-nav-border: color-mix(in srgb, var(--ec-border-subtle) 70%, transparent);
+  --glass-nav-blur: 22px;
+  --glass-nav-saturate: 180%;
   --nav-scrolled-shadow: var(--ec-shadow-sm);
 
   /* ── A12. 阴影 ────────────────────────────────────────────── */

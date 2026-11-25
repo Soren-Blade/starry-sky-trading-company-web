@@ -91,7 +91,7 @@
         <router-link
           v-if="userStore.userId"
           to="/cart"
-          class="u-icon-btn navbar-cart"
+          class="u-icon-btn navbar-cart hide-below-768"
           :aria-label="cartLabel"
         >
           <AppIcon name="shopping-cart" />
@@ -109,7 +109,7 @@
         <router-link
           v-if="userStore.userId"
           to="/member"
-          class="u-icon-btn navbar-member"
+          class="u-icon-btn navbar-member hide-below-768"
           :aria-label="memberLabel"
         >
           <AppIcon name="crown" />
@@ -805,14 +805,41 @@ onUnmounted(() => {
 }
 
 /* 表面 + 底部边框（都放在同一个伪元素上，保证铺满整高）
- * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释） */
+ * 放在伪元素上是为了不产生 fixed 后代的包含块（见组件顶部注释）。
+ * 4.8.0：顶栏改成「浮在内容上」的玻璃表面 —— 苹果式 modal glass：
+ * 半透明表面 + 背景模糊/增饱和 + 发丝级描边，滚动后底色再收一档。
+ * backdrop-filter 只写在这个伪元素上，不会给导航内部的下拉制造包含块。 */
 .navbar::before {
   content: '';
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--bg-nav);
-  border-bottom: var(--stroke-width) solid var(--nav-border-color);
+  background: var(--glass-nav-bg);
+  border-bottom: var(--stroke-width) solid var(--glass-nav-border);
+  -webkit-backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+  backdrop-filter: blur(var(--glass-nav-blur)) saturate(var(--glass-nav-saturate));
+}
+
+/* 滚动后：玻璃底色加密，让文字在长页面上仍然稳定可读 */
+.navbar-scrolled::before {
+  background: var(--glass-nav-bg-strong);
+}
+
+/* 不支持背景模糊 / 用户要求降低透明度时退回实底，不做「假玻璃」 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .navbar::before,
+  .navbar-scrolled::before {
+    background: var(--bg-nav);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .navbar::before,
+  .navbar-scrolled::before {
+    background: var(--bg-nav);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 /* 滚动后：EC 的层级信号是「沉下去」的一档阴影（浅色阴影 / 暗色也统一走阴影） */

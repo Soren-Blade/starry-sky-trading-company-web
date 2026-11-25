@@ -94,9 +94,9 @@ test('会员的徽标显示等级名，并把等级读进无障碍名', async ()
 })
 
 test('入口本体是 router-link，不是「button 里包 router-link」（顶栏踩过的坑）', () => {
-  const at = NAVBAR_SOURCE.indexOf('class="u-icon-btn navbar-member"')
-  assert.ok(at > -1, '源码里找不到会员入口')
-  const tagStart = NAVBAR_SOURCE.lastIndexOf('<', at)
+  const entry = NAVBAR_SOURCE.match(/class="u-icon-btn navbar-member[^"]*"/)
+  assert.ok(entry, '源码里找不到会员入口')
+  const tagStart = NAVBAR_SOURCE.lastIndexOf('<', entry.index)
   assert.match(
     NAVBAR_SOURCE.slice(tagStart, tagStart + 20),
     /^<router-link[\s>]/,

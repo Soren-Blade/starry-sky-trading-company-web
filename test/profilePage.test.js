@@ -103,18 +103,25 @@ test('源码：表单字段昵称独占一行、性别生日并排，手机一�
   assert.match(phone, /\.profile-field-grid \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/)
 })
 
-test('源码：我的服务桌面四列、平板两列、手机 2×2 且隐藏描述行', () => {
+test('源码：我的服务是一张分组卡，桌面四列、平板两列、手机 2×2 且隐藏描述行', () => {
   assert.match(
-    ruleBody('.profile-services {'),
+    ruleBody('.ui-card.profile-services {'),
     /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/,
     '桌面四列'
   )
+  // 四个入口不再各自一张卡
+  assert.ok(!PROFILE_SOURCE.includes('class="ui-card profile-service"'))
 
   const tablet = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 991px)'))
-  assert.match(tablet, /\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(tablet, /\.ui-card\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/)
+  assert.match(tablet, /\.profile-service:nth-child\(2n\) \{[\s\S]*?border-left/)
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(phone, /\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/, '手机仍是 2×2')
+  assert.match(
+    phone,
+    /\.ui-card\.profile-services \{[\s\S]*?repeat\(2, minmax\(0, 1fr\)\)/,
+    '手机仍是 2×2，且选择器要压过基础规则的 .ui-card.profile-services'
+  )
   assert.match(phone, /\.profile-service-desc \{[\s\S]*?display: none/)
 })
 
