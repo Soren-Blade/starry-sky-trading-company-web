@@ -70,6 +70,8 @@ test('源码：会员数字与说明有明确间距，数字等宽、说明走�
   assert.match(ruleBody('.profile-summary-head {'), /padding: calc\(var\(--space-unit\) \* 2\.5\)/, '封面自带内边距')
   assert.match(ruleBody('.profile-summary-head {'), /radial-gradient/, '封面是唯一允许挥霍的视觉层')
   assert.match(ruleBody('.profile-summary-plan {'), /grid-template-columns: minmax\(0, 1fr\) auto/)
+  assert.match(ruleBody('.profile-summary-plan {'), /grid-template-areas:/, '徽章 + 入口一行，说明落第二行')
+  assert.match(ruleBody('.profile-summary-plan {'), /background: var\(--bg-soft\)/, '会员状态条用浅底与统计分开')
   assert.match(ruleBody('.profile-summary-plan-actions {'), /justify-content: flex-end/)
 })
 
@@ -141,19 +143,27 @@ test('源码：手机上只读值去掉盒状底板，label + 文本靠 dl 间�
   assert.match(block, /font-family: var\(--font-body\)/)
 })
 
-test('源码：邀请收进摘要卡最后一行，做成安静的全宽页脚', () => {
+test('源码：邀请收进摘要卡最后一行，图标 / 文案 / 入口压在同一行', () => {
   const body = ruleBody('.profile-member-invite {')
-  assert.match(body, /display: flex/, '邀请行与统计同处一张卡，用分隔线分段即可')
+  assert.match(body, /display: grid/, '邀请行与统计同处一张卡，用分隔线分段即可')
   assert.ok(!body.includes('grid-column'), '合并后不再需要跨会员卡整行')
+  assert.match(body, /grid-template-columns: auto minmax\(0, 1fr\) auto/, '图标 / 文字 / 入口同一行')
   assert.match(body, /align-items: center/)
   assert.match(body, /border-top: var\(--stroke-width\) solid var\(--divider\)/, '用分隔线区分运营位')
   assert.match(body, /background: var\(--bg-soft\)/, '邀请是页脚运营位，用浅底与数字区分')
-  assert.match(body, /padding: calc\(var\(--space-unit\) \* 1\.5\) calc\(var\(--space-unit\) \* 2\.5\)/)
 
-  assert.match(ruleBody('.profile-member-invite-link {'), /margin-left: auto/)
+  // 说明超长时单行省略，不允许再把入口挤到下一行
+  assert.match(ruleBody('.profile-member-invite-desc {'), /text-overflow: ellipsis/)
+  assert.match(ruleBody('.profile-member-invite-desc {'), /white-space: nowrap/)
 
-  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
-  assert.match(phone, /\.profile-member-invite-link \{[\s\S]*?margin-left: 0/)
+  // 入口是一枚安静的胶囊，不需要再靠 margin-left 推右
+  const link = ruleBody('.profile-member-invite-link {')
+  assert.match(link, /display: inline-flex/)
+  assert.match(link, /white-space: nowrap/)
+  assert.match(link, /border-radius: var\(--radius-pill\)/)
+  assert.ok(!link.includes('margin-left: auto'))
+
+  assert.ok(!PROFILE_SOURCE.includes('profile-member-invite-text'), '旧的整段文案结构已拆成标题 + 说明')
 })
 
 test('源码：会员为 0 张券时只渲染空态文案，不与「0」并排', () => {
@@ -269,7 +279,23 @@ test('源码：操作日志是时间线，按范围加载最近几条并能重�
   assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsRetry/)
   assert.match(PROFILE_SOURCE, /@click="selectLogRange\(item\.value\)"/)
   assert.match(PROFILE_SOURCE, /class="profile-logs-range"/, '范围选择是自研滑轨，不再复用 u-tabs 胶囊')
+  assert.match(PROFILE_SOURCE, /class="profile-logs-toolbar"/, '范围与导出同处一条工具栏')
   assert.match(PROFILE_SOURCE, /class="profile-logs-export"/, '导出是安静的文字按钮，不抢页面主按钮')
+
+  // 手机一行：滑轨吃掉剩余宽度，导出贴右端
+  const toolbar = ruleBody('.profile-logs-toolbar {')
+  assert.match(toolbar, /display: flex/)
+  assert.match(toolbar, /align-items: center/)
+  assert.match(ruleBody('.profile-logs-range {'), /flex: 1 1 auto/)
+  assert.match(ruleBody('.profile-logs-export {'), /margin-left: auto/)
+
+  const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 575px)'))
+  assert.match(phone, /\.profile-logs-toolbar \{[\s\S]*?gap:/, '手机上工具栏收紧间距')
+  assert.match(phone, /\.profile-logs-range \{[\s\S]*?max-width: none/)
+  assert.ok(
+    !/\.profile-logs-head \{[\s\S]*?flex-direction: column/.test(phone),
+    '标题区不再竖排 —— 导出已经移到工具栏'
+  )
   assert.match(PROFILE_SOURCE, /const logIcon = \(item\) =>/, '轨迹左侧按类别给字形')
   assert.match(PROFILE_SOURCE, /const selectLogRange = \(value\) => \{[\s\S]{0,200}?loadLogs\(\)/, '切范围要同时刷新列表')
 

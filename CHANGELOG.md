@@ -9,6 +9,24 @@
 
 ---
 
+## [4.22.0] — 2026-11-26
+
+个人中心手机端三件「各自为政」的横条收敛成三条紧凑组件：邀请行、日志工具栏、会员状态条。
+
+### 变更
+
+- **邀请行从「图标 / 文案 / 按钮各占一行」改成一条横向组件**：`.profile-member-invite` 改 grid `auto minmax(0,1fr) auto`——礼盒圆片、标题 + 单行说明、胶囊「去邀请 ›」同排；说明超长用省略号，完整文案在 `/invite` 页。旧的 `profile-member-invite-text` 与 `margin-left: auto` 换行规则删除。
+- **日志的「下载日志」与范围选择并成一条工具栏**：标题区只留标题与说明；新增 `.profile-logs-toolbar`（flex），滑轨 `flex: 1 1 auto` 吃剩余宽度（桌面限宽 22rem），导出按钮 `margin-left: auto` 靠右。手机端两者同一行，320×568 也不换行、不横向溢出。
+- **会员计划从三行同权信息改成浅底状态条**：`.profile-summary-plan` 用 grid areas `'name actions' / 'note note'`——徽章与「会员中心 / 套餐对比」入口一行，说明第二行；`--bg-soft` 底 + 1px `--divider` 描边 + `--radius-panel`，与下方统计轨分开。
+- 575 断点同步压缩内边距与间距（plan 1/1.5、invite 1.25/2、toolbar gap .75、滑轨不限宽），删掉旧的「邀请入口换行」「日志 head 竖排」规则。
+
+### 测试
+
+- `test/profilePage.test.js`：邀请用例改为 grid 三列 + 说明省略号 + 胶囊入口且无 `margin-left: auto`；日志新增 toolbar、`flex: 1 1 auto`、`margin-left: auto` 与 575 规则断言；会员计划用例补 `grid-template-areas` 与 `--bg-soft` 底。
+- `npm test` 1284/1284 通过；`npm run lint`、`npm run build` 通过；BrowserSkill 在 390×844、320×568 与桌面 1440 三档确认版式。
+
+---
+
 ## [4.21.1] — 2026-11-26
 
 短屏（320×568）上，顶部抽屉与身份面板会压到底部 Tab Bar 下面，语言反馈那行点不到。

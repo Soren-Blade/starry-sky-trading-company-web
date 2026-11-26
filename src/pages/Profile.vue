@@ -208,16 +208,20 @@
             }) }}
           </p>
 
-          <!-- 邀请是积分来源之一，和会员/积分同属「我还有什么」，收进同一张卡的最后一行 -->
-          <p class="profile-member-invite">
-            <AppIcon name="gift" aria-hidden="true" />
-            <span class="profile-member-invite-text">
-              {{ PAGES.profile.inviteTitle }} · {{ PAGES.profile.inviteDesc }}
+          <!-- 邀请是积分来源之一：图标 / 标题+说明 / 入口收在同一行，不再逐项换行 -->
+          <div class="profile-member-invite">
+            <span class="profile-member-invite-icon" aria-hidden="true">
+              <AppIcon name="gift" />
+            </span>
+            <span class="profile-member-invite-body">
+              <span class="profile-member-invite-title">{{ PAGES.profile.inviteTitle }}</span>
+              <span class="profile-member-invite-desc">{{ PAGES.profile.inviteDesc }}</span>
             </span>
             <router-link class="profile-member-invite-link" to="/invite">
               {{ PAGES.profile.inviteCta }}
+              <AppIcon name="chevron-right" aria-hidden="true" />
             </router-link>
-          </p>
+          </div>
         </template>
       </template>
     </section>
@@ -608,9 +612,33 @@
           <p class="profile-logs-title">{{ PAGES.profile.logsTitle }}</p>
           <p class="profile-logs-desc">{{ PAGES.profile.logsDesc }}</p>
         </div>
+      </div>
+
+      <!--
+        时间范围与导出是同一组「对这段日志做什么」的工具：
+        手机上压成一行 —— 滑轨占满剩余宽度，导出贴在右端；
+        桌面同样是「左范围、右导出」，只是滑轨限宽。
+      -->
+      <div class="profile-logs-toolbar">
+        <!-- 时间范围同时作用于「页面上的时间线」与「导出的 CSV」 -->
+        <div class="profile-logs-range" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
+          <button
+            v-for="item in LOG_RANGES"
+            :key="item.value"
+            type="button"
+            role="tab"
+            class="profile-logs-range-btn"
+            :class="{ 'is-active': logRange === item.value }"
+            :aria-selected="logRange === item.value"
+            @click="selectLogRange(item.value)"
+          >
+            {{ logRangeLabel(item) }}
+          </button>
+        </div>
+
         <!--
-          导出是低频动作：不再用主色实心按钮和页面里的「签到」抢焦点，
-          改成安静的文字按钮，放在标题右侧。
+          导出是低频动作：不用主色实心按钮和页面里的「签到」抢焦点，
+          只用一枚安静的描边按钮，和范围控件同处一行。
         -->
         <button
           type="button"
@@ -621,22 +649,6 @@
         >
           <span v-if="downloadingLogs" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
           <span>{{ downloadingLogs ? PAGES.profile.logsExporting : PAGES.profile.logsDownload }}</span>
-        </button>
-      </div>
-
-      <!-- 时间范围同时作用于「页面上的时间线」与「导出的 CSV」 -->
-      <div class="profile-logs-range" role="tablist" :aria-label="PAGES.profile.logsRangeAria">
-        <button
-          v-for="item in LOG_RANGES"
-          :key="item.value"
-          type="button"
-          role="tab"
-          class="profile-logs-range-btn"
-          :class="{ 'is-active': logRange === item.value }"
-          :aria-selected="logRange === item.value"
-          @click="selectLogRange(item.value)"
-        >
-          {{ logRangeLabel(item) }}
         </button>
       </div>
 
@@ -1824,18 +1836,33 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+/* 等级 + 期限 + 去处的「会员状态条」：徽章与入口同一行，说明落在下一行。
+   用浅底描边条把「计划」从统计数字里分出来，但不再让三段各占一行。 */
 .profile-summary-plan {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name actions'
+    'note note';
   align-items: center;
-  column-gap: calc(var(--space-unit) * 3);
-  margin: 0;
-  padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 2.5) 0;
+  column-gap: calc(var(--space-unit) * 1.5);
+  row-gap: calc(var(--space-unit) * 0.35);
+  margin: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2.5) 0;
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  background: var(--bg-soft);
+  border: var(--stroke-width) solid var(--divider);
+  border-radius: var(--radius-panel);
+}
+
+/* 只让子项参与网格：名字与说明分别是两行，入口固定在右上 */
+.profile-summary-plan-text {
+  display: contents;
 }
 
 /* 等级名做成小徽章：它是一张「通行证」的编号，不是标题 */
 .profile-summary-plan-name {
   display: inline-flex;
+  grid-area: name;
   align-items: center;
   gap: calc(var(--space-unit) * 0.5);
   width: fit-content;
@@ -1849,16 +1876,18 @@ onMounted(() => {
 }
 
 .profile-summary-plan-note {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
+  grid-area: note;
+  margin: 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
 }
 
 .profile-summary-plan-actions {
   display: flex;
+  grid-area: actions;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: calc(var(--space-unit) * 2.5);
+  gap: calc(var(--space-unit) * 1.5);
 }
 
 /* 「去看看」型入口：文字 + 右折角，不抢主按钮的视觉重量 */
@@ -2421,36 +2450,75 @@ onMounted(() => {
   margin-top: calc(var(--space-unit));
 }
 
-/* 邀请收进摘要卡的最后一行：一句说明 + 右侧入口，不再单占一张全宽卡 */
+/* 邀请收进摘要卡的最后一行：图标 / 标题+说明 / 入口同一行，说明超长单行省略 */
 .profile-member-invite {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
+  gap: calc(var(--space-unit) * 1.25);
   margin: calc(var(--space-unit) * 2) 0 0;
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2.5);
+  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2.5);
   border-top: var(--stroke-width) solid var(--divider);
   background: var(--bg-soft);
-  font-size: var(--fs-label);
-  color: var(--text-secondary);
 }
 
-.profile-member-invite-text {
-  flex: 1 1 auto;
+.profile-member-invite-icon {
+  display: grid;
+  place-items: center;
+  width: calc(var(--space-unit) * 3.5);
+  height: calc(var(--space-unit) * 3.5);
+  font-size: var(--fs-body);
+  color: var(--accent);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+}
+
+.profile-member-invite-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.15);
   min-width: 0;
 }
 
+.profile-member-invite-title {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-member-invite-desc {
+  overflow: hidden;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profile-member-invite-link {
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.15);
+  padding: calc(var(--space-unit) * 0.35) calc(var(--space-unit) * 1);
+  font-size: var(--fs-label);
   font-weight: var(--fw-heading);
   color: var(--accent);
+  white-space: nowrap;
   text-decoration: none;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  transition:
+    color var(--transition-interactive),
+    background-color var(--transition-interactive);
+}
+
+.profile-member-invite-link .app-icon {
+  font-size: var(--fs-label);
+  opacity: 0.7;
 }
 
 .profile-member-invite-link:hover {
   color: var(--accent-strong);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  background: var(--accent-soft);
 }
 
 /* ── 操作日志：一条活动轨迹（`GET /userLogsApi/?format=json`） ─────
@@ -2475,6 +2543,13 @@ onMounted(() => {
   gap: calc(var(--space-unit) * 0.5);
   min-width: 0;
 }
+
+/* 范围 + 导出是一条工具栏：手机上压成一行，桌面也是左范围右导出 */
+.profile-logs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit));
+}
 .profile-logs-title {
   margin: 0;
   font-weight: var(--fw-heading);
@@ -2493,6 +2568,7 @@ onMounted(() => {
   justify-content: center;
   gap: calc(var(--space-unit) * 0.5);
   flex: 0 0 auto;
+  margin-left: auto;
   min-height: calc(var(--space-unit) * 4);
   padding: 0 calc(var(--space-unit) * 1.5);
   font-family: var(--font-body);
@@ -2528,8 +2604,10 @@ onMounted(() => {
 .profile-logs-range {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 auto;
   gap: 2px;
-  width: 100%;
+  width: auto;
+  min-width: 0;
   max-width: 22rem;
   padding: 3px;
   background: var(--bg-soft);
@@ -2930,12 +3008,14 @@ onMounted(() => {
   }
 
   .profile-summary-plan {
-    padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
+    margin: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2) 0;
+    padding: calc(var(--space-unit)) calc(var(--space-unit) * 1.5);
+    column-gap: calc(var(--space-unit));
   }
 
   .profile-summary-plan-actions {
-    justify-content: flex-start;
-    gap: calc(var(--space-unit) * 2);
+    justify-content: flex-end;
+    gap: calc(var(--space-unit) * 1.25);
   }
 
   .profile-summary-stats {
@@ -2958,6 +3038,12 @@ onMounted(() => {
   .profile-member-invite {
     margin-top: calc(var(--space-unit) * 1.5);
     padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 2);
+    gap: calc(var(--space-unit));
+  }
+
+  .profile-member-invite-icon {
+    width: calc(var(--space-unit) * 3);
+    height: calc(var(--space-unit) * 3);
   }
 
   /* 编辑弹层在手机上贴满可用宽度，纵向自己滚动 */
@@ -2984,19 +3070,21 @@ onMounted(() => {
     max-width: none;
   }
 
-  /* 邀请行在窄屏让入口换到下一行左对齐 */
-  .profile-member-invite-link {
-    margin-left: 0;
+  /* 操作日志：范围与导出压成一行；滑轨吃掉剩余宽度，导出贴右端 */
+  .profile-logs-toolbar {
+    gap: calc(var(--space-unit) * 0.75);
   }
 
-  /* 操作日志：窄屏把「说明 + 按钮」压成竖排，避免按钮被文字挤成一小块 */
-  .profile-logs-head {
-    flex-direction: column;
-    align-items: stretch;
+  .profile-logs-range {
+    max-width: none;
   }
 
-  .profile-logs-head .profile-logs-export {
-    align-self: flex-start;
+  .profile-logs-range-btn {
+    padding: 0 calc(var(--space-unit) * 0.5);
+  }
+
+  .profile-logs-export {
+    padding: 0 calc(var(--space-unit) * 0.75);
   }
 }
 </style>
