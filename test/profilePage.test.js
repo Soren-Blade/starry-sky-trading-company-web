@@ -421,7 +421,29 @@ test('源码：操作日志手机端默认 3 条，展开后请求 24 条', () =
 
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
   assert.match(phone, /\.profile-log-item--extra \{\s*display: none;/)
-  assert.match(phone, /\.profile-log-list\.is-expanded \.profile-log-item--extra \{\s*display: grid;/)
+})
+
+test('源码：展开后日志按日期分组，切成可横向扫读的明细表', () => {
+  // 展开态与折叠态是两套结构：默认轨迹，展开换成按日分组的 table
+  assert.match(PROFILE_SOURCE, /<div v-else-if="logsExpanded" id="profile-log-list" class="profile-log-groups">/)
+  assert.match(PROFILE_SOURCE, /v-for="group in logGroups"/)
+  assert.match(PROFILE_SOURCE, /<table class="profile-log-table">/)
+  assert.match(PROFILE_SOURCE, /class="profile-log-td-time"/)
+  assert.match(PROFILE_SOURCE, /class="profile-log-td-main"/)
+  assert.match(PROFILE_SOURCE, /class="profile-log-td-outcome"/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsColTime/)
+
+  // 分组与时钟：日期进组头，行内只留 HH:mm
+  assert.match(PROFILE_SOURCE, /const logGroups = computed\(\(\) => \{/)
+  assert.match(PROFILE_SOURCE, /const formatLogClock = \(value\) =>/)
+  assert.match(PROFILE_SOURCE, /profile-log-day-count/)
+
+  // 展开后的说明换文案，不再说「默认只展示最近几条」
+  assert.match(PROFILE_SOURCE, /logsExpanded \? PAGES\.profile\.logsExpandedNote : PAGES\.profile\.logsPreviewNote/)
+
+  // 表头用 visually-hidden 的 thead，读屏仍能听到三列
+  assert.match(PROFILE_SOURCE, /<thead class="visually-hidden">/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsColOutcome/)
 })
 
 test('源码：手机端账号行两行一组，摘要封面与统计改版', () => {

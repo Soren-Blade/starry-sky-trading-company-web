@@ -653,9 +653,8 @@
       </div>
 
       <!--
-        时间线而不是表格：日志的读法是「最近发生了什么」，
-        时间、类别、动作、结果四列足以扫读；细节只在有值时显示，
-        过长由 CSS 省略，不撑破卡片。
+        两种读法：默认是「最近发生了什么」的轨迹（左字形 + 三行）；
+        展开后要横向比较多条记录，切成按日期分组的明细表更省纵向空间。
       -->
       <div v-if="logsLoading" class="profile-log-state" aria-live="polite" aria-busy="true">
         <span v-for="n in 3" :key="n" class="u-skeleton profile-log-skeleton"></span>
@@ -668,7 +667,49 @@
 
       <p v-else-if="!logItems.length" class="profile-log-state">{{ PAGES.profile.logsEmpty }}</p>
 
-      <ol v-else id="profile-log-list" class="profile-log-list" :class="{ 'is-expanded': logsExpanded }">
+      <!--
+        展开后不再是一串更长的轨迹：换成按日期分组的「明细表」。
+        手机上一行 = 时间 / 操作 + 类别·细节 / 结果，日期只在组头写一次；
+        列宽用 table-layout: fixed 钉住，320 也不横向溢出。
+      -->
+      <div v-else-if="logsExpanded" id="profile-log-list" class="profile-log-groups">
+        <section v-for="group in logGroups" :key="group.key" class="profile-log-group">
+          <header class="profile-log-day">
+            <time class="profile-log-day-label" :datetime="group.key">{{ group.label }}</time>
+            <span class="profile-log-day-count">{{ group.items.length }}</span>
+          </header>
+          <table class="profile-log-table">
+            <caption class="visually-hidden">{{ PAGES.profile.logsTitle }}</caption>
+            <thead class="visually-hidden">
+              <tr>
+                <th scope="col">{{ PAGES.profile.logsColTime }}</th>
+                <th scope="col">{{ PAGES.profile.logsColAction }}</th>
+                <th scope="col">{{ PAGES.profile.logsColOutcome }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in group.items" :key="`${item.created_at}-${item.action}-${item.target_id}`">
+                <td class="profile-log-td-time">
+                  <time :datetime="item.created_at">{{ formatLogClock(item.created_at) }}</time>
+                </td>
+                <td class="profile-log-td-main">
+                  <span class="profile-log-td-action">{{ item.action_label }}</span>
+                  <span class="profile-log-td-meta">
+                    {{ item.category_label }}<template v-if="item.detail"> · {{ item.detail }}</template>
+                  </span>
+                </td>
+                <td class="profile-log-td-outcome">
+                  <span class="profile-log-outcome" :class="logOutcomeClass(item.outcome)">
+                    {{ item.outcome_label || '—' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <ol v-else id="profile-log-list" class="profile-log-list">
         <li
           v-for="(item, index) in logItems"
           :key="`${item.created_at}-${item.action}-${item.target_id}`"
@@ -716,7 +757,7 @@
       </button>
 
       <p v-if="logItems.length" class="profile-log-preview-note">
-        {{ PAGES.profile.logsPreviewNote }}
+        {{ logsExpanded ? PAGES.profile.logsExpandedNote : PAGES.profile.logsPreviewNote }}
       </p>
 
       <p class="page-note profile-logs-note">{{ PAGES.profile.logsFootnote }}</p>
@@ -1617,6 +1658,45 @@ const logIcon = (item) => {
   if (category.includes('会员') || category.includes('成长')) return 'crown'
   return 'clock'
 }
+
+/** 展开表格里日期只在组头出现一次，行内只留时刻 */
+const formatLogClock = (value) =>
+  formatDate(value, {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+const logDayLabel = (value) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  const day = formatDate(date, { month: 'long', day: 'numeric' })
+  const weekday = formatDate(date, { weekday: 'short' })
+  return `${day} · ${weekday}`
+}
+
+/**
+ * 展开后的分组：按本地日期把 24 条记录切成若干张「按日明细表」。
+ * 日期用本地时区取，避免跨零点后记录跑到前一天。
+ */
+const logGroups = computed(() => {
+  const groups = new Map()
+  for (const item of logItems.value) {
+    const date = new Date(item?.created_at)
+    const valid = !Number.isNaN(date.getTime())
+    const key = valid
+      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      : 'unknown'
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label: valid ? logDayLabel(date) : '—',
+        items: [],
+      })
+    }
+    groups.get(key).items.push(item)
+  }
+  return [...groups.values()]
+})
 
 const loadLogs = async () => {
   if (!userStore.isLoggedIn) {
@@ -2717,6 +2797,92 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 展开态：按日期分组的明细表。日期进组头，行内只留时刻，列宽钉死 */
+.profile-log-groups {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+}
+
+.profile-log-group {
+  min-width: 0;
+}
+
+.profile-log-day {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-unit);
+  margin: 0 0 calc(var(--space-unit) * 0.5);
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-log-day-label {
+  font-weight: var(--fw-heading);
+  color: var(--text-secondary);
+}
+
+.profile-log-day-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.profile-log-table th,
+.profile-log-table td {
+  padding: calc(var(--space-unit) * 0.85) 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.profile-log-table tbody tr + tr td {
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.profile-log-td-time {
+  width: 4.25rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.profile-log-td-main {
+  padding-right: calc(var(--space-unit) * 0.75);
+  min-width: 0;
+}
+
+.profile-log-td-action {
+  display: block;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.profile-log-td-meta {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+.profile-log-td-outcome {
+  width: 4.5rem;
+  padding-left: calc(var(--space-unit) * 0.5);
+  text-align: right;
+  white-space: nowrap;
+}
 /* 结果不是一枚满色胶囊：小圆点 + 文案，安静地落在动作行右端 */
 .profile-log-outcome {
   display: inline-flex;
@@ -2867,10 +3033,6 @@ onMounted(() => {
     display: none;
   }
 
-  .profile-log-list.is-expanded .profile-log-item--extra {
-    display: grid;
-  }
-
   .profile-field-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2901,6 +3063,30 @@ onMounted(() => {
 
   .profile-log-line {
     gap: var(--space-unit);
+  }
+
+  /* 展开表：手机列宽再收一档，保证 320 宽也放得下「时刻 / 操作 / 结果」 */
+  .profile-log-table th,
+  .profile-log-table td {
+    padding: calc(var(--space-unit) * 0.7) 0;
+  }
+
+  /* 明细在窄列里允许两行：单行省略会只剩「账号会话 · …」，
+   * 既读不出对象，也浪费了第二行的高度 */
+  .profile-log-td-meta {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .profile-log-td-time {
+    width: 3.75rem;
+  }
+
+  .profile-log-td-outcome {
+    width: 4rem;
   }
 }
 
@@ -3085,6 +3271,20 @@ onMounted(() => {
 
   .profile-logs-export {
     padding: 0 calc(var(--space-unit) * 0.75);
+  }
+
+  /* 展开表：320 宽给日期组头与时刻列再让一点，细节仍靠省略号收口 */
+  .profile-log-day {
+    margin-bottom: calc(var(--space-unit) * 0.35);
+  }
+
+  .profile-log-td-time {
+    width: 3.25rem;
+    font-size: var(--fs-label);
+  }
+
+  .profile-log-td-outcome {
+    width: 3.75rem;
   }
 }
 </style>
