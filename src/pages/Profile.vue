@@ -728,14 +728,27 @@
                     {{ item.outcome_label || '—' }}
                   </span>
                 </div>
-                <p class="profile-log-meta">
+                <div class="profile-log-meta">
                   <time class="profile-log-time" :datetime="item.created_at">{{
                     formatLogClock(item.created_at)
                   }}</time>
                   <span class="profile-log-sep" aria-hidden="true">·</span>
                   <span class="profile-log-category">{{ item.category_label }}</span>
-                </p>
-                <p v-if="item.detail" class="profile-log-detail" :title="item.detail">{{ item.detail }}</p>
+                  <template v-if="item.detail">
+                    <span
+                      class="profile-log-sep profile-log-sep--detail"
+                      :class="{ 'profile-log-sep--auth': item.category === 'auth' }"
+                      aria-hidden="true"
+                      >·</span
+                    >
+                    <span
+                      class="profile-log-detail"
+                      :class="{ 'profile-log-detail--auth': item.category === 'auth' }"
+                      :title="item.detail"
+                      >{{ item.detail }}</span
+                    >
+                  </template>
+                </div>
               </div>
             </li>
           </ol>
@@ -787,12 +800,25 @@
                 {{ item.outcome_label || '—' }}
               </span>
             </div>
-            <p class="profile-log-meta">
+            <div class="profile-log-meta">
               <time class="profile-log-time" :datetime="item.created_at">{{ formatLogTime(item.created_at) }}</time>
               <span class="profile-log-sep" aria-hidden="true">·</span>
               <span class="profile-log-category">{{ item.category_label }}</span>
-            </p>
-            <p v-if="item.detail" class="profile-log-detail" :title="item.detail">{{ item.detail }}</p>
+              <template v-if="item.detail">
+                <span
+                  class="profile-log-sep profile-log-sep--detail"
+                  :class="{ 'profile-log-sep--auth': item.category === 'auth' }"
+                  aria-hidden="true"
+                  >·</span
+                >
+                <span
+                  class="profile-log-detail"
+                  :class="{ 'profile-log-detail--auth': item.category === 'auth' }"
+                  :title="item.detail"
+                  >{{ item.detail }}</span
+                >
+              </template>
+            </div>
           </div>
         </li>
       </ol>
@@ -2894,11 +2920,15 @@ onMounted(() => {
 .profile-log-meta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: calc(var(--space-unit) * 0.5);
   margin: calc(var(--space-unit) * 0.35) 0 0;
   font-size: var(--fs-label);
   color: var(--text-muted);
+  /* 手机端把「时刻 · 类别 · 细节」并成一行，细节吃掉剩余宽度并省略，
+   * 不再单独占第三行 —— 一行记录从三行降到两行。 */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .profile-log-time {
   font-family: var(--font-mono);
@@ -2919,12 +2949,19 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .profile-log-detail {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
+  margin: 0;
+  min-width: 0;
+  flex: 0 1 auto;
   font-size: var(--fs-label);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 手机端登录记录的细节（账号登录（username））与动作、类别重复，直接省掉这一截 */
+.profile-log-sep--auth,
+.profile-log-detail--auth {
+  display: none;
 }
 
 /* 展开态：按日期分组的明细表。日期进组头，行内只留时刻，列宽钉死 */
@@ -3175,6 +3212,11 @@ onMounted(() => {
   .profile-log-detail {
     grid-area: detail;
     margin: 0;
+  }
+
+  /* 桌面台账里细节仍是独立一列，登录记录也要显示 */
+  .profile-log-detail--auth {
+    display: block;
   }
 
   .profile-log-outcome {
