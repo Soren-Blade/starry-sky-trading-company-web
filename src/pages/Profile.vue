@@ -668,9 +668,9 @@
       <p v-else-if="!logItems.length" class="profile-log-state">{{ PAGES.profile.logsEmpty }}</p>
 
       <!--
-        展开后不再是一串更长的轨迹：换成按日期分组的「明细表」。
-        手机上一行 = 时间 / 操作 + 类别·细节 / 结果，日期只在组头写一次；
-        列宽用 table-layout: fixed 钉住，320 也不横向溢出。
+        展开后仍按日期分组，但行样式与折叠态完全一致：
+        左字形 + 动作/结果 + 时刻·类别 + 细节，不再为了「表格感」把一行拆成三列。
+        日期只在组头写一次，翻页交给底部分页器。
       -->
       <div v-else-if="logsExpanded" id="profile-log-list" class="profile-log-groups">
         <section v-for="group in logGroups" :key="group.key" class="profile-log-group">
@@ -678,34 +678,33 @@
             <time class="profile-log-day-label" :datetime="group.key">{{ group.label }}</time>
             <span class="profile-log-day-count">{{ group.items.length }}</span>
           </header>
-          <table class="profile-log-table">
-            <caption class="visually-hidden">{{ PAGES.profile.logsTitle }}</caption>
-            <thead class="visually-hidden">
-              <tr>
-                <th scope="col">{{ PAGES.profile.logsColTime }}</th>
-                <th scope="col">{{ PAGES.profile.logsColAction }}</th>
-                <th scope="col">{{ PAGES.profile.logsColOutcome }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in group.items" :key="`${item.created_at}-${item.action}-${item.target_id}`">
-                <td class="profile-log-td-time">
-                  <time :datetime="item.created_at">{{ formatLogClock(item.created_at) }}</time>
-                </td>
-                <td class="profile-log-td-main">
-                  <span class="profile-log-td-action">{{ item.action_label }}</span>
-                  <span class="profile-log-td-meta">
-                    {{ item.category_label }}<template v-if="item.detail"> · {{ item.detail }}</template>
-                  </span>
-                </td>
-                <td class="profile-log-td-outcome">
+          <ol class="profile-log-list profile-log-list--grouped">
+            <li
+              v-for="item in group.items"
+              :key="`${item.created_at}-${item.action}-${item.target_id}`"
+              class="profile-log-item"
+            >
+              <span class="profile-log-icon" aria-hidden="true">
+                <AppIcon :name="logIcon(item)" />
+              </span>
+              <div class="profile-log-body">
+                <div class="profile-log-line">
+                  <span class="profile-log-action">{{ item.action_label }}</span>
                   <span class="profile-log-outcome" :class="logOutcomeClass(item.outcome)">
                     {{ item.outcome_label || '—' }}
                   </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+                <p class="profile-log-meta">
+                  <time class="profile-log-time" :datetime="item.created_at">{{
+                    formatLogClock(item.created_at)
+                  }}</time>
+                  <span class="profile-log-sep" aria-hidden="true">·</span>
+                  <span class="profile-log-category">{{ item.category_label }}</span>
+                </p>
+                <p v-if="item.detail" class="profile-log-detail" :title="item.detail">{{ item.detail }}</p>
+              </div>
+            </li>
+          </ol>
         </section>
       </div>
 
@@ -2882,59 +2881,15 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
-.profile-log-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
+/* 展开态：日期组头 + 复用折叠态的行式轨迹（同一套字形、字号与发丝线），
+   不再为「表格感」把一行拆成三列；分页由底部 pager 负责 */
+.profile-log-list--grouped .profile-log-item {
+  padding-block: calc(var(--space-unit) * 1.25);
 }
 
-.profile-log-table th,
-.profile-log-table td {
-  padding: calc(var(--space-unit) * 0.85) 0;
-  text-align: left;
-  vertical-align: top;
-}
-
-.profile-log-table tbody tr + tr td {
-  border-top: var(--stroke-width) solid var(--divider);
-}
-
-.profile-log-td-time {
-  width: 4.25rem;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.profile-log-td-main {
-  padding-right: calc(var(--space-unit) * 0.75);
-  min-width: 0;
-}
-
-.profile-log-td-action {
-  display: block;
-  font-size: var(--fs-label);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-.profile-log-td-meta {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-label);
-  color: var(--text-muted);
-}
-
-.profile-log-td-outcome {
-  width: 4.5rem;
-  padding-left: calc(var(--space-unit) * 0.5);
-  text-align: right;
-  white-space: nowrap;
+.profile-log-list--grouped .profile-log-item:first-child {
+  padding-top: calc(var(--space-unit) * 0.25);
+  border-top: 0;
 }
 
 /* 分页器：手机端也保持一行，左右箭头按钮 + 中间页码；不再向下无限堆数据 */
@@ -3179,28 +3134,13 @@ onMounted(() => {
     gap: var(--space-unit);
   }
 
-  /* 展开表：手机列宽再收一档，保证 320 宽也放得下「时刻 / 操作 / 结果」 */
-  .profile-log-table th,
-  .profile-log-table td {
-    padding: calc(var(--space-unit) * 0.7) 0;
+  /* 展开态沿用轨迹行，手机端只把行距再收一点，保持和折叠态同一节奏 */
+  .profile-log-list--grouped .profile-log-item {
+    padding-block: calc(var(--space-unit) * 1.1);
   }
 
-  /* 明细在窄列里允许两行：单行省略会只剩「账号会话 · …」，
-   * 既读不出对象，也浪费了第二行的高度 */
-  .profile-log-td-meta {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .profile-log-td-time {
-    width: 3.75rem;
-  }
-
-  .profile-log-td-outcome {
-    width: 4rem;
+  .profile-log-list--grouped .profile-log-item:first-child {
+    padding-top: calc(var(--space-unit) * 0.25);
   }
 }
 
@@ -3387,18 +3327,13 @@ onMounted(() => {
     padding: 0 calc(var(--space-unit) * 0.75);
   }
 
-  /* 展开表：320 宽给日期组头与时刻列再让一点，细节仍靠省略号收口 */
+  /* 展开态：320 宽把日期组头与行距再让一点，行本身仍是轨迹 */
   .profile-log-day {
     margin-bottom: calc(var(--space-unit) * 0.35);
   }
 
-  .profile-log-td-time {
-    width: 3.25rem;
-    font-size: var(--fs-label);
-  }
-
-  .profile-log-td-outcome {
-    width: 3.75rem;
+  .profile-log-list--grouped .profile-log-item {
+    padding-block: calc(var(--space-unit) * 1);
   }
 
   /* 分页器在窄屏再让一点内边距，页码文字不允许换行 */

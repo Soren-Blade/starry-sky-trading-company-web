@@ -9,6 +9,23 @@
 
 ---
 
+## [4.24.1] — 2026-11-26
+
+展开态去掉三列表格，行样式回到折叠态的轨迹：字形 + 动作/结果 + 时刻·类别 + 细节；日期分组头与分页器保留。用户反馈原话：「保留 profile-log-day 的设计，表格的样式设计参考展开前的设计」。
+
+### 变更
+
+- **展开日志不再用 `<table>`**：按日分组内改为 `ol.profile-log-list.profile-log-list--grouped`，每行复用 `.profile-log-item` 的轨迹结构（`.profile-log-icon`、`.profile-log-action`、`.profile-log-outcome`、`.profile-log-meta`、`.profile-log-detail`），与折叠态同一套视觉语言。
+- 日期组头保持 `11月26日 · 周四` + 当天条数；组内行距比折叠态略收（1.25 单位，首行 0.25），767 收至 1.1，575 收至 1。
+- 删除 `.profile-log-table` / `.profile-log-td-*` 全部样式与 `logsColTime/logsColAction/logsColOutcome` 文案；分页器与导出按钮不变。
+
+### 测试
+
+- `test/profilePage.test.js`：原「明细表」用例改为「展开后按日期分组，行样式沿用折叠态轨迹」，断言分组、`ol.profile-log-list--grouped`、`.profile-log-icon`、`formatLogClock`、日期条数，并断言不再出现 `profile-log-table` / `profile-log-td-`。
+- `npm test` 1285/1285 通过；`npm run lint`、`npm run build` 通过；BrowserSkill 在 390×844 与 320×568 确认组头、轨迹行、分页器与无溢出。
+
+---
+
 ## [4.24.0] — 2026-11-26
 
 日志展开态从「一次加载、向下滚动」改成真正的分页表格：服务端按页取数，页面底部只保留一个分页器；1000 条记录也不必把 1000 行铺进 DOM。
