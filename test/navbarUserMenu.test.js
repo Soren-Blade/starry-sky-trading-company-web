@@ -183,11 +183,23 @@ test('窄屏触控：767 断点下身份面板改成整宽卡片 + 两列入口'
   assert.match(block, /\.user-dropdown \{[\s\S]*?position: fixed/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?left: calc\(var\(--space-unit\) \* 2\)/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?width: auto/)
-  assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(100dvh/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?max-height: calc\(\s*100dvh/)
   assert.match(block, /\.user-dropdown \{[\s\S]*?overflow-y: auto/)
   // 4.19.0：六格方格墙改成 2 列横条，44px 一行 —— 面板更矮，读起来像菜单而不是仪表盘
   assert.match(block, /\.user-menu-grid \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(block, /\.user-menu-grid \.u-dropdown-item \{[\s\S]*?min-height: var\(--ec-control-h-md\)/)
+})
+
+test('短屏浮层不钻底部 Tab Bar：抽屉与身份面板都扣掉底栏高度', () => {
+  const mobileAt = NAVBAR_SOURCE.indexOf('@media (max-width: 767px)')
+  const block = NAVBAR_SOURCE.slice(
+    mobileAt,
+    NAVBAR_SOURCE.indexOf('@media (max-width: 575px)', mobileAt)
+  )
+
+  // 320×568 实测：只扣顶栏时面板会压到底栏下面，语言反馈一行点不到
+  assert.match(block, /\.navbar-drawer \{[\s\S]*?var\(--bottom-nav-height\)/)
+  assert.match(block, /\.user-dropdown \{[\s\S]*?var\(--bottom-nav-height\)/)
 })
 
 test('身份卡抬头：头像 + 昵称/徽标 + 创建时间，底色是品牌色洗染', () => {  assert.match(NAVBAR_SOURCE, /class="u-avatar user-card-avatar"/)

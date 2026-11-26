@@ -9,6 +9,22 @@
 
 ---
 
+## [4.21.1] — 2026-11-26
+
+短屏（320×568）上，顶部抽屉与身份面板会压到底部 Tab Bar 下面，语言反馈那行点不到。
+
+### 修复
+
+- **手机端两张浮层的限高补上底部 Tab Bar**：`.navbar-drawer` 与 `.user-dropdown` 的 `max-height` 原来只扣顶栏，320×568 下面板底边落在 532px、底栏从 488px 起，最后 44px 被底栏盖住。现在两者都再减 `var(--bottom-nav-height)` 与 5 个 `--space-unit`；实测抽屉底 468px、底栏顶 488px，语言反馈整行可见可点。
+- 桌面与 ≥768 行为不变（两张浮层只在 ≤767 出现）。
+
+### 测试
+
+- `test/navbarUserMenu.test.js` 新增「短屏浮层不钻底部 Tab Bar」：断言 `.navbar-drawer` 与 `.user-dropdown` 的移动端 `max-height` 都含 `var(--bottom-nav-height)`；原有 767 断言放宽到多行 `calc(`。
+- `npm test` 1284/1284 通过；`npm run lint`、`npm run build` 通过。
+
+---
+
 ## [4.21.0] — 2026-11-26
 
 顶栏动作区与语言选择器的第三轮返工。用户反馈原话：「重新设计移动端的 navbar-actions 区域…确保看起来美观一致」「重新设计语言选择器，参考新颖的单选下拉选择器设计」。

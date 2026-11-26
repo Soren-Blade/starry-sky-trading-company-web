@@ -1630,7 +1630,12 @@ onUnmounted(() => {
     top: calc(var(--navbar-height) * var(--mobile-nav-scale) + var(--space-unit) * 1.5);
     left: calc(var(--space-unit) * 2);
     right: calc(var(--space-unit) * 2);
-    max-height: calc(100dvh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 6);
+    /* 320×568 实测：只减顶栏时面板会压到底部 Tab Bar 下面，最后一行语言反馈点不到；
+     * 这里把底栏高度一起减掉，面板始终停在 Tab Bar 上方。 */
+    max-height: calc(
+      100dvh - var(--navbar-height) * var(--mobile-nav-scale) -
+        var(--bottom-nav-height) - var(--space-unit) * 5
+    );
     padding: calc(var(--space-unit) * 2) calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 2);
     background: var(--ec-bg-raised);
     border: var(--stroke-width) solid var(--stroke-color);
@@ -1648,7 +1653,11 @@ onUnmounted(() => {
     right: calc(var(--space-unit) * 2);
     width: auto;
     max-width: none;
-    max-height: calc(100dvh - var(--navbar-height) * var(--mobile-nav-scale) - var(--space-unit) * 6);
+    /* 与抽屉同一条边界：短屏时不能钻进底部 Tab Bar。 */
+    max-height: calc(
+      100dvh - var(--navbar-height) * var(--mobile-nav-scale) -
+        var(--bottom-nav-height) - var(--space-unit) * 5
+    );
     padding: calc(var(--space-unit) * 1.5);
     overflow-y: auto;
     overscroll-behavior: contain;
