@@ -709,6 +709,34 @@
         </section>
       </div>
 
+      <!--
+        分页器：不把 1000 条一次铺进页面，也不做无限下拉。
+        服务端多取一条只判断 has_more，避免每次翻页都 COUNT 九张表的 UNION。
+      -->
+      <nav v-if="logsExpanded" class="profile-log-pager" :aria-label="PAGES.profile.logsPagerAria">
+        <button
+          type="button"
+          class="profile-log-page-btn"
+          :aria-label="PAGES.profile.logsPagePrev"
+          :disabled="logPage <= 1 || logsLoading"
+          @click="goLogPage(logPage - 1)"
+        >
+          <AppIcon name="chevron-left" aria-hidden="true" />
+          <span class="profile-log-page-label">{{ PAGES.profile.logsPagePrev }}</span>
+        </button>
+        <span class="profile-log-page-info">{{ logPageInfo }}</span>
+        <button
+          type="button"
+          class="profile-log-page-btn"
+          :aria-label="PAGES.profile.logsPageNext"
+          :disabled="!logHasMore || logsLoading"
+          @click="goLogPage(logPage + 1)"
+        >
+          <span class="profile-log-page-label">{{ PAGES.profile.logsPageNext }}</span>
+          <AppIcon name="chevron-right" aria-hidden="true" />
+        </button>
+      </nav>
+
       <ol v-else id="profile-log-list" class="profile-log-list">
         <li
           v-for="(item, index) in logItems"
@@ -1615,12 +1643,13 @@ const handleDownloadLogs = async () => {
  * 两个动作共用 `logRange`，切换范围会同时刷新列表。
  */
 const LOG_PREVIEW_LIMIT = 6
-const LOG_EXPANDED_LIMIT = 24
+const LOG_PAGE_SIZE = 8
 const logItems = ref([])
 const logsLoading = ref(false)
 const logsError = ref('')
 const logsExpanded = ref(false)
-const logLimit = ref(LOG_PREVIEW_LIMIT)
+const logPage = ref(1)
+const logHasMore = ref(false)
 let logRequestSeq = 0
 
 /** 列表时间用「月/日 时:分」：同一年内的记录，年份是噪音 */
@@ -1698,7 +1727,18 @@ const logGroups = computed(() => {
   return [...groups.values()]
 })
 
-const loadLogs = async () => {
+const logPageInfo = computed(() =>
+  translate('pages.profile.logsPageInfo', PAGES.profile.logsPageInfo, {
+    page: logPage.value,
+    size: LOG_PAGE_SIZE,
+  })
+)
+
+/**
+ * 展开态是分页表格：每页 LOG_PAGE_SIZE 条，服务端多取一条判断 has_more。
+ * 折叠态仍只取最近几条做轨迹预览。
+ */
+const loadLogs = async (page = logPage.value) => {
   if (!userStore.isLoggedIn) {
     logItems.value = []
     return
@@ -1707,10 +1747,15 @@ const loadLogs = async () => {
   logsLoading.value = true
   logsError.value = ''
   try {
-    const result = await getMyLogs({ range: logRange.value, limit: logLimit.value })
+    const result = logsExpanded.value
+      ? await getMyLogs({ range: logRange.value, limit: LOG_PAGE_SIZE, page })
+      : await getMyLogs({ range: logRange.value, limit: LOG_PREVIEW_LIMIT })
     if (seq !== logRequestSeq) return
-    const items = Array.isArray(result?.data?.items) ? result.data.items : []
-    logItems.value = items.slice(0, logLimit.value)
+    const data = result?.data || {}
+    const items = Array.isArray(data.items) ? data.items : []
+    logItems.value = items
+    logPage.value = Number.isFinite(data.page) && data.page > 0 ? data.page : page
+    logHasMore.value = Boolean(data.has_more)
   } catch (error) {
     if (seq !== logRequestSeq) return
     logItems.value = []
@@ -1720,25 +1765,33 @@ const loadLogs = async () => {
   }
 }
 
-/** 切换范围：先刷新列表，再让导出跟着当前范围走；展开态回到默认的 3 条 */
+/** 切换范围：回到第 1 页重新拉；展开态保持展开 */
 const selectLogRange = (value) => {
   if (logRange.value === value) return
   logRange.value = value
-  logsExpanded.value = false
-  logLimit.value = LOG_PREVIEW_LIMIT
-  loadLogs()
+  logPage.value = 1
+  logHasMore.value = false
+  loadLogs(1)
+}
+
+/** 分页器：只允许在有下一页时前进，避免在最后一页疯狂点 */
+const goLogPage = (page) => {
+  if (page < 1 || page === logPage.value) return
+  if (page > logPage.value && !logHasMore.value) return
+  logPage.value = page
+  loadLogs(page)
 }
 
 /**
  * 手机端「查看全部 / 收起」。
  *
- * 展开时把 limit 提到 24 条并重新请求；收起时回到 6 条预览，
- * 这样即使服务器之后清掉了旧数据，页面也不会留着一份过期的长列表。
+ * 展开时切到分页表格（第 1 页，每页 8 条）；收起时回到最近 6 条轨迹。
  */
 const toggleLogs = async () => {
   logsExpanded.value = !logsExpanded.value
-  logLimit.value = logsExpanded.value ? LOG_EXPANDED_LIMIT : LOG_PREVIEW_LIMIT
-  await loadLogs()
+  logPage.value = 1
+  logHasMore.value = false
+  await loadLogs(1)
 }
 
 /* 首屏在挂载后再拉日志：SSR 不需要它，也避免登录态尚未 hydrate 时发请求 */
@@ -2883,6 +2936,67 @@ onMounted(() => {
   text-align: right;
   white-space: nowrap;
 }
+
+/* 分页器：手机端也保持一行，左右箭头按钮 + 中间页码；不再向下无限堆数据 */
+.profile-log-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-unit);
+  margin-top: calc(var(--space-unit) * 1.5);
+  padding-top: calc(var(--space-unit) * 1.25);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.profile-log-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.35);
+  min-height: var(--ec-control-h-md);
+  padding: 0 calc(var(--space-unit) * 1.1);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--fs-label);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--transition-interactive),
+    border-color var(--transition-interactive),
+    background var(--transition-interactive);
+}
+
+.profile-log-page-btn .app-icon {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.profile-log-page-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.profile-log-page-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.profile-log-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.profile-log-page-info {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
 /* 结果不是一枚满色胶囊：小圆点 + 文案，安静地落在动作行右端 */
 .profile-log-outcome {
   display: inline-flex;
@@ -3285,6 +3399,26 @@ onMounted(() => {
 
   .profile-log-td-outcome {
     width: 3.75rem;
+  }
+
+  /* 分页器在窄屏再让一点内边距，页码文字不允许换行 */
+  .profile-log-pager {
+    gap: calc(var(--space-unit) * 0.5);
+    margin-top: calc(var(--space-unit) * 1.25);
+  }
+
+  .profile-log-page-btn {
+    padding: 0 calc(var(--space-unit) * 0.75);
+    gap: calc(var(--space-unit) * 0.2);
+  }
+
+  /* 320 宽只留箭头，文字进 aria-label，页码才能和按钮同排 */
+  .profile-log-page-label {
+    display: none;
+  }
+
+  .profile-log-page-info {
+    font-size: var(--fs-label);
   }
 }
 </style>

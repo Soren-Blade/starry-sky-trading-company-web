@@ -269,8 +269,11 @@ test('源码：邮箱 / 手机号可在弹层里直接改，且校验格式与�
 })
 
 test('源码：操作日志是时间线，按范围加载最近几条并能重试', () => {
-  assert.match(PROFILE_SOURCE, /getMyLogs\(\{ range: logRange\.value, limit: logLimit\.value \}\)/)
   assert.match(PROFILE_SOURCE, /const LOG_PREVIEW_LIMIT = 6/)
+  assert.match(
+    PROFILE_SOURCE,
+    /: await getMyLogs\(\{ range: logRange\.value, limit: LOG_PREVIEW_LIMIT \}\)/
+  )
   assert.match(PROFILE_SOURCE, /class="profile-log-list"/)
   assert.match(PROFILE_SOURCE, /v-for="\(item, index\) in logItems"/)
   assert.match(PROFILE_SOURCE, /formatLogTime\(item\.created_at\)/)
@@ -297,7 +300,11 @@ test('源码：操作日志是时间线，按范围加载最近几条并能重�
     '标题区不再竖排 —— 导出已经移到工具栏'
   )
   assert.match(PROFILE_SOURCE, /const logIcon = \(item\) =>/, '轨迹左侧按类别给字形')
-  assert.match(PROFILE_SOURCE, /const selectLogRange = \(value\) => \{[\s\S]{0,200}?loadLogs\(\)/, '切范围要同时刷新列表')
+  assert.match(
+    PROFILE_SOURCE,
+    /const selectLogRange = \(value\) => \{[\s\S]{0,240}?loadLogs\(1\)/,
+    '切范围要回到第 1 页并同时刷新列表'
+  )
 
   // 轨迹：字形 + 文本两列，手机再收一档；不再是五列表格
   assert.match(
@@ -410,17 +417,34 @@ test('源码：手机端账号信息默认只展示主四行，其余进「更�
   assert.match(phone, /\.profile-fields\.is-open \.profile-row--extra \{\s*display: grid;/)
 })
 
-test('源码：操作日志手机端默认 3 条，展开后请求 24 条', () => {
-  assert.match(PROFILE_SOURCE, /const LOG_EXPANDED_LIMIT = 24/)
+test('源码：操作日志手机端默认 3 条，展开后按 8 条/页分页', () => {
+  assert.match(PROFILE_SOURCE, /const LOG_PAGE_SIZE = 8/)
+  assert.match(PROFILE_SOURCE, /const logPage = ref\(1\)/)
+  assert.match(PROFILE_SOURCE, /const logHasMore = ref\(false\)/)
   assert.match(
     PROFILE_SOURCE,
-    /logLimit\.value = logsExpanded\.value \? LOG_EXPANDED_LIMIT : LOG_PREVIEW_LIMIT/
+    /getMyLogs\(\{ range: logRange\.value, limit: LOG_PAGE_SIZE, page \}\)/
   )
+  assert.match(PROFILE_SOURCE, /const goLogPage = \(page\) => \{/)
+  assert.match(PROFILE_SOURCE, /logPage\.value = 1[\s\S]{0,40}?logHasMore\.value = false/)
   assert.match(PROFILE_SOURCE, /:class="\{ 'profile-log-item--extra': index >= 3 \}"/)
   assert.match(PROFILE_SOURCE, /class="profile-more profile-logs-more"[\s\S]{0,200}aria-controls="profile-log-list"/)
 
+  // 分页器：上一页 / 页码 / 下一页，翻到末页时不再可点
+  assert.match(PROFILE_SOURCE, /<nav v-if="logsExpanded" class="profile-log-pager"/)
+  assert.match(PROFILE_SOURCE, /:aria-label="PAGES\.profile\.logsPagerAria"/)
+  assert.match(PROFILE_SOURCE, /:disabled="logPage <= 1 \|\| logsLoading"/)
+  assert.match(PROFILE_SOURCE, /:disabled="!logHasMore \|\| logsLoading"/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsPagePrev/)
+  assert.match(PROFILE_SOURCE, /PAGES\.profile\.logsPageNext/)
+  assert.match(PROFILE_SOURCE, /logPageInfo/)
+
   const phone = PROFILE_SOURCE.slice(PROFILE_SOURCE.indexOf('@media (max-width: 767px)'))
   assert.match(phone, /\.profile-log-item--extra \{\s*display: none;/)
+
+  const narrow = PROFILE_SOURCE.slice(PROFILE_SOURCE.lastIndexOf('@media (max-width: 575px)'))
+  assert.match(narrow, /\.profile-log-pager \{/)
+  assert.match(narrow, /\.profile-log-page-btn \{/)
 })
 
 test('源码：展开后日志按日期分组，切成可横向扫读的明细表', () => {

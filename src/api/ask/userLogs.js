@@ -27,10 +27,11 @@ export const LOG_RANGES = [
     { value: '365d', label: '近一年' },
 ]
 
-/** 页面内预览用的 JSON 版本（服务端按时间倒序；limit 默认取满，页面传小值只取最近几条） */
-export function getMyLogs({ range = '30d', limit } = {}) {
+/** 页面内预览用的 JSON 版本（服务端按时间倒序；limit 是每页条数，page 从 1 开始） */
+export function getMyLogs({ range = '30d', limit, page } = {}) {
     const params = { range }
     if (Number.isFinite(limit) && limit > 0) params.limit = limit
+    if (Number.isFinite(page) && page > 1) params.page = page
     return request.get(`${baseURL}/`, { params })
 }
 
