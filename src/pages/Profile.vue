@@ -3129,7 +3129,10 @@ onMounted(() => {
   /* 桌面把同一行摊成「时刻 / 动作 / 类别 / 细节 / 结果」的台账：
    * DOM 仍是手机那套语义结构，靠 grid 重排，不用两套模板。 */
   .profile-log-list--grouped .profile-log-item {
-    grid-template-columns: calc(var(--space-unit) * 2.5) minmax(0, 1fr);
+    /* 字形本身占 4 个单位；桌面不能把列宽压到 2.5，否则圆片会溢出到
+     * 时刻前面，看起来「时间和图标挤在一起」。列宽与图标同宽，再留 1.5 单位呼吸。 */
+    grid-template-columns: calc(var(--space-unit) * 4) minmax(0, 1fr);
+    column-gap: calc(var(--space-unit) * 1.5);
     align-items: center;
   }
 
