@@ -653,8 +653,42 @@
       </div>
 
       <!--
+        桌面端的筛选条：移动端区域有限，只保留范围滑轨与导出；
+        ≥768 时多出「类型 / 结果」两个下拉，筛选变更回到第 1 页。
+      -->
+      <div v-if="logsExpanded" class="profile-log-filters">
+        <span class="profile-log-filters-label">{{ PAGES.profile.logsFiltersLabel }}</span>
+        <span class="profile-log-filter-label">{{ PAGES.profile.logsFilterCategory }}</span>
+        <SelectField
+          id="profile-log-category"
+          v-model="logCategory"
+          class="profile-log-filter"
+          :options="logCategoryOptions"
+          :aria-label="PAGES.profile.logsFilterCategory"
+          @update:model-value="applyLogFilters"
+        />
+        <span class="profile-log-filter-label">{{ PAGES.profile.logsFilterOutcome }}</span>
+        <SelectField
+          id="profile-log-outcome"
+          v-model="logOutcome"
+          class="profile-log-filter profile-log-filter--result"
+          :options="logOutcomeOptions"
+          :aria-label="PAGES.profile.logsFilterOutcome"
+          @update:model-value="applyLogFilters"
+        />
+        <button
+          v-if="hasLogFilters"
+          type="button"
+          class="profile-log-filter-clear"
+          @click="resetLogFilters"
+        >
+          {{ PAGES.profile.logsFilterClear }}
+        </button>
+      </div>
+
+      <!--
         两种读法：默认是「最近发生了什么」的轨迹（左字形 + 三行）；
-        展开后要横向比较多条记录，切成按日期分组的明细表更省纵向空间。
+        展开后按日期分组，桌面把同一行摊成「时刻 / 动作 / 类别 / 细节 / 结果」台账。
       -->
       <div v-if="logsLoading" class="profile-log-state" aria-live="polite" aria-busy="true">
         <span v-for="n in 3" :key="n" class="u-skeleton profile-log-skeleton"></span>
@@ -1649,7 +1683,26 @@ const logsError = ref('')
 const logsExpanded = ref(false)
 const logPage = ref(1)
 const logHasMore = ref(false)
+const logCategory = ref('')
+const logOutcome = ref('')
 let logRequestSeq = 0
+const hasLogFilters = computed(() => Boolean(logCategory.value || logOutcome.value))
+const logCategoryOptions = computed(() => [
+    { value: '', label: PAGES.profile.logsFilterAll },
+    { value: 'auth', label: PAGES.profile.logCatAuth },
+    { value: 'trade', label: PAGES.profile.logCatTrade },
+    { value: 'card', label: PAGES.profile.logCatCard },
+    { value: 'tool', label: PAGES.profile.logCatTool },
+    { value: 'checkin', label: PAGES.profile.logCatCheckin },
+    { value: 'points', label: PAGES.profile.logCatPoints },
+    { value: 'member', label: PAGES.profile.logCatMember },
+])
+const logOutcomeOptions = computed(() => [
+    { value: '', label: PAGES.profile.logsFilterAll },
+    { value: 'success', label: PAGES.profile.logsOutcomeSuccess },
+    { value: 'failure', label: PAGES.profile.logsOutcomeFailure },
+    { value: 'pending', label: PAGES.profile.logsOutcomePending },
+])
 
 /** 列表时间用「月/日 时:分」：同一年内的记录，年份是噪音 */
 const formatLogTime = (value) =>
@@ -1747,7 +1800,13 @@ const loadLogs = async (page = logPage.value) => {
   logsError.value = ''
   try {
     const result = logsExpanded.value
-      ? await getMyLogs({ range: logRange.value, limit: LOG_PAGE_SIZE, page })
+      ? await getMyLogs({
+          range: logRange.value,
+          limit: LOG_PAGE_SIZE,
+          page,
+          category: logCategory.value || undefined,
+          outcome: logOutcome.value || undefined,
+        })
       : await getMyLogs({ range: logRange.value, limit: LOG_PREVIEW_LIMIT })
     if (seq !== logRequestSeq) return
     const data = result?.data || {}
@@ -1773,6 +1832,20 @@ const selectLogRange = (value) => {
   loadLogs(1)
 }
 
+/** 筛选变更：回到第 1 页重新拉当前条件下的数据 */
+const applyLogFilters = () => {
+  logPage.value = 1
+  logHasMore.value = false
+  loadLogs(1)
+}
+
+const resetLogFilters = () => {
+  if (!hasLogFilters.value) return
+  logCategory.value = ''
+  logOutcome.value = ''
+  applyLogFilters()
+}
+
 /** 分页器：只允许在有下一页时前进，避免在最后一页疯狂点 */
 const goLogPage = (page) => {
   if (page < 1 || page === logPage.value) return
@@ -1795,7 +1868,11 @@ const toggleLogs = async () => {
 
 /* 首屏在挂载后再拉日志：SSR 不需要它，也避免登录态尚未 hydrate 时发请求 */
 onMounted(() => {
-  loadLogs()
+  // 桌面宽度够，日志直接以「分页台账」展开；手机仍是最近 3 条 + 按需展开。
+  if (typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches) {
+    logsExpanded.value = true
+  }
+  loadLogs(logsExpanded.value ? 1 : undefined)
 })
 
 watch(
@@ -2998,7 +3075,110 @@ onMounted(() => {
   height: calc(var(--space-unit) * 2.5);
 }
 
+/* 筛选条：手机上区域有限，只保留范围滑轨与导出；≥768 才出现 */
+.profile-log-filters {
+  display: none;
+}
+
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
+@media (min-width: 768px) {
+  /* 桌面默认以分页台账开局，但仍允许「收起记录」回到 6 条预览 */
+  .profile-logs-more {
+    display: flex;
+  }
+
+  .profile-log-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: calc(var(--space-unit) * 1);
+    margin-top: calc(var(--space-unit) * 1.25);
+  }
+
+  .profile-log-filters-label {
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+  }
+
+  .profile-log-filter {
+    width: 9.5rem;
+  }
+
+  .profile-log-filter-label {
+    margin-left: calc(var(--space-unit) * 0.5);
+    font-size: var(--fs-label);
+    color: var(--text-muted);
+  }
+
+  .profile-log-filter--result {
+    width: 8rem;
+  }
+
+  .profile-log-filter-clear {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-family: var(--font-body);
+    font-size: var(--fs-label);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  /* 桌面把同一行摊成「时刻 / 动作 / 类别 / 细节 / 结果」的台账：
+   * DOM 仍是手机那套语义结构，靠 grid 重排，不用两套模板。 */
+  .profile-log-list--grouped .profile-log-item {
+    grid-template-columns: calc(var(--space-unit) * 2.5) minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .profile-log-body {
+    display: grid;
+    grid-template-columns:
+      4.5rem minmax(9rem, 13rem) minmax(6rem, 8.5rem)
+      minmax(0, 1fr) 4.5rem;
+    grid-template-areas: 'time action category detail outcome';
+    align-items: center;
+    column-gap: calc(var(--space-unit) * 1.5);
+  }
+
+  .profile-log-line,
+  .profile-log-meta {
+    display: contents;
+  }
+
+  .profile-log-time {
+    grid-area: time;
+  }
+
+  .profile-log-action {
+    grid-area: action;
+  }
+
+  .profile-log-category {
+    grid-area: category;
+    justify-self: start;
+    padding: 1px calc(var(--space-unit) * 0.6);
+    background: var(--bg-soft);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+  }
+
+  .profile-log-sep {
+    display: none;
+  }
+
+  .profile-log-detail {
+    grid-area: detail;
+    margin: 0;
+  }
+
+  .profile-log-outcome {
+    grid-area: outcome;
+    justify-self: end;
+  }
+}
 @media (max-width: 991px) {
   /* 平板：服务分组卡降成 2×2，分隔线也跟着改到第一列与第二行
    * （选择器必须带上 .ui-card：基础规则是 .ui-card.profile-services，

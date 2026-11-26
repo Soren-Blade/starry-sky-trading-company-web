@@ -423,7 +423,7 @@ test('源码：操作日志手机端默认 3 条，展开后按 8 条/页分页'
   assert.match(PROFILE_SOURCE, /const logHasMore = ref\(false\)/)
   assert.match(
     PROFILE_SOURCE,
-    /getMyLogs\(\{ range: logRange\.value, limit: LOG_PAGE_SIZE, page \}\)/
+    /getMyLogs\(\{[\s\S]{0,200}?limit: LOG_PAGE_SIZE[\s\S]{0,200}?category: logCategory\.value \|\| undefined,[\s\S]{0,120}?outcome: logOutcome\.value \|\| undefined/
   )
   assert.match(PROFILE_SOURCE, /const goLogPage = \(page\) => \{/)
   assert.match(PROFILE_SOURCE, /logPage\.value = 1[\s\S]{0,40}?logHasMore\.value = false/)
@@ -445,6 +445,38 @@ test('源码：操作日志手机端默认 3 条，展开后按 8 条/页分页'
   const narrow = PROFILE_SOURCE.slice(PROFILE_SOURCE.lastIndexOf('@media (max-width: 575px)'))
   assert.match(narrow, /\.profile-log-pager \{/)
   assert.match(narrow, /\.profile-log-page-btn \{/)
+})
+
+test('源码：桌面默认展开日志，筛选条与单行台账只在 ≥768 出现', () => {
+  // 桌面默认就是分页台账；手机仍是 3 条 + 按需展开。
+  assert.match(PROFILE_SOURCE, /matchMedia\?\.\('\(min-width: 768px\)'\)/)
+  assert.match(PROFILE_SOURCE, /logsExpanded\.value = true/)
+
+  // 筛选只给桌面：类型 / 结果两个 SelectField，变更即回到第 1 页。
+  assert.match(PROFILE_SOURCE, /class="profile-log-filters"/)
+  assert.match(PROFILE_SOURCE, /id="profile-log-category"/)
+  assert.match(PROFILE_SOURCE, /id="profile-log-outcome"/)
+  assert.match(PROFILE_SOURCE, /const logCategoryOptions = computed/)
+  assert.match(PROFILE_SOURCE, /const applyLogFilters = \(\) => \{/)
+  assert.match(PROFILE_SOURCE, /category: logCategory\.value \|\| undefined/)
+  assert.match(PROFILE_SOURCE, /outcome: logOutcome\.value \|\| undefined/)
+
+  const desktop = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('@media (min-width: 768px)'),
+    PROFILE_SOURCE.indexOf('@media (max-width: 991px)')
+  )
+  assert.match(desktop, /\.profile-logs-more \{\s*display: flex;/)
+  assert.match(desktop, /\.profile-log-filters \{[\s\S]{0,80}?display: flex;/)
+  assert.match(desktop, /grid-template-areas: 'time action category detail outcome'/)
+  assert.match(desktop, /\.profile-log-line,\s*\.profile-log-meta \{\s*display: contents;/)
+  assert.match(desktop, /\.profile-log-category \{[^}]*grid-area: category;/)
+
+  // 手机上筛选条保持隐藏（区域有限）。
+  const base = PROFILE_SOURCE.slice(
+    PROFILE_SOURCE.indexOf('.profile-log-filters {'),
+    PROFILE_SOURCE.indexOf('@media (min-width: 768px)')
+  )
+  assert.match(base, /display: none;/)
 })
 
 test('源码：展开后日志按日期分组，行样式沿用折叠态轨迹', () => {

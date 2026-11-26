@@ -28,10 +28,12 @@ export const LOG_RANGES = [
 ]
 
 /** 页面内预览用的 JSON 版本（服务端按时间倒序；limit 是每页条数，page 从 1 开始） */
-export function getMyLogs({ range = '30d', limit, page } = {}) {
+export function getMyLogs({ range = '30d', limit, page, category, outcome } = {}) {
     const params = { range }
     if (Number.isFinite(limit) && limit > 0) params.limit = limit
     if (Number.isFinite(page) && page > 1) params.page = page
+    if (category) params.category = category
+    if (outcome) params.outcome = outcome
     return request.get(`${baseURL}/`, { params })
 }
 
