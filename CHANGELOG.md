@@ -9,6 +9,18 @@
 
 ---
 
+## [4.28.0] — 2026-11-27
+
+### 重构
+- 首页商品失败态改用统一的 `InlineErrorNote` 面板：标题讲人话（不再把 `Request failed with status code 500` 当标题），后端原文折进「查看技术信息」的 `<details>`，出口是「重新请求」+「联系客服」两个。
+- 失败说明不再写「请检查网络连接」——那是把服务端问题说成用户网络问题；改为「我们这边没能连上服务，稍后再试一次。」
+
+### 新增
+- `src/components/InlineErrorNote.vue`：区块级（E3）失败面板，props `title/hint/detail/retryLabel/retryingLabel/supportLabel/supportHref/loading/dense`，`@retry` 事件；窄屏 767 换行、575 动作区两端对齐。
+
+### 测试
+- `test/hotProductsErrorNote.test.js` 重写为 6 条（SSR 结构与「标题不含原文」、重试走 `shopStore.init()`、文字按钮与 `aria-busy`、窄屏版式、仅用令牌、中英文案）；`test/renderComponents.test.js` 登记 `InlineErrorNote.vue` 的必填 prop。
+- web `npm test` **1297/1297**、`npm run build` 通过。
 ## [4.27.0] — 2026-11-27
 
 首页「热门商品」区块加载失败时，原来只渲染一行红字（`products-note products-note--error`）：

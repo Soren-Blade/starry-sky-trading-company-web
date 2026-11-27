@@ -45,31 +45,23 @@
           </li>
 
           <!--
-            错误态：图标 + 两行文案 + 「重新请求」文字按钮。
-
-            为什么不只放一句红字：区块失败时它占满整行，是一块 100% 宽的空白面板，
-            只写一行红字既没有视觉重心，也没有出口 —— 用户唯一的动作是刷新整页。
-            文案、按钮与图标都排在一条基线上（窄屏改为竖向堆叠，见样式末尾）。
+            错误态：统一走 InlineErrorNote（标题讲人话、技术细节折进 <details>、
+            出口是「重新请求」+「联系客服」）。
+            见 src/components/InlineErrorNote.vue 顶部注释：为什么不再把后端原文当标题。
           -->
-          <li v-if="error" class="products-note products-note--error" role="alert">
-            <span class="products-note__icon">
-              <AppIcon name="alert-triangle" />
-            </span>
-            <span class="products-note__body">
-              <span class="products-note__title">{{ PRODUCT_GRID.errorPrefix }}{{ error }}</span>
-              <span class="products-note__hint">{{ PRODUCT_GRID.errorHint }}</span>
-            </span>
-            <button
-              type="button"
-              class="products-note__retry"
-              :disabled="loading"
-              :aria-busy="loading"
-              @click="retry"
-            >
-              <span v-if="loading" class="u-spinner u-spinner--sm" aria-hidden="true"></span>
-              <AppIcon v-else name="refresh-cw" />
-              <span>{{ loading ? PRODUCT_GRID.retrying : PRODUCT_GRID.retry }}</span>
-            </button>
+          <li v-if="error" class="products-note products-note--error-cell">
+            <InlineErrorNote
+              :title="PRODUCT_GRID.errorTitle"
+              :hint="PRODUCT_GRID.errorHint"
+              :detail="errorDetail"
+              :detail-label="PRODUCT_GRID.errorDetailLabel"
+              :retry-label="PRODUCT_GRID.retry"
+              :retrying-label="PRODUCT_GRID.retrying"
+              :support-label="PRODUCT_GRID.errorSupport"
+              support-href="/support"
+              :loading="loading"
+              @retry="retry"
+            />
           </li>
           <li v-else-if="!products.length" class="products-note">
             {{ PRODUCT_GRID.empty }}
@@ -97,7 +89,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useShopStore } from '@/stores/shop'
-import AppIcon from '@/components/AppIcon.vue'
+import InlineErrorNote from '@/components/InlineErrorNote.vue'
 import ProductCard from '@/components/ProductCard.vue'
 import SectionHeader from '@/components/SectionHeader.vue'
 import { useProductActions } from '@/hooks/useProductActions'
@@ -124,6 +116,12 @@ const SKELETON_COUNT = 4
 
 const products = computed(() => shopInfo.value || [])
 const isBoard = computed(() => props.variant === 'board')
+
+/**
+ * 失败原文只作为「技术信息」折叠展示（供报障复制），不进标题。
+ * 空字符串时组件不渲染 <details>，避免出现一个没有内容的折叠条。
+ */
+const errorDetail = computed(() => String(error.value || '').trim())
 
 /**
  * 重新请求。
@@ -211,99 +209,19 @@ const retry = () => {
   border-radius: var(--radius-card);
 }
 
-.products-note--error {
-  /*
-   * 排版：图标 | 文案 | 按钮 三段一条基线。
-   *
-   * 面板本身仍是整行（`grid-column: 1 / -1`，来自上面的基类），所以这里必须
-   * 自己变成 flex —— 基类的 `text-align: center` 对三段式来说会把按钮挤到文字
-   * 中间。左对齐 + 居中留白，读起来是一条「发生了什么 → 怎么办」的纵线。
-   */
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 2);
-  text-align: left;
-  color: var(--danger);
-  background: var(--danger-bg);
-  border-color: var(--danger);
-}
-
-/* 图标：做成圆形徽标，给这块整幅面板一个视觉锚点（尺寸与字号同阶，靠 1em 缩放） */
-.products-note__icon {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: calc(var(--space-unit) * 5);
-  height: calc(var(--space-unit) * 5);
-  font-size: var(--fs-h3);
-  color: var(--danger);
-  background: var(--bg-surface);
-  border: var(--stroke-width) solid var(--danger);
-  border-radius: var(--radius-pill);
-}
-
-/* 文案：主行是失败原因，副行是「怎么办」。两行之间只留半个间距单位，作为一个语义块 */
-.products-note__body {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 0.5);
-  min-width: 0;
-}
-
-.products-note__title {
-  font-size: var(--fs-body);
-  font-weight: var(--fw-label);
-  line-height: var(--leading-title);
-  /* 后端错误里可能带一长串英文/URL，允许在任意位置断行，避免撑破面板 */
-  overflow-wrap: anywhere;
-}
-
-.products-note__hint {
-  font-size: var(--fs-label);
-  line-height: var(--leading-title);
-  color: var(--text-muted);
-}
-
 /*
- * 「重新请求」是**文字按钮**（用户明确要求文字按钮，不是填充按钮）：
- * 无底色、无描边，靠强调色 + 下划线表明「这是可以点的」。
- * 高度不锁 md，和副行同一行高，避免面板被按钮撑高。
+ * 错误态格子只负责「占满整行」。
+ *
+ * 面板本体（图标 / 标题 / 说明 / 技术信息 / 两个出口）都交给 InlineErrorNote，
+ * 这样首页、分类页、搜索页、订单页、工具页共用同一套失败观感 —— 之前每处
+ * 各写一份 `page-note--error`，文案与退出路径各不相同。
  */
-.products-note__retry {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 0.75);
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  font-weight: var(--fw-label);
-  line-height: var(--leading-title);
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  background: transparent;
+.products-note--error-cell {
+  grid-column: 1 / -1;
+  padding: 0;
+  background: none;
   border: 0;
-  border-radius: var(--radius-input);
-  cursor: pointer;
-  transition: color var(--ec-dur-fast) var(--ec-ease-out);
-}
-
-.products-note__retry:hover:not(:disabled) {
-  color: var(--accent-strong);
-}
-
-.products-note__retry:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.products-note__retry:disabled {
-  color: var(--disabled-text);
-  text-decoration: none;
-  cursor: progress;
+  text-align: left;
 }
 
 /* ── 响应式：断点统一 1199 / 991 / 767 / 575 ────────────────── */
@@ -329,22 +247,6 @@ const retry = () => {
   /* 单列时主推位不再跨列，否则会把栅格撑破 */
   .products-cell--featured {
     grid-column: span 1;
-  }
-
-  /*
-   * 错误态在窄屏改为竖向堆叠：图标居顶、文案居中、按钮居中。
-   * 横排在 375–430px 上会把主行挤成两三行、按钮掉到第二行且右缘参差，
-   * 竖排是唯一能保证「一眼看到原因、一步点到重试」的排法。
-   */
-  .products-note--error {
-    flex-direction: column;
-    gap: calc(var(--space-unit) * 1.5);
-    padding: calc(var(--space-unit) * 4) calc(var(--space-unit) * 2);
-    text-align: center;
-  }
-
-  .products-note__body {
-    align-items: center;
   }
 }
 </style>

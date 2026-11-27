@@ -94,6 +94,8 @@ const COMPONENTS = allComponents()
  * （调用方本就必须传），因此在渲染测试里补上桩数据，而不是改组件。
  */
 const REQUIRED_PROPS = {
+  // 4.28.0：统一失败面板必须给出业务标题，桩数据让「全组件可渲染」门禁能覆盖它
+  'InlineErrorNote.vue': { title: '商品加载失败' },
   'SectionHeader.vue': { title: '桩标题' },
   'ProductCard.vue': {
     product: {

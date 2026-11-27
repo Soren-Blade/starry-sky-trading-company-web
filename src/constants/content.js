@@ -404,8 +404,18 @@ const PRODUCT_GRID_RAW = {
   loading: '正在加载商品…',
   empty: '暂无商品可展示',
   errorPrefix: '商品加载失败：',
-  /** 错误态的第二行：告诉用户下一步做什么，而不是只报告失败 */
-  errorHint: '请检查网络连接后重新请求，或稍后再试。',
+  /**
+   * 失败态的标题 / 说明（4.28.0）。
+   *
+   * `errorPrefix` 留给「把后端原文接在冒号后面」的旧位置；新面板改用
+   * `errorTitle + errorHint`：标题讲人话（不带 500、不带 URL），
+   * 原文折进「查看技术信息」。说明也不再说「请检查网络」——那是把
+   * 我们的服务问题说成用户的网络问题（design-partner §6.3「不责怪用户」）。
+   */
+  errorTitle: '商品加载失败',
+  errorHint: '我们这边没能连上服务，稍后再试一次。',
+  errorDetailLabel: '查看技术信息',
+  errorSupport: '联系客服',
   /** 错误态里的文字按钮与它的进行中文案 */
   retry: '重新请求',
   retrying: '正在重新请求…',

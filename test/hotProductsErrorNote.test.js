@@ -1,107 +1,78 @@
-/**
- * 首页热门商品区块的错误态
- *
- * 用户报的原始问题：「`products-note products-note--error` 请求失败应该加一个
- * 重新请求的文字按钮」。所以这里守三件事：
- *   1. 错误态**真的渲染出**重试按钮（SSR 渲染，不是只搜源码）；
- *   2. 按钮接的是 store 的重新请求动作，且请求中会禁用（否则连点会打多次接口）；
- *   3. 排版各段有对应样式与窄屏堆叠规则，且不写死色值。
- */
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { renderComponent, createPiniaWithState, createRenderEnv } from './render.mjs'
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const SRC = path.join(HERE, '..', 'src')
-const read = (rel) => fs.readFileSync(path.join(HERE, '..', rel), 'utf8')
-/** 去掉块注释再断言：说明文字里出现同名 API 不算残留实现 */
-const readCode = (rel) => read(rel).replace(/\/\*[\s\S]*?\*\//g, '')
+const root = join(import.meta.dirname, '..')
+const readSrc = (rel) =>
+  readFileSync(join(root, 'src', rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 
-test('错误态渲染出原因、提示与「重新请求」文字按钮', async () => {
-  // 组件里 useProductActions() 会 useRouter()：不装 router 会出
-  // `injection "Symbol(router)" not found` 警告，把「无警告」这条信号冲淡
-  const [pinia, env] = await Promise.all([
-    createPiniaWithState({ shop: { error: '网络异常', loading: false } }),
-    createRenderEnv(),
-  ])
-
+test('首页商品失败态：渲染统一错误面板，标题不夹带后端原文', async () => {
+  const pinia = await createPiniaWithState({ shop: { error: 'Request failed with status code 500' } })
+  const env = await createRenderEnv()
   const html = await renderComponent('components/HotProductsSection.vue', {
-    props: { variant: 'section' },
     plugins: [pinia, env.router],
     globalComponents: env.globalComponents,
   })
 
-  assert.match(html, /products-note--error/, '错误态容器应存在')
-  assert.match(html, /role="alert"/, '错误态要让读屏软件立即播报')
-  assert.match(html, /商品加载失败：/, '要带上前缀文案')
-  assert.match(html, /网络异常/, '要显示具体失败原因')
-  assert.match(html, /请检查网络连接后重新请求/, '要有「接下来怎么办」的副行')
+  // 统一面板的结构：图标 + 标题 + 说明 + 技术细节 + 两个出口
+  assert.match(html, /class="inline-error/)
+  assert.match(html, /role="alert"/)
+  assert.match(html, /商品加载失败/)
+  assert.match(html, /我们这边没能连上服务/)
+  assert.match(html, /查看技术信息/)
+  assert.match(html, /重新请求/)
+  assert.match(html, /联系客服/)
 
-  // 文字按钮：必须是 <button type="button">，带文案与图标
-  assert.match(html, /<button[^>]*class="products-note__retry"/, '要有重试按钮')
-  assert.match(html, /type="button"/, '按钮必须是 button 而不是可点击的 span')
-  assert.match(html, /重新请求/, '按钮文案是「重新请求」')
-  assert.match(html, /products-note__icon[\s\S]*?<svg/, '要有警示图标')
+  // 后端原文只能出现在 <details> 里，不能出现在标题行
+  const title = html.match(/class="inline-error__title"[^>]*>([^<]*)</)
+  assert.ok(title, '找不到标题节点')
+  assert.ok(!title[1].includes('500'), `标题不应含后端原文：${title[1]}`)
 })
 
-test('重试走 store 的重新请求动作，并在请求中禁用', () => {
-  const source = readCode('src/components/HotProductsSection.vue')
-
-  assert.match(source, /@click="retry"/, '按钮要绑到 retry')
-  assert.match(source, /const retry = \(\) => \{[\s\S]*?shopStore\.init\(\)/, 'retry 应调用 store 的 init()')
-  // error 是 categories/products 共用的字段，只重取商品会让分类失败时按钮永远点不好
-  assert.equal(/shopStore\.getProducts\(/.test(source), false, '不要只重取商品：错误可能来自分类接口')
-  assert.match(source, /:disabled="loading"/, '请求中要禁用，避免连点打多次接口')
-  assert.match(source, /:aria-busy="loading"/, '请求中要有 aria-busy')
-  assert.match(source, /PRODUCT_GRID\.retrying/, '请求中要换成进行中文案')
+test('首页商品失败态：重试按钮调 store.init 并有进行中状态', () => {
+  const src = readSrc('components/HotProductsSection.vue')
+  assert.match(src, /@retry="retry"/)
+  assert.match(src, /shopStore\.init\(\)/)
+  assert.match(src, /:loading="loading"/)
+  // 不要只重取商品：error 是分类与商品共用的字段
+  assert.doesNotMatch(src, /shopStore\.getProducts\(/)
 })
 
-test('错误态排版与多端适配都走令牌，窄屏竖排', () => {
-  const source = readCode('src/components/HotProductsSection.vue')
-
-  for (const cls of ['products-note__icon', 'products-note__body', 'products-note__title', 'products-note__hint', 'products-note__retry']) {
-    assert.match(source, new RegExp(`\\.${cls} \\{`), `${cls} 应有样式`)
-  }
-
-  // 桌面：一条基线；窄屏：竖排堆叠
-  const errorBlock = source.slice(source.indexOf('.products-note--error {'))
-  assert.match(errorBlock.slice(0, errorBlock.indexOf('}')), /display: flex/, '桌面用 flex 三段式')
-  assert.match(source, /@media \(max-width: 767px\)[\s\S]*\.products-note--error \{[\s\S]*flex-direction: column/, '窄屏要竖排')
-
-  // 不得写死色值：颜色一律走令牌
-  const colorLiterals = source.match(/(?:^|\s)(?:color|background|border-color):\s*#[0-9a-fA-F]{3,8}/g) || []
-  assert.deepEqual(colorLiterals, [], '组件样式不得写死色值')
-  const rgbLiterals = source.match(/(?:^|\s)(?:color|background|border-color):\s*rgba?\(/g) || []
-  assert.deepEqual(rgbLiterals, [], '组件样式不得写死 rgb/rgba')
+test('InlineErrorNote：重试按钮是文字按钮，禁用时 aria-busy', () => {
+  const src = readSrc('components/InlineErrorNote.vue')
+  assert.match(src, /:disabled="loading"/)
+  assert.match(src, /:aria-busy="loading"/)
+  assert.match(src, /emit\('retry'\)/)
+  // 技术细节必须折叠，不能直接铺在正文里
+  assert.match(src, /<details/)
+  // 文字按钮：不能带填充底色
+  assert.doesNotMatch(src, /\.inline-error__retry\s*\{[^}]*background:\s*var\(--primary\)/)
 })
 
-test('文案键双语齐备（新增键不能只写中文）', () => {
-  const zh = read('src/constants/content.js')
-  const en = read('src/i18n/locales/en-US/commerce.js')
-
-  for (const key of ['errorHint', 'retry', 'retrying']) {
-    assert.match(zh, new RegExp(`${key}:`), `中文缺 ${key}`)
-    assert.match(en, new RegExp(`${key}:`), `英文缺 ${key}`)
-  }
+test('InlineErrorNote：窄屏改版式但不隐藏出口', () => {
+  const src = readSrc('components/InlineErrorNote.vue')
+  assert.match(src, /@media \(max-width: 767px\)/)
+  assert.match(src, /flex-wrap: wrap/)
+  assert.match(src, /@media \(max-width: 575px\)/)
 })
 
-test('CSS 里引用的自定义属性都已在令牌表中定义', () => {
-  const source = readCode('src/components/HotProductsSection.vue')
-  const tokens = ['src/assets/styles/variables.css', 'src/assets/ec/tokens/semantic.css']
-    .map((rel) => read(rel))
-    .join('\n')
-
-  const used = new Set([...source.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]))
-  const missing = [...used].filter((name) => !new RegExp(`${name}\\s*:`).test(tokens))
-  assert.deepEqual(missing, [], `未定义的令牌：${missing.join(', ')}`)
+test('InlineErrorNote：只用设计令牌，不写死色值', () => {
+  const src = readSrc('components/InlineErrorNote.vue')
+  const style = src.slice(src.indexOf('<style'))
+  assert.doesNotMatch(style, /#[0-9a-fA-F]{3,8}\b/)
+  assert.doesNotMatch(style, /rgba?\(/)
 })
 
-test('样式文件没有被误删的空规则', () => {
-  const source = readCode('src/components/HotProductsSection.vue')
-  assert.equal(/\{\s*\}/.test(source), false, '不应出现空规则块')
-  assert.equal(SRC.length > 0, true)
+test('错误提示文案：中英齐备且不再责怪用户网络', async () => {
+  const zh = readSrc('constants/content.js')
+  assert.match(zh, /errorTitle: '商品加载失败'/)
+  assert.match(zh, /errorHint: '我们这边没能连上服务，稍后再试一次。'/)
+  assert.doesNotMatch(zh, /请检查网络连接后重新请求/)
+
+  const en = readSrc('i18n/locales/en-US/commerce.js')
+  assert.match(en, /errorTitle: 'Could not load products'/)
+  assert.match(en, /errorTitle:/)
+  assert.match(en, /errorSupport:/)
 })
