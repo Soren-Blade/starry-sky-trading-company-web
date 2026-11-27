@@ -1,189 +1,201 @@
 <template>
   <section class="apple-id-section">
-    <div class="section-container">
-      <div class="directory">
-        <!--
-          ── 左轨：风险提示 + 目录导航 ──────────────────────────────────
-          桌面端 sticky 在顶栏之下（顶栏是 sticky，必须让出它的高度）；
-          ≤991px 变单栏时回到文档流最上方并取消 sticky。
-          风险提示放在这里而不是右区列表上方：列表很长时右区顶部的提示会被
-          滚出视口，而左轨 sticky 能一直看到。它与「使用说明」同属操作前提，
-          因此放在折叠块之前。
-        -->
-        <aside class="rail" :aria-label="t('appleId.sectionAria')">
-          <!-- 风险提示：语义色各取一份（--danger / --warning），标签走 .u-tag 语义变体 -->
-          <div class="risk-warning">
-            <div class="warning-item critical u-enter" :style="{ '--i': 0 }">
-              <span class="u-tag u-tag--danger"><AppIcon name="shield-alert" />{{ t('appleId.riskBadge') }}</span>
-              <div class="warning-content">
-                <p class="warning-title">{{ t('appleId.riskTitle') }}</p>
-                <p class="warning-text">{{ t('appleId.riskText') }}</p>
-              </div>
+    <div class="directory">
+      <!--
+        ── 左轨：操作前提 + 线路切换 + 使用说明 ────────────────────────
+        桌面端 sticky 在顶栏之下（顶栏是 sticky，必须让出它的高度）。
+
+        ≤991px 时整块左轨 `display: contents` 摊进单列栅格，由各子块的 order
+        决定顺序：风险提示在列表之前（安全信息必须先于「取密码」被看到），
+        使用说明移到列表之后（它是查得到的参考，不是起步动作）。
+        这样只有一份 DOM，不复制内容，也不靠负 margin 硬挪。
+      -->
+      <aside class="rail" :aria-label="t('appleId.sectionAria')">
+        <!-- 风险提示：两块各一句话。原来每条各带一个语义色药丸标签，
+             而标题本身就是「只登 App Store / 本站不收解锁费」——标签只是把同一句话
+             又说了一遍。现在改用等宽小字 kicker 表达强度，字重与颜色表层级。 -->
+        <div class="risk-warning">
+          <div class="warning-item warning-item--critical">
+            <p class="warning-kicker">{{ t('appleId.riskBadge') }}</p>
+            <p class="warning-title">{{ t('appleId.riskTitle') }}</p>
+            <p class="warning-text">{{ t('appleId.riskText') }}</p>
+          </div>
+          <div class="warning-item warning-item--scam">
+            <p class="warning-kicker">{{ t('appleId.scamBadge') }}</p>
+            <p class="warning-title">{{ t('appleId.scamTitle') }}</p>
+            <p class="warning-text">{{ t('appleId.scamText') }}</p>
+          </div>
+        </div>
+
+        <!-- 线路切换（桌面常驻左栏）：0 条的线路渲染成不可点的「暂无」，
+             不再是指向空区块的死锚点 -->
+        <nav class="rail-block rail-nav" :aria-label="t('appleId.lanesAria')">
+          <p class="rail-title">{{ t('appleId.lanesTitle') }}</p>
+          <ul class="lane-list">
+            <li v-for="lane in lanes" :key="lane.id">
+              <a v-if="lane.count > 0" class="lane-link" :href="`#${lane.id}`">
+                <span class="lane-name">{{ lane.name }}</span>
+                <span class="lane-count">{{ lane.count }}</span>
+              </a>
+              <span v-else class="lane-link lane-link--empty" aria-disabled="true">
+                <span class="lane-name">{{ lane.name }}</span>
+                <span class="lane-count">{{ t('appleId.laneEmpty') }}</span>
+              </span>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="rail-block guide-block">
+          <!-- 折叠开关：aria-expanded 让屏幕阅读器知道展开状态 -->
+          <button
+            class="guide-toggle"
+            type="button"
+            :aria-expanded="showGuide"
+            aria-controls="apple-id-guide"
+            @click="showGuide = !showGuide"
+          >
+            <span class="toggle-icon" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+            <span class="toggle-text">
+              <AppIcon name="book-open" /> {{ t('appleId.guideToggle') }}
+            </span>
+          </button>
+
+          <!-- 展开内容留在左轨内部：窄栏排版（有序列表 + --fs-sm + --leading-body） -->
+          <div v-if="showGuide" id="apple-id-guide" class="guide-content">
+            <div class="guide-item">
+              <h4 class="guide-subtitle">{{ t('appleId.guideTutorial') }}</h4>
+              <ol class="guide-list">
+                <li v-for="step in tm('appleId.guideSteps')" :key="step">{{ step }}</li>
+              </ol>
             </div>
-            <div class="warning-item scam u-enter" :style="{ '--i': 1 }">
-              <span class="u-tag u-tag--warning"><AppIcon name="alert-triangle" />{{ t('appleId.scamBadge') }}</span>
-              <div class="warning-content">
-                <p class="warning-title">{{ t('appleId.scamTitle') }}</p>
-                <p class="warning-text">{{ t('appleId.scamText') }}</p>
-              </div>
-            </div>
-          </div>
 
-          <div class="rail-block">
-            <!-- 折叠开关：aria-expanded 让屏幕阅读器知道展开状态 -->
-            <button
-              class="guide-toggle"
-              type="button"
-              :aria-expanded="showGuide"
-              aria-controls="apple-id-guide"
-              @click="showGuide = !showGuide"
-            >
-              <span class="toggle-icon" aria-hidden="true"><AppIcon name="chevron-right" /></span>
-              <span class="toggle-text"><AppIcon name="book-open" /> {{ t('appleId.guideToggle') }}</span>
-            </button>
-
-            <!-- 展开内容留在左轨内部：窄栏排版（有序列表 + --fs-sm + --leading-body） -->
-            <div v-if="showGuide" id="apple-id-guide" class="guide-content u-enter">
-              <div class="guide-item tutorial">
-                <h4 class="guide-subtitle">{{ t('appleId.guideTutorial') }}</h4>
-                <ol class="guide-list">
-                  <li v-for="step in tm('appleId.guideSteps')" :key="step">{{ step }}</li>
-                </ol>
-              </div>
-
-              <div class="guide-item tips">
-                <h4 class="guide-subtitle">{{ t('appleId.guideNotes') }}</h4>
-                <ul class="guide-tips-list">
-                  <li v-for="item in NOTE_ITEMS" :key="item.label">
-                    <strong>{{ item.label }}</strong>{{ item.text }}
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <!-- 线路锚点：纯 <a href="#id">，靠目标区块的 id 跳转，不写 JS -->
-          <nav class="rail-block rail-nav" :aria-label="t('appleId.lanesAria')">
-            <p class="rail-title">{{ t('appleId.lanesTitle') }}</p>
-            <ul class="lane-list">
-              <li>
-                <a class="lane-link" href="#nano-cloud">
-                  <span class="lane-name">{{ t('appleId.mainLane') }}</span>
-                  <span class="u-tag u-tag--accent">{{ nanoCloudIds.length }}</span>
-                </a>
-              </li>
-              <li>
-                <a class="lane-link" href="#fang-qiang-nan">
-                  <span class="lane-name">{{ t('appleId.backupLane') }}</span>
-                  <span class="u-tag">{{ fangQiangNanIds.length }}</span>
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-
-        <!-- ── 右区：账号目录（风险提示已上移到左轨顶部） ─────────────── -->
-        <div class="directory-main">
-          <!-- 无身份：Apple ID 列表走 JWT 保护的 /toolApi/getAppleIds，
-               照常请求只会拿到 401 并显示「加载失败」，不如直接给出登录引导。
-               刻意**不复用** .error-container —— 那是危险色面板，
-               「还没登录」不是错误，用红色会误导用户以为出故障了。 -->
-          <div v-if="!hasIdentity" class="identity-container">
-            <p class="identity-title">{{ AUTH.needIdentityTitle }}</p>
-            <p class="identity-hint">{{ AUTH.needIdentityHint }}</p>
-            <button class="u-btn-primary" type="button" @click="userStore.openLoginModal()">
-              {{ AUTH.loginCta }}
-            </button>
-          </div>
-
-          <!-- 加载状态：区块级加载态走共享类 .u-loading-block + .u-spinner，
-               原先自绘的渐变圆环与三点跳动动效不属于规范动效，已删除 -->
-          <div v-else-if="loading" class="u-loading-block" role="status">
-            <span class="u-spinner" aria-hidden="true"></span>
-            <p class="loading-text">{{ t('appleId.loading') }}</p>
-          </div>
-
-          <!-- 错误状态 -->
-          <div v-else-if="error" class="error-container">
-            <p class="error-message">{{ error }}</p>
-            <button class="u-btn-primary" type="button" @click="fetchAppleIds">{{ t('appleId.retry') }}</button>
-          </div>
-
-          <!-- 账号目录：两个数据源区块各带 id，供左轨锚点跳转（tabindex 让跳转能落焦） -->
-          <div v-else class="lanes">
-            <!-- NanoCloud 数据源 -->
-            <section
-              v-if="nanoCloudIds.length > 0"
-              id="nano-cloud"
-              class="data-source-section"
-              tabindex="-1"
-            >
-              <div class="source-head">
-                <h3 class="source-title">{{ t('appleId.mainLane') }}</h3>
-                <span class="u-tag u-tag--accent">{{ t('appleId.count', { count: nanoCloudIds.length }) }}</span>
-              </div>
-              <div class="ids-grid">
-                <AppleIdCard
-                  v-for="(id, index) in nanoCloudIds"
-                  :key="`nano-${index}`"
-                  :appleId="id"
-                  source="NanoCloud"
-                />
-              </div>
-            </section>
-
-            <!-- FangQiangNan 数据源 -->
-            <section
-              v-if="fangQiangNanIds.length > 0"
-              id="fang-qiang-nan"
-              class="data-source-section"
-              tabindex="-1"
-            >
-              <div class="source-head">
-                <h3 class="source-title">{{ t('appleId.backupLane') }}</h3>
-                <span class="u-tag">{{ t('appleId.count', { count: fangQiangNanIds.length }) }}</span>
-              </div>
-              <div class="ids-grid">
-                <AppleIdCard
-                  v-for="(id, index) in fangQiangNanIds"
-                  :key="`fang-${index}`"
-                  :appleId="id"
-                  source="FangQiangNan"
-                />
-              </div>
-            </section>
-
-            <!-- 空状态 -->
-            <div
-              v-if="nanoCloudIds.length === 0 && fangQiangNanIds.length === 0"
-              class="empty-note"
-            >
-              <p>{{ t('appleId.emptyTitle') }}</p>
-              <p>{{ t('appleId.emptyDesc') }}</p>
+            <div class="guide-item">
+              <h4 class="guide-subtitle">{{ t('appleId.guideNotes') }}</h4>
+              <ul class="guide-list guide-list--notes">
+                <li v-for="item in NOTE_ITEMS" :key="item.label">
+                  <strong>{{ item.label }}</strong>{{ item.text }}
+                </li>
+              </ul>
             </div>
           </div>
         </div>
+      </aside>
+
+      <!-- ── 主区：账号目录 ───────────────────────────────────────── -->
+      <div class="directory-main">
+        <!-- 无身份：Apple ID 列表走 JWT 保护的 /toolApi/getAppleIds，
+             照常请求只会拿到 401 并显示「加载失败」，不如直接给出登录引导。
+             刻意**不复用** .error-container —— 那是危险色面板，
+             「还没登录」不是错误，用红色会误导用户以为出故障了。 -->
+        <div v-if="!hasIdentity" class="identity-panel">
+          <span class="identity-icon" aria-hidden="true"><AppIcon name="lock" /></span>
+          <p class="identity-title">{{ AUTH.needIdentityTitle }}</p>
+          <p class="identity-hint">{{ AUTH.needIdentityHint }}</p>
+          <button class="u-btn-primary" type="button" @click="userStore.openLoginModal()">
+            {{ AUTH.loginCta }}
+          </button>
+        </div>
+
+        <!-- 加载态：区块级加载走共享类 .u-loading-block + .u-spinner -->
+        <div v-else-if="loading" class="u-loading-block" role="status">
+          <span class="u-spinner" aria-hidden="true"></span>
+          <p class="loading-text">{{ t('appleId.loading') }}</p>
+        </div>
+
+        <!-- 失败态：标题讲人话、后端原文折进 details（4.28.0 起的统一做法） -->
+        <InlineErrorNote
+          v-else-if="error"
+          :title="t('appleId.errorTitle')"
+          :hint="t('appleId.errorHint')"
+          :detail="error"
+          :retry-label="t('appleId.retry')"
+          :support-href="SUPPORT_HREF"
+          @retry="fetchAppleIds"
+        />
+
+        <template v-else>
+          <!-- 线路切换（窄屏吸顶条）：桌面用左栏那一份，这一份只在 ≤991px 出现。
+               同一份数据、两种形态 —— 手机上滚到第 12 张卡想换线路时，
+               不必再滚回页面顶部。 -->
+          <nav class="lane-bar" :aria-label="t('appleId.lanesAria')">
+            <ul class="lane-chips">
+              <li v-for="lane in lanes" :key="lane.id">
+                <a
+                  v-if="lane.count > 0"
+                  class="lane-chip"
+                  :class="{ 'lane-chip--accent': lane.accent }"
+                  :href="`#${lane.id}`"
+                >
+                  {{ lane.name }}<span class="lane-chip-count">{{ lane.count }}</span>
+                </a>
+                <span v-else class="lane-chip lane-chip--empty" aria-disabled="true">
+                  {{ lane.name }}<span class="lane-chip-count">{{ t('appleId.laneEmpty') }}</span>
+                </span>
+              </li>
+            </ul>
+          </nav>
+
+          <div class="lanes">
+            <!-- 两个数据源区块各带 id 供线路切换跳转；tabindex 让跳转能落焦 -->
+            <section
+              v-for="lane in visibleLanes"
+              :id="lane.id"
+              :key="lane.id"
+              class="data-source-section"
+              tabindex="-1"
+            >
+              <div class="source-head">
+                <h3 class="source-title">{{ lane.name }}</h3>
+                <span class="source-count">{{ t('appleId.count', { count: lane.count }) }}</span>
+              </div>
+              <div class="ids-grid">
+                <AppleIdCard
+                  v-for="(id, index) in lane.items"
+                  :key="`${lane.id}-${index}`"
+                  :appleId="id"
+                />
+              </div>
+            </section>
+
+            <!-- 空态：两条线路都没货时给一个可读的说明，而不是一片空白 -->
+            <div v-if="visibleLanes.length === 0" class="empty-note">
+              <span class="empty-icon" aria-hidden="true"><AppIcon name="package" /></span>
+              <p class="empty-title">{{ t('appleId.emptyTitle') }}</p>
+              <p class="empty-desc">{{ t('appleId.emptyDesc') }}</p>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+/**
+ * 共享 Apple ID 的账号目录区块。
+ *
+ * 版式 = 左栏（前提 + 线路 + 说明）+ 主区（线路区块 + 紧凑卡网格），
+ * 窄屏时左栏摊进单列、使用说明移到列表之后、线路切换变吸顶条。
+ *
+ * 状态全部来自 tool store（loading / error 由 store 提供：组件内部的 catch 收不到错，
+ * 会导致失败时只显示空态、重试按钮不可达）。
+ */
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
 import { useUserStore } from '@/stores/user'
 import AppleIdCard from '@/components/AppleIdCard.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import InlineErrorNote from '@/components/InlineErrorNote.vue'
 import { AUTH } from '@/constants/index.js'
+
+/** 失败面板里的「联系客服」指向支持页（与全站后台入口保持一致） */
+const SUPPORT_HREF = '/support'
 
 const { t, tm } = useI18n()
 const toolStore = useToolStore()
 const userStore = useUserStore()
-// loading / error 统一由 store 提供：原先组件内的 error 永远不会被赋值
-// （store 的 fetchAppleIds 吞掉异常并返回 false，组件的 catch 收不到），
-// 导致失败时只显示空态、重试按钮不可达。
 const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs(toolStore)
 
 /** 列表走 JWT 保护的接口，无身份时不发请求，改为给出登录引导 */
@@ -194,9 +206,32 @@ const showGuide = ref(false)
 /** 注意事项：文案随语言切换，label 与 text 分开以保留加粗前缀 */
 const NOTE_ITEMS = computed(() => tm('appleId.guideNoteItems') || [])
 
-// 计算不同数据源的ID
 const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || [])
 const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || [])
+
+/**
+ * 线路表是左栏切换、窄屏吸顶条、主区分区三处的**唯一**数据源：
+ * 计数、名称、锚点 id 都从这里派生，避免三处各算一遍导致数字不一致。
+ */
+const lanes = computed(() => [
+  {
+    id: 'nano-cloud',
+    name: t('appleId.mainLane'),
+    items: nanoCloudIds.value,
+    count: nanoCloudIds.value.length,
+    accent: true,
+  },
+  {
+    id: 'fang-qiang-nan',
+    name: t('appleId.backupLane'),
+    items: fangQiangNanIds.value,
+    count: fangQiangNanIds.value.length,
+    accent: false,
+  },
+])
+
+/** 只渲染有账号的线路；空线路只以「暂无」出现在切换条里 */
+const visibleLanes = computed(() => lanes.value.filter((lane) => lane.count > 0))
 
 // 获取苹果ID列表（重试按钮复用同一入口）
 const fetchAppleIds = () => toolStore.fetchAppleIds()
@@ -210,54 +245,47 @@ onMounted(() => {
 
 <style scoped>
 /*
- * 版式：「目录 / Directory」—— 左轨 + 右区两栏。
- *   左轨：风险提示 + 使用说明（折叠）+ 线路锚点，桌面端 sticky，窄栏可读；
- *   右区：两条数据源目录（小标题行 + 计数 + 卡片网格）。
+ * 版式：「目录」—— 左栏 + 主区。
+ *   左栏：风险提示 + 线路切换（桌面）+ 使用说明（折叠），sticky；
+ *   主区：线路区块（小标题 + 计数）+ 紧凑卡网格 + 四态。
  *
- * 三条前提不变：
- *   1. 区块底色由 body 的 --bg-page 承担，组件不自绘背景；
- *   2. 卡片外壳走 .ui-card（AppleIdCard 内），加载态 / 按钮 / 标签走共享类
- *      （.u-loading-block / .u-spinner / .u-btn-primary / .u-tag）；
- *   3. 组件内只写自己特有的布局，视觉值一律来自 variables.css 的令牌。
+ * 视觉值一律来自 variables.css 的令牌；卡片外壳走 .ui-card（AppleIdCard 内），
+ * 加载 / 按钮 / 空态走共享类（.u-loading-block / .u-spinner / .u-btn-primary / .u-empty）。
  */
 
 .apple-id-section {
   position: relative;
   width: 100%;
-  /* 段落节奏从 --section-gap 派生，跟随主题密度（density）缩放 */
-  padding: calc(var(--section-gap) * 0.5) 0;
+  /* 页头已由外壳给出下边距，这里不再叠一段 section 间距 */
+  padding-bottom: calc(var(--section-gap) * 0.5);
   background: transparent;
 }
 
-.section-container {
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-}
-
 /* ── 两栏骨架 ─────────────────────────────────────────────────
- * 左轨宽度 = 一张卡片宽 + 4 个间距单位，与右区的卡片列形成「目录 / 正文」对照。
+ * 左栏宽度 = 一张卡片宽 + 2 个间距单位：它只装三行标题与一条切换，
+ * 比原来「一张卡 + 4 个单位」更窄，主区因此能多出一列卡片。
  * align-items: start 是 sticky 的前提 —— 栅格默认拉伸到满高后就没有可粘的行程。 */
-
 .directory {
   display: grid;
-  grid-template-columns: calc(var(--card-width) + var(--space-unit) * 4) minmax(0, 1fr);
+  grid-template-columns: calc(var(--card-width) + var(--space-unit) * 2) minmax(0, 1fr);
   gap: calc(var(--grid-gap) * 2);
   align-items: start;
 }
 
-/* ── 左轨 ─────────────────────────────────────────────────────
+/* ── 左栏 ─────────────────────────────────────────────────────
  * 外壳走「面板」档令牌（--radius-panel / --card-padding / --border / --shadow-card）。
  * top 必须让开顶栏高度：顶栏是 position: sticky，否则面板会钻到导航栏下面。 */
-
 .rail {
   position: sticky;
   top: calc(var(--navbar-height) + var(--space-unit) * 2);
-  /* 左轨现在同时装风险提示与折叠说明：展开后总高会超过视口，而比视口高的
-   * sticky 面板会让底部的线路锚点永远滚不到。因此让左轨自己成为滚动容器，
-   * 说明区不再单独限制高度（两个嵌套滚动条更难用）。 */
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+  /* 展开使用说明后总高会超过视口，而比视口高的 sticky 面板底部永远滚不到，
+     因此左栏自己成为滚动容器（只有一个滚动条，不做嵌套滚动） */
   max-height: calc(100vh - var(--navbar-height) - var(--space-unit) * 4);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--card-padding);
   background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
@@ -265,49 +293,150 @@ onMounted(() => {
   box-shadow: var(--shadow-card);
 }
 
-.rail-nav {
-  margin-top: calc(var(--space-unit) * 2.5);
-  padding-top: calc(var(--space-unit) * 2.5);
-  border-top: var(--stroke-width) solid var(--border);
+/* ── 风险提示 ───────────────────────────────────────────────── */
+.risk-warning {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
 }
 
-/* 折叠开关：常态次级表面，展开或悬停时换成强调描边。
- * 状态由 aria-expanded 驱动，样式与语义同一个来源。 */
+.warning-item {
+  padding: calc(var(--space-unit) * 1.5);
+  border-inline-start: calc(var(--space-unit) * 0.5) solid currentColor;
+  border-radius: var(--radius-input);
+}
+
+.warning-item--critical {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.warning-item--scam {
+  color: var(--warning);
+  background: var(--warning-bg);
+}
+
+/* kicker 用等宽小字承担「强度」：同一句标题不再配一个药丸标签 */
+.warning-kicker {
+  margin: 0 0 calc(var(--space-unit) * 0.5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: currentColor;
+}
+
+.warning-title {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+}
+
+.warning-text {
+  margin: calc(var(--space-unit) * 0.5) 0 0;
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* ── 线路切换（桌面） ───────────────────────────────────────── */
+.rail-block {
+  padding-top: calc(var(--space-unit) * 2);
+  border-top: var(--stroke-width) solid var(--divider);
+}
+
+.rail-title {
+  margin: 0 0 var(--space-unit);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.lane-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-unit);
+  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: var(--radius-input);
+  transition: background-color var(--transition-interactive), color var(--transition-interactive);
+}
+
+.lane-link:hover {
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.lane-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.lane-link--empty {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.lane-link--empty:hover {
+  color: var(--text-muted);
+  background: none;
+}
+
+.lane-count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+
+/* ── 使用说明折叠 ───────────────────────────────────────────── */
 .guide-toggle {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-unit) * 1.25);
+  gap: var(--space-unit);
   width: 100%;
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.75);
-  font-family: var(--font-body);
+  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.25);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-heading);
-  line-height: var(--leading-title);
-  text-align: left;
+  font-weight: var(--fw-label);
+  text-align: start;
   color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-  transition:
-    color var(--transition-interactive),
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: background-color var(--transition-interactive), color var(--transition-interactive);
 }
 
-.guide-toggle:hover,
-.guide-toggle[aria-expanded='true'] {
+.guide-toggle:hover {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--bg-soft);
 }
 
-/* 图标固定为 chevron-right，展开时转 90°（指向下方）：状态切换只转不改尺寸，
-   与原先用 ▶ 字符时的取舍一致，但现在字形由我们自己的 SVG 决定，
-   不再随平台字体变化。 */
+.guide-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .toggle-icon {
   display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  font-size: var(--fs-label);
   transition: transform var(--transition-interactive);
 }
 
@@ -316,440 +445,306 @@ onMounted(() => {
 }
 
 .toggle-text {
-  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  min-width: 0;
 }
 
-/* 展开区：高度交给 .rail 的滚动容器，这里只负责排版。
- * （此前单独给 max-height + 内部滚动，加上风险提示后两个滚动条会打架。） */
 .guide-content {
-  margin-top: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 1.75);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-}
-
-.guide-item + .guide-item {
-  margin-top: calc(var(--space-unit) * 2.5);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 2);
+  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 1.25) 0;
 }
 
 .guide-subtitle {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.75);
-  margin: 0 0 calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-/* 两组列表共用同一枚 ▸ 前缀：教程用强调色，提示退到次要文字色 */
-.guide-item.tutorial .guide-subtitle::before,
-.guide-item.tips .guide-subtitle::before {
-  content: "▸";
-  font-size: var(--fs-body);
-}
-
-.guide-item.tutorial .guide-subtitle::before {
-  color: var(--accent);
-}
-
-.guide-item.tips .guide-subtitle::before {
-  color: var(--text-muted);
-}
-
-/* 有序列表：global.css 的重置清掉了 list-style，这里恢复真实序号标记
- * （原先写在文案里的「1 - 」已去掉，序号交给 li::marker） */
-.guide-list {
-  margin: 0;
-  padding-left: calc(var(--space-unit) * 2.5);
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-  list-style: decimal;
-}
-
-.guide-list li + li {
-  margin-top: calc(var(--space-unit));
-}
-
-.guide-list li::marker {
-  color: var(--accent);
-  font-weight: var(--fw-label);
-}
-
-.guide-tips-list {
-  margin: 0;
-  padding-left: 0;
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-.guide-tips-list li {
-  position: relative;
-  padding: calc(var(--space-unit) * 0.5) 0 calc(var(--space-unit) * 0.5)
-    calc(var(--space-unit) * 2.25);
-}
-
-/* 圆点由 global.css 的 ul 重置清掉，这里用伪元素补回可控的标记 */
-.guide-tips-list li::before {
-  content: "●";
-  position: absolute;
-  left: 0;
-  color: var(--accent);
-}
-
-.guide-tips-list strong {
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-/* ── 线路锚点 ─────────────────────────────────────────────────
- * 等宽小标题 + 两条全宽锚点行，右侧挂数量徽标（口径与页面开场一致）。 */
-
-.rail-title {
-  margin: 0 0 calc(var(--space-unit) * 1.5);
-  font-family: var(--font-mono);
+  margin: 0 0 var(--space-unit);
   font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: var(--label-transform);
-  color: var(--text-muted);
+  font-weight: var(--fw-heading);
+  color: var(--text-secondary);
 }
 
-.lane-list {
-  margin: 0;
-  padding: 0;
-}
-
-.lane-list li + li {
-  margin-top: calc(var(--space-unit));
-}
-
-.lane-link {
+.guide-list {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+  flex-direction: column;
+  gap: var(--space-unit);
+  margin: 0;
+  padding-inline-start: calc(var(--space-unit) * 2.5);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+.guide-list--notes {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.guide-list strong {
+  font-weight: var(--fw-heading);
   color: var(--text-primary);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
-  transition:
-    color var(--transition-interactive),
-    background-color var(--transition-interactive),
-    border-color var(--transition-interactive);
 }
 
-.lane-link:hover {
-  color: var(--accent);
-  background: var(--bg-soft);
-  border-color: var(--accent);
-}
-
-/* ── 右区 ─────────────────────────────────────────────────── */
-
+/* ── 主区 ──────────────────────────────────────────────────── */
 .directory-main {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--section-gap) * 0.5);
+  gap: var(--grid-gap);
   min-width: 0;
 }
 
-.lanes {
+.identity-panel {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--section-gap) * 0.5);
-}
-
-/* ── 风险提示（左轨顶部）──────────────────────────────────────
- * 两条提示分别取 .u-tag--danger / .u-tag--warning 的语义色方案：
- * 底色用语义柔和底（--danger-bg / --warning-bg），左侧色条与标签用语义色本身。
- * 语义色只有一份来源，明暗两套主题都成立。
- * 栏宽只有一张卡片，内边距与间距比原先（右区通栏）各收一档，
- * 保证每条提示在 1–2 行内读完。 */
-
-.risk-warning {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: calc(var(--space-unit) * 1.5);
-  margin-bottom: calc(var(--space-unit) * 2.5);
-}
-
-.warning-item {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--space-unit) * 1.5);
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 1.75);
-  color: var(--danger);
-  background: var(--danger-bg);
-  /* 色条宽度取半个间距单位：既保持醒目，又随主题密度一起缩放 */
-  border-left: calc(var(--space-unit) * 0.5) solid var(--danger);
-  border-radius: var(--radius-card);
-}
-
-.warning-item.scam {
-  color: var(--warning);
-  background: var(--warning-bg);
-  border-left-color: var(--warning);
-}
-
-/* 语义标签只做标记，不参与压缩 */
-.warning-item > .u-tag {
-  flex-shrink: 0;
-}
-
-.warning-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.warning-title {
-  margin: 0 0 calc(var(--space-unit) * 0.5);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-heading);
-  /* 标题跟随所属提示的语义色 */
-  color: inherit;
-}
-
-.warning-text {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-/* ── 加载 / 错误态 ──────────────────────────────────────────── */
-
-/* .u-loading-block 负责占位、居中与内部间距（含区块级节奏），
-   这里只补一行文案的排版 */
-.loading-text {
-  margin: 0;
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  color: var(--text-secondary);
-}
-
-/* 错误态是一块语义面板：柔和危险底（--danger-bg）+ 语义描边，
-   与两条风险提示共用同一套语义色来源，重试按钮仍是共享类 .u-btn-primary */
-.error-container {
-  padding: calc(var(--section-gap) * 0.4) var(--card-padding);
+  padding: calc(var(--card-padding-lg) * 2) var(--card-padding-lg);
   text-align: center;
-  background: var(--danger-bg);
-  border: var(--stroke-width) solid var(--danger);
-  border-radius: var(--radius-panel);
-}
-
-.error-message {
-  margin-bottom: calc(var(--space-unit) * 2);
-  font-size: var(--fs-body);
-  color: var(--danger);
-}
-
-/* .error-container 里的重试按钮就是 .u-btn-primary，组件内不再复写 */
-
-/* ── 「还没有身份」的引导面板 ────────────────────────────────
- * 与错误面板同构，但用中性表面而非危险色：这不是故障，
- * 只是需要用户先登录（或刷新页面拿一个游客身份）。 */
-.identity-container {
-  padding: calc(var(--section-gap) * 0.4) var(--card-padding);
-  text-align: center;
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-panel);
-}
-
-.identity-title {
-  margin: 0 0 calc(var(--space-unit));
-  font-size: var(--fs-body);
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
-.identity-hint {
-  max-width: 52ch;
-  margin: 0 auto calc(var(--space-unit) * 2);
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-muted);
-}
-
-/* ── 数据源区块 ───────────────────────────────────────────────
- * 区块是「装卡片的容器」，所以用面板档令牌：
- * 内边距 --card-padding-lg、圆角 --radius-panel、描边 --border、阴影 --shadow-card。
- * scroll-margin-top 让左轨锚点跳转后标题不被 sticky 顶栏压住。 */
-
-.data-source-section {
-  padding: var(--card-padding-lg);
-  /* 面板用「次级表面」、卡片用 .ui-card 的「表面」：
-   * 两者同为 --bg-surface 时卡片会融进面板里（截图已确认边界消失）。 */
-  background: var(--bg-surface-2);
+  background: var(--bg-surface);
   border: var(--stroke-width) solid var(--border);
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-card);
-  scroll-margin-top: calc(var(--navbar-height) + var(--space-unit) * 2);
 }
 
-.source-head {
-  display: flex;
+.identity-icon {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--space-unit) * 2);
-  margin-bottom: calc(var(--space-unit) * 2.5);
-  padding-bottom: calc(var(--space-unit) * 1.5);
-  border-bottom: var(--stroke-width) solid var(--border);
+  justify-content: center;
+  width: calc(var(--space-unit) * 6);
+  height: calc(var(--space-unit) * 6);
+  font-size: var(--fs-h3);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
 }
 
-.source-title {
+.identity-title {
   margin: 0;
   font-size: var(--fs-h3);
   font-weight: var(--fw-heading);
   color: var(--text-primary);
 }
 
-/* 卡片宽度自适应 + 两端对齐（2.3.1 按需求调整）。
- * 2.2.0 之前是 minmax(--card-width, 1fr)：只有两三张数据时每列各占半栏，卡片被拉宽、
- * 内部留白显得空；2.3.0 改成固定列宽 repeat(auto-fill, --card-width) + justify-content: start，
- * 卡片不再伸缩，但容器右侧会留一条空白（数据少于一行时尤其明显）。
- * 现在折中：列宽在 --card-width 与「容器可用宽 / 列数」之间自适应（minmax），
- * 并用 justify-content: space-between 让行内剩余空间均摊到列间；
- * auto-fit 会先折叠空轨道，所以数据少时不会凭空撑出空列。
- * 卡片内部是「标签 + 值 + 按钮」的定宽内容，变宽只是左右留白增加，不破坏排版。 */
+.identity-hint {
+  max-width: calc(var(--container-max) * 0.35);
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* ── 线路区块 ──────────────────────────────────────────────── */
+.lanes {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--grid-gap) * 1.5);
+}
+
+.data-source-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+  min-width: 0;
+  scroll-margin-top: calc(var(--navbar-height) + var(--space-unit) * 4);
+}
+
+.data-source-section:focus-visible {
+  outline: none;
+}
+
+.source-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-unit);
+  padding-bottom: var(--space-unit);
+  border-bottom: var(--stroke-width) solid var(--divider);
+}
+
+.source-title {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+}
+
+.source-count {
+  flex-shrink: 0;
+  font-size: var(--fs-label);
+  color: var(--text-muted);
+}
+
+/* 卡网格：240px 起跳，1440 下 3 列（原来固定 280px 只能 2 列）。
+   min() 兜住极窄屏，避免单列时撑出横向滚动。 */
 .ids-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-width)), 1fr));
-  justify-content: space-between;
-  gap: var(--grid-gap);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-unit) * 30)), 1fr));
+  gap: calc(var(--space-unit) * 1.5);
 }
 
-/* 无数据时的占位：与 HotProductsSection 的 .grid-note 同构 */
+/* ── 空态 ──────────────────────────────────────────────────── */
 .empty-note {
-  padding: calc(var(--section-gap) * 0.4) var(--container-padding);
-  font-size: var(--fs-body);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-unit);
+  padding: calc(var(--card-padding-lg) * 1.5) var(--card-padding-lg);
   text-align: center;
-  color: var(--text-muted);
-  background: var(--bg-surface-2);
-  border: var(--stroke-width) solid var(--border);
-  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  border: var(--stroke-width) dashed var(--border);
+  border-radius: var(--radius-panel);
 }
 
-/* ── 响应式（统一断点：991 / 767 / 575）──────────────────────
- * ≤991px：两栏变单栏，左轨回到文档流最上方并取消 sticky；
- * ≤767px：内边距 ×0.8、区块间距 ×0.6、标题 ×0.7、正文 ×0.95
- *         （按钮与加载圈属于共享类，缩放已在 global.css 内处理；
- *          栅格列数由 auto-fill + --card-width 自行收敛） */
+.empty-icon {
+  font-size: var(--fs-h3);
+  color: var(--text-muted);
+}
 
+.empty-title {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.empty-desc {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
+}
+
+/* ── 窄屏线路切换条（≤991 才出现） ───────────────────────────── */
+.lane-bar {
+  display: none;
+}
+
+.lane-chips {
+  display: flex;
+  gap: var(--space-unit);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lane-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.5);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+  background: var(--bg-surface);
+  border: var(--stroke-width) solid var(--border);
+  border-radius: var(--radius-pill);
+  transition: color var(--transition-interactive), border-color var(--transition-interactive);
+}
+
+.lane-chip--accent {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.lane-chip--empty {
+  color: var(--text-muted);
+  border-style: dashed;
+}
+
+.lane-chip-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  color: var(--text-secondary);
+}
+
+/* ── 断点 ──────────────────────────────────────────────────── */
+
+/* 1024 起两栏会挤压卡片列，991 以下收成单列 */
 @media (max-width: 991px) {
   .directory {
     grid-template-columns: minmax(0, 1fr);
+    gap: var(--grid-gap);
   }
 
-  /* 单栏后左轨回到文档流最上方，不再受视口高度约束：撤掉 sticky 与栏内滚动。
-     风险提示与说明都在文档流里，锚点跳转由 scroll-margin-top 让开顶栏，
-     提示不会遮住 #nano-cloud / #fang-qiang-nan 的标题。 */
+  /* 左栏摊平：风险提示排到列表之前，使用说明排到列表之后 */
   .rail {
-    position: static;
-    max-height: none;
-    overflow-y: visible;
+    display: contents;
+  }
+
+  .risk-warning {
+    order: 1;
+  }
+
+  .rail-nav {
+    display: none;
+  }
+
+  .directory-main {
+    order: 2;
+  }
+
+  .guide-block {
+    order: 3;
+    padding: calc(var(--space-unit) * 1.5);
+    background: var(--bg-surface);
+    border: var(--stroke-width) solid var(--border);
+    border-radius: var(--radius-card);
+  }
+
+  /* 吸顶线路条：滚动到第 12 张卡时仍能换线路。
+     ≤991 时顶栏按 --mobile-nav-scale 缩过（见 Navbar.vue），
+     这里必须用同一个乘积，否则吸顶条和顶栏之间会漏出一条缝。 */
+  .lane-bar {
+    position: sticky;
+    top: calc(var(--navbar-height) * var(--mobile-nav-scale));
+    z-index: 2;
+    display: block;
+    margin-inline: calc(var(--space-unit) * -1);
+    padding: calc(var(--space-unit) * 0.75) var(--space-unit);
+    background: var(--bg-page);
+    border-bottom: var(--stroke-width) solid var(--divider);
+  }
+
+  .data-source-section {
+    scroll-margin-top: calc(
+      var(--navbar-height) * var(--mobile-nav-scale) + var(--space-unit) * 8
+    );
   }
 }
 
 @media (max-width: 767px) {
-  .apple-id-section {
-    padding: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale)) 0;
+  .identity-panel {
+    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale) * 1.5)
+      calc(var(--card-padding-lg) * var(--mobile-padding-scale));
   }
 
-  .rail {
-    padding: calc(var(--card-padding) * var(--mobile-padding-scale));
-  }
-
-  .guide-toggle {
-    padding: calc(var(--space-unit) * 1.25 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale));
-    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
-  }
-
-  .guide-content {
-    padding: calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale));
-  }
-
-  .guide-subtitle,
-  .guide-list,
-  .guide-tips-list,
-  .warning-text {
-    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
-  }
-
-  .guide-list {
-    padding-left: calc(var(--space-unit) * 2.5 * var(--mobile-padding-scale));
-  }
-
-  .guide-tips-list li {
-    padding-left: calc(var(--space-unit) * 2.25 * var(--mobile-padding-scale));
-  }
-
-  .lane-link {
-    padding: calc(var(--space-unit) * 1.25 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale));
-    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
-  }
-
-  .directory-main,
-  .lanes {
-    gap: calc(var(--section-gap) * 0.5 * var(--mobile-section-scale));
-  }
-
-  .risk-warning {
-    gap: calc(var(--space-unit) * 1.5 * var(--mobile-section-scale));
-  }
-
-  .warning-item {
-    gap: calc(var(--space-unit) * 1.5);
-    padding: calc(var(--space-unit) * 1.5 * var(--mobile-padding-scale))
-      calc(var(--space-unit) * 1.75 * var(--mobile-padding-scale));
-  }
-
-  .data-source-section {
-    padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale));
-  }
-
-  .source-head {
-    margin-bottom: calc(var(--space-unit) * 2.5 * var(--mobile-section-scale));
+  .identity-hint {
+    max-width: none;
   }
 
   .source-title {
     font-size: calc(var(--fs-h3) * var(--mobile-title-scale));
   }
 
-  .empty-note {
-    padding: calc(var(--section-gap) * 0.4 * var(--mobile-section-scale))
-      var(--container-padding);
-    font-size: calc(var(--fs-body) * var(--mobile-body-scale));
+  .ids-grid {
+    gap: calc(var(--space-unit) * var(--mobile-padding-scale) * 1.5);
   }
 
-  .error-container {
-    padding: calc(var(--section-gap) * 0.4 * var(--mobile-section-scale))
-      calc(var(--card-padding) * var(--mobile-padding-scale));
+  .lane-chips {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .lane-chips::-webkit-scrollbar {
+    display: none;
   }
 }
 
 @media (max-width: 575px) {
-  .section-container {
-    padding: 0 calc(var(--container-padding) * var(--mobile-padding-scale));
-  }
-
-  /* 窄屏：标签移到正文上方，避免语义标签挤占一半宽度把提示折成窄柱 */
   .warning-item {
-    flex-direction: column;
-    gap: var(--space-unit);
-  }
-
-  .warning-item > .u-tag {
-    align-self: flex-start;
+    padding: calc(var(--space-unit) * 1.25);
   }
 }
 </style>

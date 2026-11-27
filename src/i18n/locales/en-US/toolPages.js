@@ -52,7 +52,7 @@ export default {
     '/other/appleId': {
       eyebrow: 'Other',
       title: 'Shared Apple ID',
-      description: 'Claim a shared Apple ID account and sign in to the App Store.',
+      description: 'Pick an account, copy it, then sign in at the App Store. App Store only — never iCloud.',
     },
     '/text/kit': {
       eyebrow: 'Text',

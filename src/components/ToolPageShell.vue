@@ -1,26 +1,40 @@
 <template>
   <div class="page-shell tool-shell">
-    <header class="page-shell-head">
-      <p class="page-shell-eyebrow">{{ eyebrowText }}</p>
-      <h1 class="page-shell-title">
-        <span class="tool-shell-title-icon" aria-hidden="true"><AppIcon :name="icon" /></span>
-        <span>{{ title }}</span>
-      </h1>
-      <p class="page-shell-desc">{{ description }}</p>
+    <header class="page-shell-head" :class="{ 'page-shell-head--row': backInline }">
+      <div class="tool-shell-head-main">
+        <p class="page-shell-eyebrow">{{ eyebrowText }}</p>
+        <h1 class="page-shell-title">
+          <span class="tool-shell-title-icon" aria-hidden="true"><AppIcon :name="icon" /></span>
+          <span>{{ title }}</span>
+        </h1>
+        <p class="page-shell-desc">{{ description }}</p>
 
-      <!-- 页头按 access_policy 给出状态说明。
-           卡密工具仍然只做「标示」：卡密刚过期的用户应该在工具中心看到一个统一的入口，
-           不该在页面里再看到另一套拦截文案。会员专属才做真正的拦截（见下方 mustUpgrade）。 -->
-      <div v-if="accessNote" class="tool-shell-access">
-        <p class="tool-shell-card-tag ec-tag ec-tag--sm" :class="accessNote.tone">
-          <AppIcon :name="accessNote.icon" />
-          <span>{{ accessNote.text }}</span>
-        </p>
-        <p v-if="accessHint" class="tool-shell-access-hint">{{ accessHint }}</p>
+        <!-- 页头按 access_policy 给出状态说明。
+             卡密工具仍然只做「标示」：卡密刚过期的用户应该在工具中心看到一个统一的入口，
+             不该在页面里再看到另一套拦截文案。会员专属才做真正的拦截（见下方 mustUpgrade）。 -->
+        <div v-if="accessNote" class="tool-shell-access">
+          <p class="tool-shell-card-tag ec-tag ec-tag--sm" :class="accessNote.tone">
+            <AppIcon :name="accessNote.icon" />
+            <span>{{ accessNote.text }}</span>
+          </p>
+          <p v-if="accessHint" class="tool-shell-access-hint">{{ accessHint }}</p>
+        </div>
       </div>
+
+      <!-- back-inline：返回入口并进标题带右侧（长列表页用）。
+           它只是「离开」，不该在标题与内容之间独占一整行 —— 那一行会吃掉首屏 40px +
+           两段外边距，把正文往下推。默认仍是独立一行，避免改动其余工具页的节奏。 -->
+      <RouterLink
+        v-if="backInline"
+        class="u-btn-secondary tool-shell-back tool-shell-back--inline"
+        :to="{ path: '/tool' }"
+      >
+        <AppIcon name="chevron-left" />
+        <span>{{ backText }}</span>
+      </RouterLink>
     </header>
 
-    <RouterLink class="u-btn-secondary tool-shell-back" :to="{ path: '/tool' }">
+    <RouterLink v-if="!backInline" class="u-btn-secondary tool-shell-back" :to="{ path: '/tool' }">
       <AppIcon name="chevron-left" />
       <span>{{ backText }}</span>
     </RouterLink>
@@ -102,6 +116,14 @@ const props = defineProps({
   accessPolicy: { type: String, default: '' },
   /** 当前用户是否已拥有该工具的卡密权益；只影响页头文案，不改变页面结构 */
   hasEntitlement: { type: Boolean, default: false },
+  /**
+   * 返回入口是否并进标题带右侧。
+   *
+   * 默认 false：其余工具页保持「页头 → 返回一行 → 内容」的既有节奏。
+   * 打开后页头变成 `.page-shell-head--row`（左标题带 / 右返回），
+   * 省掉标题与正文之间那整行的高度与两段外边距 —— 长列表页的首屏能多露出一屏内容。
+   */
+  backInline: { type: Boolean, default: false },
 })
 
 const slots = useSlots()
@@ -171,6 +193,21 @@ const backText = computed(() => VIDEO_TOOL.backToTools)
 </script>
 
 <style scoped>
+/* 标题带内部：眉标 / 标题 / 简介 / 权限说明仍是竖排的一列。
+   外壳在 back-inline 时把这一列与返回入口并排（.page-shell-head--row）。 */
+.tool-shell-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ec-space-3);
+  min-width: 0;
+}
+
+/* 并进标题带时不再需要「与正文之间」的那段外边距 */
+.tool-shell-back--inline {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
 .tool-shell-access {
   display: flex;
   flex-wrap: wrap;
@@ -198,5 +235,37 @@ const backText = computed(() => VIDEO_TOOL.backToTools)
 .tool-shell-lock-text {
   margin: 0;
   color: var(--ec-text-secondary);
+}
+
+/* ── 窄屏 ─────────────────────────────────────────────────────
+ * 390px 上「标题带 + 返回按钮」并排会把简介压成窄柱，因此回到竖排；
+ * 返回入口退成一行安静的文字链（不再是一个 40px 的按钮框）：
+ * 手机上它是「回头」而不是「行动」，不该和内容争注意力。 */
+@media (max-width: 767px) {
+  .page-shell-head--row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tool-shell-back--inline.u-btn-secondary {
+    align-self: flex-start;
+    height: auto;
+    padding: 0;
+    font-size: calc(var(--fs-sm) * var(--mobile-body-scale));
+    font-weight: var(--fw-body);
+    line-height: var(--leading-title);
+    color: var(--text-secondary);
+    background: none;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .tool-shell-back--inline.u-btn-secondary:hover:not(:disabled),
+  .tool-shell-back--inline.u-btn-secondary:active:not(:disabled) {
+    color: var(--accent);
+    background: none;
+    border-color: transparent;
+    transform: none;
+  }
 }
 </style>

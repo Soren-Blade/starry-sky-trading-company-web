@@ -1034,7 +1034,7 @@ const TOOL_PAGES_BASE = {
   '/other/appleId': {
     eyebrow: '其他工具',
     title: '共享 Apple ID',
-    description: '领取共享 Apple ID 账号，登录 App Store 使用。',
+    description: '选一个账号，复制后到 App Store 登录。只登 App Store，不要登 iCloud。',
     icon: 'users',
     requiresCard: false,
     submit: '刷新列表',

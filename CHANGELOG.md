@@ -9,6 +9,33 @@
 
 ---
 
+## [4.29.0] — 2026-11-27
+
+共享 Apple ID 页整页重做：从「风险提示 + 折叠教程 + 四行标签卡」的目录页，改成
+**一张卡 = 一张取号单**的紧凑目录。移动端不再是桌面版折成一列——风险提示在前、
+账号列表居中、使用说明后置，线路切换变成吸顶条。
+
+### 重构
+- `src/pages/AppleId.vue`：只留 `ToolPageShell` + `AppleIdSection`，删掉页头下方的统计行（计数原本在页头、统计行、卡片区各出现一次）。
+- `src/components/ToolPageShell.vue`：新增 `backInline` prop，页头改为「标题块 + 返回入口」同一行；≤767 返回入口退成无边框文字链。不改默认值时其余工具页版式不变。
+- `src/components/AppleIdSection.vue` 重写：
+  - 左栏 = 风险提示 + 线路切换（桌面常驻）+ 使用说明（折叠）；≤991px 用 `display: contents` 摊进单列，风险提示 `order:1`、目录 `order:2`、使用说明 `order:3`——只有一份 DOM，不复制内容。
+  - 线路 0 条时渲染成不可点的「暂无」，替换掉原来指向空区块的死锚点。
+  - 加载 / 失败 / 未登录 / 空态四态：`u-spinner` + `role="status"`、`InlineErrorNote`（就地重试）、无身份给登录引导（不再发一个必然 401 的请求）、两条线路都空时给空态说明。
+  - 新增 ≤991px 吸顶线路切换条：滚到第 12 张卡也能换线路。
+- `src/components/AppleIdCard.vue` 重写：账号（等宽）作标题、密码行内显隐、地区与相对时间并成一行元信息、一主一次两个按钮（原来每卡两个实心主按钮，31 张卡 = 62 个同权重主行动）。数据源名 `FangQiangNan` 不再上屏，更新时间由「精确到秒」改为「3 分钟前更新」（悬停给绝对时间）。
+
+### 新增
+- 中英词条：`appleId.laneEmpty / errorTitle / errorHint`、`appleId.card.statusOk / justNow / updatedAgo / minutesAgo / hoursAgo / daysAgo / copiedAccount / copiedPassword`；删除不再使用的 `appleId.card.account / region / updatedAt / copied`。
+
+### 变更
+- 工具页描述改为「选一个账号，复制后到 App Store 登录。只登 App Store，不要登 iCloud。」（把安全前提提到页头，新手不必先读完整页）。
+- 卡网格列宽 280px → 240px：1440 宽下两列变三列。
+
+### 测试
+- web `npm test` **1297/1297**、`npm run build` 通过。
+- BrowserSkill 逐端验证：1440 / 1024 / 390、深色、未登录态、空线路。
+
 ## [4.28.0] — 2026-11-27
 
 ### 重构
