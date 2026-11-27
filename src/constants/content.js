@@ -404,6 +404,11 @@ const PRODUCT_GRID_RAW = {
   loading: '正在加载商品…',
   empty: '暂无商品可展示',
   errorPrefix: '商品加载失败：',
+  /** 错误态的第二行：告诉用户下一步做什么，而不是只报告失败 */
+  errorHint: '请检查网络连接后重新请求，或稍后再试。',
+  /** 错误态里的文字按钮与它的进行中文案 */
+  retry: '重新请求',
+  retrying: '正在重新请求…',
   /** 搜索图标按钮的无障碍名（图标型按钮必须有 aria-label） */
   searchLabel: '搜索',
   searchPlaceholder: '搜索商品或工具',
