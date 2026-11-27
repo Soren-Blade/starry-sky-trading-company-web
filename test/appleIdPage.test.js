@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 
 import {
   renderComponent,
@@ -8,6 +9,9 @@ import {
   expectIncludes,
   expectExcludes,
 } from './render.mjs'
+
+/** 读仓库内源码（路径相对仓库根） */
+const read = (relPath) => readFileSync(new URL(`../${relPath}`, import.meta.url), 'utf8')
 
 /**
  * 共享 Apple ID 目录（AppleIdSection）的四态与版式契约。
@@ -131,3 +135,104 @@ test('更新时间说人话：34 分钟前更新（不是精确到秒）', async
   // 数据源名（FangQiangNan）只允许出现在代码注释里，不能作为可见文本渲染出来
   expectExcludes(html, '>FangQiangNan<', '数据源内部字段不上屏')
 })
+
+// ══════════════════════════════════════════════════════════
+// 4.30.0：风险门禁 + 教程
+// ══════════════════════════════════════════════════════════
+
+async function renderGate() {
+  const [pinia, env] = await Promise.all([createPiniaWithState({}), createRenderEnv()])
+  return renderComponent('/components/AppleIdRiskGate.vue', {
+    plugins: [pinia, env.router],
+    globalComponents: env.globalComponents,
+  })
+}
+
+async function renderGuide() {
+  const [pinia, env] = await Promise.all([createPiniaWithState({}), createRenderEnv()])
+  return renderComponent('/components/AppleIdGuide.vue', {
+    plugins: [pinia, env.router],
+    globalComponents: env.globalComponents,
+  })
+}
+
+test('风险门禁：未确认时给弹窗，且不渲染目录内容', async () => {
+  const html = await renderGate()
+
+  expectIncludes(html, 'role="alertdialog"', '两条风险提示是取号的前置条件，用 alertdialog')
+  expectIncludes(html, 'aria-modal="true"', '模态语义')
+  expectIncludes(html, '只登 App Store', '第一条：锁机风险')
+  expectIncludes(html, '本站不收解锁费', '第二条：诈骗提示')
+  expectIncludes(html, '我已了解，加载账号', '唯一的继续动作')
+
+  // 关键：门禁未确认时不挂载 slot —— 目录不在 DOM 里，请求自然不会发出
+  expectExcludes(html, 'apple-id-card', '确认之前不允许出现账号卡')
+  expectExcludes(html, 'data-source-section', '确认之前不允许出现线路区块')
+})
+
+test('风险门禁：移动端确认一次即记住，桌面端每次都问', async () => {
+  const source = read('src/components/AppleIdRiskGate.vue')
+
+  assert.match(source, /localStorage/, '移动端把「已确认」记在本地')
+  assert.match(
+    source,
+    /max-width:\s*767px/,
+    '读写记忆必须按窄屏判定：桌面端每次都提示，不能一次点掉永久同意',
+  )
+  assert.match(source, /<slot v-else \/>/, '门禁通过后才挂载目录（v-else 的 slot）')
+})
+
+test('教程：三步 + 示意图 + 五问，配图走 public 目录', async () => {
+  const html = await renderGuide()
+
+  expectIncludes(html, 'guide-steps', '三步是有序列表，不是并排卡片')
+  expectIncludes(html, '登录 App Store', '第一步')
+  expectIncludes(html, '下载软件', '第二步')
+  expectIncludes(html, '退出账号', '第三步')
+  expectIncludes(html, '只在 App Store 登录，不要在「设置」里登', '第一步的警告必须留下')
+
+  expectIncludes(html, 'apple-id-guide.jpg', '示意图来自 public/ 的静态图')
+  expectIncludes(html, 'figure-caption', '图下要有一句「图里在做什么」')
+
+  expectIncludes(html, '用共享 ID 会不会把手机锁了？', 'FAQ 第一条')
+  expectIncludes(html, '下载好小火箭之后呢？', 'FAQ 最后一条')
+})
+
+test('教程有两种容器：桌面切换目录视图，窄屏开抽屉', async () => {
+  const source = read('src/components/AppleIdSection.vue')
+
+  assert.match(source, /guide-entry--mobile/, '窄屏有独立入口按钮，放在目录最上方')
+  assert.match(source, /ec-drawer/, '窄屏教程走侧边抽屉（复用共享抽屉样式）')
+  assert.match(source, /showGuideView/, '桌面把目录整块换成教程视图，而不是折叠展开')
+  assert.match(source, /guide-view/, '教程视图容器')
+  // 折叠块已删除：再留 guide-toggle 就说明页面还藏着第二套说明
+  assert.equal(/guide-toggle/.test(source), false, '折叠说明已由教程视图取代')
+})
+
+test('英文词条齐全：门禁与教程不回落成中文，也不漏 key', async () => {
+  const { i18n } = await import('@/i18n/index.js')
+  const previous = i18n.global.locale.value
+  i18n.global.locale.value = 'en-US'
+
+  try {
+    const gate = await renderGate()
+    expectIncludes(gate, 'Two things before you take an account', '门禁标题已翻译')
+    expectIncludes(gate, 'App Store only', '风险条已翻译')
+
+    const guide = await renderGuide()
+    expectIncludes(guide, 'Sign in to the App Store', '教程第一步已翻译')
+    expectIncludes(guide, 'Can a shared ID lock my phone?', 'FAQ 已翻译')
+
+    // fallbackLocale 是中文：漏翻的 key 会静默回落成中文，断言里必须挡住这种情况。
+    // SSR 会保留模板注释（注释里本来就是中文），先剥掉再查可见文本。
+    const visible = guide.replace(/<!--[\s\S]*?-->/g, '')
+    const leftovers = ['使用教程', '新手先读', '三步用上共享 ID', '常见问题']
+    for (const word of leftovers) {
+      assert.equal(visible.includes(word), false, `英文界面残留中文：${word}`)
+    }
+    assert.equal(/\{\w+\}/.test(visible), false, '不允许把未插值的占位符渲染出来')
+  } finally {
+    i18n.global.locale.value = previous
+  }
+})
+

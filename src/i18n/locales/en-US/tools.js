@@ -251,28 +251,68 @@ export default {
     errorFailed: 'Compression failed; try another image.',
   },
   appleId: {
-    sectionAria: 'Prerequisites and lane index',
-    riskBadge: 'High risk',
+    sectionAria: 'Tutorial entry and lane directory',
+    riskGateTitle: 'Two things before you take an account',
+    riskGateLead:
+      'Accounts load only after you confirm. Until then this page shows no accounts and sends no requests.',
+    riskGateConfirm: 'I understand \u2014 load accounts',
+    riskGateBack: 'Back to tools',
+    riskGateFoot: 'Shown on every visit on desktop; remembered once confirmed on mobile.',
+    riskBadge: 'HIGH RISK',
     riskTitle: 'App Store only',
-    riskText: 'Never sign in to iCloud — it can lock your device or expose your data.',
-    scamBadge: 'Scam alert',
+    riskText: 'Never sign in through iCloud \u2014 it can lock your device or expose your data.',
+    scamBadge: 'SCAM ALERT',
     scamTitle: 'We never charge an unlock fee',
     scamText: 'Anyone charging for an unlock or asking for personal details is a scammer.',
-    guideToggle: 'How to use (first-timers read this)',
-    guideTutorial: 'Sign-in steps',
+    guideCta: 'How to use',
+    guideBack: 'Back to accounts',
+    guideClose: 'Close tutorial',
+    guideEyebrow: 'First time here',
+    guideTitle: 'Get started in three steps',
+    guideIntro:
+      'Follow these and you can download the apps that need a US App Store account. Everything happens inside the App Store.',
     guideSteps: [
-      'Open the App Store and sign out of your own Apple ID.',
-      'Sign in with the account below; choose “Other Options → Don’t Upgrade → Later” when prompted.',
-      'Sign out of the shared ID right after the download and switch back to your own account.',
-      'If installation fails, uninstall the old version first, then install again.',
+      {
+        title: 'Sign in to the App Store',
+        text: 'Open the App Store \u2192 tap your avatar in the top corner \u2192 sign out of your own Apple ID \u2192 sign in with any shared account.',
+        caution: 'Sign in inside the App Store only \u2014 never through Settings.',
+      },
+      {
+        title: 'Download the app',
+        text: 'Search for and download Shadowrocket / Quantumult X or a similar client. If it asks for a verification code, switch to the next account.',
+      },
+      {
+        title: 'Sign out again',
+        text: 'Sign out of the shared ID in the App Store right after the download. Apps you installed keep working under your own account.',
+      },
     ],
-    guideNotes: 'Things to know',
-    guideNoteItems: [
-      { label: 'Password changes:', text: 'Changed about every 30 minutes; an old password no longer works — fetch a new one here.' },
-      { label: 'Account locked:', text: 'Wait about 40 minutes after a lock notice, then fetch a new account.' },
-      { label: 'Two-factor prompt:', text: 'If 2FA appears, someone else has used the account — pick another one.' },
-      { label: 'What it is for:', text: 'Download purchased apps only; never change the password or add payment.' },
-      { label: 'Liability:', text: 'We are not responsible for problems caused by skipping these steps.' },
+    guideFigureAlt:
+      'Annotated screenshots of signing out of the App Store and into a shared account',
+    guideFigureOpen: 'Open the full-size illustration',
+    guideFigureCaption:
+      'Illustration: avatar \u2192 sign out \u2192 enter the shared ID \u2192 choose \u201cOther Options\u201d \u2192 \u201cDon\u2019t Upgrade\u201d',
+    guideFaqTitle: 'Frequently asked',
+    guideFaq: [
+      {
+        q: 'Can a shared ID lock my phone?',
+        a: 'Not if you follow this page: sign in only inside the App Store, download, then sign out. Activation lock only happens if you sign the shared account into Settings \u2192 Apple ID at the device level, where the owner could lock it remotely with Find My. Never do that.',
+      },
+      {
+        q: 'Why does it ask for a code or two-factor authentication?',
+        a: 'The account has 2FA turned on or is already in use, so the code never reaches you. Do not fight it \u2014 just pick the next account in the list.',
+      },
+      {
+        q: 'Will my photos or contacts leak?',
+        a: 'No. Signing in inside the App Store does not sync any iCloud data (photos, contacts, notes). The same rule still applies: never sign in through Settings.',
+      },
+      {
+        q: 'Can I update the app later?',
+        a: 'Opening an installed app needs no account. Updating asks for the password of the ID that downloaded it \u2014 use your own US Apple ID, or sign in to a shared ID temporarily. The app keeps working after you sign out.',
+      },
+      {
+        q: 'What about the proxy client itself?',
+        a: 'Shadowrocket / Quantumult X is only the client shell \u2014 it still needs a node or provider before you can browse.',
+      },
     ],
     lanesAria: 'Lane switcher',
     lanesTitle: 'Lanes',
@@ -280,12 +320,14 @@ export default {
     backupLane: 'Backup',
     laneEmpty: 'None',
     count: '{count} available',
-    loading: 'Fetching available accounts…',
+    loading: 'Fetching available accounts\u2026',
     errorTitle: 'Could not load accounts',
-    errorHint: 'Usually a network hiccup — retry once. If it keeps failing, check your connection and contact support.',
+    errorHint:
+      'Usually a network hiccup \u2014 retry once. If it keeps failing, check your connection and contact support.',
     retry: 'Fetch again',
     emptyTitle: 'No accounts available right now',
-    emptyDesc: 'Both lanes are empty. Check back later, or ask support when the next batch lands.',
+    emptyDesc:
+      'Both lanes are empty. Check back later, or ask support when the next batch lands.',
     card: {
       unknown: 'Unknown account',
       statusOk: 'Usable',
@@ -295,7 +337,7 @@ export default {
       copyPassword: 'Copy this password',
       copyAccountShort: 'Copy account',
       copyPasswordShort: 'Copy password',
-      copiedAccount: 'Account copied — go sign in at the App Store',
+      copiedAccount: 'Account copied \u2014 go sign in at the App Store',
       copiedPassword: 'Password copied',
       justNow: 'Updated just now',
       updatedAgo: '{time} ago',

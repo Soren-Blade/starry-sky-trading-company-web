@@ -2,29 +2,30 @@
   <section class="apple-id-section">
     <div class="directory">
       <!--
-        ── 左轨：操作前提 + 线路切换 + 使用说明 ────────────────────────
+        ── 左轨：教程入口 + 线路切换 ────────────────────────────────
         桌面端 sticky 在顶栏之下（顶栏是 sticky，必须让出它的高度）。
 
-        ≤991px 时整块左轨 `display: contents` 摊进单列栅格，由各子块的 order
-        决定顺序：风险提示在列表之前（安全信息必须先于「取密码」被看到），
-        使用说明移到列表之后（它是查得到的参考，不是起步动作）。
-        这样只有一份 DOM，不复制内容，也不靠负 margin 硬挪。
+        风险提示已从这一栏移除（4.30.0）：它改成进入页面时的确认弹窗，
+        确认之前不渲染账号、也不发请求。左栏只留「怎么用」与「取哪条线路」
+        两个动作，与右侧目录形成「入口 / 结果」的关系。
+
+        ≤991px 时整块左轨 `display: contents` 摊进单列栅格 —— 桌面左栏的两块
+        在窄屏各有自己的位置：教程入口变成目录最上方的按钮，线路切换变成吸顶条。
       -->
       <aside class="rail" :aria-label="t('appleId.sectionAria')">
-        <!-- 风险提示：两块各一句话。原来每条各带一个语义色药丸标签，
-             而标题本身就是「只登 App Store / 本站不收解锁费」——标签只是把同一句话
-             又说了一遍。现在改用等宽小字 kicker 表达强度，字重与颜色表层级。 -->
-        <div class="risk-warning">
-          <div class="warning-item warning-item--critical">
-            <p class="warning-kicker">{{ t('appleId.riskBadge') }}</p>
-            <p class="warning-title">{{ t('appleId.riskTitle') }}</p>
-            <p class="warning-text">{{ t('appleId.riskText') }}</p>
-          </div>
-          <div class="warning-item warning-item--scam">
-            <p class="warning-kicker">{{ t('appleId.scamBadge') }}</p>
-            <p class="warning-title">{{ t('appleId.scamTitle') }}</p>
-            <p class="warning-text">{{ t('appleId.scamText') }}</p>
-          </div>
+        <!-- 教程入口（桌面）：点击后右侧目录切换成教程视图，
+             不再是原来那个把长文塞进 300px 栏内的折叠区 -->
+        <div class="rail-block rail-guide">
+          <button
+            class="guide-entry"
+            type="button"
+            :aria-pressed="view === 'guide'"
+            @click="openGuide"
+          >
+            <span class="guide-entry-icon" aria-hidden="true"><AppIcon name="book-open" /></span>
+            <span class="guide-entry-text">{{ t('appleId.guideCta') }}</span>
+            <span class="guide-entry-arrow" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+          </button>
         </div>
 
         <!-- 线路切换（桌面常驻左栏）：0 条的线路渲染成不可点的「暂无」，
@@ -44,50 +45,32 @@
             </li>
           </ul>
         </nav>
-
-        <div class="rail-block guide-block">
-          <!-- 折叠开关：aria-expanded 让屏幕阅读器知道展开状态 -->
-          <button
-            class="guide-toggle"
-            type="button"
-            :aria-expanded="showGuide"
-            aria-controls="apple-id-guide"
-            @click="showGuide = !showGuide"
-          >
-            <span class="toggle-icon" aria-hidden="true"><AppIcon name="chevron-right" /></span>
-            <span class="toggle-text">
-              <AppIcon name="book-open" /> {{ t('appleId.guideToggle') }}
-            </span>
-          </button>
-
-          <!-- 展开内容留在左轨内部：窄栏排版（有序列表 + --fs-sm + --leading-body） -->
-          <div v-if="showGuide" id="apple-id-guide" class="guide-content">
-            <div class="guide-item">
-              <h4 class="guide-subtitle">{{ t('appleId.guideTutorial') }}</h4>
-              <ol class="guide-list">
-                <li v-for="step in tm('appleId.guideSteps')" :key="step">{{ step }}</li>
-              </ol>
-            </div>
-
-            <div class="guide-item">
-              <h4 class="guide-subtitle">{{ t('appleId.guideNotes') }}</h4>
-              <ul class="guide-list guide-list--notes">
-                <li v-for="item in NOTE_ITEMS" :key="item.label">
-                  <strong>{{ item.label }}</strong>{{ item.text }}
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </aside>
 
-      <!-- ── 主区：账号目录 ───────────────────────────────────────── -->
+      <!-- ── 主区：账号目录 / 教程 ───────────────────────────────── -->
       <div class="directory-main">
+        <!-- 教程入口（窄屏）：放在目录最上方，是手机上「先看怎么用」的入口；
+             点击打开右侧抽屉，而不是像桌面那样整块替换目录 -->
+        <button class="guide-entry guide-entry--mobile" type="button" @click="openGuide">
+          <span class="guide-entry-icon" aria-hidden="true"><AppIcon name="book-open" /></span>
+          <span class="guide-entry-text">{{ t('appleId.guideCta') }}</span>
+          <span class="guide-entry-arrow" aria-hidden="true"><AppIcon name="chevron-right" /></span>
+        </button>
+
+        <!-- 教程视图（桌面）：占满目录区，顶上一枚返回，回到账号列表 -->
+        <div v-if="showGuideView" class="guide-view">
+          <button class="guide-back" type="button" @click="view = 'list'">
+            <AppIcon name="chevron-left" />
+            <span>{{ t('appleId.guideBack') }}</span>
+          </button>
+          <AppleIdGuide />
+        </div>
+
         <!-- 无身份：Apple ID 列表走 JWT 保护的 /toolApi/getAppleIds，
              照常请求只会拿到 401 并显示「加载失败」，不如直接给出登录引导。
              刻意**不复用** .error-container —— 那是危险色面板，
              「还没登录」不是错误，用红色会误导用户以为出故障了。 -->
-        <div v-if="!hasIdentity" class="identity-panel">
+        <div v-else-if="!hasIdentity" class="identity-panel">
           <span class="identity-icon" aria-hidden="true"><AppIcon name="lock" /></span>
           <p class="identity-title">{{ AUTH.needIdentityTitle }}</p>
           <p class="identity-hint">{{ AUTH.needIdentityHint }}</p>
@@ -167,6 +150,35 @@
         </template>
       </div>
     </div>
+
+    <!-- 教程抽屉（窄屏）：右侧滑出，铺满手机宽度；Escape / 点遮罩 / 关闭按钮都能收起 -->
+    <div v-if="drawerOpen" class="ec-overlay" @click.self="closeGuide">
+      <aside
+        ref="drawerRef"
+        class="ec-drawer guide-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="apple-id-guide-title"
+      >
+        <header class="ec-drawer__head guide-drawer-head">
+          <h2 id="apple-id-guide-title" class="guide-drawer-title">
+            {{ t('appleId.guideCta') }}
+          </h2>
+          <button
+            class="guide-drawer-close"
+            type="button"
+            :aria-label="t('appleId.guideClose')"
+            @click="closeGuide"
+          >
+            <AppIcon name="x" />
+          </button>
+        </header>
+
+        <div class="ec-drawer__body guide-drawer-body">
+          <AppleIdGuide />
+        </div>
+      </aside>
+    </div>
   </section>
 </template>
 
@@ -174,26 +186,31 @@
 /**
  * 共享 Apple ID 的账号目录区块。
  *
- * 版式 = 左栏（前提 + 线路 + 说明）+ 主区（线路区块 + 紧凑卡网格），
- * 窄屏时左栏摊进单列、使用说明移到列表之后、线路切换变吸顶条。
+ * 版式 = 左栏（教程入口 + 线路）+ 主区（教程视图 / 线路区块 / 四态）。
+ * 教程两种容器：桌面在目录内切换视图，窄屏走右侧抽屉。
  *
  * 状态全部来自 tool store（loading / error 由 store 提供：组件内部的 catch 收不到错，
  * 会导致失败时只显示空态、重试按钮不可达）。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
 import { useUserStore } from '@/stores/user'
 import AppleIdCard from '@/components/AppleIdCard.vue'
+import AppleIdGuide from '@/components/AppleIdGuide.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import InlineErrorNote from '@/components/InlineErrorNote.vue'
+import { useModalA11y } from '@/hooks/useModalA11y'
 import { AUTH } from '@/constants/index.js'
 
 /** 失败面板里的「联系客服」指向支持页（与全站后台入口保持一致） */
 const SUPPORT_HREF = '/support'
 
-const { t, tm } = useI18n()
+/** 窄屏判据与抽屉一致：767px 以下走抽屉，以上在目录内切换视图 */
+const COMPACT_QUERY = '(max-width: 767px)'
+
+const { t } = useI18n()
 const toolStore = useToolStore()
 const userStore = useUserStore()
 const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs(toolStore)
@@ -201,10 +218,49 @@ const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs
 /** 列表走 JWT 保护的接口，无身份时不发请求，改为给出登录引导 */
 const hasIdentity = computed(() => Boolean(userStore.userId))
 
-const showGuide = ref(false)
+/** 桌面主区当前展示什么：账号列表 / 教程 */
+const view = ref('list')
+/** 窄屏教程抽屉 */
+const drawerOpen = ref(false)
+/** 窄屏？由 matchMedia 驱动（响应式 ref，而不是每次点击时临时读一次） */
+const compact = ref(false)
 
-/** 注意事项：文案随语言切换，label 与 text 分开以保留加粗前缀 */
-const NOTE_ITEMS = computed(() => tm('appleId.guideNoteItems') || [])
+/**
+ * 教程视图只在宽屏成立。
+ * 少了 `!compact` 这一项就会出问题：桌面切到教程后把窗口缩窄（或手机横竖屏切换），
+ * 目录里会同时出现「使用教程」按钮和整块教程视图 —— 手机上等于把教程又摊回正文，
+ * 而教程本该只在抽屉里。
+ */
+const showGuideView = computed(() => view.value === 'guide' && !drawerOpen.value && !compact.value)
+
+const isCompact = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia(COMPACT_QUERY).matches
+
+/** 教程入口：桌面换视图，窄屏开抽屉 —— 同一枚按钮，两种容器 */
+const openGuide = () => {
+  if (isCompact()) {
+    drawerOpen.value = true
+  } else {
+    view.value = 'guide'
+  }
+}
+
+const { modalRef: drawerRef, activate, deactivate } = useModalA11y({
+  close: () => closeGuide(),
+  auto: false,
+})
+
+const closeGuide = () => {
+  drawerOpen.value = false
+}
+
+/** 抽屉开关时接管 / 归还滚动锁与焦点（useModalA11y 的项目约定） */
+watch(drawerOpen, (open) => {
+  if (open) activate()
+  else deactivate()
+})
 
 const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || [])
 const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || [])
@@ -236,21 +292,39 @@ const visibleLanes = computed(() => lanes.value.filter((lane) => lane.count > 0)
 // 获取苹果ID列表（重试按钮复用同一入口）
 const fetchAppleIds = () => toolStore.fetchAppleIds()
 
+/** 视口判据跟随窗口变化：手机横屏 / 桌面缩窗口时教程容器要跟着换 */
+const compactQuery =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia(COMPACT_QUERY)
+    : null
+
+const syncCompact = () => {
+  compact.value = compactQuery ? compactQuery.matches : false
+}
+
 // 组件挂载时获取数据（无身份时跳过，避免一个必然 401 的请求）
 onMounted(() => {
+  syncCompact()
+  compactQuery?.addEventListener?.('change', syncCompact)
+
   if (!hasIdentity.value) return
   fetchAppleIds()
+})
+
+onUnmounted(() => {
+  compactQuery?.removeEventListener?.('change', syncCompact)
 })
 </script>
 
 <style scoped>
 /*
  * 版式：「目录」—— 左栏 + 主区。
- *   左栏：风险提示 + 线路切换（桌面）+ 使用说明（折叠），sticky；
- *   主区：线路区块（小标题 + 计数）+ 紧凑卡网格 + 四态。
+ *   左栏：教程入口 + 线路切换（桌面），sticky；
+ *   主区：教程视图 / 线路区块（小标题 + 计数）+ 紧凑卡网格 + 四态。
  *
  * 视觉值一律来自 variables.css 的令牌；卡片外壳走 .ui-card（AppleIdCard 内），
- * 加载 / 按钮 / 空态走共享类（.u-loading-block / .u-spinner / .u-btn-primary / .u-empty）。
+ * 加载 / 按钮 / 空态走共享类（.u-loading-block / .u-spinner / .u-btn-primary / .u-empty），
+ * 弹窗与抽屉外壳走设计系统的 .ec-overlay / .ec-dialog / .ec-drawer。
  */
 
 .apple-id-section {
@@ -262,8 +336,8 @@ onMounted(() => {
 }
 
 /* ── 两栏骨架 ─────────────────────────────────────────────────
- * 左栏宽度 = 一张卡片宽 + 2 个间距单位：它只装三行标题与一条切换，
- * 比原来「一张卡 + 4 个单位」更窄，主区因此能多出一列卡片。
+ * 左栏宽度 = 一张卡片宽 + 2 个间距单位：它只装「教程入口 + 两行线路」，
+ * 比原来更窄，主区因此能多出一列卡片。
  * align-items: start 是 sticky 的前提 —— 栅格默认拉伸到满高后就没有可粘的行程。 */
 .directory {
   display: grid;
@@ -281,8 +355,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-unit) * 2);
-  /* 展开使用说明后总高会超过视口，而比视口高的 sticky 面板底部永远滚不到，
-     因此左栏自己成为滚动容器（只有一个滚动条，不做嵌套滚动） */
   max-height: calc(100vh - var(--navbar-height) - var(--space-unit) * 4);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -293,61 +365,72 @@ onMounted(() => {
   box-shadow: var(--shadow-card);
 }
 
-/* ── 风险提示 ───────────────────────────────────────────────── */
-.risk-warning {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 1.5);
-}
-
-.warning-item {
-  padding: calc(var(--space-unit) * 1.5);
-  border-inline-start: calc(var(--space-unit) * 0.5) solid currentColor;
-  border-radius: var(--radius-input);
-}
-
-.warning-item--critical {
-  color: var(--danger);
-  background: var(--danger-bg);
-}
-
-.warning-item--scam {
-  color: var(--warning);
-  background: var(--warning-bg);
-}
-
-/* kicker 用等宽小字承担「强度」：同一句标题不再配一个药丸标签 */
-.warning-kicker {
-  margin: 0 0 calc(var(--space-unit) * 0.5);
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-label);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: currentColor;
-}
-
-.warning-title {
-  margin: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-heading);
-  line-height: var(--leading-title);
-  color: var(--text-primary);
-}
-
-.warning-text {
-  margin: calc(var(--space-unit) * 0.5) 0 0;
-  font-size: var(--fs-label);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-/* ── 线路切换（桌面） ───────────────────────────────────────── */
 .rail-block {
   padding-top: calc(var(--space-unit) * 2);
   border-top: var(--stroke-width) solid var(--divider);
 }
 
+/* 第一块不加分隔线：它挨着面板顶端，加线会把面板切成两半 */
+.rail-guide {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* ── 教程入口 ───────────────────────────────────────────────── */
+.guide-entry {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-unit) * 1.25);
+  width: 100%;
+  padding: calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  text-align: start;
+  color: var(--text-primary);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: background-color var(--transition-interactive), color var(--transition-interactive);
+}
+
+.guide-entry:hover {
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.guide-entry:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 教程视图打开时，入口保持「已选中」态：再点一次不会让人以为页面坏了 */
+.guide-entry[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.guide-entry-icon {
+  display: inline-flex;
+  font-size: var(--fs-body);
+}
+
+.guide-entry-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-entry-arrow {
+  display: inline-flex;
+  color: var(--text-muted);
+}
+
+/* 桌面左栏已有一枚；窄屏那枚放在目录最上方 */
+.guide-entry--mobile {
+  display: none;
+}
+
+/* ── 线路切换（桌面） ───────────────────────────────────────── */
 .rail-title {
   margin: 0 0 var(--space-unit);
   font-family: var(--font-mono);
@@ -407,85 +490,6 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-/* ── 使用说明折叠 ───────────────────────────────────────────── */
-.guide-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-unit);
-  width: 100%;
-  padding: calc(var(--space-unit) * 0.75) calc(var(--space-unit) * 1.25);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
-  text-align: start;
-  color: var(--text-primary);
-  background: none;
-  border: 0;
-  border-radius: var(--radius-input);
-  cursor: pointer;
-  transition: background-color var(--transition-interactive), color var(--transition-interactive);
-}
-
-.guide-toggle:hover {
-  color: var(--accent);
-  background: var(--bg-soft);
-}
-
-.guide-toggle:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.toggle-icon {
-  display: inline-flex;
-  transition: transform var(--transition-interactive);
-}
-
-.guide-toggle[aria-expanded='true'] .toggle-icon {
-  transform: rotate(90deg);
-}
-
-.toggle-text {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-unit) * 0.5);
-  min-width: 0;
-}
-
-.guide-content {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-unit) * 2);
-  padding: calc(var(--space-unit) * 1.5) calc(var(--space-unit) * 1.25) 0;
-}
-
-.guide-subtitle {
-  margin: 0 0 var(--space-unit);
-  font-size: var(--fs-label);
-  font-weight: var(--fw-heading);
-  color: var(--text-secondary);
-}
-
-.guide-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-unit);
-  margin: 0;
-  padding-inline-start: calc(var(--space-unit) * 2.5);
-  font-size: var(--fs-sm);
-  line-height: var(--leading-body);
-  color: var(--text-secondary);
-}
-
-.guide-list--notes {
-  padding-inline-start: 0;
-  list-style: none;
-}
-
-.guide-list strong {
-  font-weight: var(--fw-heading);
-  color: var(--text-primary);
-}
-
 /* ── 主区 ──────────────────────────────────────────────────── */
 .directory-main {
   display: flex;
@@ -494,6 +498,80 @@ onMounted(() => {
   min-width: 0;
 }
 
+/* ── 教程视图（桌面） ───────────────────────────────────────── */
+.guide-view {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+}
+
+.guide-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: calc(var(--space-unit) * 0.5);
+  padding: calc(var(--space-unit) * 0.5) calc(var(--space-unit) * 1.25);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: color var(--transition-interactive), background-color var(--transition-interactive);
+}
+
+.guide-back:hover {
+  color: var(--accent);
+  background: var(--bg-soft);
+}
+
+.guide-back:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── 教程抽屉（窄屏） ───────────────────────────────────────── */
+.guide-drawer-head {
+  flex: none;
+}
+
+.guide-drawer-title {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-heading);
+  color: var(--text-primary);
+}
+
+.guide-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  flex: none;
+  font-size: var(--icon-btn-icon-size);
+  color: var(--text-secondary);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-input);
+  cursor: pointer;
+  transition: color var(--transition-interactive), background-color var(--transition-interactive);
+}
+
+.guide-drawer-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-soft);
+}
+
+.guide-drawer-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.guide-drawer-body {
+  padding: var(--card-padding);
+}
+
+/* ── 未登录 ────────────────────────────────────────────────── */
 .identity-panel {
   display: flex;
   flex-direction: column;
@@ -668,29 +746,14 @@ onMounted(() => {
     gap: var(--grid-gap);
   }
 
-  /* 左栏摊平：风险提示排到列表之前，使用说明排到列表之后 */
+  /* 左栏摊平：桌面的两块在窄屏各有替身（目录顶部按钮 / 吸顶条），
+     左栏本身不再占位 */
   .rail {
-    display: contents;
-  }
-
-  .risk-warning {
-    order: 1;
-  }
-
-  .rail-nav {
     display: none;
   }
 
   .directory-main {
-    order: 2;
-  }
-
-  .guide-block {
-    order: 3;
-    padding: calc(var(--space-unit) * 1.5);
-    background: var(--bg-surface);
-    border: var(--stroke-width) solid var(--border);
-    border-radius: var(--radius-card);
+    order: 1;
   }
 
   /* 吸顶线路条：滚动到第 12 张卡时仍能换线路。
@@ -715,6 +778,15 @@ onMounted(() => {
 }
 
 @media (max-width: 767px) {
+  /* 教程入口换到目录最上方：一条通栏按钮，和卡片同宽 */
+  .guide-entry--mobile {
+    display: flex;
+    padding: calc(var(--space-unit) * 1.25) calc(var(--space-unit) * 1.5);
+    background: var(--bg-surface);
+    border: var(--stroke-width) solid var(--border);
+    border-radius: var(--radius-card);
+  }
+
   .identity-panel {
     padding: calc(var(--card-padding-lg) * var(--mobile-padding-scale) * 1.5)
       calc(var(--card-padding-lg) * var(--mobile-padding-scale));
@@ -739,12 +811,6 @@ onMounted(() => {
 
   .lane-chips::-webkit-scrollbar {
     display: none;
-  }
-}
-
-@media (max-width: 575px) {
-  .warning-item {
-    padding: calc(var(--space-unit) * 1.25);
   }
 }
 </style>

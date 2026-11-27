@@ -136,26 +136,31 @@ test('被委派的结果区（Apple ID 列表）同样使用共享的加载与�
 })
 
 test('每个工具页都带辅助信息（使用说明 / 注意事项）', () => {
-  // 辅助信息有两种合法载体：
+  // 辅助信息有三种合法载体：
   //   1. 页面自己的 #aside 插槽（外壳在宽屏把它排成右栏）；
   //   2. 被委派的结果区自带说明区 —— 共享 Apple ID 页属于这种：
-  //      说明与风险提示移到了 AppleIdSection 的左轨（sticky 在账号列表旁，
-  //      长列表滚动时仍可见；≤991px 折到列表上方），页面本身不再挂 #aside，
-  //      因此不能再用 `#aside` 作为标签页的判据。
-  // 2FA 继续用它已有的教程区（fp-tutorial）充当辅助信息。
+  //      4.30.0 起「使用说明」从折叠块改成教程视图（桌面）/ 侧边抽屉（手机），
+  //      风险提示改成进页面的确认弹窗（AppleIdRiskGate），页面本身不挂 #aside。
+  //   3. 2FA 继续用它已有的教程区（fp-tutorial）充当辅助信息。
   const delegatedGuide = read('src/components/AppleIdSection.vue')
+  const pageSource = read(TOOL_ROUTES['/other/appleId'])
 
   for (const [toolPath, file] of Object.entries(TOOL_ROUTES)) {
     if (toolPath === '/other/appleId') {
       assert.match(
-        delegatedGuide,
-        /guide-toggle/,
-        'Apple ID 的使用说明折叠块应由 AppleIdSection 左轨承载',
+        pageSource,
+        /<AppleIdRiskGate/,
+        '风险提示要包住目录：确认之前不渲染账号、也不发请求',
       )
       assert.match(
         delegatedGuide,
-        /risk-warning/,
-        'Apple ID 的风险提示应由 AppleIdSection 左轨顶部承载',
+        /guide-entry/,
+        'Apple ID 的使用说明入口应由 AppleIdSection 承载（桌面切视图 / 手机开抽屉）',
+      )
+      assert.match(
+        delegatedGuide,
+        /AppleIdGuide/,
+        '教程正文只有一份实现（AppleIdGuide），视图与抽屉共用',
       )
       continue
     }

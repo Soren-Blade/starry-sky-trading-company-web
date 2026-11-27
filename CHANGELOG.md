@@ -9,6 +9,41 @@
 
 ---
 
+## [4.30.0] — 2026-11-27
+
+共享 Apple ID 页的「先确认、再取号」与「教程」两件事重做：风险提示从页内色块改成
+**进页面的确认弹窗**（未确认前不渲染账号、也不发请求），使用说明从 300px 栏里的折叠块
+改成**独立教程**（桌面切换右侧视图 / 手机右侧抽屉），内容按用户提供的截图与说明重写。
+
+### 新增
+- `src/components/AppleIdRiskGate.vue`：取号前的风险门禁。两条提示（只登 App Store /
+  本站不收解锁费）做成 `role="alertdialog"` 模态，确认后才挂载目录 —— 门禁卡在 slot 上，
+  未确认时账号列表根本不在 DOM 里，`/toolApi/getAppleIds` 也就不会发出。桌面每次进入都问；
+  ≤767px 确认一次记进 `localStorage`，之后不再挡（手机上反复弹窗会挡住唯一的动作）。
+  键盘：初始焦点在主按钮、Tab 在弹窗内循环、Escape 等于「不取了，回工具页」。
+- `src/components/AppleIdGuide.vue`：教程正文的唯一实现（桌面视图与手机抽屉共用）。
+  三步（登录 App Store → 下载软件 → 退出账号）+ 示意图 + 常见问题 5 条；第 1 步带红线提醒
+  「只在 App Store 登录，不要在设置里登」。示意图 `public/apple-id-guide.jpg` 用 `BASE_URL`
+  拼路径，可点开原图（拼图缩小后批注不可读）。
+
+### 变更
+- `src/components/AppleIdSection.vue`：删掉页内风险块与折叠说明；左栏只剩「使用教程」入口 +
+  线路切换。桌面点教程把目录整块换成教程视图（带返回）；≤767px 入口是目录最上方的按钮，
+  点开右侧抽屉，并随窗口宽度切换响应式判定（`matchMedia` + `compact` ref），避免窗口变窄后
+  教程视图与教程按钮同时出现。≤991px 左栏整体隐藏（两块各有窄屏替身）。
+- `src/pages/AppleId.vue`：`<AppleIdRiskGate><AppleIdSection /></AppleIdRiskGate>`。
+- 中英词条：新增 `appleId.riskGate*`（5 条）、`appleId.guide*`（含 `guideSteps` 3 条对象、
+  `guideFaq` 5 条问答、`guideFigureAlt/Open/Caption`）；删除 `guideToggle / guideTutorial /
+  guideNotes / guideNoteItems` 与旧的 4 条字符串步骤。`sectionAria` 改为「教程入口与线路目录」。
+
+### 测试
+- `test/appleIdPage.test.js`：新增门禁（未确认不渲染目录、确认才挂载）、教程（三步 + 配图 +
+  五问）、两种容器（视图 / 抽屉）、英文词条不回落的断言；`test/toolPages.test.js` 的辅助信息
+  断言从「折叠块 + 页内风险块」改为「门禁包住目录 + 教程入口 + AppleIdGuide」。
+- web `npm test` **1309/1309**、`npm run lint`、`npm run build` 通过。
+- BrowserSkill：桌面 1440（弹窗 → 确认 → 目录 → 教程视图）、390（首访弹窗、确认后刷新不再
+  提示、顶部教程按钮 + 抽屉、吸顶线路条）、深色模式。
+
 ## [4.29.0] — 2026-11-27
 
 共享 Apple ID 页整页重做：从「风险提示 + 折叠教程 + 四行标签卡」的目录页，改成

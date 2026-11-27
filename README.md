@@ -4,7 +4,14 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.29.0`**（2026-11-27 发布）：**共享 Apple ID 页整页重做** ——
+> **当前版本 `4.30.0`**（2026-11-27 发布）：**共享 Apple ID 页的「先确认、再取号」与教程** ——
+> 两条风险提示（只登 App Store / 本站不收解锁费）从页内色块改成**进页面的确认弹窗**：未确认前
+> 不渲染账号列表、`/toolApi/getAppleIds` 也不会发出（门禁卡在 slot 上）。桌面每次进入都问；
+> ≤767px 确认一次记进 `localStorage`，之后不再挡。使用说明从 300px 栏里的折叠块改成**独立教程**：
+> 桌面点「使用教程」把右侧目录整块换成教程视图（带返回），手机上是目录最上方的按钮 + 右侧抽屉；
+> 教程正文（三步 + 示意图 + 常见问题 5 条）只有一份实现，两个容器共用。
+
+> **上一版 `4.29.0`**（2026-11-27 发布）：**共享 Apple ID 页整页重做** ——
 > 目录页改成一格一格「取号单」：账号用等宽字作标题、密码行内显隐、地区与相对时间并成一行，
 > 每张卡只有一枚主按钮（原来 31 张卡 = 62 个同权重实心按钮）。数据源名 `FangQiangNan` 不再上屏，
 > 更新时间从「精确到秒」改成「3 分钟前更新」（悬停看绝对时间）。左栏归位为「风险提示 + 线路切换 + 使用说明」，
@@ -756,7 +763,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板（**有优惠时展示金额明细**：商品原价 / 会员价优惠 / 优惠券抵扣 / 积分抵扣（N 积分）/ 实付，复用结算页的 `settlementRows()`；没有优惠时只留一行「订单金额」）+ 联系备注 + 状态时间线 + 动作行 |
 | `Legal.vue` | 左目录吸顶 + 右正文；三份文档共用一个组件，由 `meta.legalKey` 选内容 |
-| `AppleId.vue` | 工具页壳（`ToolPageShell` + `AppleIdSection`，`back-inline` 把「返回工具页」收进页头右侧）。**4.29.0 起页面本身不再报数**：原顶部两颗统计 `u-tag` 删除，计数只在目录内出现一次（线路切换条 + 分区标题）。**2.3.0 起外壳只有一个 slot**：原先右侧的两段 `.ui-card.tool-aside-card`（使用说明 / 注意事项）删除，说明统一收进左轨；`.risk-warning`（只登 App Store / 本站不收解锁费）上移到左轨顶部 |
+| `AppleId.vue` | 工具页壳（`ToolPageShell` + `AppleIdRiskGate` + `AppleIdSection`，`back-inline` 把「返回工具页」收进页头右侧）。**4.30.0 起风险门禁包住整页**：确认前目录不挂载、请求不发出；`4.29.0` 起页面本身不再报数。**2.3.0 起外壳只有一个 slot**：原先右侧的两段 `.ui-card.tool-aside-card`（使用说明 / 注意事项）删除，说明统一收进目录（4.30.0 改为教程视图 / 抽屉） |
 | `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制。页头与结果区已并入工具页壳（空态 / 加载 / 成功 / 失败四态由 `ToolResultPane` 渲染），**TOTP 逻辑与密钥处理未动** |
 | `About.vue` | 静态内容：愿景、核心价值、联系方式 |
 | `NotFound.vue` | 404 页 + 站内推荐链接 |
@@ -1224,7 +1231,9 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `HeroSection.vue` | 首屏 hero：eyebrow / 标题 / 副标题 / 双 CTA / 特性行 + 一个表面面板。**没有**随机星点、浮动 emoji 与光斑 —— 规范排除装饰性渐变与夸张动画 |
 | `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；**底纹用 `--accent` + 16% 透明度**（跟随主题），分类图标经 `emojiToIconName` 转成线性 `AppIcon` |
 | `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.filteredProducts`（含搜索过滤），含加载 / 错误 / 空三种状态 |
-| `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（两条风险提示 + 线路切换 + 可折叠使用说明）+ 右区四态（未登录引导 / 加载 / `InlineErrorNote` 失败 / 目录）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨 `display:contents` 拆件重排（风险在前、教程在列表之后） |
+| `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（使用教程入口 + 线路切换）+ 主区（教程视图 / 四态：未登录引导、加载、`InlineErrorNote` 失败、目录 / 空态）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨整体隐藏（教程入口变成目录最上方的按钮、线路切换变成吸顶条）。**4.30.0**：风险提示移到 `AppleIdRiskGate`，折叠说明被教程视图 / 抽屉取代；`compact` 由 `matchMedia` 驱动，窗口变窄时不会同时出现教程视图与教程按钮 |
+| `AppleIdRiskGate.vue` | 取号前的风险门禁：`role="alertdialog"` 模态，两条提示（只登 App Store / 本站不收解锁费）+ 一个确认动作 + 一个退出（返回工具页）。**确认前不挂载 slot**，所以账号列表不在 DOM 里、`/toolApi/getAppleIds` 不发出；桌面每次进入都问，≤767px 确认一次记 `localStorage`（`sstc.apple-id-risk-ack`）；Escape = 放弃取号回工具页 |
+| `AppleIdGuide.vue` | 教程正文的唯一实现（桌面视图与手机抽屉共用）：三步有序列表（登录 App Store → 下载软件 → 退出账号）+ 第 1 步红线提醒 + 示意图（`public/apple-id-guide.jpg`，可点开原图）+ 常见问题 5 条（`dl` 问答，发丝线分隔） |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
 
 ### 卡片
