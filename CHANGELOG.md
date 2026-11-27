@@ -9,6 +9,25 @@
 
 ---
 
+## [4.26.0] — 2026-11-27
+
+手机顶栏三个「状态」缺陷，全部是**状态没被正确表达**，与视觉风格无关：
+
+1. **明暗切换选错档**：窄屏那三条 `.theme-switch` 规则写在样式文件第 5 节，而基础尺寸在第 10 节——同特异度、后写者胜，于是窄屏尺寸整段失效（格子仍 28px），只有没有竞争对手的 `::after` 生效。组件里的选中滑块按 0.9 缩放成 25.19px，比格子窄 2.8px，每往右一格再偏 2.8px（浅色偏 3.8px、自动偏 7.6px），看起来像「选中块卡在两个图标中间」。同时命中区 `inset: -10px` 让三格各撑成 48px、相邻重叠 20px，点「浅色」靠近月亮的那一半会切到「深色」。
+2. **× 的交叉点不重合**：两条杠的位移是手调的 `0.53 / -0.52` 单位，而间距 0.75 + 线高 0.3 的真实半程是 `0.525`——交叉点因此差 0.9px，放大看是歪的；且身份面板展开时箭头不翻转，读不出「再点一下能收起」。
+3. **搜索图标像没复位**：EC 的 `.ec-icon-btn:hover` 与顶栏 `.navbar-action:hover` 都写死，手机上点完跳转后 `:hover` / `:focus` 会一直留在按钮上，返回时那个按钮仍带底色，像「还选着」。
+
+### 修复
+
+- `src/assets/styles/ui-kit-nav.css`（§5 的 767 块内，不新开同名块）：`.theme-switch.theme-switch` / `.theme-switch .theme-switch__btn` / `.theme-switch .theme-switch__btn::after` 各叠一层同类名提高特异度（比把响应式段搬到文件末尾更抗重排）；命中区改 `inset: -10px -1px`——竖向撑到 45 达 44 下限，横向只吃格距一半，三格命中区首尾相接、不重叠。
+- `src/components/Navbar.vue`：`.menu-toggle.active` 两条杠位移改为 `calc(var(--space-unit) * 0.525)` / `-0.525`（由间距与线高推出）；`.navbar-identity-caret` 加 `transition: transform`，`.user-avatar-btn[aria-expanded='true'] .navbar-identity-caret` 翻 180°；`.navbar-action` 增 `-webkit-tap-highlight-color: transparent` 与 `touch-action: manipulation`，悬停底色包进 `@media (hover: hover) and (pointer: fine)`，并用 `@media (hover: none), (pointer: coarse)` 反向重置 `:hover` 与非键盘 `:focus`（`:focus-visible` 独立保留）。
+
+### 测试
+
+- 新增 `test/navbarActionStates.test.js`（5 条）：窄屏规则特异度压过基础尺寸且 767 块只有一个、滑块与格子同一套数值、× 位移由间距与线高推出且旧值不残留、身份面板箭头翻转、触屏不留 `:hover` 残影。
+- `npm test` 1291 通过，`npm run lint` 通过。
+- BrowserSkill 实测（390×844，iPhone-14）：槽 `padding: 1px`、三格各 25.19px，滑块 left 在浅色 / 深色 / 自动三档分别为 267.44 / 294.63 / 321.81，与对应格子 x **完全相等**（修前偏 3.8 / 0 / 7.6）；命中区 27.19 宽、起点 266.44 / 293.63 / 320.81，相邻只相接不重叠；× 两臂中心与按钮中心偏差 0.00 / 0.00、夹角 ±45°；`(hover: none)` + `(pointer: coarse)` 命中，按钮底色 `rgba(0, 0, 0, 0)`、`touch-action: manipulation`、tap-highlight 透明。
+
 ## [4.25.2] — 2026-11-26
 
 手机端操作日志从每条三行压到两行：动作与结果占第一行，时刻 / 类别 / 细节合并到第二行；登录记录的细节（「账号登录（username）」）与动作、类别重复，手机端直接省掉，桌面五列台账仍保留细节列。
