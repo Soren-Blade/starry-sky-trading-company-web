@@ -49,6 +49,16 @@ export const useToolStore = defineStore('tool', {
         toolsError: null,
         appleIdsLoading: false,
         appleIdsError: null,
+        /**
+         * Apple ID 列表被门禁拒绝的原因。
+         *
+         * 4.33.0 起该工具是卡密制，服务端 `/toolApi/getAppleIds` 在无有效权益时
+         * 返回 403 + `TOOL_CARD_REQUIRED`。这里要把「没激活」与「真的出错了」
+         * 分开：前者该给激活面板，后者该给重试面板，混在一起用户只会反复点重试。
+         *
+         * 'card' = 需要卡密激活；null = 没有门禁问题。
+         */
+        appleIdsGate: null,
     }),
 
     getters: {
@@ -211,11 +221,17 @@ export const useToolStore = defineStore('tool', {
                     fangQiangNan: data?.fangQiangNan ?? [],
                     wwkj: data?.wwkj ?? [],
                 }
+                this.appleIdsGate = null
                 return true
             } catch (error) {
-                this.appleIdsError = error.message
+                // 卡密门禁：这不是「加载失败」，界面上要换成激活面板，
+                // 因此不写 appleIdsError（否则会同时出现重试按钮与激活表单）。
+                this.appleIdsGate = error?.code === 'TOOL_CARD_REQUIRED' ? 'card' : null
+                this.appleIdsError = this.appleIdsGate ? null : error.message
                 this.appleIds = { nanoCloud: [], fangQiangNan: [], wwkj: [] }
-                console.warn('获取 Apple ID 列表失败:', error.message)
+                if (!this.appleIdsGate) {
+                    console.warn('获取 Apple ID 列表失败:', error.message)
+                }
                 return false
             } finally {
                 this.appleIdsLoading = false

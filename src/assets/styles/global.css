@@ -1346,13 +1346,24 @@ button.u-tag:focus-visible {
     right: var(--ec-space-4);
   }
 
-  /* 提示框：移动端贴底、宽度铺满，落在拇指区 */
+  /*
+   * 提示框：移动端仍然贴顶，但要让开固定顶栏。
+   *
+   * 4.32 及以前这里把它改到了底部 —— 理由是「落在拇指区」。但本站底部还压着
+   * 一条固定 Tab Bar，「复制账号 → 已复制」这类高频提示会正好落在 Tab Bar 上，
+   * 既看不清，也挡住「工具 / 购物车」的点击区。顶部（顶栏之下）才是不与任何
+   * 固定层冲突、且与桌面端同一读法（从上往下）的位置。
+   *
+   * 顶栏在 ≤991 用 --mobile-nav-scale 缩放过高度，这里必须用同一个乘积，
+   * 否则会像 4.29 的吸顶条那样漏出一道缝。
+   */
   .ec-toast-layer {
-    /* EC 用 inset-block-start 定位到顶部；清掉它并改用 bottom，容器才会收缩到内容高度 */
-    inset-block-start: auto;
-    bottom: calc(var(--toast-offset) * 0.5);
+    inset-block-start: calc(
+      var(--navbar-height) * var(--mobile-nav-scale) + var(--ec-space-3)
+    );
+    inset-block-end: auto;
     align-items: center;
-    flex-direction: column-reverse;
+    flex-direction: column;
   }
 
   .ec-toast {

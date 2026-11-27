@@ -246,7 +246,61 @@ test('fetchAppleIds：失败时清空数据并记录错误，loading 复位', as
       '失败后不应残留旧数据'
     )
     assert.equal(store.appleIdsError, '503 全部数据源不可用')
+    assert.equal(store.appleIdsGate, null, '普通失败不应被当成卡密门禁')
     assert.equal(store.appleIdsLoading, false)
+  } finally {
+    restore()
+  }
+})
+
+test('fetchAppleIds：卡密门禁 403 只置 gate，不当成加载失败', async () => {
+  const store = freshStore()
+  const restore = stubApi({
+    getAppleIds: async () => {
+      const error = new Error('该工具需要卡密激活')
+      error.status = 403
+      error.code = 'TOOL_CARD_REQUIRED'
+      throw error
+    },
+  })
+  try {
+    assert.equal(await store.fetchAppleIds(), false)
+    assert.equal(store.appleIdsGate, 'card')
+    assert.equal(store.appleIdsError, null, '门禁不是加载失败，不该同时出现重试面板')
+    assert.equal(store.appleIdsLoading, false)
+    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [], wwkj: [] })
+  } finally {
+    restore()
+  }
+})
+
+test('fetchAppleIds：成功一次后清掉之前的 gate 标记', async () => {
+  const store = freshStore()
+  store.appleIdsGate = 'card'
+  const restore = stubApi({
+    getAppleIds: async () => ({ success: true, data: { nanoCloud: [{ id: 1 }] } }),
+  })
+  try {
+    assert.equal(await store.fetchAppleIds(), true)
+    assert.equal(store.appleIdsGate, null, '激活后重新拉取成功，应清掉门禁')
+    assert.equal(store.appleIdsError, null)
+  } finally {
+    restore()
+  }
+})
+
+test('fetchAppleIds：普通失败会把残留的 gate 清掉', async () => {
+  const store = freshStore()
+  store.appleIdsGate = 'card'
+  const restore = stubApi({
+    getAppleIds: async () => {
+      throw new Error('网络请求失败')
+    },
+  })
+  try {
+    assert.equal(await store.fetchAppleIds(), false)
+    assert.equal(store.appleIdsGate, null, '不是门禁错误就不该继续显示激活表单')
+    assert.equal(store.appleIdsError, '网络请求失败')
   } finally {
     restore()
   }

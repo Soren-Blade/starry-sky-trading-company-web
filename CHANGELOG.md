@@ -11,6 +11,30 @@
 
 ---
 
+## [4.33.0] — 2026-11-27
+
+「共享 Apple ID」改成卡密制：没有卡密的访客看到的是激活表单，而不是空列表；同时把移动端全局提示从底部挪回顶部。
+
+### 新增
+
+- `src/components/AppleIdActivate.vue`：激活面板。卡密输入 + 提交，复用 `useKamiActivation`（服务端报文原样展示，成功才清空表单），成功后 `fetchEntitlements()` + `fetchAppleIds()` 直接切到账号列表；面板内给「购买永久卡密 ¥15」入口与两条说明（卡密在哪看、只登 App Store）。
+- `src/stores/tool.js`：`appleIdsGate` 状态。`fetchAppleIds()` 捕获到 `code === 'TOOL_CARD_REQUIRED'` 时置 `'card'` 且**不写** `appleIdsError`（避免重试面板与激活表单同屏），成功或普通失败时清空。
+- `src/pages/AppleId.vue`：`ToolPageShell` 传 `access-policy="card"` 与 `:has-entitlement`，页头因此显示「需卡密激活 / 已激活」徽标；未登录不预取权益，`validToolIds === null` 时才拉一次。
+- i18n：`appleId.activate*` 中英各 12 条。
+
+### 变更
+
+- `src/components/AppleIdSection.vue`：`AppleIdActivate` 插在「未登录引导」之后、「加载态」之前，由 `appleIdsGate === 'card'` 驱动。
+- `src/constants/content.js`：`/other/appleId` 的 `requiresCard` 改为 `true`，新增 `accessPolicy: 'card'`。
+- `src/assets/styles/global.css`：移动端 `.ec-toast-layer` 从「贴底 + `column-reverse`」改为「顶栏下方 + `column`」——原来的位置正好压在固定 Tab Bar 上，复制账号/密码的提示会被导航挡住一半。
+
+### 测试
+
+- `test/stores.tool.test.js`：新增门禁三条（403 只置 gate、成功后清 gate、普通失败清残留 gate）。
+- `npm test` 1315/1315、`npm run lint` 干净、`npm run build` 通过。
+
+---
+
 ## [4.32.0] — 2026-11-27
 
 「共享 Apple ID」补第三条库存线路：后端把 `https://ios.wwkejishe.top/#sectionAccounts` 页面上调用的小火箭共享账号接口并进 `/toolApi/getAppleIds`，前端原样多出一条线路，页面结构不变。

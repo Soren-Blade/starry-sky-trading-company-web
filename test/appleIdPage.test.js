@@ -272,3 +272,37 @@ test('英文词条齐全：门禁与教程不回落成中文，也不漏 key', a
   }
 })
 
+
+test('卡密门禁：未激活时左栏不列三条「暂无」，改说「激活后显示线路」', () => {
+  const source = read('src/components/AppleIdSection.vue')
+  assert.match(source, /laneNavLocked/, '未激活的占位文案应走词条')
+  assert.match(source, /v-if="needsActivation"/, '左栏线路列表要按门禁状态分支')
+
+  // 两侧词条都要真的加了，否则 en 界面会回落成中文 key
+  assert.match(read('src/i18n/locales/zh-CN.js'), /laneNavLocked: '激活后显示线路'/)
+  assert.match(read('src/i18n/locales/en-US/tools.js'), /laneNavLocked: 'Lanes appear after activation'/)
+})
+
+test('激活面板：卡密制工具在没有权益时显示表单，而不是空列表', async () => {
+  const source = read('src/components/AppleIdActivate.vue')
+  assert.match(source, /apple-id-card-code/, '要有卡密输入框')
+  assert.match(source, /useKamiActivation/, '激活走共享 hook，不自己写请求')
+  // kami.js 只有 default export：`import { activateCard }` 会在运行时炸在 ESM 解析上
+  assert.match(source, /kamiApi\.activateCard/, '必须走 kamiApi 默认导出的方法')
+  assert.equal(/import\s*\{[^}]*activateCard/.test(source), false, '不能按名导入 activateCard')
+
+  const [pinia, env] = await Promise.all([
+    createPiniaWithState({ tool: {} }),
+    createRenderEnv(),
+  ])
+  const panel = await renderComponent('/components/AppleIdActivate.vue', {
+    plugins: [pinia, env.router],
+    globalComponents: env.globalComponents,
+  })
+  expectIncludes(panel, '需要激活')
+  expectIncludes(panel, '激活并查看账号')
+  expectIncludes(panel, '购买永久卡密 ¥15')
+  // 空卡密时提交按钮不可点：避免把空串发到服务端换一条无意义报错
+  assert.match(panel, /class="[^"]*activate-submit[^"]*"[^>]*\bdisabled\b/, '空输入时按钮应禁用')
+})
+

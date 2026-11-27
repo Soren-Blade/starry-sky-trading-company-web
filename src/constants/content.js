@@ -1036,7 +1036,9 @@ const TOOL_PAGES_BASE = {
     title: '共享 Apple ID',
     description: '选一个账号，复制后到 App Store 登录。只登 App Store，不要登 iCloud。',
     icon: 'users',
-    requiresCard: false,
+    // 4.33.0 起卡密制：工具中心据此显示「立即激活」，页面内由服务端 403 门禁兜底
+    requiresCard: true,
+    accessPolicy: 'card',
     submit: '刷新列表',
     reset: '清空筛选',
     emptyTitle: '暂时没有可领取的账号',

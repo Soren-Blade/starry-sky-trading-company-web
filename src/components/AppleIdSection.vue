@@ -48,10 +48,12 @@
         </div>
 
         <!-- 线路切换（桌面常驻左栏）：0 条的线路渲染成不可点的「暂无」，
-             不再是指向空区块的死锚点 -->
+             不再是指向空区块的死锚点。未激活时不列三条「暂无」——
+             那会被读成「没货」，而真实情况是「还没开门」 -->
         <nav class="rail-block rail-nav" :aria-label="t('appleId.lanesAria')">
           <p class="rail-title">{{ t('appleId.lanesTitle') }}</p>
-          <ul class="lane-list">
+          <p v-if="needsActivation" class="rail-nav-hint">{{ t('appleId.laneNavLocked') }}</p>
+          <ul v-else class="lane-list">
             <li v-for="lane in lanes" :key="lane.id">
               <a
                 v-if="lane.count > 0"
@@ -102,6 +104,11 @@
             {{ AUTH.loginCta }}
           </button>
         </div>
+
+        <!-- 卡密门禁（4.33.0）：服务端 403 TOOL_CARD_REQUIRED 时列表根本拿不到，
+             这里给出激活面板 —— 它是这个工具当前唯一的入口，不是可选提示。
+             放在登录引导之后：没登录时先解决身份，再谈激活。 -->
+        <AppleIdActivate v-else-if="needsActivation" />
 
         <!-- 加载态：区块级加载走共享类 .u-loading-block + .u-spinner -->
         <div v-else-if="loading" class="u-loading-block" role="status">
@@ -223,6 +230,7 @@ import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
 import { useUserStore } from '@/stores/user'
 import AppleIdCard from '@/components/AppleIdCard.vue'
+import AppleIdActivate from '@/components/AppleIdActivate.vue'
 import AppleIdGuide from '@/components/AppleIdGuide.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import InlineErrorNote from '@/components/InlineErrorNote.vue'
@@ -238,7 +246,10 @@ const COMPACT_QUERY = '(max-width: 767px)'
 const { t } = useI18n()
 const toolStore = useToolStore()
 const userStore = useUserStore()
-const { appleIds, appleIdsLoading: loading, appleIdsError: error } = storeToRefs(toolStore)
+const { appleIds, appleIdsLoading: loading, appleIdsError: error, appleIdsGate } = storeToRefs(toolStore)
+
+/** 服务端判定「需要卡密激活」：界面换成激活面板，而不是重试面板 */
+const needsActivation = computed(() => appleIdsGate.value === 'card')
 
 /** 列表走 JWT 保护的接口，无身份时不发请求，改为给出登录引导 */
 const hasIdentity = computed(() => Boolean(userStore.userId))
@@ -552,6 +563,15 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* 未激活时代替三条「暂无」：说明是「还没开门」而不是「没货」 */
+.rail-nav-hint {
+  margin: 0;
+  padding: calc(var(--space-unit) * 0.5) 0;
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-muted);
 }
 
 .lane-link {

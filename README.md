@@ -4,7 +4,15 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.32.0`**（2026-11-27 发布）：**共享 Apple ID 增加第三条线路** ——
+> **当前版本 `4.33.0`**（2026-11-27 发布）：**共享 Apple ID 改为卡密激活 + 移动端提示回到顶部** ——
+> 工具改成卡密制：没激活的访客看到的是激活面板（粘贴卡密 → 激活 → 直接在原页切成账号列表），
+> 而不是空列表；页头按 `ToolPageShell` 的 `access-policy` 显示「需卡密激活 / 已激活」徽标。
+> 服务端同步加了门禁：`/toolApi/getAppleIds` 对无权益账号返回 403 + `TOOL_CARD_REQUIRED`，
+> 前端把这种「拒绝」与「加载失败」分开处理（前者换面板、后者才给重试）。商品侧新增
+> 「共享 Apple ID 永久卡密」¥15（100 张卡密库存）。另修：移动端全局提示原来贴底、会被固定 Tab Bar
+> 挡住一半，现在回到顶栏下方。
+
+> **上一版 `4.32.0`**（2026-11-27 发布）：**共享 Apple ID 增加第三条线路** ——
 > 后端把 `ios.wwkejishe.top` 页面上调用的小火箭共享账号接口（`ali.wangdu.site/apple/idlists`）
 > 并进 `/toolApi/getAppleIds`，响应 `data` 新增 `wwkj`；前端 `lanes` 多一条「扩展线路」，
 > 左栏切换、窄屏吸顶条、主区分区仍由同一份 `lanes` 派生，计数与区块自动跟上。
@@ -594,7 +602,7 @@ if (userStore.isLoggedIn) { … }  // 购物车 / 收藏 / 会员概览 / 未读
 | `/text/kit` 等 31 条 | 见下 | `pages/tools/*.vue` | 各工具页标题 - 星辰商行 | 扩展工具页骨架，见「扩展工具页」 |
 | `/about` | `About` | `pages/About.vue` | 关于我们 - 星辰商行 | |
 | `/other/2fa` | `2fa` | `pages/2FA.vue` | 2FA - 星辰商行 | 真实可用（不要求登录） |
-| `/other/appleId` | `appleId` | `pages/AppleId.vue` | 共享 Apple ID - 星辰商行 | 需要身份 |
+| `/other/appleId` | `appleId` | `pages/AppleId.vue` | 共享 Apple ID - 星辰商行 | 需要身份；**4.33.0 起需要卡密** |
 | `/user/kami` | `kami` | `pages/Kami.vue` | 卡密管理 - 星辰商行 | ✅ |
 | `/user/assets` | `Assets` | `pages/Assets.vue` | 我的资产 - 星辰商行 | ✅ **2.3.0 新增** |
 | `/user/profile` | `Profile` | `pages/Profile.vue` | 个人中心 - 星辰商行 | ✅ |
@@ -934,7 +942,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | 图片压缩工具 `/image/compressor` | `pages/ImageCompressor.vue` | **真实可用** | 按目标体积二分搜索质量参数（0.30–0.95，最多 8 次真实编码），显示编码后的实际字节数；未命中 ±10% 容差时如实说明 |
 | JSON 格式化工具 `/dev/json-formatter` | `pages/JsonFormatter.vue` | **真实可用** | `JSON.parse` + `JSON.stringify`，缩进/单行、报错定位、字符数与行数、一键复制 |
 | 2FA 密钥验证 `/other/2fa` | `pages/2FA.vue` | **真实可用** | TOTP 逻辑本来就是真的（`utils/totp.js` 对齐 RFC 6238），本期只换页头与结果区外观 |
-| 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用** | 数据来自 `toolApi/getAppleIds`；4.29.0 整页重做（页头、目录、卡片、四态、多端） |
+| 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用（4.33.0 起卡密制）** | 数据来自 `toolApi/getAppleIds`，无权益时服务端返回 403、页面换成激活面板；4.29.0 整页重做（页头、目录、卡片、四态、多端） |
 
 新工具页的接入方式：在 `src/constants/content.js` 的 `TOOL_PAGES` 里加一条（键就是数据库里的 `tool_path`），
 写一个用 `ToolPageShell` 包住的页面组件，在 `src/router/index.js` 里加一条懒加载路由即可 ——
@@ -1248,6 +1256,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（风险常驻块 + 使用教程入口 + 线路切换）+ 主区（教程视图 / 四态：未登录引导、加载、`InlineErrorNote` 失败、目录 / 空态）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题（`4.32.0` 起三条：推荐 / 备用 / 扩展）；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨整体隐藏（教程入口变成目录最上方的按钮、线路切换变成吸顶条）。**4.31.0**：左轨补回风险常驻块（`.rail-risk`），线路链接走 `jumpToLane()`（教程视图下点线路先切回列表、`nextTick` 后滚到该线路并落焦）；**4.30.0**：折叠说明被教程视图 / 抽屉取代；`compact` 由 `matchMedia` 驱动，窗口变窄时不会同时出现教程视图与教程按钮 |
 | `AppleIdRiskGate.vue` | 取号前的风险门禁：`role="alertdialog"` 模态，两条提示（只登 App Store / 本站不收解锁费）+ 一个确认动作 + 一个退出（返回工具页）。**确认前不挂载 slot**，所以账号列表不在 DOM 里、`/toolApi/getAppleIds` 不发出；桌面每次进入都问，≤767px 确认一次记 `localStorage`（`sstc.apple-id-risk-ack`）；Escape = 放弃取号回工具页。**4.31.0 重排**：等宽 kicker + 大字标题 + 前置说明 + 01/02 两栏编号卡（顶部语义色边）+ 动作行（返回靠左、主按钮靠右），720px 级宽度，删掉页脚说明 |
 | `AppleIdGuide.vue` | 教程正文的唯一实现（桌面视图与手机抽屉共用）。**4.31.0 手册式两栏**：左栏时间轴（竖线 + 01/02/03 + 正文 + 第 1 步红线提醒），右栏 `sticky` 示意图（`public/apple-id-guide.jpg`，可点开原图）；问答改成「左问右答」定义表（≥768px）。`step-caution` = `--danger-bg` 底 + 3px 左红边 + 图标，手机贴满宽度 |
+| `AppleIdActivate.vue` | **4.33.0 新增**：卡密激活面板。工具是卡密制且账号无权益时，主区显示它而不是空列表 —— 卡密输入 + 提交 + 「购买永久卡密 ¥15」入口 + 两条说明（卡密在哪看、只登 App Store）。复用 `useKamiActivation`（服务端报文原样展示，成功才清空表单），成功后重拉权益与账号、原地切成目录。购买入口是整页 `<a :href>` 而非 `RouterLink`：这是「离开本页去下单」的动作，也避免 SSR 单测环境不注册 `RouterLink` 时渲染成未解析组件 |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
 
 ### 卡片
