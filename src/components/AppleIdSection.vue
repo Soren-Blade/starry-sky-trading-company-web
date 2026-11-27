@@ -2,17 +2,36 @@
   <section class="apple-id-section">
     <div class="directory">
       <!--
-        ── 左轨：教程入口 + 线路切换 ────────────────────────────────
+        ── 左轨：风险常驻 + 教程入口 + 线路切换 ──────────────────────
         桌面端 sticky 在顶栏之下（顶栏是 sticky，必须让出它的高度）。
 
-        风险提示已从这一栏移除（4.30.0）：它改成进入页面时的确认弹窗，
-        确认之前不渲染账号、也不发请求。左栏只留「怎么用」与「取哪条线路」
-        两个动作，与右侧目录形成「入口 / 结果」的关系。
+        三块的次序 = 先安全、再方法、后目标：风险（随时回看）→ 教程（怎么用）
+        → 线路（去哪条），一条竖线把三块分开，读的时候从上往下走。
 
-        ≤991px 时整块左轨 `display: contents` 摊进单列栅格 —— 桌面左栏的两块
-        在窄屏各有自己的位置：教程入口变成目录最上方的按钮，线路切换变成吸顶条。
+        ≤991px 时整块左轨收起 —— 窄屏的替身是：风险进弹窗（只在首次确认时看）、
+        教程入口变成目录最上方的按钮、线路切换变成吸顶条。
       -->
       <aside class="rail" :aria-label="t('appleId.sectionAria')">
+        <!--
+          风险常驻（桌面）：4.31.0 起弹窗确认之后，这两条仍留在左栏最上方。
+          弹窗保证「第一次看见」，滚动浏览账号时还需要一个随时可回看的锚点；
+          窄屏不渲染这块（左栏整体隐藏），手机端只在弹窗里看一次。
+        -->
+        <div class="rail-block rail-risk">
+          <ul class="rail-risk-list">
+            <li class="rail-risk-item rail-risk-item--critical">
+              <p class="rail-risk-label">{{ t('appleId.riskBadge') }}</p>
+              <p class="rail-risk-title">{{ t('appleId.riskTitle') }}</p>
+              <p class="rail-risk-text">{{ t('appleId.riskText') }}</p>
+            </li>
+            <li class="rail-risk-item rail-risk-item--scam">
+              <p class="rail-risk-label">{{ t('appleId.scamBadge') }}</p>
+              <p class="rail-risk-title">{{ t('appleId.scamTitle') }}</p>
+              <p class="rail-risk-text">{{ t('appleId.scamText') }}</p>
+            </li>
+          </ul>
+        </div>
+
         <!-- 教程入口（桌面）：点击后右侧目录切换成教程视图，
              不再是原来那个把长文塞进 300px 栏内的折叠区 -->
         <div class="rail-block rail-guide">
@@ -34,7 +53,12 @@
           <p class="rail-title">{{ t('appleId.lanesTitle') }}</p>
           <ul class="lane-list">
             <li v-for="lane in lanes" :key="lane.id">
-              <a v-if="lane.count > 0" class="lane-link" :href="`#${lane.id}`">
+              <a
+                v-if="lane.count > 0"
+                class="lane-link"
+                :href="`#${lane.id}`"
+                @click.prevent="jumpToLane(lane)"
+              >
                 <span class="lane-name">{{ lane.name }}</span>
                 <span class="lane-count">{{ lane.count }}</span>
               </a>
@@ -108,6 +132,7 @@
                   class="lane-chip"
                   :class="{ 'lane-chip--accent': lane.accent }"
                   :href="`#${lane.id}`"
+                  @click.prevent="jumpToLane(lane)"
                 >
                   {{ lane.name }}<span class="lane-chip-count">{{ lane.count }}</span>
                 </a>
@@ -192,7 +217,7 @@
  * 状态全部来自 tool store（loading / error 由 store 提供：组件内部的 catch 收不到错，
  * 会导致失败时只显示空态、重试按钮不可达）。
  */
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToolStore } from '@/stores/tool'
@@ -238,13 +263,34 @@ const isCompact = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia(COMPACT_QUERY).matches
 
-/** 教程入口：桌面换视图，窄屏开抽屉 —— 同一枚按钮，两种容器 */
+/** 教程入口：桌面在「列表 ↔ 教程」之间切换（再点一次收回），窄屏开抽屉 */
 const openGuide = () => {
   if (isCompact()) {
     drawerOpen.value = true
-  } else {
-    view.value = 'guide'
+    return
   }
+  view.value = view.value === 'guide' ? 'list' : 'guide'
+}
+
+/**
+ * 线路跳转：教程视图下点左栏线路 = 先切回列表，再滚到该线路并落焦。
+ * 少这一步时，教程视图里点线路没有任何反应（目标 id 还没渲染），
+ * 用户只能先找「返回账号列表」——多一次不必要的点击。
+ */
+const jumpToLane = async (lane) => {
+  if (!lane || lane.count === 0) return
+  if (view.value === 'guide') {
+    view.value = 'list'
+    await nextTick()
+  }
+  const target = typeof document !== 'undefined' ? document.getElementById(lane.id) : null
+  if (!target) return
+  const reduceMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  target.focus({ preventScroll: true })
 }
 
 const { modalRef: drawerRef, activate, deactivate } = useModalA11y({
@@ -371,9 +417,58 @@ onUnmounted(() => {
 }
 
 /* 第一块不加分隔线：它挨着面板顶端，加线会把面板切成两半 */
-.rail-guide {
+.rail-risk {
   padding-top: 0;
   border-top: 0;
+}
+
+/* ── 风险常驻（桌面） ─────────────────────────────────────────
+ * 弹窗里是「两条大卡」，左栏里是同两条的「索引版」：
+ * 一道语义色竖线 + 等宽 kicker + 一句正文，读一眼就够，不占半屏。 */
+.rail-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 1.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rail-risk-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-unit) * 0.25);
+  padding-inline-start: calc(var(--space-unit) * 1.25);
+  border-inline-start: calc(var(--stroke-width) * 3) solid currentColor;
+}
+
+.rail-risk-item--critical {
+  color: var(--danger);
+}
+
+.rail-risk-item--scam {
+  color: var(--warning);
+}
+
+.rail-risk-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: currentColor;
+}
+
+.rail-risk-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-heading);
+  line-height: var(--leading-title);
+  color: var(--text-primary);
+}
+
+.rail-risk-text {
+  font-size: var(--fs-label);
+  line-height: var(--leading-body);
+  color: var(--text-secondary);
 }
 
 /* ── 教程入口 ───────────────────────────────────────────────── */
@@ -627,8 +722,15 @@ onUnmounted(() => {
   scroll-margin-top: calc(var(--navbar-height) + var(--space-unit) * 4);
 }
 
+/* 线路跳转后落焦到这一段（tabindex="-1"）：给键盘用户一个可见的落点，
+   否则读屏软件把焦点移过来，视觉上却什么都没发生 */
 .data-source-section:focus-visible {
   outline: none;
+}
+
+.data-source-section:focus-visible .source-head {
+  border-radius: calc(var(--radius-input) * 0.75);
+  box-shadow: var(--focus-ring);
 }
 
 .source-head {

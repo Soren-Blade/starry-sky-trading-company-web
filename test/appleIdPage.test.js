@@ -209,6 +209,42 @@ test('教程有两种容器：桌面切换目录视图，窄屏开抽屉', async
   assert.equal(/guide-toggle/.test(source), false, '折叠说明已由教程视图取代')
 })
 
+test('风险门禁：弹窗不再有页脚说明，文案只留标题 + 两条风险 + 两个动作', async () => {
+  const html = await renderGate()
+  const source = read('src/components/AppleIdRiskGate.vue')
+
+  expectExcludes(html, 'risk-foot', '4.31.0 去掉弹窗页脚：记忆策略已在交互里体现，不必再写一遍')
+  assert.equal(/riskGateFoot/.test(source), false, '页脚节点与词条一起删干净')
+
+  const zh = read('src/i18n/locales/zh-CN.js')
+  const en = read('src/i18n/locales/en-US/tools.js')
+  assert.equal(/riskGateFoot/.test(zh), false, '中文词条已移除页脚文案')
+  assert.equal(/riskGateFoot/.test(en), false, '英文词条已移除页脚文案')
+})
+
+test('左轨：确认弹窗之后，风险提示仍常驻（桌面）', async () => {
+  const html = await renderSection(
+    { appleIds: { nanoCloud: [ACCOUNT(1)], fangQiangNan: [] } },
+    { userInfo: { id: 1, username: 'tester' } },
+  )
+
+  expectIncludes(html, 'rail-risk', '桌面左轨保留风险块')
+  expectIncludes(html, '只登 App Store', '风险块里仍有锁机提醒')
+  expectIncludes(html, '本站不收解锁费', '风险块里仍有诈骗提醒')
+  expectIncludes(html, 'guide-entry', '教程入口与风险块并存')
+})
+
+test('线路跳转：教程视图下点左栏线路，一步回到该线路目录', async () => {
+  const source = read('src/components/AppleIdSection.vue')
+
+  assert.match(source, /jumpToLane/, '线路点击有统一的跳转处理')
+  assert.match(source, /@click\.prevent="jumpToLane/, '线路链接拦截默认锚点跳转，改走处理函数')
+  assert.match(source, /nextTick/, '先切回列表再取目标元素：视图切换后 DOM 才存在')
+  assert.match(source, /scrollIntoView/, '滚动到目标线路')
+  assert.match(source, /prefers-reduced-motion/, '尊重系统的减少动效设置')
+})
+
+
 test('英文词条齐全：门禁与教程不回落成中文，也不漏 key', async () => {
   const { i18n } = await import('@/i18n/index.js')
   const previous = i18n.global.locale.value

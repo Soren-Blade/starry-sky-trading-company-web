@@ -252,25 +252,25 @@ export default {
   },
   appleId: {
     sectionAria: 'Tutorial entry and lane directory',
+    riskGateKicker: 'Before you grab \u00b7 safety check',
     riskGateTitle: 'Two things before you take an account',
     riskGateLead:
-      'Accounts load only after you confirm. Until then this page shows no accounts and sends no requests.',
+      'Accounts load only after you confirm. Until then this page shows nothing and sends no requests.',
     riskGateConfirm: 'I understand \u2014 load accounts',
     riskGateBack: 'Back to tools',
-    riskGateFoot: 'Shown on every visit on desktop; remembered once confirmed on mobile.',
     riskBadge: 'HIGH RISK',
     riskTitle: 'App Store only',
     riskText: 'Never sign in through iCloud \u2014 it can lock your device or expose your data.',
     scamBadge: 'SCAM ALERT',
     scamTitle: 'We never charge an unlock fee',
-    scamText: 'Anyone charging for an unlock or asking for personal details is a scammer.',
+    scamText: 'Charging for an unlock or asking for personal details is always a scam.',
     guideCta: 'How to use',
     guideBack: 'Back to accounts',
     guideClose: 'Close tutorial',
     guideEyebrow: 'First time here',
     guideTitle: 'Get started in three steps',
     guideIntro:
-      'Follow these and you can download the apps that need a US App Store account. Everything happens inside the App Store.',
+      'Everything happens inside the App Store. Three steps and you can download apps that need a US account.',
     guideSteps: [
       {
         title: 'Sign in to the App Store',
@@ -286,11 +286,12 @@ export default {
         text: 'Sign out of the shared ID in the App Store right after the download. Apps you installed keep working under your own account.',
       },
     ],
+    guideFigureLabel: 'Walkthrough',
     guideFigureAlt:
       'Annotated screenshots of signing out of the App Store and into a shared account',
     guideFigureOpen: 'Open the full-size illustration',
     guideFigureCaption:
-      'Illustration: avatar \u2192 sign out \u2192 enter the shared ID \u2192 choose \u201cOther Options\u201d \u2192 \u201cDon\u2019t Upgrade\u201d',
+      'Avatar \u2192 sign out \u2192 enter the shared ID \u2192 choose \u201cOther Options\u201d \u2192 \u201cDon\u2019t Upgrade\u201d',
     guideFaqTitle: 'Frequently asked',
     guideFaq: [
       {

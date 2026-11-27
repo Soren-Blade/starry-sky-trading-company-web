@@ -166,23 +166,23 @@ export default {
 
   appleId: {
     sectionAria: '教程入口与线路目录',
-    riskGateTitle: '先看这两条，再取账号',
-    riskGateLead: '确认后才会加载账号列表；在此之前，本页不显示任何账号，也不会发起请求。',
+    riskGateKicker: '取号前 · 安全检查',
+    riskGateTitle: '取号前，先确认两件事',
+    riskGateLead: '确认后才会加载账号；在此之前，本页不显示账号，也不发起请求。',
     riskGateConfirm: '我已了解，加载账号',
     riskGateBack: '返回工具页',
-    riskGateFoot: '桌面端每次打开本页都会提示；手机端确认一次后不再提示。',
     riskBadge: '高风险',
     riskTitle: '只登 App Store',
-    riskText: '切勿登录 iCloud，否则可能锁机或泄露隐私。',
+    riskText: '切勿登录 iCloud，否则可能被锁机或泄露隐私。',
     scamBadge: '防诈骗',
     scamTitle: '本站不收解锁费',
-    scamText: '遇到收费解锁或索要个人信息，一律是诈骗。',
+    scamText: '收费解锁或索要个人信息，一律是诈骗。',
     guideCta: '使用教程',
     guideBack: '返回账号列表',
     guideClose: '关闭教程',
     guideEyebrow: '新手先读',
     guideTitle: '三步用上共享 ID',
-    guideIntro: '照着做完，就能下载需要美区账号的 App。整个过程只在 App Store 里操作。',
+    guideIntro: '全程只在 App Store 里操作。三步之后，就能下载需要美区账号的 App。',
     guideSteps: [
       {
         title: '登录 App Store',
@@ -198,19 +198,20 @@ export default {
         text: '下载完立即在 App Store 退回自己的 Apple ID。已装好的 App 照常打开使用，不受账号影响。',
       },
     ],
+    guideFigureLabel: '操作示意图',
     guideFigureAlt: 'App Store 退出当前账号并登录共享账号的操作示意',
     guideFigureOpen: '查看示意图大图',
     guideFigureCaption:
-      '示意图：点右上角头像 → 退出登录 → 填账号密码 → 弹窗选「其他选项」→「不升级」',
+      '点右上角头像 → 退出登录 → 填账号密码 → 弹窗选「其他选项」→「不升级」',
     guideFaqTitle: '常见问题',
     guideFaq: [
       {
         q: '用共享 ID 会不会把手机锁了？',
-        a: '只要按本页做——只在「App Store」登录下载、用完退出，就没有锁机风险。锁机（激活锁）只发生在你把共享账号登录到「设置 → 顶部 Apple ID」整机的情况，那样对方能通过「查找」远程锁定，千万别这么做。',
+        a: '只在「App Store」登录下载、用完退出，就没有锁机风险。锁机（激活锁）只发生在把共享账号登进「设置 → 顶部 Apple ID」整机的情况——那样对方能通过「查找」远程锁定，千万别这么做。',
       },
       {
         q: '为什么提示「需要验证码 / 双重认证」？',
-        a: '说明该账号临时开启了双重验证或正被占用，你收不到验证码。别纠结，直接换账号池里的下一个账号即可。',
+        a: '该账号临时开了双重验证，或正被他人占用，你收不到验证码。直接换账号池里的下一个即可。',
       },
       {
         q: '我的照片、通讯录会泄露吗？',
@@ -218,7 +219,7 @@ export default {
       },
       {
         q: '下载的 App 之后还能更新吗？',
-        a: 'App 装好后打开使用不需要账号。更新时会要求当时下载用的 ID 密码——建议之后用自己的美区 Apple ID 覆盖，或临时登共享 ID 更新。App 本身不会因为退出账号而失效。',
+        a: '打开使用不需要账号；更新时会要求当初下载用的 ID 密码。建议之后用自己的美区 ID 覆盖，或临时登共享 ID 更新。App 不会因为退出账号失效。',
       },
       {
         q: '下载好小火箭之后呢？',

@@ -9,6 +9,41 @@
 
 ---
 
+---
+
+## [4.31.0] — 2026-11-27
+
+共享 Apple ID 页第二轮打磨：确认弹窗按「可扫读」重排，教程从三列卡片改回按时间顺序的手册版，
+并补上两处 4.30.0 遗留的交互断点 —— 确认之后左栏看不见那两条风险、点完教程必须绕回「返回账号列表」才能看账号。
+
+### 重构
+
+- `src/components/AppleIdRiskGate.vue`：弹窗改成「等宽 kicker + 大字标题 + 前置说明 + 01/02 两栏编号卡 + 动作行」。
+  两条风险各带顶部语义色边、编号与标签，不再是一整块竖线色块；宽度提到 720px 级（`ec-dialog--lg`），
+  ≤767px 单列、主按钮整行、返回入口退成文字链。**删掉页脚说明**（`riskGateFoot`），
+  记忆策略改由交互本身体现：桌面每次都问、手机确认一次即记住。
+- `src/components/AppleIdGuide.vue`：教程从「三步三列卡片 + 居中大图 + 问答」改成**手册式两栏**：
+  左栏是带竖线的时间轴（01/02/03 + 标题 + 正文 + 第 1 步红线提醒），右栏示意图 `position: sticky`
+  常驻并配「操作示意图」标签；问答改成「左问右答」定义表（≥768px）。
+  `step-caution` 由红字改为「`--danger-bg` 底 + 3px 左侧红边 + 图标 + 正文色文字」，桌面限宽 38em、手机贴满。
+- `src/components/AppleIdSection.vue`：左轨顶部新增**风险常驻块**（`.rail-risk`，语义色左竖线 + 等宽 kicker +
+  标题 + 一句话），确认弹窗之后仍可随时回看；线路链接与吸顶 chip 改走 `jumpToLane()` ——
+  教程视图下点左栏线路会先切回列表、`nextTick` 后滚到该线路并落焦，不必再找「返回账号列表」；
+  「使用教程」在桌面变成开关（再点一次收回）；线路跳转落焦时给 `.source-head` 焦点环，键盘用户看得见落点。
+
+### 变更
+
+- 中英词条：删除 `appleId.riskGateFoot`；新增 `riskGateKicker`（「取号前 · 安全检查」）、`guideFigureLabel`（「操作示意图」）；
+  收紧 `riskGateLead`、`riskText`、`scamText`、`guideIntro`；FAQ 五条答案压缩到一句话，`guideFigureCaption` 去掉「示意图：」前缀。
+
+### 测试
+
+- `test/appleIdPage.test.js` 新增三条：弹窗不再有页脚（含两侧词条）、左轨风险常驻、线路跳转一步到位
+  （`jumpToLane` / `@click.prevent` / `nextTick` / `scrollIntoView` / `prefers-reduced-motion`），共 15 条。
+- web `npm test` **1312/1312**、`npm run lint`、`npm run build` 通过。
+- BrowserSkill：1440×900（弹窗 → 目录 → 教程 → 线路跳转回流）、1024×800 目录、390×844 弹窗与教程抽屉、
+  深色与浅色两套。证据见工作区根 `review-4.31.0/`。
+
 ## [4.30.0] — 2026-11-27
 
 共享 Apple ID 页的「先确认、再取号」与「教程」两件事重做：风险提示从页内色块改成
