@@ -756,7 +756,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `Orders.vue` | 状态页签 + 订单卡片列表（缩略图、金额、取消/完成/详情）+ 分页 |
 | `OrderDetail.vue` | 订单号标题带 + 明细面板（**有优惠时展示金额明细**：商品原价 / 会员价优惠 / 优惠券抵扣 / 积分抵扣（N 积分）/ 实付，复用结算页的 `settlementRows()`；没有优惠时只留一行「订单金额」）+ 联系备注 + 状态时间线 + 动作行 |
 | `Legal.vue` | 左目录吸顶 + 右正文；三份文档共用一个组件，由 `meta.legalKey` 选内容 |
-| `AppleId.vue` | 工具页壳（`ToolPageShell` + `AppleIdSection`），顶部两颗 `u-tag` 报线路账号数。**2.3.0 起外壳只有一个 slot**：原先右侧的两段 `.ui-card.tool-aside-card`（使用说明 / 注意事项）删除，说明统一收进左轨；`.risk-warning`（只登 App Store / 本站不收解锁费）上移到左轨顶部 |
+| `AppleId.vue` | 工具页壳（`ToolPageShell` + `AppleIdSection`，`back-inline` 把「返回工具页」收进页头右侧）。**4.29.0 起页面本身不再报数**：原顶部两颗统计 `u-tag` 删除，计数只在目录内出现一次（线路切换条 + 分区标题）。**2.3.0 起外壳只有一个 slot**：原先右侧的两段 `.ui-card.tool-aside-card`（使用说明 / 注意事项）删除，说明统一收进左轨；`.risk-warning`（只登 App Store / 本站不收解锁费）上移到左轨顶部 |
 | `2FA.vue` | 纯前端 TOTP 生成器：Base32 解码 → WebCrypto HMAC-SHA1 → 动态截断，30 秒倒计时并自动复制。页头与结果区已并入工具页壳（空态 / 加载 / 成功 / 失败四态由 `ToolResultPane` 渲染），**TOTP 逻辑与密钥处理未动** |
 | `About.vue` | 静态内容：愿景、核心价值、联系方式 |
 | `NotFound.vue` | 404 页 + 站内推荐链接 |
@@ -913,7 +913,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | 图片压缩工具 `/image/compressor` | `pages/ImageCompressor.vue` | **真实可用** | 按目标体积二分搜索质量参数（0.30–0.95，最多 8 次真实编码），显示编码后的实际字节数；未命中 ±10% 容差时如实说明 |
 | JSON 格式化工具 `/dev/json-formatter` | `pages/JsonFormatter.vue` | **真实可用** | `JSON.parse` + `JSON.stringify`，缩进/单行、报错定位、字符数与行数、一键复制 |
 | 2FA 密钥验证 `/other/2fa` | `pages/2FA.vue` | **真实可用** | TOTP 逻辑本来就是真的（`utils/totp.js` 对齐 RFC 6238），本期只换页头与结果区外观 |
-| 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用** | 数据来自 `toolApi/getAppleIds`，本期只换页头与侧栏 |
+| 共享 Apple ID `/other/appleId` | `pages/AppleId.vue` | **真实可用** | 数据来自 `toolApi/getAppleIds`；4.29.0 整页重做（页头、目录、卡片、四态、多端） |
 
 新工具页的接入方式：在 `src/constants/content.js` 的 `TOOL_PAGES` 里加一条（键就是数据库里的 `tool_path`），
 写一个用 `ToolPageShell` 包住的页面组件，在 `src/router/index.js` 里加一条懒加载路由即可 ——
@@ -1224,7 +1224,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `HeroSection.vue` | 首屏 hero：eyebrow / 标题 / 副标题 / 双 CTA / 特性行 + 一个表面面板。**没有**随机星点、浮动 emoji 与光斑 —— 规范排除装饰性渐变与夸张动画 |
 | `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；**底纹用 `--accent` + 16% 透明度**（跟随主题），分类图标经 `emojiToIconName` 转成线性 `AppIcon` |
 | `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.filteredProducts`（含搜索过滤），含加载 / 错误 / 空三种状态 |
-| `AppleIdSection.vue` | 汇总两个数据源的 Apple ID；加载与错误状态取自 `toolStore.appleIdsLoading` / `appleIdsError` |
+| `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（两条风险提示 + 线路切换 + 可折叠使用说明）+ 右区四态（未登录引导 / 加载 / `InlineErrorNote` 失败 / 目录）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨 `display:contents` 拆件重排（风险在前、教程在列表之后） |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
 
 ### 卡片
@@ -1291,16 +1291,16 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | --- | --- |
 | `ProductCard.vue` | 商品卡（EC `.ec-product`）：封面 → 角标 → 标题 → `.ec-price--md` 三段式 → 元信息 → CTA 行。CTA 行依次是**收藏图标 / 加入购物车图标 / 立即购买主按钮**：收藏在 EC 里本来放封面右上角，本站按需求移到行首（模板与样式都有「不要改回去」的注释）；售罄加 `.is-soldout`、CTA 降级为 outline「到货提醒」并禁用加购。事件 `go-detail` / `add-to-cart` 在商品分类 / 收藏夹 / 搜索结果 / 商品详情四处都已接线 |
 | `ToolCard.vue` | 工具行（EC `.ec-tool`）：图标 40×40 → 名称+描述 → 平台标签 → 状态点 → 操作。按 `access_policy` 分四档（`free` / `card` / `member_free` / `member_only`）再叠加会员身份，共 8 种组合；`member_free` 非会员给金色「会员免费」标签 + 「获取」跳卡密页，`member_only` 非会员只留「会员专属」标签、不渲染按钮。维护中置灰 + 橙点；已下架优先级最高、无操作 |
-| `ToolPageShell.vue` | **工具页公共壳**：页头（`eyebrow` / `AppIcon` + 标题 / 简介）+ 返回工具页按钮 + 主区（默认插槽）+ 侧栏（`#aside` 插槽，无插槽时整页单列）+ 可选的「需卡密激活」标注。页头还认可选的 `accessPolicy` / `hasEntitlement`，按策略显示「已激活 / 需卡密激活 / 会员免费 / 会员专属」。五个工具页共用，新增工具页只需给它标题与图标 |
+| `ToolPageShell.vue` | **工具页公共壳**：页头（`eyebrow` / `AppIcon` + 标题 / 简介）+ 返回工具页按钮 + 主区（默认插槽）+ 侧栏（`#aside` 插槽，无插槽时整页单列）+ 可选的「需卡密激活」标注。页头还认可选的 `accessPolicy` / `hasEntitlement`，按策略显示「已激活 / 需卡密激活 / 会员免费 / 会员专属」。新增 `back-inline`（默认 `false`）：把「返回工具页」从页头下方挪到页头右侧、`≤767` 退成文字链，避免它在正文之前先占一整行。五个工具页共用，新增工具页只需给它标题与图标 |
 | `ToolResultPane.vue` | **工具页结果区四态**：`empty`（`.u-empty` + 可填 `#empty-actions`）/ `loading`（`role="status"` + `aria-busy`）/ `success`（`#actions` 放主操作）/ `error`（`role="alert"` + `#error` 重试）。状态名与文案由调用页给，组件不认业务 |
-| `AppleIdCard.vue` | Apple ID 账号卡：账号、密码（可显隐、可复制）、状态、地区、更新时间 |
+| `AppleIdCard.vue` | Apple ID 账号卡=一张「取号单」：等宽账号当标题 + 状态圆点 → 密码行（默认遮挡，点眼睛展开）→ 地区 · 相对时间（`8 小时前更新`，绝对时间放 `title`）→ 一主一次两个按钮（**复制账号**实心 / **复制密码**描边）。原 `source` prop 删除（数据源名是内部字段），`hover` 上浮关闭（卡片本身不可点）；英文等长文案下按钮 `flex-wrap` 各占一行，不再互相压住 |
 
 ### 卡密与 Apple ID
 
 | 组件 | 说明 |
 | --- | --- |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与**合并后的激活表单**（一个输入框粘贴卡密或用户 UID，400ms 防抖后按结构自动识别并选好工具；`.console-side` 左下是「激活说明」四条）。**2.3.0 起不再包含「已激活工具」表**，只保留一条「已激活的工具在「我的资产」查看」的指路链接 |
-| `AppleIdSection.vue` | 汇总两个数据源的 Apple ID，含加载态、错误提示与重试按钮 |
+| `AppleIdSection.vue` | 共享 Apple ID 目录主体，含未登录引导、加载态、`InlineErrorNote` 失败态与两线皆空的空态（`不渲染空网格`） |
 
 ### 未被引用
 
@@ -1652,7 +1652,7 @@ antd 的 `message` 只能顶部居中且样式由它自己的样式表固定，
 | 订单管理 `/user/orders` | **事务页**：状态页签 + 订单卡片列表 + 分页 | `.page-shell-head--row` |
 | 订单详情 `/user/orders/:orderNo` | **事务页**：订单号标题带 + 明细 / 备注 / 状态时间线三个面板 | 标题带带等宽订单号 |
 | 用户协议 / 隐私政策 / 平台规则 | **事务页 · 编辑式双栏**：左目录吸顶 + 右条款正文 | 眉标 + 标题 + 最后更新日期 |
-| 共享苹果 ID `/other/appleId` | **目录**：左线路轨（使用说明折叠 + 线路锚点）+ 右账号目录 | 眉标 + 大字标题 + 说明 + 双线路计数 |
+| 共享苹果 ID `/other/appleId` | **目录**：左线路轨（风险提示 + 线路切换 + 使用说明折叠）+ 右账号目录；`≤991` 拆件重排为「风险 → 吸顶线路条 → 列表 → 教程」 | 眉标 + 大字标题 + 说明 + 右侧「返回工具页」 |
 | 关于我们 `/about` | **编辑式双栏**：左侧目录吸顶 + 右侧正文（编号价值列表 + 标签值对照表） | 左栏：眉标 + 大字标题 + 说明 + 页内锚点 |
 | 2FA `/other/2fa` | **终端面板**：窗口标题栏（三个圆点 + 等宽标题）+ 输入区 + 读数区 + 进度条；教程区在面板下方做键值对照 | 面板标题栏 |
 | 404 | **大号数字**：`404` 作为视觉主体（`calc(var(--fs-display) * 2.5)`）+ 右侧说明与行式建议链接 | 大号数字 |
