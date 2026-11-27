@@ -11,6 +11,25 @@
 
 ---
 
+## [4.32.0] — 2026-11-27
+
+「共享 Apple ID」补第三条库存线路：后端把 `https://ios.wwkejishe.top/#sectionAccounts` 页面上调用的小火箭共享账号接口并进 `/toolApi/getAppleIds`，前端原样多出一条线路，页面结构不变。
+
+### 新增
+
+- `src/stores/tool.js`：`appleIds` 增 `wwkj` 通道（初值 / `fetchAppleIds` 写入 / 失败清空 / `appleIdCount` 求和四处同步）。
+- `src/components/AppleIdSection.vue`：`lanes` 增第三条 `{ id: 'wwkj', name: t('appleId.extraLane') }`。左栏切换、窄屏吸顶条、主区分区三处仍由同一份 `lanes` 派生，计数与区块自动跟上。
+- `src/i18n/locales/zh-CN.js` / `en-US/tools.js`：`extraLane` = `扩展线路` / `Extra lane`。
+
+### 变更
+
+- 后端契约：`GET /toolApi/getAppleIds` 的 `data` 变为 `{ nanoCloud, fangQiangNan, wwkj }`（纯新增）；三路全失败才 503 `ALL_API_FAILED`。前端对缺字段的响应仍按空线路处理，可不升级后端单独发。
+
+### 测试
+
+- `npm test` 1312/1312、`npm run lint`、`npm run build` 全绿；`test/stores.tool.test.js` 的断言从「两个来源」改为「三个来源」。
+- BrowserSkill 逐端：1440 三条线路（扩展线路 74 张卡）、1024 两列、390 吸顶条三个 chip。
+
 ## [4.31.0] — 2026-11-27
 
 共享 Apple ID 页第二轮打磨：确认弹窗按「可扫读」重排，教程从三列卡片改回按时间顺序的手册版，

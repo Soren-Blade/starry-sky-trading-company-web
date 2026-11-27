@@ -310,10 +310,12 @@ watch(drawerOpen, (open) => {
 
 const nanoCloudIds = computed(() => appleIds.value?.nanoCloud || [])
 const fangQiangNanIds = computed(() => appleIds.value?.fangQiangNan || [])
+const wwkjIds = computed(() => appleIds.value?.wwkj || [])
 
 /**
  * 线路表是左栏切换、窄屏吸顶条、主区分区三处的**唯一**数据源：
  * 计数、名称、锚点 id 都从这里派生，避免三处各算一遍导致数字不一致。
+ * 新增数据源只需要在这里加一行 —— 三处入口自动跟上。
  */
 const lanes = computed(() => [
   {
@@ -328,6 +330,13 @@ const lanes = computed(() => [
     name: t('appleId.backupLane'),
     items: fangQiangNanIds.value,
     count: fangQiangNanIds.value.length,
+    accent: false,
+  },
+  {
+    id: 'wwkj',
+    name: t('appleId.extraLane'),
+    items: wwkjIds.value,
+    count: wwkjIds.value.length,
     accent: false,
   },
 ])

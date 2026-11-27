@@ -319,6 +319,7 @@ export default {
     lanesTitle: 'Lanes',
     mainLane: 'Recommended',
     backupLane: 'Backup',
+    extraLane: 'Extra lane',
     laneEmpty: 'None',
     count: '{count} available',
     loading: 'Fetching available accounts\u2026',

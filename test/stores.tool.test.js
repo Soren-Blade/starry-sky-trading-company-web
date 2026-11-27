@@ -45,10 +45,11 @@ test('state：toolData 是对象且各字段形状固定（原实现初始化为
   assert.deepEqual(store.toolData.filters, {})
 })
 
-test('state：appleIds 初始为两个空数组', () => {
+test('state：appleIds 初始为三个空数组', () => {
   const store = freshStore()
   assert.ok(Array.isArray(store.appleIds.nanoCloud))
   assert.ok(Array.isArray(store.appleIds.fangQiangNan))
+  assert.ok(Array.isArray(store.appleIds.wwkj))
 })
 
 test('getters：allTools / toolClasses / appleIdCount 均有兜底', () => {
@@ -59,10 +60,10 @@ test('getters：allTools / toolClasses / appleIdCount 均有兜底', () => {
 
   store.toolData.tools = TOOLS
   store.toolData.classes = [{ key: 'ai' }]
-  store.appleIds = { nanoCloud: [1, 2], fangQiangNan: [3] }
+  store.appleIds = { nanoCloud: [1, 2], fangQiangNan: [3], wwkj: [4, 5] }
   assert.equal(store.allTools.length, 3)
   assert.equal(store.toolClasses.length, 1)
-  assert.equal(store.appleIdCount, 3, '两个来源应相加')
+  assert.equal(store.appleIdCount, 5, '三个来源应相加')
 })
 
 // ── fetchTools ─────────────────────────────────────────────
@@ -199,30 +200,31 @@ test('init：等价于 fetchTools（不额外请求）', async () => {
 
 // ── fetchAppleIds ──────────────────────────────────────────
 
-test('fetchAppleIds：两个来源分别写入', async () => {
+test('fetchAppleIds：三个来源分别写入', async () => {
   const store = freshStore()
   const restore = stubApi({
     getAppleIds: async () => ({
       success: true,
-      data: { nanoCloud: [{ id: 1 }], fangQiangNan: [{ id: 2 }, { id: 3 }] },
+      data: { nanoCloud: [{ id: 1 }], fangQiangNan: [{ id: 2 }, { id: 3 }], wwkj: [{ id: 4 }] },
     }),
   })
   try {
     assert.equal(await store.fetchAppleIds(), true)
     assert.equal(store.appleIds.nanoCloud.length, 1)
     assert.equal(store.appleIds.fangQiangNan.length, 2)
-    assert.equal(store.appleIdCount, 3)
+    assert.equal(store.appleIds.wwkj.length, 1)
+    assert.equal(store.appleIdCount, 4)
   } finally {
     restore()
   }
 })
 
-test('fetchAppleIds：data 缺失时两个来源都落到空数组', async () => {
+test('fetchAppleIds：data 缺失时三个来源都落到空数组', async () => {
   const store = freshStore()
   const restore = stubApi({ getAppleIds: async () => ({ success: true }) })
   try {
     await store.fetchAppleIds()
-    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [] })
+    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [], wwkj: [] })
   } finally {
     restore()
   }
@@ -230,7 +232,7 @@ test('fetchAppleIds：data 缺失时两个来源都落到空数组', async () =>
 
 test('fetchAppleIds：失败时清空数据并记录错误，loading 复位', async () => {
   const store = freshStore()
-  store.appleIds = { nanoCloud: [{ id: 9 }], fangQiangNan: [{ id: 9 }] }
+  store.appleIds = { nanoCloud: [{ id: 9 }], fangQiangNan: [{ id: 9 }], wwkj: [{ id: 9 }] }
   const restore = stubApi({
     getAppleIds: async () => {
       throw new Error('503 全部数据源不可用')
@@ -238,7 +240,11 @@ test('fetchAppleIds：失败时清空数据并记录错误，loading 复位', as
   })
   try {
     assert.equal(await store.fetchAppleIds(), false)
-    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [] }, '失败后不应残留旧数据')
+    assert.deepEqual(
+      store.appleIds,
+      { nanoCloud: [], fangQiangNan: [], wwkj: [] },
+      '失败后不应残留旧数据'
+    )
     assert.equal(store.appleIdsError, '503 全部数据源不可用')
     assert.equal(store.appleIdsLoading, false)
   } finally {
@@ -249,12 +255,12 @@ test('fetchAppleIds：失败时清空数据并记录错误，loading 复位', as
 test('fetchAppleIds：业务失败（success=false）也走清空分支', async () => {
   const store = freshStore()
   const restore = stubApi({
-    getAppleIds: async () => ({ success: false, message: '两个数据源都不可用' }),
+    getAppleIds: async () => ({ success: false, message: '三个数据源都不可用' }),
   })
   try {
     assert.equal(await store.fetchAppleIds(), false)
-    assert.equal(store.appleIdsError, '两个数据源都不可用')
-    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [] })
+    assert.equal(store.appleIdsError, '三个数据源都不可用')
+    assert.deepEqual(store.appleIds, { nanoCloud: [], fangQiangNan: [], wwkj: [] })
   } finally {
     restore()
   }

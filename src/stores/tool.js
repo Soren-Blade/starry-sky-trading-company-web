@@ -31,8 +31,8 @@ export const useToolStore = defineStore('tool', {
             filters: {},
         },
         activeCategory: 'all',
-        /** 共享 Apple ID：后端返回 { nanoCloud: [], fangQiangNan: [] } */
-        appleIds: { nanoCloud: [], fangQiangNan: [] },
+        /** 共享 Apple ID：后端返回 { nanoCloud: [], fangQiangNan: [], wwkj: [] } */
+        appleIds: { nanoCloud: [], fangQiangNan: [], wwkj: [] },
         /**
          * 当前用户**有效**的工具授权 id 数组。
          *
@@ -58,7 +58,9 @@ export const useToolStore = defineStore('tool', {
         toolClasses: (state) => state.toolData.classes || [],
         /** Apple ID 总数 */
         appleIdCount: (state) =>
-            (state.appleIds.nanoCloud?.length || 0) + (state.appleIds.fangQiangNan?.length || 0),
+            (state.appleIds.nanoCloud?.length || 0) +
+            (state.appleIds.fangQiangNan?.length || 0) +
+            (state.appleIds.wwkj?.length || 0),
     },
 
     actions: {
@@ -207,11 +209,12 @@ export const useToolStore = defineStore('tool', {
                 this.appleIds = {
                     nanoCloud: data?.nanoCloud ?? [],
                     fangQiangNan: data?.fangQiangNan ?? [],
+                    wwkj: data?.wwkj ?? [],
                 }
                 return true
             } catch (error) {
                 this.appleIdsError = error.message
-                this.appleIds = { nanoCloud: [], fangQiangNan: [] }
+                this.appleIds = { nanoCloud: [], fangQiangNan: [], wwkj: [] }
                 console.warn('获取 Apple ID 列表失败:', error.message)
                 return false
             } finally {

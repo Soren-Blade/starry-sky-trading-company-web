@@ -230,6 +230,7 @@ export default {
     lanesTitle: '线路',
     mainLane: '推荐线路',
     backupLane: '备用线路',
+    extraLane: '扩展线路',
     laneEmpty: '暂无',
     count: '{count} 个可用',
     loading: '正在获取可用账号…',

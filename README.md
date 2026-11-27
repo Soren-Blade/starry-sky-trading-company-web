@@ -4,7 +4,13 @@
 
 > 项目总览、前后端数据流、本地开发与部署步骤见[根目录 README](../README.md)；后端接口清单见 [server README](../starry-sky-trading-company-server/README.md)。
 
-> **当前版本 `4.31.0`**（2026-11-27 发布）：**共享 Apple ID 页的确认弹窗与教程重排** ——
+> **当前版本 `4.32.0`**（2026-11-27 发布）：**共享 Apple ID 增加第三条线路** ——
+> 后端把 `ios.wwkejishe.top` 页面上调用的小火箭共享账号接口（`ali.wangdu.site/apple/idlists`）
+> 并进 `/toolApi/getAppleIds`，响应 `data` 新增 `wwkj`；前端 `lanes` 多一条「扩展线路」，
+> 左栏切换、窄屏吸顶条、主区分区仍由同一份 `lanes` 派生，计数与区块自动跟上。
+> 老后端（只有两路）也能跑：前端把缺失的 `wwkj` 当空线路处理。
+
+> **上一版 `4.31.0`**（2026-11-27 发布）：**共享 Apple ID 页的确认弹窗与教程重排** ——
 > 确认弹窗改成可扫读的一版：等宽 kicker + 大字标题 + 前置说明 + 01/02 两栏编号卡（顶部语义色边）+ 动作行，
 > 桌面 720px 级、≤767px 单列并让主按钮独占一行；页脚说明连同词条一起删掉。
 > 教程从三列卡片改回按顺序读的**手册式两栏**：左栏是带竖线的时间轴（01/02/03 + 正文 + 第 1 步红线提醒），
@@ -875,7 +881,7 @@ Tab 键不会跑进还没就绪的界面）；遮罩 `z-index: 2500` 压在 toas
 | `toolData` | 工具数据。`fetchTools()` 会把接口返回的 `data` 与 `classifyToolsByClass()` 的结果合并进去，因此实际含 `tools` / `pagination` / `filters` / `classified` / `classes` |
 | `toolMeta` | 接口 `meta`（仅写入，未被读取） |
 | `activeCategory` | 当前选中分类，默认 `'all'`。除了真实 class（`dev`/`video`…）与 `all`，还接受两个**伪分类** `__card__`（需要卡密激活）与 `__free__`（免费工具）—— 见 `pages/Tool.vue` 的说明 |
-| `appleIds` | 共享 Apple ID 数据，实际是 `{ nanoCloud, fangQiangNan }` 对象 |
+| `appleIds` | 共享 Apple ID 数据，实际是 `{ nanoCloud, fangQiangNan, wwkj }` 对象（`4.32.0` 起第三条线路；`wwkj` 缺失时按空线路处理，老后端也能跑） |
 | `validToolIds` | 当前用户**有效**的工具授权 id 数组。`null` = 不知道（未登录 / 查询失败），`[]` = 确定没有授权。两者对界面含义不同，不要合并 |
 | `fetchTools()` / `fetchAppleIds()` / `setActiveCategory()` / `init()` | 见 server README 的 `/toolApi` 接口说明 |
 | `fetchEntitlements()` | 拉 `/kamiApi/myEntitlements`。**失败时保留 `null`**：若写成 `[]`，一个已付费但查询失败的用户会被引导回激活页 |
@@ -1239,7 +1245,7 @@ getter **一并删除**（`HotProductsSection` 改读 `shopInfo`，`Hot.vue` 的
 | `HeroSection.vue` | 首屏 hero：eyebrow / 标题 / 副标题 / 双 CTA / 特性行 + 一个表面面板。**没有**随机星点、浮动 emoji 与光斑 —— 规范排除装饰性渐变与夸张动画 |
 | `CategoriesSection.vue` | 商品分类网格，分类卡是真实 `<button>`；**底纹用 `--accent` + 16% 透明度**（跟随主题），分类图标经 `emojiToIconName` 转成线性 `AppIcon` |
 | `HotProductsSection.vue` | 热门商品网格，数据源 `shopStore.filteredProducts`（含搜索过滤），含加载 / 错误 / 空三种状态 |
-| `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（风险常驻块 + 使用教程入口 + 线路切换）+ 主区（教程视图 / 四态：未登录引导、加载、`InlineErrorNote` 失败、目录 / 空态）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨整体隐藏（教程入口变成目录最上方的按钮、线路切换变成吸顶条）。**4.31.0**：左轨补回风险常驻块（`.rail-risk`），线路链接走 `jumpToLane()`（教程视图下点线路先切回列表、`nextTick` 后滚到该线路并落焦）；**4.30.0**：折叠说明被教程视图 / 抽屉取代；`compact` 由 `matchMedia` 驱动，窗口变窄时不会同时出现教程视图与教程按钮 |
+| `AppleIdSection.vue` | 共享 Apple ID 目录主体：左轨（风险常驻块 + 使用教程入口 + 线路切换）+ 主区（教程视图 / 四态：未登录引导、加载、`InlineErrorNote` 失败、目录 / 空态）。`lanes` 一条 computed 同时喂给线路切换、移动端吸顶条与分区标题（`4.32.0` 起三条：推荐 / 备用 / 扩展）；`visibleLanes` 过滤空线路，所以 0 条线路既不渲染区块也不留死锚点；≤991 左轨整体隐藏（教程入口变成目录最上方的按钮、线路切换变成吸顶条）。**4.31.0**：左轨补回风险常驻块（`.rail-risk`），线路链接走 `jumpToLane()`（教程视图下点线路先切回列表、`nextTick` 后滚到该线路并落焦）；**4.30.0**：折叠说明被教程视图 / 抽屉取代；`compact` 由 `matchMedia` 驱动，窗口变窄时不会同时出现教程视图与教程按钮 |
 | `AppleIdRiskGate.vue` | 取号前的风险门禁：`role="alertdialog"` 模态，两条提示（只登 App Store / 本站不收解锁费）+ 一个确认动作 + 一个退出（返回工具页）。**确认前不挂载 slot**，所以账号列表不在 DOM 里、`/toolApi/getAppleIds` 不发出；桌面每次进入都问，≤767px 确认一次记 `localStorage`（`sstc.apple-id-risk-ack`）；Escape = 放弃取号回工具页。**4.31.0 重排**：等宽 kicker + 大字标题 + 前置说明 + 01/02 两栏编号卡（顶部语义色边）+ 动作行（返回靠左、主按钮靠右），720px 级宽度，删掉页脚说明 |
 | `AppleIdGuide.vue` | 教程正文的唯一实现（桌面视图与手机抽屉共用）。**4.31.0 手册式两栏**：左栏时间轴（竖线 + 01/02/03 + 正文 + 第 1 步红线提醒），右栏 `sticky` 示意图（`public/apple-id-guide.jpg`，可点开原图）；问答改成「左问右答」定义表（≥768px）。`step-caution` = `--danger-bg` 底 + 3px 左红边 + 图标，手机贴满宽度 |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与激活表单；游客态显示登录提示 |
@@ -1317,7 +1323,7 @@ watch(() => store.panelOpen, (open) => (open ? activate() : deactivate()))
 | 组件 | 说明 |
 | --- | --- |
 | `KamiSection.vue` | 卡密管理主体。`a-table` 卡密列表（状态筛选、刷新、分页、卡号脱敏）与**合并后的激活表单**（一个输入框粘贴卡密或用户 UID，400ms 防抖后按结构自动识别并选好工具；`.console-side` 左下是「激活说明」四条）。**2.3.0 起不再包含「已激活工具」表**，只保留一条「已激活的工具在「我的资产」查看」的指路链接 |
-| `AppleIdSection.vue` | 共享 Apple ID 目录主体，含未登录引导、加载态、`InlineErrorNote` 失败态与两线皆空的空态（`不渲染空网格`） |
+| `AppleIdSection.vue` | 共享 Apple ID 目录主体，含未登录引导、加载态、`InlineErrorNote` 失败态与**所有线路皆空**的空态（`不渲染空网格`） |
 
 ### 未被引用
 
