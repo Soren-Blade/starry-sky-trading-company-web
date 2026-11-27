@@ -1013,12 +1013,39 @@ onUnmounted(() => {
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
+  /* 触屏：不要系统高亮块，也不要在点击后把 :active 的缩放留在页面上 */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition:
     background var(--transition-interactive),
     color var(--transition-interactive);
 }
 
-.navbar-action:hover,
+/*
+ * 悬停底色只在「真有悬停」的设备上生效（4.26.0）。
+ *
+ * 真机触摸的坑：手指点完之后，浏览器会把 :hover 留在那个元素上，直到下一次
+ * 点到别处。于是「点搜索 → 跳到结果页」回来时，放大镜还顶着一块 --bg-soft，
+ * 看起来像「搜索仍是选中态」；「点汉堡展开 → 再点 ×」收起后，按钮也还留着一圈
+ * 底色，看起来像菜单没关。桌面指针设备没有这个问题，因此按能力查询分流，
+ * 而不是给触屏再补一条相等的透明色（那会连带把键盘用户的 :focus-visible 抹掉）。
+ */
+@media (hover: hover) and (pointer: fine) {
+  .navbar-action.navbar-action:hover {
+    background: var(--bg-soft);
+    color: var(--text-primary);
+  }
+}
+
+/* 触屏上 :hover 是「上一次点击的残影」，一律不画（叠一层同类名压过 EC 的 .ec-icon-btn:hover） */
+@media (hover: none), (pointer: coarse) {
+  .navbar-action.navbar-action:hover,
+  .navbar-action.navbar-action:focus:not(:focus-visible) {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+}
+
 .navbar-action:focus-visible {
   background: var(--bg-soft);
   color: var(--text-primary);
@@ -1062,6 +1089,13 @@ onUnmounted(() => {
   flex: none;
   font-size: calc(var(--icon-btn-icon-size) * 0.7);
   opacity: 0.7;
+  /* 4.26.0：面板展开时箭头翻上去。此前身份胶囊是这排动作里唯一「按下没反应」的：
+   * 面板已经铺开，箭头仍朝下，读起来像按钮没生效、也找不到「怎么收起」。 */
+  transition: transform var(--transition-interactive);
+}
+
+.user-avatar-btn[aria-expanded='true'] .navbar-identity-caret {
+  transform: rotate(180deg);
 }
 
 /* 无头像地址时的退化字形：尺寸跟随 .u-avatar 的令牌 */
@@ -1306,13 +1340,18 @@ onUnmounted(() => {
 }
 
 /* 4.18.0：两道横线 → ×（原来三道线，18px 内挤成三条 1.2px 的灰杠，读不出「菜单」）。
- * 两道线的中线正好落在盒心，因此两条各转 ±45° 就是干净的叉号，不需要位移补偿。 */
+ * 两道线的中线正好落在盒心，因此两条各转 ±45° 就是干净的叉号。
+ *
+ * 4.26.0：位移不再写 0.53 / 0.52 两个「手调出来的」数，而是取两条线中线间距的一半 ——
+ * 间距 = gap(0.75) + 线高(0.3)，所以各移 (0.75 + 0.3) / 2 = 0.525 单位。
+ * 手调值会随 gap / 线高变化而失配（实测两臂错开 0.08px，放大后交叉点发毛）。
+ */
 .menu-toggle.active .menu-toggle-bars i:nth-child(1) {
-  transform: translateY(calc(var(--space-unit) * 0.53)) rotate(45deg);
+  transform: translateY(calc(var(--space-unit) * 0.525)) rotate(45deg);
 }
 
 .menu-toggle.active .menu-toggle-bars i:nth-child(2) {
-  transform: translateY(calc(var(--space-unit) * -0.52)) rotate(-45deg);
+  transform: translateY(calc(var(--space-unit) * -0.525)) rotate(-45deg);
 }
 
 /* ── 移动端抽屉 ─────────────────────────────────────────── */
